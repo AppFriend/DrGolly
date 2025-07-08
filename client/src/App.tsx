@@ -12,6 +12,7 @@ import Home from "@/pages/home";
 import Courses from "@/pages/courses";
 import Checkout from "@/pages/checkout";
 import PaymentSuccess from "@/pages/payment-success";
+import BlogPost from "@/pages/blog-post";
 import Discounts from "@/pages/discounts";
 import Subscription from "@/pages/subscription";
 import Track from "@/pages/track";
@@ -29,6 +30,7 @@ function AuthenticatedApp() {
         <Route path="/subscription" component={Subscription} />
         <Route path="/checkout/:courseId" component={Checkout} />
         <Route path="/payment-success" component={PaymentSuccess} />
+        <Route path="/blog/:slug" component={BlogPost} />
         <Route path="/courses">
           <Courses />
           {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}

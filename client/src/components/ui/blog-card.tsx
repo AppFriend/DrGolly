@@ -47,7 +47,10 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
           className="w-full h-32 object-cover"
         />
         <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-          <button className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors">
+          <button 
+            onClick={() => window.location.href = `/blog/${post.slug}`}
+            className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+          >
             <ArrowRight className="h-4 w-4 text-dr-teal" />
           </button>
         </div>
@@ -83,7 +86,10 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
               {post.views || 0}
             </span>
           </div>
-          <button className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors">
+          <button 
+            onClick={() => window.location.href = `/blog/${post.slug}`}
+            className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors"
+          >
             Read More
             <ArrowRight className="h-4 w-4 ml-1" />
           </button>
