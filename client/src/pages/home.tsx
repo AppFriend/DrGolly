@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Course } from "@shared/schema";
+import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 
 const categories = [
   { id: "all", label: "All" },
@@ -118,7 +119,7 @@ export default function Home() {
             )}
           </div>
           <img
-            src="/attached_assets/drgolly_1751955955105.jpg"
+            src={drGollyImage}
             alt="Dr. Golly"
             className="w-20 h-20 rounded-2xl object-cover border-2 border-white/20"
           />
