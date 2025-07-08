@@ -531,6 +531,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed development milestones
+  app.post('/api/seed/milestones', async (req, res) => {
+    try {
+      const milestones = [
+        {
+          name: "First Smile",
+          description: "Baby shows their first social smile",
+          videoUrl: "https://example.com/smile.mp4",
+          ageRangeStart: 1,
+          ageRangeEnd: 3,
+          category: "social"
+        },
+        {
+          name: "Holds Head Up",
+          description: "Baby can hold their head up while on tummy",
+          videoUrl: "https://example.com/head-up.mp4",
+          ageRangeStart: 2,
+          ageRangeEnd: 4,
+          category: "motor"
+        },
+        {
+          name: "Rolling Over",
+          description: "Baby rolls from tummy to back or back to tummy",
+          videoUrl: "https://example.com/rolling.mp4",
+          ageRangeStart: 4,
+          ageRangeEnd: 6,
+          category: "motor"
+        },
+        {
+          name: "Sitting Without Support",
+          description: "Baby can sit up without falling over",
+          videoUrl: "https://example.com/sitting.mp4",
+          ageRangeStart: 6,
+          ageRangeEnd: 9,
+          category: "motor"
+        },
+        {
+          name: "First Words",
+          description: "Baby says their first meaningful word",
+          videoUrl: "https://example.com/words.mp4",
+          ageRangeStart: 10,
+          ageRangeEnd: 14,
+          category: "language"
+        },
+        {
+          name: "Walking Independently",
+          description: "Baby takes their first independent steps",
+          videoUrl: "https://example.com/walking.mp4",
+          ageRangeStart: 12,
+          ageRangeEnd: 18,
+          category: "motor"
+        }
+      ];
+
+      for (const milestone of milestones) {
+        try {
+          await storage.createDevelopmentMilestone(milestone);
+          console.log(`Milestone ${milestone.name} created`);
+        } catch (error) {
+          console.log(`Error creating milestone ${milestone.name}:`, error);
+        }
+      }
+
+      res.json({ message: "Development milestones created successfully" });
+    } catch (error) {
+      console.error("Error seeding milestones:", error);
+      res.status(500).json({ message: "Failed to seed milestones" });
+    }
+  });
+
   // Children routes
   app.get('/api/children', isAuthenticated, async (req: any, res) => {
     try {
@@ -574,13 +644,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/children/:childId/growth', isAuthenticated, async (req, res) => {
     try {
       const { childId } = req.params;
-      const entryData = { 
-        ...req.body, 
-        childId: parseInt(childId),
-        logDate: req.body.date ? new Date(req.body.date) : new Date()
-      };
-      const entry = await storage.createGrowthEntry(entryData);
-      res.json(entry);
+      const { weight, height, headCircumference, date } = req.body;
+      const logDate = date ? new Date(date) : new Date();
+      const entries = [];
+
+      // Create separate entries for each measurement type
+      if (weight) {
+        const weightEntry = await storage.createGrowthEntry({
+          childId: parseInt(childId),
+          measurementType: 'weight',
+          value: weight,
+          unit: 'kg',
+          logDate
+        });
+        entries.push(weightEntry);
+      }
+
+      if (height) {
+        const heightEntry = await storage.createGrowthEntry({
+          childId: parseInt(childId),
+          measurementType: 'height',
+          value: height,
+          unit: 'cm',
+          logDate
+        });
+        entries.push(heightEntry);
+      }
+
+      if (headCircumference) {
+        const headEntry = await storage.createGrowthEntry({
+          childId: parseInt(childId),
+          measurementType: 'head_circumference',
+          value: headCircumference,
+          unit: 'cm',
+          logDate
+        });
+        entries.push(headEntry);
+      }
+
+      res.json(entries);
     } catch (error) {
       console.error("Error creating growth entry:", error);
       res.status(500).json({ message: "Failed to create growth entry" });
