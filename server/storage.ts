@@ -149,6 +149,7 @@ export interface IStorage {
   getCoursePurchaseByPaymentIntent(paymentIntentId: string): Promise<CoursePurchase | undefined>;
   createCoursePurchase(purchase: InsertCoursePurchase): Promise<CoursePurchase>;
   updateCoursePurchaseStatus(id: number, status: string): Promise<CoursePurchase>;
+  deleteCoursePurchase(id: number): Promise<void>;
   updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User>;
   
   // Feature flag operations
@@ -652,6 +653,10 @@ export class DatabaseStorage implements IStorage {
   async updateCoursePurchaseStatus(id: number, status: string): Promise<CoursePurchase> {
     const [purchase] = await db.update(coursePurchases).set({ status }).where(eq(coursePurchases.id, id)).returning();
     return purchase;
+  }
+
+  async deleteCoursePurchase(id: number): Promise<void> {
+    await db.delete(coursePurchases).where(eq(coursePurchases.id, id));
   }
 
   async updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {

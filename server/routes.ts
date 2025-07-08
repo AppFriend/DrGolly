@@ -1730,6 +1730,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's purchased courses (Admin only)
+  app.get('/api/admin/users/:userId/courses', isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const purchases = await storage.getUserCoursePurchases(userId);
+      
+      // Get course details for each purchase
+      const coursesWithDetails = await Promise.all(
+        purchases.map(async (purchase) => {
+          const course = await storage.getCourse(purchase.courseId);
+          return {
+            ...purchase,
+            course: course
+          };
+        })
+      );
+      
+      res.json(coursesWithDetails);
+    } catch (error) {
+      console.error("Error fetching user courses:", error);
+      res.status(500).json({ message: "Failed to fetch user courses" });
+    }
+  });
+
+  // Add course to user (Admin only)
+  app.post('/api/admin/users/:userId/courses', isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { courseId } = req.body;
+      
+      // Check if course exists
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if user already has this course
+      const existingPurchases = await storage.getUserCoursePurchases(userId);
+      const alreadyPurchased = existingPurchases.some(p => p.courseId === courseId && p.status === 'completed');
+      
+      if (alreadyPurchased) {
+        return res.status(400).json({ message: "User already has this course" });
+      }
+      
+      // Add course purchase record
+      const purchase = await storage.createCoursePurchase({
+        userId: userId,
+        courseId: courseId,
+        stripePaymentIntentId: `admin_grant_${Date.now()}`,
+        stripeCustomerId: null,
+        amount: 0, // Free admin grant
+        currency: 'usd',
+        status: 'completed',
+      });
+      
+      res.json({ success: true, purchase });
+    } catch (error) {
+      console.error("Error adding course to user:", error);
+      res.status(500).json({ message: "Failed to add course to user" });
+    }
+  });
+
+  // Remove course from user (Admin only)
+  app.delete('/api/admin/users/:userId/courses/:purchaseId', isAdmin, async (req, res) => {
+    try {
+      const { userId, purchaseId } = req.params;
+      
+      // Verify the purchase belongs to the user
+      const purchase = await storage.getCoursePurchase(parseInt(purchaseId));
+      if (!purchase || purchase.userId !== userId) {
+        return res.status(404).json({ message: "Purchase not found" });
+      }
+      
+      // Remove the course purchase
+      await storage.deleteCoursePurchase(parseInt(purchaseId));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing course from user:", error);
+      res.status(500).json({ message: "Failed to remove course from user" });
+    }
+  });
+
+  // Get all available courses (Admin only)
+  app.get('/api/admin/courses', isAdmin, async (req, res) => {
+    try {
+      const courses = await storage.getAllCourses();
+      res.json(courses);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      res.status(500).json({ message: "Failed to fetch courses" });
+    }
+  });
+
   app.get('/api/admin/users/search', isAdmin, async (req, res) => {
     try {
       const query = req.query.q as string;
