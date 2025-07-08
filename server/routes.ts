@@ -1010,10 +1010,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { childId } = req.params;
       const feedData = { 
-        ...req.body, 
         childId: parseInt(childId),
-        startTime: new Date(req.body.startTime),
-        endTime: new Date(req.body.endTime)
+        feedDate: new Date(req.body.feedDate),
+        leftDuration: req.body.leftDuration || 0,
+        rightDuration: req.body.rightDuration || 0,
+        totalDuration: req.body.totalDuration || 0,
+        notes: req.body.notes || null
       };
       const feed = await storage.createFeedEntry(feedData);
       res.json(feed);
