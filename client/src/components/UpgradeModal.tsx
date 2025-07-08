@@ -45,88 +45,85 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
       {/* Modal */}
       <div className="relative max-w-md w-full bg-white rounded-2xl overflow-hidden shadow-lg">
         {/* Header */}
-        <div className="p-6 pb-4 relative">
+        <div className="bg-gradient-to-br from-[#6B9CA3] to-[#095D66] p-6 text-white relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors"
           >
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-5 w-5 text-white" />
           </button>
           
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-[#6B9CA3]/10 rounded-full flex items-center justify-center">
-              <Lock className="h-6 w-6 text-[#6B9CA3]" />
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-gradient-to-br from-[#6B9CA3] to-[#095D66] rounded-full"></div>
+              </div>
             </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">
-            Unlock with Gold
+          <h2 className="text-2xl font-bold text-center mb-2">
+            Unlock Gold Features
           </h2>
           
-          <p className="text-gray-600 text-center">
-            This feature is available as part of our Gold Subscription. Get unlimited access for{" "}
-            <span className="font-semibold">${currentPrice}/month</span>.
+          <p className="text-white/90 text-center text-sm">
+            Get unlimited access to all courses, expert content, and exclusive partner discounts
           </p>
         </div>
 
-        <div className="px-6 pb-6">
+        <div className="p-6">
+          {/* Pricing Section */}
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              {billingPeriod === "yearly" && (
+                <span className="text-sm text-gray-500 line-through">${monthlyPrice}/month</span>
+              )}
+              <span className="text-3xl font-bold text-gray-900">${currentPrice}</span>
+              <span className="text-gray-600">/month</span>
+            </div>
+            {billingPeriod === "yearly" && (
+              <div className="inline-flex items-center bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                Save 50% with yearly billing
+              </div>
+            )}
+          </div>
+
           {/* Billing Toggle */}
           <div className="flex items-center justify-center mb-6 bg-gray-100 rounded-full p-1">
             <button
               onClick={() => setBillingPeriod("monthly")}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex-1 ${
                 billingPeriod === "monthly"
-                  ? "bg-[#6B9CA3] text-white"
+                  ? "bg-[#6B9CA3] text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Pay Monthly
+              Monthly
             </button>
             <button
               onClick={() => setBillingPeriod("yearly")}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex-1 relative ${
                 billingPeriod === "yearly"
-                  ? "bg-[#6B9CA3] text-white"
+                  ? "bg-[#6B9CA3] text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Pay Yearly
-              <Badge className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1 py-0 rounded-full">
-                50% Off
-              </Badge>
+              Yearly
+              <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1 rounded-full">50% off</span>
             </button>
           </div>
 
-          {/* Pricing */}
-          <div className="bg-gray-50 rounded-xl p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-baseline gap-2">
-                {originalPrice && (
-                  <span className="text-lg text-gray-400 line-through">
-                    ${originalPrice}
-                  </span>
-                )}
-                <span className="text-3xl font-bold text-gray-900">
-                  ${currentPrice}
-                </span>
-                <span className="text-gray-500">/Month</span>
-              </div>
-              {billingPeriod === "yearly" && (
-                <Badge className="bg-green-500 text-white">
-                  50% Off
-                </Badge>
-              )}
-            </div>
-          </div>
+
 
           {/* Features */}
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">What&apos;s Included</h3>
             <div className="space-y-3">
               {features.map((feature, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{feature}</span>
+                <div key={index} className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-5 h-5 bg-[#6B9CA3] rounded-full flex items-center justify-center mt-0.5">
+                    <Check className="h-3 w-3 text-white" />
+                  </div>
+                  <span className="text-sm text-gray-700 leading-relaxed">{feature}</span>
                 </div>
               ))}
             </div>
@@ -135,10 +132,14 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
           {/* Upgrade Button */}
           <Button
             onClick={handleUpgrade}
-            className="w-full bg-[#6B9CA3] hover:bg-[#6B9CA3]/90 text-white rounded-full py-3 font-semibold text-lg"
+            className="w-full bg-gradient-to-r from-[#6B9CA3] to-[#095D66] hover:from-[#095D66] hover:to-[#6B9CA3] text-white font-semibold py-4 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
-            Upgrade to Gold
+            Upgrade to Gold - ${currentPrice}/month
           </Button>
+          
+          <p className="text-xs text-gray-500 text-center mt-3">
+            Cancel anytime • 30-day money-back guarantee
+          </p>
         </div>
       </div>
     </div>
