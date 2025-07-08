@@ -72,11 +72,7 @@ export default function Home() {
       {/* Header */}
       <header className="bg-[#095D66] text-white p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <img
-            src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png"
-            alt="Dr. Golly Logo"
-            className="h-8 filter brightness-0 invert"
-          />
+          <div className="text-white font-heading font-bold text-lg">Dr. Golly</div>
           <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
             <span className="text-[#095D66] text-xs font-bold">
               {user?.subscriptionTier === "free" ? "F" : user?.subscriptionTier === "gold" ? "G" : "P"}
