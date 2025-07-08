@@ -75,21 +75,19 @@ export function AdminUserSettings() {
   const regularUsers = users?.filter((user: AdminUser) => !user.isAdmin) || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Admin User Management</h2>
-          <p className="text-muted-foreground">
-            Manage admin permissions and user roles
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Admin User Management</h2>
+        <p className="text-sm text-muted-foreground">
+          Manage admin permissions and user roles
+        </p>
       </div>
 
       {/* Admin Users */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-[#6B9CA3]" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Shield className="h-4 w-4 text-[#6B9CA3]" />
             Admin Users ({adminUsers.length})
           </CardTitle>
         </CardHeader>
@@ -103,43 +101,43 @@ export function AdminUserSettings() {
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {adminUsers.map((user: AdminUser) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-4 border rounded-lg bg-[#6B9CA3]/5"
+                  className="border rounded-lg p-3 bg-[#6B9CA3]/5"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold">
-                      <Shield className="h-5 w-5" />
+                  <div className="flex items-start space-x-3">
+                    <div className="w-8 h-8 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
+                      <Shield className="h-4 w-4" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-sm truncate mr-2">
                           {user.firstName} {user.lastName}
                         </h3>
-                        <Badge className="bg-[#6B9CA3] text-white">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleAdmin(user.id, false)}
+                          disabled={updateUserMutation.isPending}
+                          className="h-7 w-7 p-0 flex-shrink-0"
+                        >
+                          <UserX className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className="bg-[#6B9CA3] text-white text-xs px-2 py-0.5">
                           Admin
                         </Badge>
-                        <Badge variant="outline" className="text-yellow-600">
+                        <Badge variant="outline" className="text-yellow-600 text-xs px-2 py-0.5">
                           {user.subscriptionTier}
                         </Badge>
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-xs text-gray-600 truncate">
                         {user.email} • Joined {formatDate(user.createdAt)}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleAdmin(user.id, false)}
-                      disabled={updateUserMutation.isPending}
-                    >
-                      <UserX className="h-4 w-4 mr-2" />
-                      Remove Admin
-                    </Button>
                   </div>
                 </div>
               ))}
@@ -148,71 +146,39 @@ export function AdminUserSettings() {
         </CardContent>
       </Card>
 
-      {/* Regular Users - Potential Admins */}
+      {/* Admin Role Assignment */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Regular Users ({regularUsers.length})
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <UserCheck className="h-4 w-4" />
+            Admin Role Assignment
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-gray-200 rounded"></div>
-                </div>
-              ))}
+          <div className="text-sm text-gray-600 mb-4">
+            To promote a user to admin, use the "Users" tab to find the user and edit their permissions.
+          </div>
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Crown className="h-4 w-4 text-blue-600" />
+              <span className="font-medium text-blue-900">Admin Assignment Process</span>
             </div>
-          ) : (
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {regularUsers.map((user: AdminUser) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-semibold">
-                      {user.firstName?.[0] || user.email[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">
-                          {user.firstName} {user.lastName}
-                        </h3>
-                        <Badge variant="outline" className="text-gray-600">
-                          {user.subscriptionTier}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {user.email} • Last login: {user.lastSignIn ? formatDate(user.lastSignIn) : "Never"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleAdmin(user.id, true)}
-                      disabled={updateUserMutation.isPending}
-                    >
-                      <UserCheck className="h-4 w-4 mr-2" />
-                      Make Admin
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>1. Go to the "Users" tab</li>
+              <li>2. Find the user you want to promote</li>
+              <li>3. Click the edit button</li>
+              <li>4. Enable admin permissions</li>
+              <li>5. Save changes</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
 
       {/* Admin Permissions Info */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Settings className="h-4 w-4" />
             Admin Permissions
           </CardTitle>
         </CardHeader>
