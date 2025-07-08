@@ -1,0 +1,228 @@
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Users, 
+  Crown, 
+  Activity, 
+  DollarSign, 
+  ShoppingCart,
+  TrendingUp,
+  Calendar,
+  UserMinus
+} from "lucide-react";
+
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  description?: string;
+  trend?: {
+    value: string;
+    isPositive: boolean;
+  };
+}
+
+function MetricCard({ title, value, icon, description, trend }: MetricCardProps) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
+        {trend && (
+          <div className="flex items-center mt-2">
+            <Badge 
+              variant={trend.isPositive ? "default" : "destructive"}
+              className="text-xs"
+            >
+              {trend.isPositive ? "+" : ""}{trend.value}
+            </Badge>
+            <span className="text-xs text-muted-foreground ml-2">vs last month</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function AdminDashboard() {
+  const { data: metrics, isLoading } = useQuery({
+    queryKey: ["/api/admin/metrics"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(8)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader className="space-y-0 pb-2">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-full"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">Failed to load metrics</p>
+      </div>
+    );
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
+        <p className="text-muted-foreground">
+          Monitor your app's performance and user metrics
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Users"
+          value={metrics.totalUsers.toLocaleString()}
+          icon={<Users className="h-4 w-4 text-muted-foreground" />}
+          description="All registered users"
+        />
+        
+        <MetricCard
+          title="Free Users"
+          value={metrics.freeUsers.toLocaleString()}
+          icon={<Users className="h-4 w-4 text-blue-500" />}
+          description="Users on free plan"
+        />
+        
+        <MetricCard
+          title="Gold Users"
+          value={metrics.goldUsers.toLocaleString()}
+          icon={<Crown className="h-4 w-4 text-yellow-500" />}
+          description="Premium subscribers"
+        />
+        
+        <MetricCard
+          title="Monthly Active"
+          value={metrics.monthlyActiveUsers.toLocaleString()}
+          icon={<Activity className="h-4 w-4 text-green-500" />}
+          description="Last 30 days"
+        />
+        
+        <MetricCard
+          title="Courses Sold"
+          value={metrics.totalCoursesSold.toLocaleString()}
+          icon={<ShoppingCart className="h-4 w-4 text-purple-500" />}
+          description="Individual course purchases"
+        />
+        
+        <MetricCard
+          title="Subscription Upgrades"
+          value={metrics.totalSubscriptionUpgrades.toLocaleString()}
+          icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+          description="Free to Gold conversions"
+        />
+        
+        <MetricCard
+          title="Monthly Revenue"
+          value={formatCurrency(metrics.monthlyGoldRevenue)}
+          icon={<DollarSign className="h-4 w-4 text-green-600" />}
+          description="Gold subscriptions ($199/month)"
+        />
+        
+        <MetricCard
+          title="Annual Revenue"
+          value={formatCurrency(metrics.annualGoldRevenue)}
+          icon={<Calendar className="h-4 w-4 text-blue-600" />}
+          description="Projected yearly revenue"
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserMinus className="h-5 w-5 text-red-500" />
+              Churn Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {metrics.totalChurn.toLocaleString()}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Cancelled subscriptions
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-500" />
+              Conversion Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {metrics.totalUsers > 0 
+                ? ((metrics.goldUsers / metrics.totalUsers) * 100).toFixed(1) 
+                : 0}%
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Free to Gold conversion
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Stats</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Average Revenue Per User (ARPU)</span>
+            <span className="font-semibold">
+              {formatCurrency(metrics.totalUsers > 0 ? metrics.monthlyGoldRevenue / metrics.totalUsers : 0)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Revenue from Courses</span>
+            <span className="font-semibold">
+              {formatCurrency(metrics.totalCoursesSold * 120)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Active User Engagement</span>
+            <span className="font-semibold">
+              {metrics.totalUsers > 0 
+                ? ((metrics.monthlyActiveUsers / metrics.totalUsers) * 100).toFixed(1) 
+                : 0}%
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

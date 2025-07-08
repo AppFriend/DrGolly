@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -31,6 +31,25 @@ const COURSE_STRIPE_MAPPING = {
   8: { productId: "prod_course_8", priceId: "price_twins_supplement" },
   9: { productId: "prod_course_9", priceId: "price_toddler_toolkit" },
   10: { productId: "prod_course_10", priceId: "price_testing_allergens" },
+};
+
+// Admin middleware
+const isAdmin: RequestHandler = async (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  const userId = req.user?.claims?.sub;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  const isUserAdmin = await storage.isUserAdmin(userId);
+  if (!isUserAdmin) {
+    return res.status(403).json({ message: "Forbidden: Admin access required" });
+  }
+  
+  next();
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1583,6 +1602,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error cancelling subscription:", error);
       res.status(500).json({ message: "Error cancelling subscription: " + error.message });
+    }
+  });
+
+  // Admin routes
+  app.get('/api/admin/check', isAdmin, async (req, res) => {
+    res.json({ isAdmin: true });
+  });
+
+  app.get('/api/admin/metrics', isAdmin, async (req, res) => {
+    try {
+      const metrics = await storage.getUserMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching admin metrics:", error);
+      res.status(500).json({ message: "Failed to fetch metrics" });
+    }
+  });
+
+  app.get('/api/admin/users', isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.get('/api/admin/users/search', isAdmin, async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.status(400).json({ message: "Query parameter required" });
+      }
+      const users = await storage.searchUsers(query);
+      res.json(users);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ message: "Failed to search users" });
+    }
+  });
+
+  app.patch('/api/admin/users/:userId', isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const updates = req.body;
+      const updatedUser = await storage.updateUser(userId, updates);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.get('/api/admin/notifications', isAdmin, async (req, res) => {
+    try {
+      const notifications = await storage.getAdminNotifications();
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching admin notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post('/api/admin/notifications', isAdmin, async (req, res) => {
+    try {
+      const notification = await storage.createAdminNotification(req.body);
+      res.json(notification);
+    } catch (error) {
+      console.error("Error creating admin notification:", error);
+      res.status(500).json({ message: "Failed to create notification" });
+    }
+  });
+
+  app.patch('/api/admin/notifications/:id', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const notification = await storage.updateAdminNotification(parseInt(id), updates);
+      res.json(notification);
+    } catch (error) {
+      console.error("Error updating admin notification:", error);
+      res.status(500).json({ message: "Failed to update notification" });
+    }
+  });
+
+  app.delete('/api/admin/notifications/:id', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteAdminNotification(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting admin notification:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
     }
   });
 
