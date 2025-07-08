@@ -10,6 +10,8 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { useState } from "react";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
 import Checkout from "@/pages/checkout";
@@ -89,7 +91,11 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen">
-        <Landing />
+        <Switch>
+          <Route path="/login" component={Login} />
+          <Route path="/signup" component={Signup} />
+          <Route component={Landing} />
+        </Switch>
       </div>
     );
   }
