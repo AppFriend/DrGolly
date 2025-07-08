@@ -54,9 +54,9 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-dr-bg">
+      <div className="min-h-screen bg-white">
         <div className="animate-pulse">
-          <div className="h-32 bg-dr-teal"></div>
+          <div className="h-32 bg-[#83CFCC]"></div>
           <div className="p-4 space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-48 bg-gray-200 rounded-2xl"></div>
@@ -68,12 +68,17 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-dr-bg pb-20">
+    <div className="min-h-screen bg-white pb-20">
       {/* Header */}
-      <header className="bg-dr-teal text-white p-4 flex items-center justify-between">
+      <header className="bg-[#095D66] text-white p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
+          <img
+            src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png"
+            alt="Dr. Golly Logo"
+            className="h-8 filter brightness-0 invert"
+          />
           <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-            <span className="text-dr-teal text-xs font-bold">
+            <span className="text-[#095D66] text-xs font-bold">
               {user?.subscriptionTier === "free" ? "F" : user?.subscriptionTier === "gold" ? "G" : "P"}
             </span>
           </div>
@@ -97,7 +102,7 @@ export default function Home() {
       </header>
 
       {/* Welcome Hero */}
-      <section className="bg-gradient-to-r from-dr-teal to-dr-teal-light text-white p-6 rounded-b-3xl">
+      <section className="bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] text-[#095D66] p-6 rounded-b-3xl">
         <div className="flex items-center space-x-4">
           <div className="flex-1">
             <h1 className="text-xl font-bold mb-2">

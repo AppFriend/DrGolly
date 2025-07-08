@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&family=Montserrat:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,11 +26,17 @@
   --ring: hsl(20, 14.3%, 4.1%);
   --radius: 0.5rem;
   
-  /* Dr. Golly Brand Colors */
-  --dr-teal: hsl(162, 32%, 45%);
-  --dr-teal-light: hsl(162, 32%, 60%);
-  --dr-teal-dark: hsl(162, 32%, 30%);
-  --dr-bg: hsl(162, 20%, 98%);
+  /* Dr. Golly Brand Colors - From Brand Guidelines */
+  --dr-mint: #83CFCC;
+  --dr-mint-light: #CBEFE8;
+  --dr-lemon: #FEEDC7;
+  --dr-dark-turquoise: #095D66;
+  --dr-charcoal: #3C3C3B;
+  
+  /* Legacy mappings for existing code */
+  --dr-teal: #83CFCC;
+  --dr-teal-dark: #095D66;
+  --dr-bg: #CBEFE8;
 }
 
 .dark {

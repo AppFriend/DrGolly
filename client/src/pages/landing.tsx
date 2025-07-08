@@ -7,18 +7,17 @@ export default function Landing() {
       <main className="max-w-md mx-auto px-8 pt-16 pb-8 relative z-10">
         {/* Logo */}
         <div className="text-center mb-12">
-          <div className="text-4xl font-light text-gray-800 mb-2">
-            <span className="text-2xl">dr.</span>
-          </div>
-          <div className="text-5xl font-light text-gray-800 tracking-wide">
-            <span className="font-normal">G</span>olly
-          </div>
+          <img
+            src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png"
+            alt="Dr. Golly Logo"
+            className="h-16 mx-auto"
+          />
         </div>
 
         {/* Hero Image */}
         <div className="text-center mb-12">
           <div className="relative inline-block">
-            <div className="w-72 h-72 bg-gradient-to-br from-dr-teal/20 to-dr-teal/30 rounded-full flex items-center justify-center mb-8">
+            <div className="w-72 h-72 bg-gradient-to-br from-[#83CFCC]/20 to-[#83CFCC]/30 rounded-full flex items-center justify-center mb-8">
               <img
                 src="/attached_assets/drgolly_1751955510280.jpg"
                 alt="Dr. Golly - Professional headshot"
@@ -30,10 +29,10 @@ export default function Landing() {
 
         {/* Main Heading */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+          <h1 className="text-4xl font-bold text-gray-900 mb-6 font-heading">
             Hi, I'm Dr Golly
           </h1>
-          <p className="text-gray-600 text-lg leading-relaxed px-4">
+          <p className="text-gray-600 text-lg leading-relaxed px-4 font-sans">
             I've created these online learning courses to empower you with the skills and knowledge to ensure your whole family gets a good night's sleep.
           </p>
         </div>
@@ -50,7 +49,7 @@ export default function Landing() {
           >
             <path
               d="M0,100 C100,20 300,20 400,100 L400,200 L0,200 Z"
-              fill="rgb(134, 192, 180)"
+              fill="#83CFCC"
               className="opacity-90"
             />
           </svg>
@@ -59,14 +58,14 @@ export default function Landing() {
           <div className="absolute bottom-0 left-0 right-0 p-6 space-y-4">
             <Button
               onClick={() => window.location.href = '/api/login'}
-              className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white py-4 text-lg font-semibold rounded-full shadow-lg border-0"
+              className="w-full bg-[#83CFCC] hover:bg-[#095D66] text-white py-4 text-lg font-semibold rounded-full shadow-lg border-0 font-heading"
             >
               Get Started
             </Button>
             <Button
               onClick={() => window.location.href = '/api/login'}
               variant="outline"
-              className="w-full bg-transparent border-2 border-gray-700 text-gray-700 hover:bg-gray-700 hover:text-white py-4 text-lg font-semibold rounded-full"
+              className="w-full bg-transparent border-2 border-[#3C3C3B] text-[#3C3C3B] hover:bg-[#3C3C3B] hover:text-white py-4 text-lg font-semibold rounded-full font-heading"
             >
               Sign In
             </Button>
