@@ -7,7 +7,9 @@ import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { validateRoutingConfiguration, getRedirectPath } from "@/utils/authGuards";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
@@ -96,7 +98,23 @@ function AuthenticatedApp() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  // Validate routing configuration on mount
+  useEffect(() => {
+    if (!validateRoutingConfiguration()) {
+      console.error('Routing configuration validation failed');
+    }
+  }, []);
+
+  // Handle redirects based on authentication state
+  useEffect(() => {
+    const redirectPath = getRedirectPath(location, { isAuthenticated, isLoading, user });
+    if (redirectPath && redirectPath !== location) {
+      setLocation(redirectPath);
+    }
+  }, [location, isAuthenticated, isLoading, user, setLocation]);
 
   if (isLoading) {
     return (
@@ -123,12 +141,14 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
