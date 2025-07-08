@@ -153,6 +153,13 @@ Changelog:
   * Created API endpoints for feature access checking
   * Built React hooks and components for feature gating (FeatureGate, FeatureToggle)
   * Seeded database with plan-specific permissions (Free: home+basic features, Gold: unlimited courses+full access)
+- July 08, 2025. Completed URL-based routing system for all authentication and navigation:
+  * Created dedicated /login and /signup pages with proper form handling
+  * Updated App.tsx router to handle URL-based flows instead of modals
+  * Implemented proper URL routing for all bottom navigation pages (/home, /courses, /track, /family)
+  * Added URL routes for payment and management pages (/checkout, /manage)
+  * Updated BottomNavigation component to use URL navigation
+  * Landing page now routes to /signup and /login URLs instead of using modals
 ```
 
 ## User Preferences

@@ -11,10 +11,9 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
   const [location, navigate] = useLocation();
   
   const tabs = [
-    { id: "home", label: "Home", icon: Home, path: "/" },
+    { id: "home", label: "Home", icon: Home, path: "/home" },
     { id: "courses", label: "Courses", icon: GraduationCap, path: "/courses" },
-    { id: "track", label: "Track", icon: TrendingUp, path: "/track" },
-    { id: "discounts", label: "Discounts", icon: Percent, path: "/discounts" },
+    { id: "tracking", label: "Track", icon: TrendingUp, path: "/track" },
     { id: "family", label: "Family", icon: Users, path: "/family" },
   ];
 
@@ -28,7 +27,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
       <div className="flex items-center justify-around">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = location === tab.path || (location === "/" && tab.id === "home");
+          const isActive = location === tab.path || (location === "/" && tab.id === "home") || (location.startsWith(tab.path) && tab.path !== "/");
           
           return (
             <button
