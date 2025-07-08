@@ -1,5 +1,6 @@
 import React from 'react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useUpgradeModal } from '@/hooks/useUpgradeModal';
 import { Button } from '@/components/ui/button';
 import { Lock } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export function FeatureGate({
   upgradeMessage = "Upgrade to access this feature"
 }: FeatureGateProps) {
   const { hasAccess, isLoading } = useFeatureAccess();
+  const { openUpgradeModal } = useUpgradeModal();
 
   if (isLoading) {
     return (
@@ -44,7 +46,7 @@ export function FeatureGate({
         <p className="text-gray-600 mb-4">{upgradeMessage}</p>
         <Button 
           variant="default"
-          onClick={() => window.location.href = '/subscription'}
+          onClick={() => openUpgradeModal(featureName)}
           className="bg-[#095D66] hover:bg-[#095D66]/90"
         >
           Upgrade Plan
