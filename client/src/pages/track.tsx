@@ -624,9 +624,11 @@ function FeedingTracking({ childId }: { childId: number | null }) {
 function SleepTracking({ childId }: { childId: number | null }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    sleepStart: "",
-    sleepEnd: "",
+  const [isTracking, setIsTracking] = useState(false);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [showCompletionForm, setShowCompletionForm] = useState(false);
+  const [completionData, setCompletionData] = useState({
     quality: "good" as "poor" | "fair" | "good" | "excellent",
     notes: ""
   });
@@ -637,17 +639,29 @@ function SleepTracking({ childId }: { childId: number | null }) {
     enabled: !!childId,
   });
 
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTracking && startTime) {
+      interval = setInterval(() => {
+        setElapsedTime(Date.now() - startTime.getTime());
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTracking, startTime]);
+
   // Add sleep entry mutation
   const addSleepMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
+    mutationFn: async (data: { sleepStart: string; sleepEnd: string; quality: string; notes: string }) => {
       return await apiRequest('POST', `/api/children/${childId}/sleep`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "sleep"] });
-      setFormData({ sleepStart: "", sleepEnd: "", quality: "good", notes: "" });
+      setShowCompletionForm(false);
+      setCompletionData({ quality: "good", notes: "" });
       toast({
         title: "Success",
-        description: "Sleep entry added successfully!",
+        description: "Sleep entry saved successfully!",
       });
     },
     onError: (error) => {
@@ -664,23 +678,59 @@ function SleepTracking({ childId }: { childId: number | null }) {
       }
       toast({
         title: "Error",
-        description: "Failed to add sleep entry.",
+        description: "Failed to save sleep entry.",
         variant: "destructive",
       });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.sleepStart || !formData.sleepEnd) {
-      toast({
-        title: "Error",
-        description: "Please enter both start and end times.",
-        variant: "destructive",
-      });
-      return;
+  const startTracking = () => {
+    const now = new Date();
+    setStartTime(now);
+    setIsTracking(true);
+    setElapsedTime(0);
+    toast({
+      title: "Sleep Tracking Started",
+      description: "Timer is now running. Sweet dreams!",
+    });
+  };
+
+  const stopTracking = () => {
+    if (!startTime) return;
+    setIsTracking(false);
+    setShowCompletionForm(true);
+    toast({
+      title: "Sleep Tracking Stopped",
+      description: "Please rate the sleep quality to finish logging.",
+    });
+  };
+
+  const saveEntry = () => {
+    if (!startTime) return;
+    
+    const endTime = new Date();
+    const sleepData = {
+      sleepStart: startTime.toISOString(),
+      sleepEnd: endTime.toISOString(),
+      quality: completionData.quality,
+      notes: completionData.notes
+    };
+    
+    addSleepMutation.mutate(sleepData);
+    setStartTime(null);
+    setElapsedTime(0);
+  };
+
+  const formatElapsedTime = (milliseconds: number) => {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
-    addSleepMutation.mutate(formData);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const calculateDuration = (start: string, end: string) => {
@@ -697,77 +747,104 @@ function SleepTracking({ childId }: { childId: number | null }) {
 
   return (
     <div className="space-y-4">
-      {/* Add Sleep Entry */}
+      {/* Sleep Timer */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-heading">Add Sleep Entry</CardTitle>
+          <CardTitle className="text-base font-heading">Sleep Timer</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          {!isTracking && !showCompletionForm && (
+            <div className="text-center space-y-4">
+              <div className="p-8">
+                <Moon className="h-16 w-16 text-[#83CFCC] mx-auto mb-4" />
+                <p className="text-gray-600 mb-4">Tap to start tracking sleep time</p>
+                <Button 
+                  onClick={startTracking}
+                  className="w-full bg-[#83CFCC] hover:bg-[#095D66] py-4 text-lg"
+                >
+                  Start Sleep Timer
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {isTracking && (
+            <div className="text-center space-y-6">
+              <div className="p-8">
+                <div className="text-6xl font-mono font-bold text-[#83CFCC] mb-2">
+                  {formatElapsedTime(elapsedTime)}
+                </div>
+                <p className="text-gray-600 mb-4">Sleep in progress...</p>
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse mr-2"></div>
+                  <span className="text-sm text-gray-500">Recording</span>
+                </div>
+                <Button 
+                  onClick={stopTracking}
+                  variant="outline"
+                  className="w-full border-[#83CFCC] text-[#83CFCC] hover:bg-[#83CFCC] hover:text-white py-4 text-lg"
+                >
+                  Stop Sleep Timer
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {showCompletionForm && (
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-[#83CFCC]/10 rounded">
+                <p className="text-lg font-semibold">Sleep Duration: {formatElapsedTime(elapsedTime)}</p>
+                <p className="text-sm text-gray-600">Started at {startTime?.toLocaleTimeString()}</p>
+              </div>
+              
               <div>
-                <Label htmlFor="sleepStart">Sleep Start</Label>
-                <Input
-                  id="sleepStart"
-                  type="datetime-local"
-                  value={formData.sleepStart}
-                  onChange={(e) => setFormData(prev => ({ ...prev, sleepStart: e.target.value }))}
-                  required
+                <Label htmlFor="quality">How was the sleep quality?</Label>
+                <select
+                  id="quality"
+                  value={completionData.quality}
+                  onChange={(e) => setCompletionData(prev => ({ ...prev, quality: e.target.value as any }))}
+                  className="w-full p-3 border border-gray-300 rounded-md mt-1"
+                >
+                  <option value="poor">😴 Poor</option>
+                  <option value="fair">😐 Fair</option>
+                  <option value="good">😊 Good</option>
+                  <option value="excellent">😍 Excellent</option>
+                </select>
+              </div>
+              
+              <div>
+                <Label htmlFor="notes">Notes (optional)</Label>
+                <textarea
+                  id="notes"
+                  value={completionData.notes}
+                  onChange={(e) => setCompletionData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Any observations about the sleep..."
+                  className="w-full p-3 border border-gray-300 rounded-md mt-1 h-20 resize-none"
                 />
               </div>
-              <div>
-                <Label htmlFor="sleepEnd">Sleep End</Label>
-                <Input
-                  id="sleepEnd"
-                  type="datetime-local"
-                  value={formData.sleepEnd}
-                  onChange={(e) => setFormData(prev => ({ ...prev, sleepEnd: e.target.value }))}
-                  required
-                />
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    setShowCompletionForm(false);
+                    setStartTime(null);
+                    setElapsedTime(0);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={saveEntry}
+                  disabled={addSleepMutation.isPending}
+                  className="flex-1 bg-[#83CFCC] hover:bg-[#095D66]"
+                >
+                  {addSleepMutation.isPending ? "Saving..." : "Save Entry"}
+                </Button>
               </div>
             </div>
-            
-            <div>
-              <Label htmlFor="quality">Sleep Quality</Label>
-              <select
-                id="quality"
-                value={formData.quality}
-                onChange={(e) => setFormData(prev => ({ ...prev, quality: e.target.value as any }))}
-                className="w-full p-2 border border-gray-300 rounded-md mt-1"
-              >
-                <option value="poor">Poor</option>
-                <option value="fair">Fair</option>
-                <option value="good">Good</option>
-                <option value="excellent">Excellent</option>
-              </select>
-            </div>
-            
-            <div>
-              <Label htmlFor="notes">Notes (optional)</Label>
-              <Input
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Any observations about the sleep..."
-              />
-            </div>
-            
-            {formData.sleepStart && formData.sleepEnd && (
-              <div className="text-center p-2 bg-[#83CFCC]/10 rounded">
-                <p className="text-sm font-semibold">
-                  Duration: {calculateDuration(formData.sleepStart, formData.sleepEnd)}
-                </p>
-              </div>
-            )}
-            
-            <Button 
-              type="submit" 
-              disabled={addSleepMutation.isPending}
-              className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
-            >
-              {addSleepMutation.isPending ? "Adding..." : "Add Sleep Entry"}
-            </Button>
-          </form>
+          )}
         </CardContent>
       </Card>
 
