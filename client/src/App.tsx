@@ -18,6 +18,8 @@ import Subscription from "@/pages/subscription";
 import Track from "@/pages/track";
 import Family from "@/pages/family";
 import FeatureDemo from "@/pages/feature-demo";
+import Manage from "@/pages/manage";
+import CheckoutSubscription from "@/pages/checkout-subscription";
 
 function AuthenticatedApp() {
   const [activeTab, setActiveTab] = useState("home");
@@ -49,6 +51,8 @@ function AuthenticatedApp() {
           {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/feature-demo" component={FeatureDemo} />
+        <Route path="/manage" component={Manage} />
+        <Route path="/checkout-subscription" component={CheckoutSubscription} />
         <Route path="/">
           <Home />
           {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}

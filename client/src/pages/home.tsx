@@ -67,14 +67,19 @@ export default function Home() {
       <header className="bg-[#095D66] text-white p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="text-white font-heading font-bold text-lg">Dr. Golly</div>
-          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-            <span className="text-[#095D66] text-xs font-bold">
-              {user?.subscriptionTier === "free" ? "F" : user?.subscriptionTier === "gold" ? "G" : "P"}
+          <button 
+            onClick={() => window.location.href = '/manage'}
+            className="flex items-center space-x-2 hover:bg-white/10 rounded-lg px-2 py-1 transition-colors"
+          >
+            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+              <span className="text-[#095D66] text-xs font-bold">
+                {user?.subscriptionTier === "free" ? "F" : user?.subscriptionTier === "gold" ? "G" : "P"}
+              </span>
+            </div>
+            <span className="text-sm font-medium capitalize">
+              {user?.subscriptionTier || "Free"} Plan
             </span>
-          </div>
-          <span className="text-sm font-medium capitalize">
-            {user?.subscriptionTier || "Free"} Plan
-          </span>
+          </button>
         </div>
         <div className="flex items-center space-x-3">
           <button className="text-white hover:text-gray-200 transition-colors">
