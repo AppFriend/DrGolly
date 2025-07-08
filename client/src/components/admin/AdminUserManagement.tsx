@@ -98,29 +98,24 @@ export function AdminUserManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl font-bold tracking-tight">User Management</h2>
+        <p className="text-sm text-muted-foreground">
           Manage users, subscriptions, and view user activity
         </p>
       </div>
 
       {/* Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Search Users
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Card className="py-2">
+        <CardContent className="pt-2">
           <div className="flex items-center space-x-2">
+            <Search className="h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search by email, name, or user ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1"
+              className="flex-1 text-sm"
             />
             {isSearching && (
               <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
@@ -131,9 +126,9 @@ export function AdminUserManagement() {
 
       {/* Users Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Users className="h-4 w-4" />
             Users ({displayUsers?.length || 0})
           </CardTitle>
         </CardHeader>
@@ -147,65 +142,73 @@ export function AdminUserManagement() {
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {displayUsers?.map((user: User) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                  className="border rounded-lg p-3 hover:bg-gray-50"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-8 h-8 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                       {user.firstName?.[0] || user.email[0].toUpperCase()}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">
-                          {user.firstName} {user.lastName}
-                        </h3>
-                        <Badge className={getTierColor(user.subscriptionTier)}>
-                          {user.subscriptionTier}
-                        </Badge>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className="font-semibold text-sm truncate">
+                            {user.firstName} {user.lastName}
+                          </h3>
+                          <Badge className={`${getTierColor(user.subscriptionTier)} text-xs px-2 py-0.5`}>
+                            {user.subscriptionTier}
+                          </Badge>
+                        </div>
+                        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedUser(user)}
+                              className="h-7 w-7 p-0 flex-shrink-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
+                            </DialogHeader>
+                            {selectedUser && (
+                              <UserEditForm
+                                user={selectedUser}
+                                onUpdate={handleUpdateUser}
+                                isLoading={updateUserMutation.isPending}
+                              />
+                            )}
+                          </DialogContent>
+                        </Dialog>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {user.email}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Joined {formatDate(user.createdAt)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {user.signInCount} logins
-                        </span>
+                      <div className="text-xs text-gray-600 truncate mt-1">
+                        <Mail className="h-3 w-3 inline mr-1" />
+                        {user.email}
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(user.createdAt)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {user.signInCount} logins
+                          </span>
+                        </div>
+                        {user.country && (
+                          <span className="text-xs text-gray-400">
+                            {user.country}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedUser(user)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
-                        </DialogHeader>
-                        {selectedUser && (
-                          <UserEditForm
-                            user={selectedUser}
-                            onUpdate={handleUpdateUser}
-                            isLoading={updateUserMutation.isPending}
-                          />
-                        )}
-                      </DialogContent>
-                    </Dialog>
                   </div>
                 </div>
               ))}
