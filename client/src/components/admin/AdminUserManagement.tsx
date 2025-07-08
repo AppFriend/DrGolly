@@ -47,12 +47,29 @@ export function AdminUserManagement() {
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["/api/admin/users"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/admin/users");
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error("Users fetch error:", error);
+        return [];
+      }
+    },
   });
 
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ["/api/admin/users/search", searchQuery],
     enabled: searchQuery.length > 2,
-    queryFn: () => apiRequest("GET", `/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`),
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`);
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error("Search error:", error);
+        return [];
+      }
+    },
   });
 
   const updateUserMutation = useMutation({
@@ -80,7 +97,7 @@ export function AdminUserManagement() {
     updateUserMutation.mutate({ userId: selectedUser.id, updates });
   };
 
-  const displayUsers = searchQuery.length > 2 ? searchResults : users;
+  const displayUsers = searchQuery.length > 2 ? (searchResults || []) : (users || []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -143,21 +160,22 @@ export function AdminUserManagement() {
             </div>
           ) : (
             <div className="space-y-3">
-              {displayUsers?.map((user: User) => (
-                <div
-                  key={user.id}
-                  className="border rounded-lg p-3 hover:bg-gray-50"
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                      {user.firstName?.[0] || user.email[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <h3 className="font-semibold text-sm truncate">
-                            {user.firstName} {user.lastName}
-                          </h3>
+              {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
+                displayUsers.map((user: User) => (
+                  <div
+                    key={user.id}
+                    className="border rounded-lg p-3 hover:bg-gray-50"
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                        {user.firstName?.[0] || user.email[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <h3 className="font-semibold text-sm truncate">
+                              {user.firstName} {user.lastName}
+                            </h3>
                           <Badge className={`${getTierColor(user.subscriptionTier)} text-xs px-2 py-0.5`}>
                             {user.subscriptionTier}
                           </Badge>
@@ -211,7 +229,12 @@ export function AdminUserManagement() {
                     </div>
                   </div>
                 </div>
-              ))}
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  {searchQuery.length > 2 ? "No users found matching your search." : "No users found."}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
