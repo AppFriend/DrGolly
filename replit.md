@@ -128,6 +128,16 @@ The application is designed as a mobile-first experience with:
 ```
 Changelog:
 - July 08, 2025. Initial setup
+- July 08, 2025. Extended user schema with CSV attributes (country, phone, signup source, etc.)
+- July 08, 2025. Implemented comprehensive 5-section tracking system:
+  * Growth Tracking (weight, height, head circumference with history)
+  * Development Tracking (milestone videos with achievement status)
+  * Feed Tracking (breastfeeding timer with duration logs)
+  * Sleep Tracking (sleep periods with quality ratings)
+  * Sleep Review (consultation booking system)
+- July 08, 2025. Added Family management page for adding/viewing children
+- July 08, 2025. Seeded 10 CSV users and their children for testing
+- July 08, 2025. Created sample development milestones database
 ```
 
 ## User Preferences

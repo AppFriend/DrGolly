@@ -4,16 +4,37 @@ import {
   userCourseProgress,
   partnerDiscounts,
   billingHistory,
+  children,
+  growthEntries,
+  developmentMilestones,
+  developmentTracking,
+  feedEntries,
+  sleepEntries,
+  consultationBookings,
   type User,
   type UpsertUser,
   type Course,
   type UserCourseProgress,
   type PartnerDiscount,
   type BillingHistory,
+  type Child,
+  type GrowthEntry,
+  type DevelopmentMilestone,
+  type DevelopmentTracking,
+  type FeedEntry,
+  type SleepEntry,
+  type ConsultationBooking,
   type InsertCourse,
   type InsertUserCourseProgress,
   type InsertPartnerDiscount,
   type InsertBillingHistory,
+  type InsertChild,
+  type InsertGrowthEntry,
+  type InsertDevelopmentMilestone,
+  type InsertDevelopmentTracking,
+  type InsertFeedEntry,
+  type InsertSleepEntry,
+  type InsertConsultationBooking,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -43,6 +64,37 @@ export interface IStorage {
   // Billing operations
   getUserBillingHistory(userId: string): Promise<BillingHistory[]>;
   createBillingRecord(billing: InsertBillingHistory): Promise<BillingHistory>;
+  
+  // Children operations
+  getUserChildren(userId: string): Promise<Child[]>;
+  getChild(id: number): Promise<Child | undefined>;
+  createChild(child: InsertChild): Promise<Child>;
+  updateChild(id: number, child: Partial<InsertChild>): Promise<Child>;
+  deleteChild(id: number): Promise<void>;
+  
+  // Growth tracking operations
+  getChildGrowthEntries(childId: number): Promise<GrowthEntry[]>;
+  createGrowthEntry(entry: InsertGrowthEntry): Promise<GrowthEntry>;
+  
+  // Development milestone operations
+  getDevelopmentMilestones(): Promise<DevelopmentMilestone[]>;
+  createDevelopmentMilestone(milestone: InsertDevelopmentMilestone): Promise<DevelopmentMilestone>;
+  getChildDevelopmentTracking(childId: number): Promise<DevelopmentTracking[]>;
+  createDevelopmentTracking(tracking: InsertDevelopmentTracking): Promise<DevelopmentTracking>;
+  updateDevelopmentTracking(id: number, tracking: Partial<InsertDevelopmentTracking>): Promise<DevelopmentTracking>;
+  
+  // Feed tracking operations
+  getChildFeedEntries(childId: number): Promise<FeedEntry[]>;
+  createFeedEntry(entry: InsertFeedEntry): Promise<FeedEntry>;
+  
+  // Sleep tracking operations
+  getChildSleepEntries(childId: number): Promise<SleepEntry[]>;
+  createSleepEntry(entry: InsertSleepEntry): Promise<SleepEntry>;
+  updateSleepEntry(id: number, entry: Partial<InsertSleepEntry>): Promise<SleepEntry>;
+  
+  // Consultation booking operations
+  getUserConsultationBookings(userId: string): Promise<ConsultationBooking[]>;
+  createConsultationBooking(booking: InsertConsultationBooking): Promise<ConsultationBooking>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -184,6 +236,132 @@ export class DatabaseStorage implements IStorage {
   async createBillingRecord(billing: InsertBillingHistory): Promise<BillingHistory> {
     const [newBilling] = await db.insert(billingHistory).values(billing).returning();
     return newBilling;
+  }
+
+  // Children operations
+  async getUserChildren(userId: string): Promise<Child[]> {
+    return await db.select().from(children).where(eq(children.userId, userId));
+  }
+
+  async getChild(id: number): Promise<Child | undefined> {
+    const [child] = await db.select().from(children).where(eq(children.id, id));
+    return child;
+  }
+
+  async createChild(child: InsertChild): Promise<Child> {
+    const [newChild] = await db
+      .insert(children)
+      .values(child)
+      .returning();
+    return newChild;
+  }
+
+  async updateChild(id: number, child: Partial<InsertChild>): Promise<Child> {
+    const [updatedChild] = await db
+      .update(children)
+      .set({ ...child, updatedAt: new Date() })
+      .where(eq(children.id, id))
+      .returning();
+    return updatedChild;
+  }
+
+  async deleteChild(id: number): Promise<void> {
+    await db.delete(children).where(eq(children.id, id));
+  }
+
+  // Growth tracking operations
+  async getChildGrowthEntries(childId: number): Promise<GrowthEntry[]> {
+    return await db.select().from(growthEntries).where(eq(growthEntries.childId, childId)).orderBy(desc(growthEntries.logDate));
+  }
+
+  async createGrowthEntry(entry: InsertGrowthEntry): Promise<GrowthEntry> {
+    const [newEntry] = await db
+      .insert(growthEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  // Development milestone operations
+  async getDevelopmentMilestones(): Promise<DevelopmentMilestone[]> {
+    return await db.select().from(developmentMilestones).orderBy(developmentMilestones.ageRangeStart);
+  }
+
+  async createDevelopmentMilestone(milestone: InsertDevelopmentMilestone): Promise<DevelopmentMilestone> {
+    const [newMilestone] = await db
+      .insert(developmentMilestones)
+      .values(milestone)
+      .returning();
+    return newMilestone;
+  }
+
+  async getChildDevelopmentTracking(childId: number): Promise<DevelopmentTracking[]> {
+    return await db.select().from(developmentTracking).where(eq(developmentTracking.childId, childId)).orderBy(desc(developmentTracking.logDate));
+  }
+
+  async createDevelopmentTracking(tracking: InsertDevelopmentTracking): Promise<DevelopmentTracking> {
+    const [newTracking] = await db
+      .insert(developmentTracking)
+      .values(tracking)
+      .returning();
+    return newTracking;
+  }
+
+  async updateDevelopmentTracking(id: number, tracking: Partial<InsertDevelopmentTracking>): Promise<DevelopmentTracking> {
+    const [updatedTracking] = await db
+      .update(developmentTracking)
+      .set(tracking)
+      .where(eq(developmentTracking.id, id))
+      .returning();
+    return updatedTracking;
+  }
+
+  // Feed tracking operations
+  async getChildFeedEntries(childId: number): Promise<FeedEntry[]> {
+    return await db.select().from(feedEntries).where(eq(feedEntries.childId, childId)).orderBy(desc(feedEntries.feedDate));
+  }
+
+  async createFeedEntry(entry: InsertFeedEntry): Promise<FeedEntry> {
+    const [newEntry] = await db
+      .insert(feedEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  // Sleep tracking operations
+  async getChildSleepEntries(childId: number): Promise<SleepEntry[]> {
+    return await db.select().from(sleepEntries).where(eq(sleepEntries.childId, childId)).orderBy(desc(sleepEntries.sleepDate));
+  }
+
+  async createSleepEntry(entry: InsertSleepEntry): Promise<SleepEntry> {
+    const [newEntry] = await db
+      .insert(sleepEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  async updateSleepEntry(id: number, entry: Partial<InsertSleepEntry>): Promise<SleepEntry> {
+    const [updatedEntry] = await db
+      .update(sleepEntries)
+      .set(entry)
+      .where(eq(sleepEntries.id, id))
+      .returning();
+    return updatedEntry;
+  }
+
+  // Consultation booking operations
+  async getUserConsultationBookings(userId: string): Promise<ConsultationBooking[]> {
+    return await db.select().from(consultationBookings).where(eq(consultationBookings.userId, userId)).orderBy(desc(consultationBookings.createdAt));
+  }
+
+  async createConsultationBooking(booking: InsertConsultationBooking): Promise<ConsultationBooking> {
+    const [newBooking] = await db
+      .insert(consultationBookings)
+      .values(booking)
+      .returning();
+    return newBooking;
   }
 }
 

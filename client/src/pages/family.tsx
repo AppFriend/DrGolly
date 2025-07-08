@@ -1,269 +1,262 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Users, UserPlus, Settings, Share2, Crown, Shield } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Baby, Edit, Trash, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
+import type { Child } from "@shared/schema";
 
 export default function Family() {
-  const { user } = useAuth();
   const { toast } = useToast();
-  
-  // Mock family member data - in real app, this would come from API
-  const [familyMembers] = useState([
-    {
-      id: 1,
-      name: user?.firstName || "You",
-      email: user?.email || "user@example.com",
-      role: "admin",
-      avatar: user?.profileImageUrl,
-      joinedDate: "2024-01-15",
-      isCurrentUser: true,
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      email: "sarah@example.com",
-      role: "member",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b1b5?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100",
-      joinedDate: "2024-02-01",
-      isCurrentUser: false,
-    },
-  ]);
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    dateOfBirth: "",
+    gender: "not-specified" as "male" | "female" | "not-specified"
+  });
 
-  const handleInviteMember = () => {
-    if (user?.subscriptionTier === "free") {
+  // Fetch user's children
+  const { data: children = [], isLoading: isChildrenLoading } = useQuery({
+    queryKey: ["/api/children"],
+    enabled: isAuthenticated,
+  });
+
+  // Add child mutation
+  const addChildMutation = useMutation({
+    mutationFn: async (childData: typeof formData) => {
+      return await apiRequest('/api/children', 'POST', childData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      setShowAddChild(false);
+      setFormData({ name: "", dateOfBirth: "", gender: "not-specified" });
       toast({
-        title: "Subscription Required",
-        description: "Family sharing requires a Gold or Platinum subscription.",
+        title: "Success",
+        description: "Child added successfully!",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to add child. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Authorization check
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, isAuthLoading, toast]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.dateOfBirth) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
     }
-
-    toast({
-      title: "Invite Sent",
-      description: "Family member invitation has been sent via email.",
-    });
+    addChildMutation.mutate(formData);
   };
 
-  const handleRemoveMember = (memberId: number) => {
-    toast({
-      title: "Member Removed",
-      description: "Family member has been removed from your account.",
-    });
-  };
-
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case "admin":
-        return <Crown className="h-4 w-4 text-yellow-500" />;
-      case "member":
-        return <Shield className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Users className="h-4 w-4 text-gray-400" />;
+  // Calculate baby's age
+  const calculateAge = (dateOfBirth: string) => {
+    const now = new Date();
+    const birth = new Date(dateOfBirth);
+    const diffTime = Math.abs(now.getTime() - birth.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) {
+      return `${diffDays} days old`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months} month${months > 1 ? 's' : ''} old`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      const remainingMonths = Math.floor((diffDays % 365) / 30);
+      return `${years} year${years > 1 ? 's' : ''} ${remainingMonths} month${remainingMonths > 1 ? 's' : ''} old`;
     }
   };
 
-  const maxMembers = user?.subscriptionTier === "gold" ? 4 : user?.subscriptionTier === "platinum" ? 6 : 1;
+  if (isAuthLoading || isChildrenLoading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="animate-pulse">
+          <div className="h-16 bg-gray-200"></div>
+          <div className="p-4 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white pb-20">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 p-4">
-        <h1 className="text-lg font-semibold flex items-center">
-          <Users className="h-5 w-5 mr-2 text-dr-teal" />
-          Family Sharing
+        <h1 className="text-lg font-semibold flex items-center font-heading">
+          <Users className="mr-2 h-5 w-5 text-[#83CFCC]" />
+          Family
         </h1>
-        <p className="text-sm text-gray-600">Manage your family members and sharing settings</p>
       </div>
 
-      {/* Family Overview */}
       <div className="p-4 space-y-4">
-        <Card className="border-dr-teal/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <span>Family Plan</span>
-              <Badge variant="secondary" className="bg-dr-teal/10 text-dr-teal">
-                {familyMembers.length}/{maxMembers} Members
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Current Plan</span>
-                <span className="font-medium capitalize">{user?.subscriptionTier || "Free"} Plan</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Family Sharing</span>
-                <span className="font-medium">
-                  {user?.subscriptionTier === "free" ? "Not Available" : "Active"}
-                </span>
-              </div>
-              {user?.subscriptionTier === "free" && (
-                <div className="bg-dr-teal/10 border border-dr-teal/20 rounded-lg p-3">
-                  <p className="text-sm text-dr-teal mb-2">
-                    Upgrade to Gold or Platinum to share your account with family members.
-                  </p>
-                  <Button
-                    onClick={() => window.location.href = "/subscription"}
-                    size="sm"
-                    className="bg-dr-teal hover:bg-dr-teal-dark"
+        {/* Add Child Button */}
+        {!showAddChild && (
+          <Button 
+            onClick={() => setShowAddChild(true)}
+            className="w-full bg-[#83CFCC] hover:bg-[#095D66] text-white font-heading"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Child
+          </Button>
+        )}
+
+        {/* Add Child Form */}
+        {showAddChild && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-heading">Add New Child</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Name *</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter child's name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="gender">Gender</Label>
+                  <select
+                    id="gender"
+                    value={formData.gender}
+                    onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value as any }))}
+                    className="w-full p-2 border border-gray-300 rounded-md"
                   >
-                    Upgrade Now
+                    <option value="not-specified">Not Specified</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    type="submit" 
+                    disabled={addChildMutation.isPending}
+                    className="flex-1 bg-[#83CFCC] hover:bg-[#095D66]"
+                  >
+                    {addChildMutation.isPending ? "Adding..." : "Add Child"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowAddChild(false)}
+                    className="flex-1"
+                  >
+                    Cancel
                   </Button>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Family Members */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <span>Family Members</span>
-              {user?.subscriptionTier !== "free" && familyMembers.length < maxMembers && (
-                <Button
-                  onClick={handleInviteMember}
-                  size="sm"
-                  variant="outline"
-                  className="flex items-center space-x-2"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span>Invite</span>
-                </Button>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {familyMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={member.avatar} alt={member.name} />
-                      <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="font-medium text-sm">{member.name}</h4>
-                        {getRoleIcon(member.role)}
-                        {member.isCurrentUser && (
-                          <Badge variant="secondary" className="text-xs">You</Badge>
+        {/* Children List */}
+        {children.length > 0 ? (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold font-heading">Your Children</h2>
+            {children.map((child: Child) => (
+              <Card key={child.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-[#83CFCC]/10 rounded-full flex items-center justify-center">
+                        <Baby className="h-6 w-6 text-[#83CFCC]" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold font-heading">{child.name}</h3>
+                        <p className="text-sm text-gray-600 font-sans">
+                          {calculateAge(child.dateOfBirth)}
+                        </p>
+                        {child.gender !== "not-specified" && (
+                          <p className="text-xs text-gray-500 capitalize">
+                            {child.gender}
+                          </p>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500">{member.email}</p>
-                      <p className="text-xs text-gray-400">
-                        Joined: {new Date(member.joinedDate).toLocaleDateString()}
-                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline">
+                        <Edit className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  {!member.isCurrentUser && (
-                    <Button
-                      onClick={() => handleRemoveMember(member.id)}
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sharing Settings */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Settings className="h-5 w-5 mr-2 text-dr-teal" />
-              Sharing Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-sm">Course Progress Sharing</h4>
-                  <p className="text-xs text-gray-500">Allow family members to see your progress</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-dr-teal"></div>
-                </label>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-sm">Purchase Notifications</h4>
-                  <p className="text-xs text-gray-500">Notify family members of new purchases</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-dr-teal"></div>
-                </label>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="flex items-center space-x-2 h-auto py-4"
-                onClick={() => toast({ title: "Feature Coming Soon", description: "This feature will be available soon." })}
-              >
-                <Share2 className="h-5 w-5" />
-                <span>Share Course</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex items-center space-x-2 h-auto py-4"
-                onClick={() => window.location.href = "/subscription"}
-              >
-                <Crown className="h-5 w-5" />
-                <span>Upgrade Plan</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Empty State for Free Users */}
-        {user?.subscriptionTier === "free" && (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Family Sharing Available</h3>
-            <p className="text-gray-500 mb-4">
-              Upgrade to Gold or Platinum to share your Dr. Golly account with up to {maxMembers} family members.
-            </p>
-            <Button
-              onClick={() => window.location.href = "/subscription"}
-              className="bg-dr-teal hover:bg-dr-teal-dark"
-            >
-              View Plans
-            </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
+        ) : !showAddChild ? (
+          <div className="text-center py-12">
+            <Baby className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+            <h2 className="text-xl font-semibold mb-2 font-heading">No Children Added</h2>
+            <p className="text-gray-600 mb-6 font-sans">
+              Add your children to start tracking their growth, development, and milestones.
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );
