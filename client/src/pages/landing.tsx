@@ -4,35 +4,35 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Main Content */}
-      <main className="max-w-md mx-auto px-8 pt-16 pb-8 relative z-10">
+      <main className="max-w-md mx-auto px-6 pt-12 pb-8 relative z-10">
         {/* Logo */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <img
-            src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png"
+            src="/assets/logo.png"
             alt="Dr. Golly Logo"
-            className="h-16 mx-auto"
+            className="h-12 sm:h-16 mx-auto"
           />
         </div>
 
         {/* Hero Image */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="relative inline-block">
-            <div className="w-72 h-72 bg-gradient-to-br from-[#83CFCC]/20 to-[#83CFCC]/30 rounded-full flex items-center justify-center mb-8">
+            <div className="w-64 h-64 sm:w-72 sm:h-72 bg-gradient-to-br from-[#83CFCC]/20 to-[#83CFCC]/30 rounded-full flex items-center justify-center mb-6">
               <img
-                src="/attached_assets/drgolly_1751955510280.jpg"
+                src="/assets/dr-golly.jpg"
                 alt="Dr. Golly - Professional headshot"
-                className="w-64 h-64 rounded-full object-cover border-4 border-white shadow-lg"
+                className="w-56 h-56 sm:w-64 sm:h-64 rounded-full object-cover border-4 border-white shadow-lg"
               />
             </div>
           </div>
         </div>
 
         {/* Main Heading */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6 font-heading">
+        <div className="text-center mb-8 px-4">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 font-heading leading-tight">
             Hi, I'm Dr Golly
           </h1>
-          <p className="text-gray-600 text-lg leading-relaxed px-4 font-sans">
+          <p className="text-gray-600 text-base sm:text-lg leading-relaxed font-sans max-w-sm mx-auto">
             I've created these online learning courses to empower you with the skills and knowledge to ensure your whole family gets a good night's sleep.
           </p>
         </div>
@@ -55,17 +55,17 @@ export default function Landing() {
           </svg>
           
           {/* Buttons Container */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 space-y-4">
+          <div className="absolute bottom-0 left-0 right-0 p-6 space-y-3">
             <Button
               onClick={() => window.location.href = '/api/login'}
-              className="w-full bg-[#83CFCC] hover:bg-[#095D66] text-white py-4 text-lg font-semibold rounded-full shadow-lg border-0 font-heading"
+              className="w-full bg-[#83CFCC] hover:bg-[#095D66] text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-full shadow-lg border-0 font-heading"
             >
               Get Started
             </Button>
             <Button
               onClick={() => window.location.href = '/api/login'}
               variant="outline"
-              className="w-full bg-transparent border-2 border-[#3C3C3B] text-[#3C3C3B] hover:bg-[#3C3C3B] hover:text-white py-4 text-lg font-semibold rounded-full font-heading"
+              className="w-full bg-transparent border-2 border-[#3C3C3B] text-[#3C3C3B] hover:bg-[#3C3C3B] hover:text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-full font-heading"
             >
               Sign In
             </Button>
