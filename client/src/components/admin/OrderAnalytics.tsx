@@ -132,7 +132,7 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
       </div>
 
       {/* Performance Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {/* Total Revenue */}
         <Card>
           <CardContent className="p-4">
@@ -219,7 +219,7 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
           <CardTitle>Performance Metrics</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {/* Day on Day */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div>
