@@ -159,17 +159,17 @@ export function AdminCourseManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Course Management</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold tracking-tight">Course Management</h2>
+          <p className="text-sm text-muted-foreground">
             Create and manage courses with chapters and submodules
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#6B9CA3] hover:bg-[#095D66]">
+            <Button className="bg-[#6B9CA3] hover:bg-[#095D66] w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Create Course
             </Button>
@@ -188,9 +188,9 @@ export function AdminCourseManagement() {
 
       {/* Courses List */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <GraduationCap className="h-4 w-4" />
             Courses ({courses?.length || 0})
           </CardTitle>
         </CardHeader>
@@ -204,15 +204,15 @@ export function AdminCourseManagement() {
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {courses?.map((course: Course) => (
                 <div
                   key={course.id}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50"
+                  className="border rounded-lg p-3 hover:bg-gray-50"
                 >
-                  <div className="flex items-start space-x-4 flex-1">
+                  <div className="flex items-start space-x-3">
                     {course.thumbnailUrl && (
-                      <div className="w-20 h-16 bg-gray-200 rounded-lg overflow-hidden">
+                      <div className="w-12 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                         <img
                           src={course.thumbnailUrl}
                           alt={course.title}
@@ -220,63 +220,66 @@ export function AdminCourseManagement() {
                         />
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-sm truncate mr-2">{course.title}</h3>
+                        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedCourse(course)}
+                              className="h-7 w-7 p-0 flex-shrink-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Edit Course: {selectedCourse?.title}</DialogTitle>
+                            </DialogHeader>
+                            {selectedCourse && (
+                              <CourseEditor
+                                course={selectedCourse}
+                                onUpdate={handleUpdateCourse}
+                                isLoading={updateCourseMutation.isPending}
+                              />
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg">{course.title}</h3>
-                        <Badge className={getCategoryColor(course.category)}>
+                        <Badge className={`${getCategoryColor(course.category)} text-xs px-2 py-0.5`}>
                           {course.category}
                         </Badge>
-                        <Badge className={getTierColor(course.tier)}>
+                        <Badge className={`${getTierColor(course.tier)} text-xs px-2 py-0.5`}>
                           {course.tier}
                         </Badge>
-                      </div>
-                      <p className="text-gray-600 mb-2 line-clamp-2">
-                        {course.description}
-                      </p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(course.createdAt)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          {course.views} views
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3 w-3" />
-                          {course.likes} likes
-                        </span>
-                        <span className="flex items-center gap-1">
+                        <span className="text-xs text-gray-500 flex items-center gap-1">
                           <DollarSign className="h-3 w-3" />
                           ${course.price}
                         </span>
                       </div>
+                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                        {course.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(course.createdAt)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Eye className="h-3 w-3" />
+                            {course.views}
+                          </span>
+                        </div>
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Heart className="h-3 w-3" />
+                          {course.likes}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedCourse(course)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Edit Course: {selectedCourse?.title}</DialogTitle>
-                        </DialogHeader>
-                        {selectedCourse && (
-                          <CourseEditor
-                            course={selectedCourse}
-                            onUpdate={handleUpdateCourse}
-                            isLoading={updateCourseMutation.isPending}
-                          />
-                        )}
-                      </DialogContent>
-                    </Dialog>
                   </div>
                 </div>
               ))}
