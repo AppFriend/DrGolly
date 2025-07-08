@@ -62,16 +62,15 @@ function Router() {
     );
   }
 
-  return (
-    <Switch>
-      {!isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
-        <Route path="/:path*" component={AuthenticatedApp} />
-      )}
-      <Route component={NotFound} />
-    </Switch>
-  );
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto bg-white min-h-screen">
+        <Landing />
+      </div>
+    );
+  }
+
+  return <AuthenticatedApp />;
 }
 
 function App() {
