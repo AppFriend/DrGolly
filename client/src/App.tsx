@@ -26,9 +26,19 @@ import Manage from "@/pages/manage";
 import CheckoutSubscription from "@/pages/checkout-subscription";
 
 function AuthenticatedApp() {
-  const [activeTab, setActiveTab] = useState("home");
   const [location] = useLocation();
   const { isOpen, closeUpgradeModal } = useUpgradeModal();
+  
+  // Determine active tab based on current location
+  const getActiveTab = () => {
+    if (location.startsWith('/courses')) return 'courses';
+    if (location.startsWith('/track')) return 'tracking'; 
+    if (location.startsWith('/family')) return 'family';
+    if (location.startsWith('/home') || location === '/') return 'home';
+    return 'home';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getActiveTab());
 
   const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success";
 
@@ -45,26 +55,32 @@ function AuthenticatedApp() {
         <Route path="/blog/:slug" component={BlogPost} />
         <Route path="/courses">
           <Courses />
-          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/track">
           <Track />
-          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/discounts">
           <Discounts />
-          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/family">
           <Family />
-          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
+        <Route path="/checkout" component={Checkout} />
+        <Route path="/manage" component={Manage} />
         <Route path="/feature-demo" component={FeatureDemo} />
         <Route path="/manage" component={Manage} />
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
+        <Route path="/home">
+          <Home />
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
         <Route path="/">
           <Home />
-          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route component={NotFound} />
       </Switch>
