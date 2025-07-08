@@ -56,9 +56,13 @@ import {
   type InsertCoursePurchase,
   type AdminNotification,
   type InsertAdminNotification,
+  temporaryPasswords,
+  type TemporaryPassword,
+  type InsertTemporaryPassword,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, gte, or, ilike } from "drizzle-orm";
+import { AuthUtils } from "./auth-utils";
 
 export interface IStorage {
   // User operations - mandatory for Replit Auth
@@ -176,6 +180,14 @@ export interface IStorage {
   createAdminNotification(notification: InsertAdminNotification): Promise<AdminNotification>;
   updateAdminNotification(id: number, updates: Partial<InsertAdminNotification>): Promise<AdminNotification>;
   deleteAdminNotification(id: number): Promise<void>;
+
+  // Temporary password system for bulk imports
+  createTemporaryPassword(userId: string, tempPassword: string): Promise<TemporaryPassword>;
+  verifyTemporaryPassword(userId: string, tempPassword: string): Promise<boolean>;
+  markTemporaryPasswordAsUsed(userId: string): Promise<void>;
+  createBulkUsers(users: UpsertUser[]): Promise<User[]>;
+  setUserPassword(userId: string, passwordHash: string): Promise<void>;
+  authenticateWithTemporaryPassword(email: string, tempPassword: string): Promise<User | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -795,6 +807,82 @@ export class DatabaseStorage implements IStorage {
       .update(adminNotifications)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(adminNotifications.id, id));
+  }
+
+  // Temporary password system for bulk imports
+  async createTemporaryPassword(userId: string, tempPassword: string): Promise<TemporaryPassword> {
+    const [result] = await db
+      .insert(temporaryPasswords)
+      .values({
+        userId,
+        tempPassword,
+        expiresAt: AuthUtils.createTempPasswordExpiry(),
+      })
+      .returning();
+    return result;
+  }
+
+  async verifyTemporaryPassword(userId: string, tempPassword: string): Promise<boolean> {
+    const [result] = await db
+      .select()
+      .from(temporaryPasswords)
+      .where(
+        and(
+          eq(temporaryPasswords.userId, userId),
+          eq(temporaryPasswords.tempPassword, tempPassword),
+          eq(temporaryPasswords.isUsed, false),
+          gte(temporaryPasswords.expiresAt, new Date())
+        )
+      );
+    return !!result;
+  }
+
+  async markTemporaryPasswordAsUsed(userId: string): Promise<void> {
+    await db
+      .update(temporaryPasswords)
+      .set({ isUsed: true })
+      .where(eq(temporaryPasswords.userId, userId));
+  }
+
+  async createBulkUsers(userList: UpsertUser[]): Promise<User[]> {
+    const results: User[] = [];
+    
+    // Process in batches of 100 to prevent memory issues
+    const batchSize = 100;
+    for (let i = 0; i < userList.length; i += batchSize) {
+      const batch = userList.slice(i, i + batchSize);
+      const batchResults = await db.insert(users).values(batch).returning();
+      results.push(...batchResults);
+    }
+    
+    return results;
+  }
+
+  async setUserPassword(userId: string, passwordHash: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        hasSetPassword: true,
+        isFirstLogin: false,
+        lastPasswordChange: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async authenticateWithTemporaryPassword(email: string, tempPassword: string): Promise<User | null> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+    
+    if (!user) return null;
+
+    // Check if temporary password is valid
+    const isValidTemp = await this.verifyTemporaryPassword(user.id, tempPassword);
+    if (!isValidTemp) return null;
+
+    return user;
   }
 }
 
