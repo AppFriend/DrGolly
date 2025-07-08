@@ -28,8 +28,8 @@ export default function Landing() {
         </div>
 
         {/* Main Heading */}
-        <div className="text-center mb-8 px-4">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 font-heading leading-tight">
+        <div className="text-center mb-16 px-4">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6 font-heading leading-tight">
             Hi, I'm Dr Golly
           </h1>
           <p className="text-gray-600 text-base sm:text-lg leading-relaxed font-sans max-w-sm mx-auto">
@@ -43,29 +43,29 @@ export default function Landing() {
         {/* Curved Background */}
         <div className="relative">
           <svg
-            viewBox="0 0 400 200"
+            viewBox="0 0 400 240"
             className="w-full h-auto"
             preserveAspectRatio="none"
           >
             <path
-              d="M0,100 C100,20 300,20 400,100 L400,200 L0,200 Z"
+              d="M0,120 C100,40 300,40 400,120 L400,240 L0,240 Z"
               fill="#83CFCC"
               className="opacity-90"
             />
           </svg>
           
           {/* Buttons Container */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 space-y-3">
+          <div className="absolute bottom-0 left-0 right-0 p-6 pb-8 space-y-4">
             <Button
               onClick={() => window.location.href = '/api/login'}
-              className="w-full bg-[#83CFCC] hover:bg-[#095D66] text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-full shadow-lg border-0 font-heading"
+              className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-4 text-lg font-semibold rounded-full shadow-lg border-0 font-heading"
             >
               Get Started
             </Button>
             <Button
               onClick={() => window.location.href = '/api/login'}
               variant="outline"
-              className="w-full bg-transparent border-2 border-[#3C3C3B] text-[#3C3C3B] hover:bg-[#3C3C3B] hover:text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-full font-heading"
+              className="w-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#83CFCC] py-4 text-lg font-semibold rounded-full font-heading"
             >
               Sign In
             </Button>
