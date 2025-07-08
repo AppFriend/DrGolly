@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Bell } from "lucide-react";
-import { VideoCard } from "@/components/ui/video-card";
+import { BlogCard } from "@/components/ui/blog-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Course } from "@shared/schema";
+import { cn } from "@/lib/utils";
+import type { BlogPost } from "@shared/schema";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 
 const categories = [
@@ -14,7 +15,7 @@ const categories = [
   { id: "sleep", label: "Sleep" },
   { id: "nutrition", label: "Nutrition" },
   { id: "health", label: "Health" },
-  { id: "freebies", label: "Freebies" },
+  { id: "parenting", label: "Parenting" },
 ];
 
 export default function Home() {
@@ -22,8 +23,8 @@ export default function Home() {
   const { toast } = useToast();
   const [activeCategory, setActiveCategory] = useState("all");
 
-  const { data: courses, isLoading, error } = useQuery({
-    queryKey: ["/api/courses", activeCategory === "all" ? undefined : activeCategory],
+  const { data: blogPosts, isLoading, error } = useQuery({
+    queryKey: ["/api/blog-posts", activeCategory === "all" ? undefined : activeCategory],
     enabled: !!user,
   });
 
@@ -126,10 +127,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Expert Advice Section */}
+      {/* Blog Posts Section */}
       <section className="p-4">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
-          Explore Expert Advice by Topic!
+          Latest Expert Advice
           <span className="ml-2">📖✨</span>
         </h2>
 
@@ -150,20 +151,22 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Course Grid */}
+        {/* Blog Posts Grid */}
         <div className="space-y-6">
-          {courses?.map((course: Course) => (
-            <VideoCard
-              key={course.id}
-              course={course}
-              onClick={() => handleVideoClick(course)}
+          {blogPosts
+            ?.filter(post => activeCategory === "all" || post.category === activeCategory)
+            ?.map((post) => (
+            <BlogCard
+              key={post.id}
+              post={post}
+              onClick={() => handleBlogClick(post)}
             />
           ))}
         </div>
 
-        {courses?.length === 0 && (
+        {blogPosts?.filter(post => activeCategory === "all" || post.category === activeCategory)?.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No courses available in this category.</p>
+            <p className="text-gray-500">No blog posts available in this category.</p>
           </div>
         )}
       </section>
