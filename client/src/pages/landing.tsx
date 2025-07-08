@@ -43,7 +43,7 @@ export default function Landing() {
       </main>
 
       {/* Bottom Section with Curved Design */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50">
         {/* Curved Background */}
         <div className="relative">
           <svg
@@ -59,9 +59,12 @@ export default function Landing() {
           </svg>
           
           {/* Buttons Container */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 space-y-3">
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 space-y-3 z-10">
             <Button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Get Started button clicked');
                 try {
                   window.location.href = '/api/signup';
                 } catch (error) {
@@ -70,12 +73,15 @@ export default function Landing() {
                   window.open('/api/signup', '_self');
                 }
               }}
-              className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-3 text-base font-semibold rounded-full shadow-lg border-0 font-heading"
+              className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-3 text-base font-semibold rounded-full shadow-lg border-0 font-heading cursor-pointer relative z-20"
             >
               Get Started
             </Button>
             <Button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Sign In button clicked');
                 try {
                   window.location.href = '/api/login';
                 } catch (error) {
@@ -85,7 +91,7 @@ export default function Landing() {
                 }
               }}
               variant="outline"
-              className="w-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#83CFCC] py-3 text-base font-semibold rounded-full font-heading"
+              className="w-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#83CFCC] py-3 text-base font-semibold rounded-full font-heading cursor-pointer relative z-20"
             >
               Sign In
             </Button>
