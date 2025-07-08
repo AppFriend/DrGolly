@@ -3,12 +3,34 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
+import Stripe from "stripe";
 import {
   insertCourseSchema,
   insertUserCourseProgressSchema,
   insertPartnerDiscountSchema,
   insertBillingHistorySchema,
+  insertBlogPostSchema,
+  insertCoursePurchaseSchema,
 } from "@shared/schema";
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2023-10-16",
+});
+
+// Course Product ID mapping (from your Bubble export)
+const COURSE_STRIPE_MAPPING = {
+  1: { productId: "prod_course_1", priceId: "price_little_baby_sleep" },
+  2: { productId: "prod_course_2", priceId: "price_big_baby_sleep" },
+  3: { productId: "prod_course_3", priceId: "price_pre_toddler_sleep" },
+  4: { productId: "prod_course_4", priceId: "price_toddler_sleep" },
+  5: { productId: "prod_course_5", priceId: "price_preschool_sleep" },
+  6: { productId: "prod_course_6", priceId: "price_prep_newborns" },
+  7: { productId: "prod_course_7", priceId: "price_new_sibling" },
+  8: { productId: "prod_course_8", priceId: "price_twins_supplement" },
+  9: { productId: "prod_course_9", priceId: "price_toddler_toolkit" },
+  10: { productId: "prod_course_10", priceId: "price_testing_allergens" },
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -996,6 +1018,196 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching submodule progress:", error);
       res.status(500).json({ message: "Failed to fetch progress" });
     }
+  });
+
+  // Blog post routes
+  app.get('/api/blog-posts', async (req, res) => {
+    try {
+      const { category } = req.query;
+      const blogPosts = await storage.getBlogPosts(category as string | undefined);
+      res.json(blogPosts);
+    } catch (error) {
+      console.error("Error fetching blog posts:", error);
+      res.status(500).json({ message: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get('/api/blog-posts/:id', async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const blogPost = await storage.getBlogPost(postId);
+      if (!blogPost) {
+        return res.status(404).json({ message: "Blog post not found" });
+      }
+      res.json(blogPost);
+    } catch (error) {
+      console.error("Error fetching blog post:", error);
+      res.status(500).json({ message: "Failed to fetch blog post" });
+    }
+  });
+
+  app.get('/api/blog-posts/slug/:slug', async (req, res) => {
+    try {
+      const slug = req.params.slug;
+      const blogPost = await storage.getBlogPostBySlug(slug);
+      if (!blogPost) {
+        return res.status(404).json({ message: "Blog post not found" });
+      }
+      res.json(blogPost);
+    } catch (error) {
+      console.error("Error fetching blog post:", error);
+      res.status(500).json({ message: "Failed to fetch blog post" });
+    }
+  });
+
+  app.post('/api/blog-posts/:id/view', async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const blogPost = await storage.getBlogPost(postId);
+      if (!blogPost) {
+        return res.status(404).json({ message: "Blog post not found" });
+      }
+      await storage.updateBlogPostStats(postId, (blogPost.views || 0) + 1);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating blog post views:", error);
+      res.status(500).json({ message: "Failed to update views" });
+    }
+  });
+
+  // Course purchase routes
+  app.post('/api/create-course-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const { courseId, customerDetails } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Get course details
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+
+      // Get or create Stripe customer
+      const user = await storage.getUser(userId);
+      let stripeCustomerId = user?.stripeCustomerId;
+
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: customerDetails.email,
+          name: customerDetails.firstName,
+          metadata: {
+            userId: userId,
+            dueDate: customerDetails.dueDate || '',
+          },
+        });
+        stripeCustomerId = customer.id;
+        await storage.updateUserStripeCustomerId(userId, stripeCustomerId);
+      }
+
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: (course.price || 120) * 100, // Convert to cents
+        currency: 'usd',
+        customer: stripeCustomerId,
+        metadata: {
+          courseId: courseId.toString(),
+          courseName: course.title,
+          userId: userId,
+          customerName: customerDetails.firstName,
+        },
+        description: `Course Purchase: ${course.title}`,
+      });
+
+      // Create course purchase record
+      await storage.createCoursePurchase({
+        userId: userId,
+        courseId: courseId,
+        stripePaymentIntentId: paymentIntent.id,
+        stripeCustomerId: stripeCustomerId,
+        amount: (course.price || 120) * 100,
+        currency: 'usd',
+        status: 'pending',
+      });
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id 
+      });
+    } catch (error) {
+      console.error("Error creating course payment:", error);
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  app.post('/api/confirm-course-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status === 'succeeded') {
+        // Update course purchase status
+        const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntentId);
+        if (purchase) {
+          await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+        }
+
+        res.json({ success: true, status: 'completed' });
+      } else {
+        res.json({ success: false, status: paymentIntent.status });
+      }
+    } catch (error) {
+      console.error("Error confirming course payment:", error);
+      res.status(500).json({ message: "Failed to confirm payment" });
+    }
+  });
+
+  app.get('/api/user/course-purchases', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const purchases = await storage.getUserCoursePurchases(userId);
+      res.json(purchases);
+    } catch (error) {
+      console.error("Error fetching course purchases:", error);
+      res.status(500).json({ message: "Failed to fetch purchases" });
+    }
+  });
+
+  // Stripe webhook for payment updates
+  app.post('/api/stripe-webhook', async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+      // You would set STRIPE_WEBHOOK_SECRET in production
+      event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET || 'test');
+    } catch (err: any) {
+      console.log(`Webhook signature verification failed.`, err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
+        if (purchase) {
+          await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+        }
+        break;
+      case 'payment_intent.payment_failed':
+        const failedPayment = event.data.object;
+        const failedPurchase = await storage.getCoursePurchaseByPaymentIntent(failedPayment.id);
+        if (failedPurchase) {
+          await storage.updateCoursePurchaseStatus(failedPurchase.id, 'failed');
+        }
+        break;
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.json({ received: true });
   });
 
   const httpServer = createServer(app);

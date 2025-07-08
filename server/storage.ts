@@ -14,6 +14,8 @@ import {
   feedEntries,
   sleepEntries,
   consultationBookings,
+  blogPosts,
+  coursePurchases,
   type User,
   type UpsertUser,
   type Course,
@@ -30,6 +32,8 @@ import {
   type FeedEntry,
   type SleepEntry,
   type ConsultationBooking,
+  type BlogPost,
+  type CoursePurchase,
   type InsertCourse,
   type InsertCourseModule,
   type InsertCourseSubmodule,
@@ -44,6 +48,8 @@ import {
   type InsertFeedEntry,
   type InsertSleepEntry,
   type InsertConsultationBooking,
+  type InsertBlogPost,
+  type InsertCoursePurchase,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -115,6 +121,21 @@ export interface IStorage {
   // Consultation booking operations
   getUserConsultationBookings(userId: string): Promise<ConsultationBooking[]>;
   createConsultationBooking(booking: InsertConsultationBooking): Promise<ConsultationBooking>;
+  
+  // Blog post operations
+  getBlogPosts(category?: string): Promise<BlogPost[]>;
+  getBlogPost(id: number): Promise<BlogPost | undefined>;
+  getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  updateBlogPostStats(postId: number, views?: number, likes?: number): Promise<void>;
+  
+  // Course purchase operations
+  getUserCoursePurchases(userId: string): Promise<CoursePurchase[]>;
+  getCoursePurchase(id: number): Promise<CoursePurchase | undefined>;
+  getCoursePurchaseByPaymentIntent(paymentIntentId: string): Promise<CoursePurchase | undefined>;
+  createCoursePurchase(purchase: InsertCoursePurchase): Promise<CoursePurchase>;
+  updateCoursePurchaseStatus(id: number, status: string): Promise<CoursePurchase>;
+  updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -460,6 +481,72 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return updatedProgress;
+  }
+
+  // Blog post operations
+  async getBlogPosts(category?: string): Promise<BlogPost[]> {
+    let query = db.select().from(blogPosts).where(eq(blogPosts.isPublished, true));
+    
+    if (category && category !== 'all') {
+      query = query.where(and(eq(blogPosts.isPublished, true), eq(blogPosts.category, category)));
+    }
+    
+    return await query.orderBy(desc(blogPosts.publishedAt));
+  }
+
+  async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    return post;
+  }
+
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return post;
+  }
+
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    const [blogPost] = await db.insert(blogPosts).values(post).returning();
+    return blogPost;
+  }
+
+  async updateBlogPostStats(postId: number, views?: number, likes?: number): Promise<void> {
+    const updateData: any = {};
+    if (views !== undefined) updateData.views = views;
+    if (likes !== undefined) updateData.likes = likes;
+    
+    if (Object.keys(updateData).length > 0) {
+      await db.update(blogPosts).set(updateData).where(eq(blogPosts.id, postId));
+    }
+  }
+
+  // Course purchase operations
+  async getUserCoursePurchases(userId: string): Promise<CoursePurchase[]> {
+    return await db.select().from(coursePurchases).where(eq(coursePurchases.userId, userId)).orderBy(desc(coursePurchases.purchasedAt));
+  }
+
+  async getCoursePurchase(id: number): Promise<CoursePurchase | undefined> {
+    const [purchase] = await db.select().from(coursePurchases).where(eq(coursePurchases.id, id));
+    return purchase;
+  }
+
+  async getCoursePurchaseByPaymentIntent(paymentIntentId: string): Promise<CoursePurchase | undefined> {
+    const [purchase] = await db.select().from(coursePurchases).where(eq(coursePurchases.stripePaymentIntentId, paymentIntentId));
+    return purchase;
+  }
+
+  async createCoursePurchase(purchase: InsertCoursePurchase): Promise<CoursePurchase> {
+    const [coursePurchase] = await db.insert(coursePurchases).values(purchase).returning();
+    return coursePurchase;
+  }
+
+  async updateCoursePurchaseStatus(id: number, status: string): Promise<CoursePurchase> {
+    const [purchase] = await db.update(coursePurchases).set({ status }).where(eq(coursePurchases.id, id)).returning();
+    return purchase;
+  }
+
+  async updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {
+    const [user] = await db.update(users).set({ stripeCustomerId }).where(eq(users.id, userId)).returning();
+    return user;
   }
 }
 
