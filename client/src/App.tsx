@@ -33,6 +33,7 @@ function AuthenticatedApp() {
   const getActiveTab = () => {
     if (location.startsWith('/courses')) return 'courses';
     if (location.startsWith('/track')) return 'tracking'; 
+    if (location.startsWith('/discounts')) return 'discounts';
     if (location.startsWith('/family')) return 'family';
     if (location.startsWith('/home') || location === '/') return 'home';
     return 'home';

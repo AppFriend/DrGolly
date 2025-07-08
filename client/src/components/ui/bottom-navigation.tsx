@@ -14,6 +14,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
     { id: "home", label: "Home", icon: Home, path: "/home" },
     { id: "courses", label: "Courses", icon: GraduationCap, path: "/courses" },
     { id: "tracking", label: "Track", icon: TrendingUp, path: "/track" },
+    { id: "discounts", label: "Discounts", icon: Percent, path: "/discounts" },
     { id: "family", label: "Family", icon: Users, path: "/family" },
   ];
 
