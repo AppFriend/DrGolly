@@ -128,6 +128,7 @@ export interface IStorage {
   getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
   createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
   updateBlogPostStats(postId: number, views?: number, likes?: number): Promise<void>;
+  clearBlogPosts(): Promise<void>;
   
   // Course purchase operations
   getUserCoursePurchases(userId: string): Promise<CoursePurchase[]>;
@@ -517,6 +518,10 @@ export class DatabaseStorage implements IStorage {
     if (Object.keys(updateData).length > 0) {
       await db.update(blogPosts).set(updateData).where(eq(blogPosts.id, postId));
     }
+  }
+
+  async clearBlogPosts(): Promise<void> {
+    await db.delete(blogPosts);
   }
 
   // Course purchase operations

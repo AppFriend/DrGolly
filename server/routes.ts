@@ -1075,6 +1075,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/blog-posts/:id/like', async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const blogPost = await storage.getBlogPost(postId);
+      if (!blogPost) {
+        return res.status(404).json({ message: "Blog post not found" });
+      }
+      await storage.updateBlogPostStats(postId, undefined, (blogPost.likes || 0) + 1);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating blog post likes:", error);
+      res.status(500).json({ message: "Failed to update likes" });
+    }
+  });
+
   // Course purchase routes
   app.post('/api/create-course-payment', isAuthenticated, async (req: any, res) => {
     try {

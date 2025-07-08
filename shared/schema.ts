@@ -46,6 +46,7 @@ export const users = pgTable("users", {
   coursesPurchasedPreviously: text("courses_purchased_previously"),
   signInCount: integer("sign_in_count").default(0),
   lastSignIn: timestamp("last_sign_in"),
+  stripeCustomerId: varchar("stripe_customer_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
