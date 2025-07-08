@@ -48,8 +48,24 @@ export const users = pgTable("users", {
   lastSignIn: timestamp("last_sign_in"),
   stripeCustomerId: varchar("stripe_customer_id"),
   isAdmin: boolean("is_admin").default(false),
+  // First-time login system
+  temporaryPassword: varchar("temporary_password"),
+  isFirstLogin: boolean("is_first_login").default(true),
+  hasSetPassword: boolean("has_set_password").default(false),
+  passwordHash: varchar("password_hash"),
+  lastPasswordChange: timestamp("last_password_change"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Temporary password system for bulk imports
+export const temporaryPasswords = pgTable("temporary_passwords", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  tempPassword: varchar("temp_password").notNull(),
+  isUsed: boolean("is_used").default(false),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Feature flags table to manage access control per subscription tier
@@ -537,3 +553,7 @@ export const insertAdminNotificationSchema = createInsertSchema(adminNotificatio
 
 export type AdminNotification = typeof adminNotifications.$inferSelect;
 export type InsertAdminNotification = z.infer<typeof insertAdminNotificationSchema>;
+
+// Temporary password types
+export type TemporaryPassword = typeof temporaryPasswords.$inferSelect;
+export type InsertTemporaryPassword = typeof temporaryPasswords.$inferInsert;

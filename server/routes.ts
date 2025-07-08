@@ -13,6 +13,7 @@ import {
   insertBlogPostSchema,
   insertCoursePurchaseSchema,
 } from "@shared/schema";
+import { AuthUtils } from "./auth-utils";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -1696,6 +1697,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting admin notification:", error);
       res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Bulk user import system for 20,000 users
+  app.post('/api/admin/bulk-import', isAdmin, async (req, res) => {
+    try {
+      const { users } = req.body;
+      
+      if (!Array.isArray(users) || users.length === 0) {
+        return res.status(400).json({ message: 'Users array is required' });
+      }
+
+      // Generate temporary passwords for all users
+      const usersWithTempPasswords = users.map(user => ({
+        ...user,
+        id: user.id || AuthUtils.generateUserId(),
+        temporaryPassword: AuthUtils.generateTemporaryPassword(),
+        isFirstLogin: true,
+        hasSetPassword: false,
+      }));
+
+      // Create users in bulk (optimized for 20,000 users)
+      const createdUsers = await storage.createBulkUsers(usersWithTempPasswords);
+      
+      // Create temporary password records in parallel
+      await Promise.all(
+        createdUsers.map(user => 
+          storage.createTemporaryPassword(user.id, user.temporaryPassword!)
+        )
+      );
+
+      res.json({ 
+        message: `Successfully imported ${createdUsers.length} users`,
+        usersCreated: createdUsers.length,
+        sampleCredentials: createdUsers.slice(0, 5).map(u => ({
+          email: u.email,
+          temporaryPassword: u.temporaryPassword
+        }))
+      });
+    } catch (error) {
+      console.error('Error in bulk user import:', error);
+      res.status(500).json({ message: 'Failed to import users' });
+    }
+  });
+
+  // Temporary password authentication for first-time login
+  app.post('/api/auth/temp-login', async (req, res) => {
+    try {
+      const { email, tempPassword } = req.body;
+      
+      if (!email || !tempPassword) {
+        return res.status(400).json({ message: 'Email and temporary password are required' });
+      }
+
+      const user = await storage.authenticateWithTemporaryPassword(email, tempPassword);
+      
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid credentials or expired temporary password' });
+      }
+
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isFirstLogin: user.isFirstLogin,
+          hasSetPassword: user.hasSetPassword,
+        },
+        requiresPasswordSetup: user.isFirstLogin && !user.hasSetPassword
+      });
+    } catch (error) {
+      console.error('Error in temporary login:', error);
+      res.status(500).json({ message: 'Authentication failed' });
+    }
+  });
+
+  // Set permanent password after first-time login
+  app.post('/api/auth/set-password', async (req, res) => {
+    try {
+      const { userId, newPassword, tempPassword } = req.body;
+      
+      if (!userId || !newPassword || !tempPassword) {
+        return res.status(400).json({ message: 'User ID, new password, and temporary password are required' });
+      }
+
+      // Validate password strength
+      const validation = AuthUtils.validatePasswordStrength(newPassword);
+      if (!validation.isValid) {
+        return res.status(400).json({ 
+          message: 'Password does not meet requirements',
+          errors: validation.errors 
+        });
+      }
+
+      // Verify temporary password is still valid
+      const isValidTemp = await storage.verifyTemporaryPassword(userId, tempPassword);
+      if (!isValidTemp) {
+        return res.status(401).json({ message: 'Invalid or expired temporary password' });
+      }
+
+      // Hash the new password
+      const passwordHash = await AuthUtils.hashPassword(newPassword);
+      
+      // Update user with permanent password
+      await storage.setUserPassword(userId, passwordHash);
+      
+      // Mark temporary password as used
+      await storage.markTemporaryPasswordAsUsed(userId);
+
+      res.json({ message: 'Password set successfully' });
+    } catch (error) {
+      console.error('Error setting password:', error);
+      res.status(500).json({ message: 'Failed to set password' });
     }
   });
 
