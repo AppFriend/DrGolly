@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BottomNavigation } from "@/components/ui/bottom-navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpgradeModal } from "@/hooks/useUpgradeModal";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import { useState } from "react";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -24,8 +26,13 @@ import CheckoutSubscription from "@/pages/checkout-subscription";
 function AuthenticatedApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [location] = useLocation();
+  const { isOpen, closeUpgradeModal } = useUpgradeModal();
 
   const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success";
+
+  const handleUpgrade = (billingPeriod: "monthly" | "yearly") => {
+    window.location.href = `/checkout-subscription?period=${billingPeriod}&tier=gold`;
+  };
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen relative">
@@ -59,6 +66,11 @@ function AuthenticatedApp() {
         </Route>
         <Route component={NotFound} />
       </Switch>
+      <UpgradeModal
+        isOpen={isOpen}
+        onClose={closeUpgradeModal}
+        onUpgrade={handleUpgrade}
+      />
     </div>
   );
 }

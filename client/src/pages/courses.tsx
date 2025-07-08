@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Bookmark, Grid, Moon, Baby } from "lucide-react";
+import { Search, Bookmark, Grid, Moon, Baby, Lock } from "lucide-react";
 import { VideoCard } from "@/components/ui/video-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Course } from "@shared/schema";
@@ -17,6 +18,7 @@ const courseTabs = [
 
 export default function Courses() {
   const { user } = useAuth();
+  const { openUpgradeModal } = useUpgradeModal();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
