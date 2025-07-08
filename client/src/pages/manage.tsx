@@ -208,11 +208,9 @@ export default function Manage() {
             }`}
           >
             Pay Yearly
-            {billingPeriod === "yearly" && (
-              <Badge className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                SAVE
-              </Badge>
-            )}
+            <Badge className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+              Save 50%
+            </Badge>
           </button>
         </div>
 
