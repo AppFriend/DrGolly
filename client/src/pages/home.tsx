@@ -118,7 +118,7 @@ export default function Home() {
             )}
           </div>
           <img
-            src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&auto=format&fit=crop&w=120&h=120"
+            src="/attached_assets/drgolly_1751955955105.jpg"
             alt="Dr. Golly"
             className="w-20 h-20 rounded-2xl object-cover border-2 border-white/20"
           />
