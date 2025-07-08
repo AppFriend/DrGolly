@@ -69,6 +69,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Personalization routes
+  app.post('/api/personalization', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const personalizationData = req.body;
+      
+      // Update user with personalization data
+      await storage.updateUserPersonalization(userId, {
+        primaryConcerns: JSON.stringify(personalizationData.primaryConcerns || []),
+        phoneNumber: personalizationData.phoneNumber,
+        profilePictureUrl: personalizationData.profilePictureUrl,
+        userRole: personalizationData.userRole,
+        acceptedTerms: personalizationData.acceptedTerms,
+        marketingOptIn: personalizationData.marketingOptIn,
+        newMemberOfferShown: personalizationData.newMemberOfferShown,
+        newMemberOfferAccepted: personalizationData.newMemberOfferAccepted,
+        onboardingCompleted: true
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error saving personalization:", error);
+      res.status(500).json({ message: "Failed to save personalization" });
+    }
+  });
+
+  app.get('/api/personalization', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({
+        primaryConcerns: user.primaryConcerns ? JSON.parse(user.primaryConcerns) : [],
+        phoneNumber: user.phoneNumber,
+        profilePictureUrl: user.profilePictureUrl,
+        userRole: user.userRole,
+        acceptedTerms: user.acceptedTerms,
+        marketingOptIn: user.marketingOptIn,
+        newMemberOfferShown: user.newMemberOfferShown,
+        newMemberOfferAccepted: user.newMemberOfferAccepted,
+        onboardingCompleted: user.onboardingCompleted
+      });
+    } catch (error) {
+      console.error("Error fetching personalization:", error);
+      res.status(500).json({ message: "Failed to fetch personalization" });
+    }
+  });
+
   // User personalization routes
   app.post('/api/user/personalization', isAuthenticated, async (req: any, res) => {
     try {

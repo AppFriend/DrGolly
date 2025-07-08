@@ -223,6 +223,28 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUserPersonalization(userId: string, personalizationData: {
+    primaryConcerns?: string;
+    phoneNumber?: string;
+    profilePictureUrl?: string;
+    userRole?: string;
+    acceptedTerms?: boolean;
+    marketingOptIn?: boolean;
+    newMemberOfferShown?: boolean;
+    newMemberOfferAccepted?: boolean;
+    onboardingCompleted?: boolean;
+  }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...personalizationData,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
   async updateUserSubscription(userId: string, tier: string, billingPeriod: string, nextBillingDate: Date): Promise<User> {
     const [user] = await db
       .update(users)
