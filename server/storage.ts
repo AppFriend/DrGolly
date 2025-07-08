@@ -17,6 +17,7 @@ import {
   blogPosts,
   coursePurchases,
   featureFlags,
+  adminNotifications,
   type User,
   type UpsertUser,
   type FeatureFlag,
@@ -53,9 +54,11 @@ import {
   type InsertConsultationBooking,
   type InsertBlogPost,
   type InsertCoursePurchase,
+  type AdminNotification,
+  type InsertAdminNotification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, count, gte, or, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - mandatory for Replit Auth
@@ -150,6 +153,29 @@ export interface IStorage {
   updateFeatureFlag(id: number, flag: Partial<InsertFeatureFlag>): Promise<FeatureFlag>;
   hasFeatureAccess(userId: string, featureName: string): Promise<boolean>;
   getUserFeatureAccess(userId: string): Promise<{ [featureName: string]: boolean }>;
+  
+  // Admin operations
+  isUserAdmin(userId: string): Promise<boolean>;
+  getAllUsers(): Promise<User[]>;
+  searchUsers(query: string): Promise<User[]>;
+  updateUser(userId: string, updates: Partial<UpsertUser>): Promise<User>;
+  getUserMetrics(): Promise<{
+    totalUsers: number;
+    freeUsers: number;
+    goldUsers: number;
+    monthlyActiveUsers: number;
+    totalCoursesSold: number;
+    totalSubscriptionUpgrades: number;
+    monthlyGoldRevenue: number;
+    annualGoldRevenue: number;
+    totalChurn: number;
+  }>;
+  
+  // Admin notifications
+  getAdminNotifications(): Promise<AdminNotification[]>;
+  createAdminNotification(notification: InsertAdminNotification): Promise<AdminNotification>;
+  updateAdminNotification(id: number, updates: Partial<InsertAdminNotification>): Promise<AdminNotification>;
+  deleteAdminNotification(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -649,6 +675,126 @@ export class DatabaseStorage implements IStorage {
     }
 
     return access;
+  }
+
+  // Admin operations
+  async isUserAdmin(userId: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    return user?.isAdmin || false;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+    return allUsers;
+  }
+
+  async searchUsers(query: string): Promise<User[]> {
+    const searchResults = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          ilike(users.email, `%${query}%`),
+          ilike(users.firstName, `%${query}%`),
+          ilike(users.lastName, `%${query}%`),
+          ilike(users.id, `%${query}%`)
+        )
+      )
+      .orderBy(desc(users.createdAt));
+    return searchResults;
+  }
+
+  async updateUser(userId: string, updates: Partial<UpsertUser>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
+  async getUserMetrics(): Promise<{
+    totalUsers: number;
+    freeUsers: number;
+    goldUsers: number;
+    monthlyActiveUsers: number;
+    totalCoursesSold: number;
+    totalSubscriptionUpgrades: number;
+    monthlyGoldRevenue: number;
+    annualGoldRevenue: number;
+    totalChurn: number;
+  }> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const totalUsers = await db.select({ count: count() }).from(users);
+    const freeUsers = await db.select({ count: count() }).from(users).where(eq(users.subscriptionTier, "free"));
+    const goldUsers = await db.select({ count: count() }).from(users).where(eq(users.subscriptionTier, "gold"));
+    const monthlyActiveUsers = await db
+      .select({ count: count() })
+      .from(users)
+      .where(gte(users.lastSignIn, thirtyDaysAgo));
+    
+    const totalCoursesSold = await db.select({ count: count() }).from(coursePurchases);
+    const totalSubscriptionUpgrades = await db
+      .select({ count: count() })
+      .from(users)
+      .where(and(eq(users.subscriptionTier, "gold"), eq(users.migrated, false)));
+    
+    const goldUserCount = goldUsers[0]?.count || 0;
+    const monthlyGoldRevenue = goldUserCount * 199;
+    const annualGoldRevenue = goldUserCount * 199 * 12;
+    
+    const totalChurn = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.subscriptionStatus, "cancelled"));
+
+    return {
+      totalUsers: totalUsers[0]?.count || 0,
+      freeUsers: freeUsers[0]?.count || 0,
+      goldUsers: goldUserCount,
+      monthlyActiveUsers: monthlyActiveUsers[0]?.count || 0,
+      totalCoursesSold: totalCoursesSold[0]?.count || 0,
+      totalSubscriptionUpgrades: totalSubscriptionUpgrades[0]?.count || 0,
+      monthlyGoldRevenue,
+      annualGoldRevenue,
+      totalChurn: totalChurn[0]?.count || 0,
+    };
+  }
+
+  // Admin notifications
+  async getAdminNotifications(): Promise<AdminNotification[]> {
+    const notifications = await db
+      .select()
+      .from(adminNotifications)
+      .where(eq(adminNotifications.isActive, true))
+      .orderBy(desc(adminNotifications.createdAt));
+    return notifications;
+  }
+
+  async createAdminNotification(notification: InsertAdminNotification): Promise<AdminNotification> {
+    const [newNotification] = await db
+      .insert(adminNotifications)
+      .values(notification)
+      .returning();
+    return newNotification;
+  }
+
+  async updateAdminNotification(id: number, updates: Partial<InsertAdminNotification>): Promise<AdminNotification> {
+    const [updatedNotification] = await db
+      .update(adminNotifications)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(adminNotifications.id, id))
+      .returning();
+    return updatedNotification;
+  }
+
+  async deleteAdminNotification(id: number): Promise<void> {
+    await db
+      .update(adminNotifications)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(adminNotifications.id, id));
   }
 }
 

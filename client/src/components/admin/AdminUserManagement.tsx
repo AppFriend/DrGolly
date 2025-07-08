@@ -1,0 +1,334 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Search, 
+  Edit, 
+  Crown, 
+  Users, 
+  CreditCard, 
+  ShoppingCart,
+  Calendar,
+  Mail,
+  Phone,
+  MapPin
+} from "lucide-react";
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  subscriptionTier: string;
+  subscriptionStatus: string;
+  country: string;
+  phone: string;
+  signupSource: string;
+  signInCount: number;
+  lastSignIn: string;
+  createdAt: string;
+  stripeCustomerId: string;
+}
+
+export function AdminUserManagement() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: users, isLoading } = useQuery({
+    queryKey: ["/api/admin/users"],
+  });
+
+  const { data: searchResults, isLoading: isSearching } = useQuery({
+    queryKey: ["/api/admin/users/search", searchQuery],
+    enabled: searchQuery.length > 2,
+    queryFn: () => apiRequest("GET", `/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`),
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ userId, updates }: { userId: string; updates: Partial<User> }) =>
+      apiRequest("PATCH", `/api/admin/users/${userId}`, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      setIsEditDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpdateUser = (updates: Partial<User>) => {
+    if (!selectedUser) return;
+    updateUserMutation.mutate({ userId: selectedUser.id, updates });
+  };
+
+  const displayUsers = searchQuery.length > 2 ? searchResults : users;
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case "gold":
+        return "bg-yellow-100 text-yellow-800";
+      case "platinum":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
+        <p className="text-muted-foreground">
+          Manage users, subscriptions, and view user activity
+        </p>
+      </div>
+
+      {/* Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            Search Users
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-2">
+            <Input
+              placeholder="Search by email, name, or user ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+            />
+            {isSearching && (
+              <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Users Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Users ({displayUsers?.length || 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-16 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {displayUsers?.map((user: User) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold">
+                      {user.firstName?.[0] || user.email[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">
+                          {user.firstName} {user.lastName}
+                        </h3>
+                        <Badge className={getTierColor(user.subscriptionTier)}>
+                          {user.subscriptionTier}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {user.email}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Joined {formatDate(user.createdAt)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {user.signInCount} logins
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedUser(user)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
+                        </DialogHeader>
+                        {selectedUser && (
+                          <UserEditForm
+                            user={selectedUser}
+                            onUpdate={handleUpdateUser}
+                            isLoading={updateUserMutation.isPending}
+                          />
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface UserEditFormProps {
+  user: User;
+  onUpdate: (updates: Partial<User>) => void;
+  isLoading: boolean;
+}
+
+function UserEditForm({ user, onUpdate, isLoading }: UserEditFormProps) {
+  const [formData, setFormData] = useState({
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    email: user.email || "",
+    subscriptionTier: user.subscriptionTier || "free",
+    subscriptionStatus: user.subscriptionStatus || "active",
+    country: user.country || "",
+    phone: user.phone || "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdate(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="firstName">First Name</Label>
+          <Input
+            id="firstName"
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+          />
+        </div>
+        <div>
+          <Label htmlFor="lastName">Last Name</Label>
+          <Input
+            id="lastName"
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="subscriptionTier">Subscription Tier</Label>
+          <Select
+            value={formData.subscriptionTier}
+            onValueChange={(value) => setFormData({ ...formData, subscriptionTier: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="free">Free</SelectItem>
+              <SelectItem value="gold">Gold</SelectItem>
+              <SelectItem value="platinum">Platinum</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="subscriptionStatus">Subscription Status</Label>
+          <Select
+            value={formData.subscriptionStatus}
+            onValueChange={(value) => setFormData({ ...formData, subscriptionStatus: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="country">Country</Label>
+          <Input
+            id="country"
+            value={formData.country}
+            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+          />
+        </div>
+        <div>
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end space-x-2">
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Updating..." : "Update User"}
+        </Button>
+      </div>
+    </form>
+  );
+}

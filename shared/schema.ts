@@ -47,6 +47,7 @@ export const users = pgTable("users", {
   signInCount: integer("sign_in_count").default(0),
   lastSignIn: timestamp("last_sign_in"),
   stripeCustomerId: varchar("stripe_customer_id"),
+  isAdmin: boolean("is_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -515,3 +516,24 @@ export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 
 export type CoursePurchase = typeof coursePurchases.$inferSelect;
 export type InsertCoursePurchase = z.infer<typeof insertCoursePurchaseSchema>;
+
+// Admin notifications table
+export const adminNotifications = pgTable("admin_notifications", {
+  id: serial("id").primaryKey(),
+  heading: varchar("heading", { length: 200 }).notNull(),
+  body: text("body").notNull(),
+  imageUrl: varchar("image_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Admin notification insert schema
+export const insertAdminNotificationSchema = createInsertSchema(adminNotifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AdminNotification = typeof adminNotifications.$inferSelect;
+export type InsertAdminNotification = z.infer<typeof insertAdminNotificationSchema>;
