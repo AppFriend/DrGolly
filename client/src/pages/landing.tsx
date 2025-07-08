@@ -1,102 +1,84 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Moon, Heart, Book, Users } from "lucide-react";
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dr-bg to-white">
-      {/* Header */}
-      <header className="bg-dr-teal text-white p-6 rounded-b-3xl">
-        <div className="max-w-md mx-auto">
-          <div className="flex items-center justify-center space-x-3 mb-6">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <Moon className="h-6 w-6 text-dr-teal" />
-            </div>
-            <h1 className="text-2xl font-bold">Dr. Golly</h1>
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      {/* Main Content */}
+      <main className="max-w-md mx-auto px-8 pt-16 pb-8 relative z-10">
+        {/* Logo */}
+        <div className="text-center mb-12">
+          <div className="text-4xl font-light text-gray-800 mb-2">
+            <span className="text-2xl">dr.</span>
           </div>
-          <p className="text-center text-white/90 mb-8">
-            Parenting & Sleep Expert
-          </p>
+          <div className="text-5xl font-light text-gray-800 tracking-wide">
+            <span className="font-normal">G</span>olly
+          </div>
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <main className="max-w-md mx-auto px-4 py-8">
+        {/* Hero Image */}
+        <div className="text-center mb-12">
+          <div className="relative inline-block">
+            <div className="w-72 h-72 bg-gradient-to-br from-dr-teal/20 to-dr-teal/30 rounded-full flex items-center justify-center mb-8">
+              <img
+                src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
+                alt="Dr. Golly holding a baby"
+                className="w-64 h-64 rounded-full object-cover border-4 border-white shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Main Heading */}
         <div className="text-center mb-8">
-          <img
-            src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200"
-            alt="Dr. Golly"
-            className="w-32 h-32 rounded-full mx-auto mb-6 object-cover border-4 border-white shadow-lg"
-          />
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-gray-900 mb-6">
             Hi, I'm Dr Golly
-          </h2>
-          <p className="text-gray-600 text-lg leading-relaxed">
+          </h1>
+          <p className="text-gray-600 text-lg leading-relaxed px-4">
             I've created these online learning courses to empower you with the skills and knowledge to ensure your whole family gets a good night's sleep.
           </p>
         </div>
-
-        {/* Features */}
-        <div className="grid gap-4 mb-8">
-          <Card className="border-dr-teal/20">
-            <CardContent className="p-4 flex items-center space-x-4">
-              <div className="w-10 h-10 bg-dr-teal/10 rounded-full flex items-center justify-center">
-                <Book className="h-5 w-5 text-dr-teal" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Expert Courses</h3>
-                <p className="text-sm text-gray-600">Sleep, nutrition, and parenting guidance</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-dr-teal/20">
-            <CardContent className="p-4 flex items-center space-x-4">
-              <div className="w-10 h-10 bg-dr-teal/10 rounded-full flex items-center justify-center">
-                <Heart className="h-5 w-5 text-dr-teal" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Personalized Support</h3>
-                <p className="text-sm text-gray-600">Tailored advice for your family's needs</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-dr-teal/20">
-            <CardContent className="p-4 flex items-center space-x-4">
-              <div className="w-10 h-10 bg-dr-teal/10 rounded-full flex items-center justify-center">
-                <Users className="h-5 w-5 text-dr-teal" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Community</h3>
-                <p className="text-sm text-gray-600">Join thousands of parents on their journey</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* CTA Buttons */}
-        <div className="space-y-4">
-          <Button
-            onClick={() => window.location.href = '/api/login'}
-            className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white py-6 text-lg font-semibold rounded-2xl"
-          >
-            Get Started
-          </Button>
-          <Button
-            onClick={() => window.location.href = '/api/login'}
-            variant="outline"
-            className="w-full border-dr-teal text-dr-teal hover:bg-dr-teal hover:text-white py-6 text-lg font-semibold rounded-2xl"
-          >
-            Sign In
-          </Button>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>Join thousands of parents who trust Dr. Golly for expert guidance</p>
-        </div>
       </main>
+
+      {/* Bottom Section with Curved Design */}
+      <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto">
+        {/* Curved Background */}
+        <div className="relative">
+          <svg
+            viewBox="0 0 400 200"
+            className="w-full h-auto"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0,100 C100,20 300,20 400,100 L400,200 L0,200 Z"
+              fill="rgb(134, 192, 180)"
+              className="opacity-90"
+            />
+          </svg>
+          
+          {/* Buttons Container */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 space-y-4">
+            <Button
+              onClick={() => window.location.href = '/api/login'}
+              className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white py-4 text-lg font-semibold rounded-full shadow-lg border-0"
+            >
+              Get Started
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/api/login'}
+              variant="outline"
+              className="w-full bg-transparent border-2 border-gray-700 text-gray-700 hover:bg-gray-700 hover:text-white py-4 text-lg font-semibold rounded-full"
+            >
+              Sign In
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Decorative curved elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-20 -left-20 w-40 h-40 bg-dr-teal/10 rounded-full"></div>
+        <div className="absolute top-32 -right-16 w-32 h-32 bg-dr-teal/5 rounded-full"></div>
+      </div>
     </div>
   );
 }

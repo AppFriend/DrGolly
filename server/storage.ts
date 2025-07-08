@@ -83,17 +83,19 @@ export class DatabaseStorage implements IStorage {
 
   // Course operations
   async getCourses(category?: string, tier?: string): Promise<Course[]> {
-    let query = db.select().from(courses).where(eq(courses.isPublished, true));
+    let conditions = [eq(courses.isPublished, true)];
     
     if (category) {
-      query = query.where(and(eq(courses.category, category), eq(courses.isPublished, true)));
+      conditions.push(eq(courses.category, category));
     }
     
     if (tier) {
-      query = query.where(and(eq(courses.tier, tier), eq(courses.isPublished, true)));
+      conditions.push(eq(courses.tier, tier));
     }
     
-    return await query.orderBy(desc(courses.createdAt));
+    return await db.select().from(courses)
+      .where(and(...conditions))
+      .orderBy(desc(courses.createdAt));
   }
 
   async getCourse(id: number): Promise<Course | undefined> {
@@ -149,13 +151,15 @@ export class DatabaseStorage implements IStorage {
 
   // Partner discount operations
   async getPartnerDiscounts(requiredTier?: string): Promise<PartnerDiscount[]> {
-    let query = db.select().from(partnerDiscounts).where(eq(partnerDiscounts.isActive, true));
+    let conditions = [eq(partnerDiscounts.isActive, true)];
     
     if (requiredTier) {
-      query = query.where(and(eq(partnerDiscounts.requiredTier, requiredTier), eq(partnerDiscounts.isActive, true)));
+      conditions.push(eq(partnerDiscounts.requiredTier, requiredTier));
     }
     
-    return await query.orderBy(desc(partnerDiscounts.createdAt));
+    return await db.select().from(partnerDiscounts)
+      .where(and(...conditions))
+      .orderBy(desc(partnerDiscounts.createdAt));
   }
 
   async getPartnerDiscount(id: number): Promise<PartnerDiscount | undefined> {
