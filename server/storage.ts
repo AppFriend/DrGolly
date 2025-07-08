@@ -270,8 +270,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Growth tracking operations
-  async getChildGrowthEntries(childId: number): Promise<GrowthEntry[]> {
-    return await db.select().from(growthEntries).where(eq(growthEntries.childId, childId)).orderBy(desc(growthEntries.logDate));
+  async getChildGrowthEntries(childId: number): Promise<any[]> {
+    const entries = await db.select().from(growthEntries).where(eq(growthEntries.childId, childId)).orderBy(desc(growthEntries.logDate));
+    
+    // Group entries by date to show combined measurements
+    const groupedEntries = entries.reduce((acc: any, entry) => {
+      const dateKey = entry.logDate ? entry.logDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      if (!acc[dateKey]) {
+        acc[dateKey] = {
+          id: entry.id,
+          date: entry.logDate || new Date(),
+          weight: null,
+          height: null,
+          headCircumference: null
+        };
+      }
+      
+      if (entry.measurementType === 'weight') {
+        acc[dateKey].weight = entry.value;
+      } else if (entry.measurementType === 'height') {
+        acc[dateKey].height = entry.value;
+      } else if (entry.measurementType === 'head_circumference') {
+        acc[dateKey].headCircumference = entry.value;
+      }
+      
+      return acc;
+    }, {});
+    
+    return Object.values(groupedEntries).sort((a: any, b: any) => b.date.getTime() - a.date.getTime());
   }
 
   async createGrowthEntry(entry: InsertGrowthEntry): Promise<GrowthEntry> {
