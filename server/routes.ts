@@ -899,10 +899,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { childId } = req.params;
       const sleepData = { 
-        ...req.body, 
         childId: parseInt(childId),
-        sleepStart: new Date(req.body.sleepStart),
-        sleepEnd: new Date(req.body.sleepEnd)
+        startTime: new Date(req.body.sleepStart),
+        endTime: new Date(req.body.sleepEnd),
+        quality: req.body.quality,
+        notes: req.body.notes
       };
       const sleep = await storage.createSleepEntry(sleepData);
       res.json(sleep);
@@ -937,6 +938,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating consultation booking:", error);
       res.status(500).json({ message: "Failed to create consultation booking" });
+    }
+  });
+
+  // Course module routes
+  app.get('/api/courses/:courseId/modules', isAuthenticated, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const modules = await storage.getCourseModules(parseInt(courseId));
+      res.json(modules);
+    } catch (error) {
+      console.error("Error fetching course modules:", error);
+      res.status(500).json({ message: "Failed to fetch course modules" });
+    }
+  });
+
+  app.get('/api/modules/:moduleId/submodules', isAuthenticated, async (req, res) => {
+    try {
+      const { moduleId } = req.params;
+      const submodules = await storage.getCourseSubmodules(parseInt(moduleId));
+      res.json(submodules);
+    } catch (error) {
+      console.error("Error fetching submodules:", error);
+      res.status(500).json({ message: "Failed to fetch submodules" });
+    }
+  });
+
+  app.post('/api/submodules/:submoduleId/progress', isAuthenticated, async (req, res) => {
+    try {
+      const { submoduleId } = req.params;
+      const userId = req.user?.claims?.sub;
+      
+      const progressData = {
+        userId,
+        submoduleId: parseInt(submoduleId),
+        completed: req.body.completed || false,
+        watchTime: req.body.watchTime || 0,
+        completedAt: req.body.completed ? new Date() : null,
+      };
+
+      const progress = await storage.updateUserSubmoduleProgress(progressData);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error updating submodule progress:", error);
+      res.status(500).json({ message: "Failed to update progress" });
+    }
+  });
+
+  app.get('/api/submodules/:submoduleId/progress', isAuthenticated, async (req, res) => {
+    try {
+      const { submoduleId } = req.params;
+      const userId = req.user?.claims?.sub;
+      
+      const progress = await storage.getUserSubmoduleProgress(userId, parseInt(submoduleId));
+      res.json(progress || null);
+    } catch (error) {
+      console.error("Error fetching submodule progress:", error);
+      res.status(500).json({ message: "Failed to fetch progress" });
     }
   });
 

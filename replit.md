@@ -138,6 +138,15 @@ Changelog:
 - July 08, 2025. Added Family management page for adding/viewing children
 - July 08, 2025. Seeded 10 CSV users and their children for testing
 - July 08, 2025. Created sample development milestones database
+- July 08, 2025. Fixed sleep tracking database column mismatch (sleepStart/sleepEnd -> startTime/endTime)
+- July 08, 2025. Added sleep quality field to sleep entries schema
+- July 08, 2025. Implemented comprehensive courses system with modules and submodules:
+  * Added courseModules and courseSubmodules tables
+  * Added userSubmoduleProgress tracking
+  * Extended courses table with price, skillLevel, stripeProductId
+  * Created API endpoints for module/submodule access and progress tracking
+- July 08, 2025. Integrated Klaviyo API for user profile creation and superapp list management
+- July 08, 2025. Populated courses database from Bubble CSV export with 11 courses and modules
 ```
 
 ## User Preferences

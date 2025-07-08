@@ -61,11 +61,50 @@ export const courses = pgTable("courses", {
   duration: integer("duration"), // in minutes
   ageRange: varchar("age_range"), // e.g., "4-16 Weeks", "4-8 Months"
   tier: varchar("tier").default("free").notNull(), // free, gold, platinum
+  price: decimal("price", { precision: 10, scale: 2 }),
+  discountedPrice: decimal("discounted_price", { precision: 10, scale: 2 }),
+  skillLevel: varchar("skill_level"),
+  stripeProductId: varchar("stripe_product_id"),
+  uniqueId: varchar("unique_id"),
   isPublished: boolean("is_published").default(true),
   likes: integer("likes").default(0),
   views: integer("views").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Course modules
+export const courseModules = pgTable("course_modules", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  orderIndex: integer("order_index").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Course submodules (lessons)
+export const courseSubmodules = pgTable("course_submodules", {
+  id: serial("id").primaryKey(),
+  moduleId: integer("module_id").references(() => courseModules.id).notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  videoUrl: varchar("video_url"),
+  content: text("content"),
+  duration: integer("duration"), // in minutes
+  orderIndex: integer("order_index").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User progress on submodules
+export const userSubmoduleProgress = pgTable("user_submodule_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  submoduleId: integer("submodule_id").references(() => courseSubmodules.id).notNull(),
+  completed: boolean("completed").default(false),
+  watchTime: integer("watch_time").default(0), // in seconds
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // User course progress
@@ -170,6 +209,7 @@ export const sleepEntries = pgTable("sleep_entries", {
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
   duration: integer("duration"), // in minutes
+  quality: varchar("quality"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -249,6 +289,34 @@ export const consultationBookingsRelations = relations(consultationBookings, ({ 
 
 export const coursesRelations = relations(courses, ({ many }) => ({
   userProgress: many(userCourseProgress),
+  modules: many(courseModules),
+}));
+
+export const courseModulesRelations = relations(courseModules, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [courseModules.courseId],
+    references: [courses.id],
+  }),
+  submodules: many(courseSubmodules),
+}));
+
+export const courseSubmodulesRelations = relations(courseSubmodules, ({ one, many }) => ({
+  module: one(courseModules, {
+    fields: [courseSubmodules.moduleId],
+    references: [courseModules.id],
+  }),
+  userProgress: many(userSubmoduleProgress),
+}));
+
+export const userSubmoduleProgressRelations = relations(userSubmoduleProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userSubmoduleProgress.userId],
+    references: [users.id],
+  }),
+  submodule: one(courseSubmodules, {
+    fields: [userSubmoduleProgress.submoduleId],
+    references: [courseSubmodules.id],
+  }),
 }));
 
 export const userCourseProgressRelations = relations(userCourseProgress, ({ one }) => ({
@@ -334,14 +402,36 @@ export const insertConsultationBookingSchema = createInsertSchema(consultationBo
   createdAt: true,
 });
 
+// Module schemas
+export const insertCourseModuleSchema = createInsertSchema(courseModules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCourseSubmoduleSchema = createInsertSchema(courseSubmodules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserSubmoduleProgressSchema = createInsertSchema(userSubmoduleProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Course = typeof courses.$inferSelect;
+export type CourseModule = typeof courseModules.$inferSelect;
+export type CourseSubmodule = typeof courseSubmodules.$inferSelect;
+export type UserSubmoduleProgress = typeof userSubmoduleProgress.$inferSelect;
 export type UserCourseProgress = typeof userCourseProgress.$inferSelect;
 export type PartnerDiscount = typeof partnerDiscounts.$inferSelect;
 export type BillingHistory = typeof billingHistory.$inferSelect;
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
+export type InsertCourseModule = z.infer<typeof insertCourseModuleSchema>;
+export type InsertCourseSubmodule = z.infer<typeof insertCourseSubmoduleSchema>;
+export type InsertUserSubmoduleProgress = z.infer<typeof insertUserSubmoduleProgressSchema>;
 export type InsertUserCourseProgress = z.infer<typeof insertUserCourseProgressSchema>;
 export type InsertPartnerDiscount = z.infer<typeof insertPartnerDiscountSchema>;
 export type InsertBillingHistory = z.infer<typeof insertBillingHistorySchema>;
