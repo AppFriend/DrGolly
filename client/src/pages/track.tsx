@@ -548,7 +548,6 @@ function FeedingTracking({ childId }: { childId: number | null }) {
     }
     setLeftIsActive(false);
     setLeftStartTime(null);
-    setLeftTimer(0);
   };
 
   const startRightTimer = () => {
@@ -567,25 +566,50 @@ function FeedingTracking({ childId }: { childId: number | null }) {
     }
     setRightIsActive(false);
     setRightStartTime(null);
-    setRightTimer(0);
   };
 
   const logFeedSession = () => {
-    if (sessionStartTime && (leftTotalDuration > 0 || rightTotalDuration > 0)) {
-      const totalDuration = leftTotalDuration + rightTotalDuration;
+    // Stop any active timers first and get final durations
+    let finalLeftDuration = leftTotalDuration;
+    let finalRightDuration = rightTotalDuration;
+    
+    if (leftIsActive && leftStartTime) {
+      const duration = Math.floor((Date.now() - leftStartTime.getTime()) / 1000);
+      finalLeftDuration = leftTotalDuration + duration;
+      setLeftTotalDuration(finalLeftDuration);
+      setLeftIsActive(false);
+      setLeftStartTime(null);
+    }
+    
+    if (rightIsActive && rightStartTime) {
+      const duration = Math.floor((Date.now() - rightStartTime.getTime()) / 1000);
+      finalRightDuration = rightTotalDuration + duration;
+      setRightTotalDuration(finalRightDuration);
+      setRightIsActive(false);
+      setRightStartTime(null);
+    }
+    
+    const finalTotalDuration = finalLeftDuration + finalRightDuration;
+    
+    if (sessionStartTime && finalTotalDuration > 0) {
+      console.log('Logging feed session:', {
+        leftDuration: finalLeftDuration,
+        rightDuration: finalRightDuration,
+        totalDuration: finalTotalDuration,
+        leftDurationMinutes: Math.floor(finalLeftDuration / 60),
+        rightDurationMinutes: Math.floor(finalRightDuration / 60),
+        totalDurationMinutes: Math.floor(finalTotalDuration / 60),
+      });
+      
       addFeedMutation.mutate({
-        leftDuration: Math.floor(leftTotalDuration / 60), // Convert to minutes
-        rightDuration: Math.floor(rightTotalDuration / 60), // Convert to minutes
-        totalDuration: Math.floor(totalDuration / 60), // Convert to minutes
+        leftDuration: Math.floor(finalLeftDuration / 60), // Convert to minutes
+        rightDuration: Math.floor(finalRightDuration / 60), // Convert to minutes
+        totalDuration: Math.floor(finalTotalDuration / 60), // Convert to minutes
         feedDate: sessionStartTime.toISOString(),
-        startTime: sessionStartTime.toISOString(),
-        endTime: new Date().toISOString(),
       });
       
       // Reset session
-      setSessionStartTime(null);
-      setLeftTotalDuration(0);
-      setRightTotalDuration(0);
+      resetSession();
     }
   };
 
@@ -642,7 +666,7 @@ function FeedingTracking({ childId }: { childId: number | null }) {
                 </div>
                 <div className="text-center mb-3">
                   <div className="text-2xl font-mono font-bold text-[#83CFCC]">
-                    {formatTime(leftTimer)}
+                    {formatTime(leftIsActive ? leftTimer : 0)}
                   </div>
                 </div>
                 <Button
@@ -665,7 +689,7 @@ function FeedingTracking({ childId }: { childId: number | null }) {
                 </div>
                 <div className="text-center mb-3">
                   <div className="text-2xl font-mono font-bold text-[#83CFCC]">
-                    {formatTime(rightTimer)}
+                    {formatTime(rightIsActive ? rightTimer : 0)}
                   </div>
                 </div>
                 <Button
@@ -743,7 +767,7 @@ function FeedingTracking({ childId }: { childId: number | null }) {
                         Right: {formatTime((entry.rightDuration || 0) * 60)}
                       </div>
                       <div>
-                        {new Date(entry.feedDate).toLocaleString()}
+                        {entry.feedDate ? new Date(entry.feedDate).toLocaleString() : 'No date'}
                       </div>
                     </div>
                   </div>
