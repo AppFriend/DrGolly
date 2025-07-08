@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
+import SignInModal from "@/components/SignInModal";
 
 export default function Landing() {
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Main Content */}
@@ -82,13 +86,7 @@ export default function Landing() {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Sign In button clicked');
-                try {
-                  window.location.href = '/api/login';
-                } catch (error) {
-                  console.error('Navigation error:', error);
-                  // Fallback for development
-                  window.open('/api/login', '_self');
-                }
+                setIsSignInModalOpen(true);
               }}
               variant="outline"
               className="w-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#83CFCC] py-3 text-base font-semibold rounded-full font-heading cursor-pointer relative z-20"
@@ -104,6 +102,11 @@ export default function Landing() {
         <div className="absolute -top-20 -left-20 w-40 h-40 bg-dr-teal/10 rounded-full"></div>
         <div className="absolute top-32 -right-16 w-32 h-32 bg-dr-teal/5 rounded-full"></div>
       </div>
+      
+      <SignInModal 
+        isOpen={isSignInModalOpen} 
+        onClose={() => setIsSignInModalOpen(false)} 
+      />
     </div>
   );
 }
