@@ -225,6 +225,39 @@ export const consultationBookings = pgTable("consultation_bookings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Blog posts table
+export const blogPosts = pgTable("blog_posts", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  slug: varchar("slug").unique().notNull(),
+  excerpt: text("excerpt"),
+  content: text("content").notNull(),
+  category: varchar("category").notNull(), // sleep, nutrition, health, parenting
+  tags: text("tags").array(),
+  imageUrl: varchar("image_url"),
+  readTime: integer("read_time"), // in minutes
+  publishedAt: timestamp("published_at").notNull(),
+  views: integer("views").default(0),
+  likes: integer("likes").default(0),
+  isPublished: boolean("is_published").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Course purchases table
+export const coursePurchases = pgTable("course_purchases", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  courseId: integer("course_id").notNull().references(() => courses.id),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  amount: integer("amount").notNull(), // in cents
+  currency: varchar("currency").default("usd"),
+  status: varchar("status").default("pending"), // pending, completed, failed, refunded
+  purchasedAt: timestamp("purchased_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   courseProgress: many(userCourseProgress),
@@ -418,6 +451,17 @@ export const insertUserSubmoduleProgressSchema = createInsertSchema(userSubmodul
   createdAt: true,
 });
 
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoursePurchaseSchema = createInsertSchema(coursePurchases).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -451,3 +495,9 @@ export type InsertDevelopmentTracking = z.infer<typeof insertDevelopmentTracking
 export type InsertFeedEntry = z.infer<typeof insertFeedEntrySchema>;
 export type InsertSleepEntry = z.infer<typeof insertSleepEntrySchema>;
 export type InsertConsultationBooking = z.infer<typeof insertConsultationBookingSchema>;
+
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+
+export type CoursePurchase = typeof coursePurchases.$inferSelect;
+export type InsertCoursePurchase = z.infer<typeof insertCoursePurchaseSchema>;

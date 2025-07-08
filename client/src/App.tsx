@@ -10,6 +10,8 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
+import Checkout from "@/pages/checkout";
+import PaymentSuccess from "@/pages/payment-success";
 import Discounts from "@/pages/discounts";
 import Subscription from "@/pages/subscription";
 import Track from "@/pages/track";
@@ -19,12 +21,14 @@ function AuthenticatedApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [location] = useLocation();
 
-  const showBottomNavigation = location !== "/subscription";
+  const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success";
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen relative">
       <Switch>
         <Route path="/subscription" component={Subscription} />
+        <Route path="/checkout/:courseId" component={Checkout} />
+        <Route path="/payment-success" component={PaymentSuccess} />
         <Route path="/courses">
           <Courses />
           {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}

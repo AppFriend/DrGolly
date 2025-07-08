@@ -179,11 +179,11 @@ export default function Courses() {
                       Unlimited Course with Platinum
                     </Button>
                     <Button
-                      onClick={() => handlePurchase(course)}
+                      onClick={() => window.location.href = `/checkout/${course.id}`}
                       variant="outline"
                       className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
                     >
-                      Buy for $120
+                      Buy for ${course.price || 120}
                     </Button>
                   </>
                 ) : (
