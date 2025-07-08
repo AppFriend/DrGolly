@@ -9,10 +9,12 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 export default function Subscription() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location, navigate] = useLocation();
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("yearly");
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
 
@@ -133,7 +135,7 @@ export default function Subscription() {
       <div className="bg-white border-b border-gray-100 p-4">
         <div className="flex items-center space-x-3 mb-4">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => navigate("/")}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
