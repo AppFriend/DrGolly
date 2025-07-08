@@ -130,7 +130,7 @@ export default function Subscription() {
   ];
 
   return (
-    <div className="min-h-screen bg-dr-bg pb-20">
+    <div className="min-h-screen bg-white pb-20">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 p-4">
         <div className="flex items-center space-x-3 mb-4">

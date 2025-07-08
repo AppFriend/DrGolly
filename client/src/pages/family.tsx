@@ -76,7 +76,7 @@ export default function Family() {
   const maxMembers = user?.subscriptionTier === "gold" ? 4 : user?.subscriptionTier === "platinum" ? 6 : 1;
 
   return (
-    <div className="min-h-screen bg-dr-bg pb-20">
+    <div className="min-h-screen bg-white pb-20">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 p-4">
         <h1 className="text-lg font-semibold flex items-center">
