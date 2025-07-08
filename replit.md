@@ -147,6 +147,12 @@ Changelog:
   * Created API endpoints for module/submodule access and progress tracking
 - July 08, 2025. Integrated Klaviyo API for user profile creation and superapp list management
 - July 08, 2025. Populated courses database from Bubble CSV export with 11 courses and modules
+- July 08, 2025. Created comprehensive feature flags system for subscription tier access control:
+  * Added featureFlags table with Free/Gold/Platinum access permissions
+  * Implemented 8 feature flags including courses access, growth tracking review, discounts
+  * Created API endpoints for feature access checking
+  * Built React hooks and components for feature gating (FeatureGate, FeatureToggle)
+  * Seeded database with plan-specific permissions (Free: home+basic features, Gold: unlimited courses+full access)
 ```
 
 ## User Preferences

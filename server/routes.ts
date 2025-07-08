@@ -1093,6 +1093,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Feature flag routes
+  app.get('/api/feature-flags', isAuthenticated, async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      res.json(flags);
+    } catch (error) {
+      console.error("Error fetching feature flags:", error);
+      res.status(500).json({ message: "Failed to fetch feature flags" });
+    }
+  });
+
+  app.get('/api/user/feature-access', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const access = await storage.getUserFeatureAccess(userId);
+      res.json(access);
+    } catch (error) {
+      console.error("Error fetching user feature access:", error);
+      res.status(500).json({ message: "Failed to fetch feature access" });
+    }
+  });
+
+  app.get('/api/user/feature-access/:featureName', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const featureName = req.params.featureName;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const hasAccess = await storage.hasFeatureAccess(userId, featureName);
+      res.json({ hasAccess, featureName });
+    } catch (error) {
+      console.error("Error checking feature access:", error);
+      res.status(500).json({ message: "Failed to check feature access" });
+    }
+  });
+
   // Course purchase routes
   app.post('/api/create-course-payment', isAuthenticated, async (req: any, res) => {
     try {

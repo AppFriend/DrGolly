@@ -16,8 +16,11 @@ import {
   consultationBookings,
   blogPosts,
   coursePurchases,
+  featureFlags,
   type User,
   type UpsertUser,
+  type FeatureFlag,
+  type InsertFeatureFlag,
   type Course,
   type CourseModule,
   type CourseSubmodule,
@@ -137,6 +140,14 @@ export interface IStorage {
   createCoursePurchase(purchase: InsertCoursePurchase): Promise<CoursePurchase>;
   updateCoursePurchaseStatus(id: number, status: string): Promise<CoursePurchase>;
   updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User>;
+  
+  // Feature flag operations
+  getFeatureFlags(): Promise<FeatureFlag[]>;
+  getFeatureFlag(featureName: string): Promise<FeatureFlag | undefined>;
+  createFeatureFlag(flag: InsertFeatureFlag): Promise<FeatureFlag>;
+  updateFeatureFlag(id: number, flag: Partial<InsertFeatureFlag>): Promise<FeatureFlag>;
+  hasFeatureAccess(userId: string, featureName: string): Promise<boolean>;
+  getUserFeatureAccess(userId: string): Promise<{ [featureName: string]: boolean }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -552,6 +563,80 @@ export class DatabaseStorage implements IStorage {
   async updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {
     const [user] = await db.update(users).set({ stripeCustomerId }).where(eq(users.id, userId)).returning();
     return user;
+  }
+
+  // Feature flag operations
+  async getFeatureFlags(): Promise<FeatureFlag[]> {
+    return await db.select().from(featureFlags).where(eq(featureFlags.isActive, true));
+  }
+
+  async getFeatureFlag(featureName: string): Promise<FeatureFlag | undefined> {
+    const [flag] = await db
+      .select()
+      .from(featureFlags)
+      .where(and(eq(featureFlags.featureName, featureName), eq(featureFlags.isActive, true)));
+    return flag;
+  }
+
+  async createFeatureFlag(flag: InsertFeatureFlag): Promise<FeatureFlag> {
+    const [created] = await db.insert(featureFlags).values(flag).returning();
+    return created;
+  }
+
+  async updateFeatureFlag(id: number, flag: Partial<InsertFeatureFlag>): Promise<FeatureFlag> {
+    const [updated] = await db
+      .update(featureFlags)
+      .set({ ...flag, updatedAt: new Date() })
+      .where(eq(featureFlags.id, id))
+      .returning();
+    return updated;
+  }
+
+  async hasFeatureAccess(userId: string, featureName: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    if (!user) return false;
+
+    const flag = await this.getFeatureFlag(featureName);
+    if (!flag) return false;
+
+    const tier = user.subscriptionTier || "free";
+    switch (tier) {
+      case "free":
+        return flag.freeAccess;
+      case "gold":
+        return flag.goldAccess;
+      case "platinum":
+        return flag.platinumAccess;
+      default:
+        return false;
+    }
+  }
+
+  async getUserFeatureAccess(userId: string): Promise<{ [featureName: string]: boolean }> {
+    const user = await this.getUser(userId);
+    if (!user) return {};
+
+    const flags = await this.getFeatureFlags();
+    const tier = user.subscriptionTier || "free";
+    const access: { [featureName: string]: boolean } = {};
+
+    for (const flag of flags) {
+      switch (tier) {
+        case "free":
+          access[flag.featureName] = flag.freeAccess;
+          break;
+        case "gold":
+          access[flag.featureName] = flag.goldAccess;
+          break;
+        case "platinum":
+          access[flag.featureName] = flag.platinumAccess;
+          break;
+        default:
+          access[flag.featureName] = false;
+      }
+    }
+
+    return access;
   }
 }
 
