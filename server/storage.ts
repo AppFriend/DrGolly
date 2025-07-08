@@ -71,6 +71,7 @@ export interface IStorage {
   getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserSubscription(userId: string, tier: string, billingPeriod: string, nextBillingDate: Date): Promise<User>;
+  updateUserPersonalization(userId: string, personalizationData: any): Promise<User>;
   
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
@@ -229,6 +230,27 @@ export class DatabaseStorage implements IStorage {
         subscriptionTier: tier,
         billingPeriod,
         nextBillingDate,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserPersonalization(userId: string, personalizationData: any): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        primaryConcern: personalizationData.primaryConcern,
+        childAge: personalizationData.childAge,
+        childName: personalizationData.childName,
+        sleepChallenges: personalizationData.sleepChallenges,
+        previousExperience: personalizationData.previousExperience,
+        parentingStyle: personalizationData.parentingStyle,
+        timeCommitment: personalizationData.timeCommitment,
+        supportNetwork: personalizationData.supportNetwork,
+        additionalNotes: personalizationData.additionalNotes,
+        onboardingCompleted: personalizationData.onboardingCompleted ?? true,
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId))

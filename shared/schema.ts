@@ -54,6 +54,17 @@ export const users = pgTable("users", {
   hasSetPassword: boolean("has_set_password").default(false),
   passwordHash: varchar("password_hash"),
   lastPasswordChange: timestamp("last_password_change"),
+  // Personalization preferences for enhanced signup flow
+  primaryConcern: varchar("primary_concern"), // The 4-option question response
+  childAge: varchar("child_age"), // Age range of child
+  childName: varchar("child_name"), // Name of child
+  sleepChallenges: text("sleep_challenges"), // Specific sleep challenges
+  previousExperience: varchar("previous_experience"), // Experience with sleep training
+  parentingStyle: varchar("parenting_style"), // Gentle, structured, flexible, etc.
+  timeCommitment: varchar("time_commitment"), // How much time they can dedicate
+  supportNetwork: varchar("support_network"), // Partner support level
+  additionalNotes: text("additional_notes"), // Any other relevant information
+  onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
