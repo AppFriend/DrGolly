@@ -160,6 +160,12 @@ Changelog:
   * Added URL routes for payment and management pages (/checkout, /manage)
   * Updated BottomNavigation component to use URL navigation
   * Landing page now routes to /signup and /login URLs instead of using modals
+- July 08, 2025. Implemented database-driven feature flag monetization system:
+  * Integrated courses pricing with feature flags - free users see $120 individual pricing
+  * Locked discounts page for free users with upgrade modal and sample locked content
+  * Connected all access controls to feature flags database for automatic updates
+  * Fixed white screen flash during filter transitions with smooth loading overlays
+  * Added comprehensive upgrade prompts throughout the free user experience
 ```
 
 ## User Preferences
