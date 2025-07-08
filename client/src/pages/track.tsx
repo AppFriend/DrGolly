@@ -455,21 +455,44 @@ function DevelopmentTracking({ childId }: { childId: number | null }) {
 function FeedingTracking({ childId }: { childId: number | null }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isFeeding, setIsFeeding] = useState(false);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [timer, setTimer] = useState(0);
   const [feedType, setFeedType] = useState<"breast" | "bottle">("breast");
+  
+  // Left breast timer state
+  const [leftIsActive, setLeftIsActive] = useState(false);
+  const [leftStartTime, setLeftStartTime] = useState<Date | null>(null);
+  const [leftTimer, setLeftTimer] = useState(0);
+  const [leftTotalDuration, setLeftTotalDuration] = useState(0);
+  
+  // Right breast timer state
+  const [rightIsActive, setRightIsActive] = useState(false);
+  const [rightStartTime, setRightStartTime] = useState<Date | null>(null);
+  const [rightTimer, setRightTimer] = useState(0);
+  const [rightTotalDuration, setRightTotalDuration] = useState(0);
+  
+  // Session tracking
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
 
-  // Timer effect
+  // Left breast timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isFeeding && startTime) {
+    if (leftIsActive && leftStartTime) {
       interval = setInterval(() => {
-        setTimer(Math.floor((Date.now() - startTime.getTime()) / 1000));
+        setLeftTimer(Math.floor((Date.now() - leftStartTime.getTime()) / 1000));
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isFeeding, startTime]);
+  }, [leftIsActive, leftStartTime]);
+
+  // Right breast timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (rightIsActive && rightStartTime) {
+      interval = setInterval(() => {
+        setRightTimer(Math.floor((Date.now() - rightStartTime.getTime()) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [rightIsActive, rightStartTime]);
 
   // Fetch feed entries
   const { data: feedEntries = [], isLoading } = useQuery({
@@ -509,25 +532,73 @@ function FeedingTracking({ childId }: { childId: number | null }) {
     },
   });
 
-  const startFeeding = () => {
-    setIsFeeding(true);
-    setStartTime(new Date());
-    setTimer(0);
+  const startLeftTimer = () => {
+    if (!sessionStartTime) {
+      setSessionStartTime(new Date());
+    }
+    setLeftIsActive(true);
+    setLeftStartTime(new Date());
+    setLeftTimer(0);
   };
 
-  const stopFeeding = () => {
-    if (startTime) {
-      const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
+  const stopLeftTimer = () => {
+    if (leftStartTime) {
+      const duration = Math.floor((Date.now() - leftStartTime.getTime()) / 1000);
+      setLeftTotalDuration(prev => prev + duration);
+    }
+    setLeftIsActive(false);
+    setLeftStartTime(null);
+    setLeftTimer(0);
+  };
+
+  const startRightTimer = () => {
+    if (!sessionStartTime) {
+      setSessionStartTime(new Date());
+    }
+    setRightIsActive(true);
+    setRightStartTime(new Date());
+    setRightTimer(0);
+  };
+
+  const stopRightTimer = () => {
+    if (rightStartTime) {
+      const duration = Math.floor((Date.now() - rightStartTime.getTime()) / 1000);
+      setRightTotalDuration(prev => prev + duration);
+    }
+    setRightIsActive(false);
+    setRightStartTime(null);
+    setRightTimer(0);
+  };
+
+  const logFeedSession = () => {
+    if (sessionStartTime && (leftTotalDuration > 0 || rightTotalDuration > 0)) {
+      const totalDuration = leftTotalDuration + rightTotalDuration;
       addFeedMutation.mutate({
-        type: feedType,
-        duration,
-        startTime: startTime.toISOString(),
+        leftDuration: Math.floor(leftTotalDuration / 60), // Convert to minutes
+        rightDuration: Math.floor(rightTotalDuration / 60), // Convert to minutes
+        totalDuration: Math.floor(totalDuration / 60), // Convert to minutes
+        feedDate: sessionStartTime.toISOString(),
+        startTime: sessionStartTime.toISOString(),
         endTime: new Date().toISOString(),
       });
+      
+      // Reset session
+      setSessionStartTime(null);
+      setLeftTotalDuration(0);
+      setRightTotalDuration(0);
     }
-    setIsFeeding(false);
-    setStartTime(null);
-    setTimer(0);
+  };
+
+  const resetSession = () => {
+    setLeftIsActive(false);
+    setRightIsActive(false);
+    setLeftStartTime(null);
+    setRightStartTime(null);
+    setLeftTimer(0);
+    setRightTimer(0);
+    setLeftTotalDuration(0);
+    setRightTotalDuration(0);
+    setSessionStartTime(null);
   };
 
   const formatTime = (seconds: number) => {
@@ -552,37 +623,99 @@ function FeedingTracking({ childId }: { childId: number | null }) {
               value={feedType}
               onChange={(e) => setFeedType(e.target.value as "breast" | "bottle")}
               className="w-full p-2 border border-gray-300 rounded-md mt-1"
-              disabled={isFeeding}
+              disabled={leftIsActive || rightIsActive}
             >
               <option value="breast">Breastfeeding</option>
               <option value="bottle">Bottle</option>
             </select>
           </div>
           
-          <div className="text-center">
-            <div className="text-4xl font-mono font-bold text-[#83CFCC] mb-4">
-              {formatTime(timer)}
+          {feedType === "breast" ? (
+            <div className="space-y-4">
+              {/* Left Breast Timer */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-gray-700">Left Breast</h3>
+                  <div className="text-sm text-gray-500">
+                    Total: {formatTime(leftTotalDuration)}
+                  </div>
+                </div>
+                <div className="text-center mb-3">
+                  <div className="text-2xl font-mono font-bold text-[#83CFCC]">
+                    {formatTime(leftTimer)}
+                  </div>
+                </div>
+                <Button
+                  onClick={leftIsActive ? stopLeftTimer : startLeftTimer}
+                  className={`w-full ${leftIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
+                  disabled={rightIsActive && !leftIsActive}
+                >
+                  <Timer className="mr-2 h-4 w-4" />
+                  {leftIsActive ? 'Stop Left' : 'Start Left'}
+                </Button>
+              </div>
+
+              {/* Right Breast Timer */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-gray-700">Right Breast</h3>
+                  <div className="text-sm text-gray-500">
+                    Total: {formatTime(rightTotalDuration)}
+                  </div>
+                </div>
+                <div className="text-center mb-3">
+                  <div className="text-2xl font-mono font-bold text-[#83CFCC]">
+                    {formatTime(rightTimer)}
+                  </div>
+                </div>
+                <Button
+                  onClick={rightIsActive ? stopRightTimer : startRightTimer}
+                  className={`w-full ${rightIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
+                  disabled={leftIsActive && !rightIsActive}
+                >
+                  <Timer className="mr-2 h-4 w-4" />
+                  {rightIsActive ? 'Stop Right' : 'Start Right'}
+                </Button>
+              </div>
+
+              {/* Session Summary */}
+              {sessionStartTime && (
+                <div className="border rounded-lg p-4 bg-blue-50">
+                  <h3 className="font-medium text-gray-700 mb-2">Feed Session</h3>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div>Started: {sessionStartTime.toLocaleTimeString()}</div>
+                    <div>Total Time: {formatTime(leftTotalDuration + rightTotalDuration)}</div>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      onClick={logFeedSession}
+                      className="flex-1 bg-green-500 hover:bg-green-600"
+                      disabled={leftTotalDuration === 0 && rightTotalDuration === 0}
+                    >
+                      Log Feed
+                    </Button>
+                    <Button
+                      onClick={resetSession}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            {!isFeeding ? (
-              <Button 
-                onClick={startFeeding}
-                className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
-              >
+          ) : (
+            <div className="text-center">
+              <div className="text-4xl font-mono font-bold text-[#83CFCC] mb-4">
+                0:00
+              </div>
+              <Button className="w-full bg-[#83CFCC] hover:bg-[#095D66]">
                 <Timer className="mr-2 h-4 w-4" />
-                Start {feedType === "breast" ? "Breastfeeding" : "Bottle"}
+                Start Bottle
               </Button>
-            ) : (
-              <Button 
-                onClick={stopFeeding}
-                variant="destructive"
-                className="w-full"
-                disabled={addFeedMutation.isPending}
-              >
-                {addFeedMutation.isPending ? "Saving..." : "Stop & Save"}
-              </Button>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -601,12 +734,18 @@ function FeedingTracking({ childId }: { childId: number | null }) {
               <CardContent className="p-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-semibold font-heading capitalize">
-                      {entry.type} - {formatTime(entry.duration)}
+                    <p className="font-semibold font-heading">
+                      Breastfeeding - {formatTime((entry.totalDuration || 0) * 60)}
                     </p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(entry.startTime).toLocaleString()}
-                    </p>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div>
+                        Left: {formatTime((entry.leftDuration || 0) * 60)} | 
+                        Right: {formatTime((entry.rightDuration || 0) * 60)}
+                      </div>
+                      <div>
+                        {new Date(entry.feedDate).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
                   <Timer className="h-5 w-5 text-[#83CFCC]" />
                 </div>
