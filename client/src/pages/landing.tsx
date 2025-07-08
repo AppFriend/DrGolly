@@ -20,8 +20,8 @@ export default function Landing() {
           <div className="relative inline-block">
             <div className="w-72 h-72 bg-gradient-to-br from-dr-teal/20 to-dr-teal/30 rounded-full flex items-center justify-center mb-8">
               <img
-                src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300"
-                alt="Dr. Golly holding a baby"
+                src="/attached_assets/drgolly_1751955510280.jpg"
+                alt="Dr. Golly - Professional headshot"
                 className="w-64 h-64 rounded-full object-cover border-4 border-white shadow-lg"
               />
             </div>
