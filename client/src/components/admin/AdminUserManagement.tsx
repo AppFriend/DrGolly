@@ -19,8 +19,10 @@ import {
   Calendar,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  BookOpen
 } from "lucide-react";
+import UserCourseManagement from "./UserCourseManagement";
 
 interface User {
   id: string;
@@ -42,6 +44,8 @@ export function AdminUserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedUserForCourses, setSelectedUserForCourses] = useState<User | null>(null);
+  const [isCourseManagementOpen, setIsCourseManagementOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -86,6 +90,16 @@ export function AdminUserManagement() {
   const handleUpdateUser = (updates: Partial<User>) => {
     if (!selectedUser) return;
     updateUserMutation.mutate({ userId: selectedUser.id, updates });
+  };
+
+  const handleManageCourses = (user: User) => {
+    setSelectedUserForCourses(user);
+    setIsCourseManagementOpen(true);
+  };
+
+  const handleCloseCourseManagement = () => {
+    setIsCourseManagementOpen(false);
+    setSelectedUserForCourses(null);
   };
 
   const displayUsers = searchQuery.length > 2 ? (searchResults || []) : (users || []);
@@ -183,17 +197,27 @@ export function AdminUserManagement() {
                             {user.subscriptionTier}
                           </Badge>
                         </div>
-                        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedUser(user)}
-                              className="h-7 w-7 p-0 flex-shrink-0"
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                          </DialogTrigger>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleManageCourses(user)}
+                            className="h-7 w-7 p-0 flex-shrink-0"
+                            title="Manage Courses"
+                          >
+                            <BookOpen className="h-3 w-3" />
+                          </Button>
+                          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedUser(user)}
+                                className="h-7 w-7 p-0 flex-shrink-0"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
                           <DialogContent className="max-w-2xl">
                             <DialogHeader>
                               <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
@@ -207,6 +231,7 @@ export function AdminUserManagement() {
                             )}
                           </DialogContent>
                         </Dialog>
+                        </div>
                       </div>
                       <div className="text-xs text-gray-600 truncate mt-1">
                         <Mail className="h-3 w-3 inline mr-1" />
@@ -242,6 +267,15 @@ export function AdminUserManagement() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Course Management Modal */}
+      {isCourseManagementOpen && selectedUserForCourses && (
+        <UserCourseManagement 
+          userId={selectedUserForCourses.id}
+          userName={`${selectedUserForCourses.firstName} ${selectedUserForCourses.lastName}`}
+          onClose={handleCloseCourseManagement}
+        />
+      )}
     </div>
   );
 }
