@@ -5,36 +5,39 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Main Content */}
-      <main className="max-w-md mx-auto px-6 pt-12 pb-40 relative z-10">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="text-2xl font-bold text-gray-800">
-            dr. Golly
-          </div>
-        </div>
-
-        {/* Hero Image */}
-        <div className="text-center mb-8">
-          <div className="relative inline-block">
-            <div className="w-64 h-64 sm:w-72 sm:h-72 bg-gradient-to-br from-[#83CFCC]/20 to-[#83CFCC]/30 rounded-full flex items-center justify-center mb-6">
-              <img
-                src={drGollyImage}
-                alt="Dr. Golly - Professional headshot"
-                className="w-56 h-56 sm:w-64 sm:h-64 rounded-full object-cover border-4 border-white shadow-lg"
-              />
+      <main className="max-w-md mx-auto px-6 pt-6 pb-32 relative z-10 h-screen flex flex-col justify-between">
+        {/* Top Section */}
+        <div className="flex-1 flex flex-col justify-start">
+          {/* Logo */}
+          <div className="text-center mb-4">
+            <div className="text-xl font-bold text-gray-800">
+              dr. Golly
             </div>
           </div>
-        </div>
 
-        {/* Main Heading */}
-        <div className="text-center mb-32 px-2">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8 font-heading leading-tight">
-            Hi, I'm Dr Golly
-          </h1>
-          <div className="bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] rounded-2xl p-6 mx-4 mb-8">
-            <p className="text-gray-700 text-base leading-relaxed font-sans">
-              I've created these online learning courses to empower you with the skills and knowledge to ensure your whole family gets a good night's sleep.
-            </p>
+          {/* Hero Image */}
+          <div className="text-center mb-4">
+            <div className="relative inline-block">
+              <div className="w-48 h-48 bg-gradient-to-br from-[#83CFCC]/20 to-[#83CFCC]/30 rounded-full flex items-center justify-center">
+                <img
+                  src={drGollyImage}
+                  alt="Dr. Golly - Professional headshot"
+                  className="w-44 h-44 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Main Heading */}
+          <div className="text-center px-2">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4 font-heading leading-tight">
+              Hi, I'm Dr Golly
+            </h1>
+            <div className="bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] rounded-2xl p-4 mx-2">
+              <p className="text-gray-700 text-sm leading-relaxed font-sans">
+                I've created these online learning courses to empower you with the skills and knowledge to ensure your whole family gets a good night's sleep.
+              </p>
+            </div>
           </div>
         </div>
       </main>
@@ -44,19 +47,19 @@ export default function Landing() {
         {/* Curved Background */}
         <div className="relative">
           <svg
-            viewBox="0 0 400 280"
+            viewBox="0 0 400 200"
             className="w-full h-auto"
             preserveAspectRatio="none"
           >
             <path
-              d="M0,140 C100,60 300,60 400,140 L400,280 L0,280 Z"
+              d="M0,100 C100,20 300,20 400,100 L400,200 L0,200 Z"
               fill="#83CFCC"
               className="opacity-90"
             />
           </svg>
           
           {/* Buttons Container */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 pb-12 space-y-4">
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 space-y-3">
             <Button
               onClick={() => {
                 try {
@@ -67,7 +70,7 @@ export default function Landing() {
                   window.open('/api/login', '_self');
                 }
               }}
-              className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-4 text-lg font-semibold rounded-full shadow-lg border-0 font-heading"
+              className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-3 text-base font-semibold rounded-full shadow-lg border-0 font-heading"
             >
               Get Started
             </Button>
@@ -82,7 +85,7 @@ export default function Landing() {
                 }
               }}
               variant="outline"
-              className="w-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#83CFCC] py-4 text-lg font-semibold rounded-full font-heading"
+              className="w-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#83CFCC] py-3 text-base font-semibold rounded-full font-heading"
             >
               Sign In
             </Button>
