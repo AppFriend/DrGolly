@@ -59,7 +59,7 @@ export function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {[...Array(8)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader className="space-y-0 pb-2">
@@ -100,7 +100,7 @@ export function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <MetricCard
           title="Total Users"
           value={metrics.totalUsers.toLocaleString()}
