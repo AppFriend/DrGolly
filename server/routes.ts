@@ -1824,6 +1824,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get order analytics (Admin only)
+  app.get('/api/admin/orders/analytics', isAdmin, async (req, res) => {
+    try {
+      const analytics = await storage.getOrderAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching order analytics:", error);
+      res.status(500).json({ message: "Failed to fetch order analytics" });
+    }
+  });
+
+  // Get daily orders with pagination (Admin only)
+  app.get('/api/admin/orders/daily', isAdmin, async (req, res) => {
+    try {
+      const { page = 1, limit = 20 } = req.query;
+      const orders = await storage.getDailyOrders(parseInt(page as string), parseInt(limit as string));
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching daily orders:", error);
+      res.status(500).json({ message: "Failed to fetch daily orders" });
+    }
+  });
+
   app.get('/api/admin/users/search', isAdmin, async (req, res) => {
     try {
       const query = req.query.q as string;
@@ -2004,6 +2027,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error setting password:', error);
       res.status(500).json({ message: 'Failed to set password' });
+    }
+  });
+
+  // Seed sample orders for testing (Admin only)
+  app.post('/api/admin/seed-orders', isAdmin, async (req, res) => {
+    try {
+      const sampleOrders = [
+        {
+          userId: '44434757', // Admin user
+          courseId: 1,
+          amount: 12000, // $120 in cents
+          status: 'completed',
+          stripePaymentIntentId: 'pi_test_189349',
+          purchasedAt: new Date('2025-07-09T08:34:00Z')
+        },
+        {
+          userId: '44434757',
+          courseId: 2,
+          amount: 25000, // $250 in cents
+          status: 'completed',
+          stripePaymentIntentId: 'pi_test_189348',
+          purchasedAt: new Date('2025-07-09T08:30:00Z')
+        },
+        {
+          userId: '44434757',
+          courseId: 3,
+          amount: 11000, // $110 in cents
+          status: 'completed',
+          stripePaymentIntentId: 'pi_test_189347',
+          purchasedAt: new Date('2025-07-09T08:25:00Z')
+        },
+        {
+          userId: '44434757',
+          courseId: 4,
+          amount: 12000, // $120 in cents
+          status: 'completed',
+          stripePaymentIntentId: 'pi_test_189346',
+          purchasedAt: new Date('2025-07-09T08:20:00Z')
+        },
+        {
+          userId: '44434757',
+          courseId: 5,
+          amount: 12000, // $120 in cents
+          status: 'completed',
+          stripePaymentIntentId: 'pi_test_189345',
+          purchasedAt: new Date('2025-07-09T08:15:00Z')
+        },
+        // Yesterday's orders
+        {
+          userId: '44434757',
+          courseId: 1,
+          amount: 12000,
+          status: 'completed',
+          stripePaymentIntentId: 'pi_test_189344',
+          purchasedAt: new Date('2025-07-08T14:30:00Z')
+        },
+        {
+          userId: '44434757',
+          courseId: 2,
+          amount: 12000,
+          status: 'completed',
+          stripePaymentIntentId: 'pi_test_189343',
+          purchasedAt: new Date('2025-07-08T12:15:00Z')
+        }
+      ];
+
+      for (const order of sampleOrders) {
+        await storage.createCoursePurchase(order);
+      }
+
+      res.json({ message: 'Sample orders created successfully', count: sampleOrders.length });
+    } catch (error) {
+      console.error("Error seeding orders:", error);
+      res.status(500).json({ message: "Failed to seed orders" });
     }
   });
 

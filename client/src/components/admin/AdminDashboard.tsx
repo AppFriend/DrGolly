@@ -11,6 +11,7 @@ import {
   Calendar,
   UserMinus
 } from "lucide-react";
+import OrderAnalytics from "./OrderAnalytics";
 
 interface MetricCardProps {
   title: string;
@@ -223,6 +224,9 @@ export function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Order Analytics Section */}
+      <OrderAnalytics />
     </div>
   );
 }

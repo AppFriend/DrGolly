@@ -150,6 +150,37 @@ export interface IStorage {
   createCoursePurchase(purchase: InsertCoursePurchase): Promise<CoursePurchase>;
   updateCoursePurchaseStatus(id: number, status: string): Promise<CoursePurchase>;
   deleteCoursePurchase(id: number): Promise<void>;
+  getOrderAnalytics(): Promise<{
+    totalRevenue: number;
+    totalOrders: number;
+    todayRevenue: number;
+    todayOrders: number;
+    yesterdayRevenue: number;
+    yesterdayOrders: number;
+    lastWeekRevenue: number;
+    lastWeekOrders: number;
+    lastMonthRevenue: number;
+    lastMonthOrders: number;
+    dailyRevenueData: Array<{ date: string; revenue: number; orders: number }>;
+    dayOnDayChange: number;
+    weekOnWeekChange: number;
+    monthOnMonthChange: number;
+  }>;
+  getDailyOrders(page: number, limit: number): Promise<{
+    orders: Array<{
+      id: number;
+      orderNumber: string;
+      customerName: string;
+      courseTitle: string;
+      amount: number;
+      status: string;
+      purchasedAt: string;
+      stripePaymentIntentId: string;
+    }>;
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+  }>;
   updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User>;
   
   // Feature flag operations
@@ -657,6 +688,215 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCoursePurchase(id: number): Promise<void> {
     await db.delete(coursePurchases).where(eq(coursePurchases.id, id));
+  }
+
+  async getOrderAnalytics(): Promise<{
+    totalRevenue: number;
+    totalOrders: number;
+    todayRevenue: number;
+    todayOrders: number;
+    yesterdayRevenue: number;
+    yesterdayOrders: number;
+    lastWeekRevenue: number;
+    lastWeekOrders: number;
+    lastMonthRevenue: number;
+    lastMonthOrders: number;
+    dailyRevenueData: Array<{ date: string; revenue: number; orders: number }>;
+    dayOnDayChange: number;
+    weekOnWeekChange: number;
+    monthOnMonthChange: number;
+  }> {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const lastWeekStart = new Date(today);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    
+    const lastMonthStart = new Date(today);
+    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+    
+    const twoWeeksAgo = new Date(today);
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    
+    const twoMonthsAgo = new Date(today);
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+    // Start of day boundaries
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+    const yesterdayEnd = new Date(todayStart.getTime() - 1);
+
+    // Get completed purchases only
+    const completedPurchases = await db
+      .select()
+      .from(coursePurchases)
+      .where(eq(coursePurchases.status, 'completed'));
+
+    const totalRevenue = completedPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100; // Convert from cents
+    const totalOrders = completedPurchases.length;
+
+    // Today's data
+    const todayPurchases = completedPurchases.filter(p => 
+      new Date(p.purchasedAt) >= todayStart
+    );
+    const todayRevenue = todayPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+    const todayOrders = todayPurchases.length;
+
+    // Yesterday's data
+    const yesterdayPurchases = completedPurchases.filter(p => {
+      const purchaseDate = new Date(p.purchasedAt);
+      return purchaseDate >= yesterdayStart && purchaseDate <= yesterdayEnd;
+    });
+    const yesterdayRevenue = yesterdayPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+    const yesterdayOrders = yesterdayPurchases.length;
+
+    // Last week's data
+    const lastWeekPurchases = completedPurchases.filter(p => 
+      new Date(p.purchasedAt) >= lastWeekStart
+    );
+    const lastWeekRevenue = lastWeekPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+    const lastWeekOrders = lastWeekPurchases.length;
+
+    // Previous week's data (for comparison)
+    const prevWeekPurchases = completedPurchases.filter(p => {
+      const purchaseDate = new Date(p.purchasedAt);
+      return purchaseDate >= twoWeeksAgo && purchaseDate < lastWeekStart;
+    });
+    const prevWeekRevenue = prevWeekPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+
+    // Last month's data
+    const lastMonthPurchases = completedPurchases.filter(p => 
+      new Date(p.purchasedAt) >= lastMonthStart
+    );
+    const lastMonthRevenue = lastMonthPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+    const lastMonthOrders = lastMonthPurchases.length;
+
+    // Previous month's data (for comparison)
+    const prevMonthPurchases = completedPurchases.filter(p => {
+      const purchaseDate = new Date(p.purchasedAt);
+      return purchaseDate >= twoMonthsAgo && purchaseDate < lastMonthStart;
+    });
+    const prevMonthRevenue = prevMonthPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
+
+    // Daily revenue data for the last 7 days
+    const dailyRevenueData = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const dateEnd = new Date(dateStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+      
+      const dayPurchases = completedPurchases.filter(p => {
+        const purchaseDate = new Date(p.purchasedAt);
+        return purchaseDate >= dateStart && purchaseDate <= dateEnd;
+      });
+      
+      dailyRevenueData.push({
+        date: date.toISOString().split('T')[0],
+        revenue: dayPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100,
+        orders: dayPurchases.length
+      });
+    }
+
+    // Calculate percentage changes
+    const dayOnDayChange = yesterdayRevenue > 0 ? 
+      ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : 0;
+    
+    const weekOnWeekChange = prevWeekRevenue > 0 ? 
+      ((lastWeekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100 : 0;
+    
+    const monthOnMonthChange = prevMonthRevenue > 0 ? 
+      ((lastMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100 : 0;
+
+    return {
+      totalRevenue,
+      totalOrders,
+      todayRevenue,
+      todayOrders,
+      yesterdayRevenue,
+      yesterdayOrders,
+      lastWeekRevenue,
+      lastWeekOrders,
+      lastMonthRevenue,
+      lastMonthOrders,
+      dailyRevenueData,
+      dayOnDayChange,
+      weekOnWeekChange,
+      monthOnMonthChange
+    };
+  }
+
+  async getDailyOrders(page: number = 1, limit: number = 20): Promise<{
+    orders: Array<{
+      id: number;
+      orderNumber: string;
+      customerName: string;
+      courseTitle: string;
+      amount: number;
+      status: string;
+      purchasedAt: string;
+      stripePaymentIntentId: string;
+    }>;
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+  }> {
+    const offset = (page - 1) * limit;
+    
+    // Get orders with course and user details
+    const ordersQuery = db
+      .select({
+        id: coursePurchases.id,
+        orderNumber: coursePurchases.stripePaymentIntentId,
+        userId: coursePurchases.userId,
+        courseId: coursePurchases.courseId,
+        amount: coursePurchases.amount,
+        status: coursePurchases.status,
+        purchasedAt: coursePurchases.purchasedAt,
+        stripePaymentIntentId: coursePurchases.stripePaymentIntentId,
+        courseTitle: courses.title,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email
+      })
+      .from(coursePurchases)
+      .leftJoin(courses, eq(coursePurchases.courseId, courses.id))
+      .leftJoin(users, eq(coursePurchases.userId, users.id))
+      .where(eq(coursePurchases.status, 'completed'))
+      .orderBy(desc(coursePurchases.purchasedAt))
+      .limit(limit)
+      .offset(offset);
+
+    const orders = await ordersQuery;
+    
+    // Get total count for pagination
+    const totalCountResult = await db
+      .select({ count: count() })
+      .from(coursePurchases)
+      .where(eq(coursePurchases.status, 'completed'));
+    
+    const totalCount = totalCountResult[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Format orders
+    const formattedOrders = orders.map(order => ({
+      id: order.id,
+      orderNumber: order.orderNumber || `#${order.id}`,
+      customerName: `${order.userFirstName || ''} ${order.userLastName || ''}`.trim() || order.userEmail || 'Unknown',
+      courseTitle: order.courseTitle || 'Unknown Course',
+      amount: (order.amount || 0) / 100, // Convert from cents
+      status: order.status,
+      purchasedAt: order.purchasedAt,
+      stripePaymentIntentId: order.stripePaymentIntentId || ''
+    }));
+
+    return {
+      orders: formattedOrders,
+      totalCount,
+      totalPages,
+      currentPage: page
+    };
   }
 
   async updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {
