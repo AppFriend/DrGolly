@@ -1,5 +1,7 @@
 import { Play, Heart, Eye, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import type { Course } from "@shared/schema";
 
 interface VideoCardProps {
@@ -9,6 +11,12 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ course, onClick, className }: VideoCardProps) {
+  const { user } = useAuth();
+  const { hasAccess } = useFeatureAccess();
+  
+  // Check if user has access to unlimited courses
+  const hasUnlimitedCourses = hasAccess("courses_unlimited");
+  
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "sleep":
@@ -67,10 +75,15 @@ export function VideoCard({ course, onClick, className }: VideoCardProps) {
               {course.views || 0}
             </span>
           </div>
-          <button className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors">
-            Read More
-            <ArrowRight className="h-4 w-4 ml-1" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {!hasUnlimitedCourses && course.category !== "freebies" && (
+              <span className="text-lg font-bold text-dr-teal">$120</span>
+            )}
+            <button className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors">
+              {!hasUnlimitedCourses && course.category !== "freebies" ? "Buy Now" : "Read More"}
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
