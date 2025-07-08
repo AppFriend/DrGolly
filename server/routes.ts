@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -1235,14 +1236,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stripe webhook for payment updates
-  app.post('/api/stripe-webhook', async (req, res) => {
-    const sig = req.headers['stripe-signature'];
+  // Comprehensive Stripe webhook handler for subscriptions and payments
+  app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'] as string;
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
     let event;
 
     try {
-      // You would set STRIPE_WEBHOOK_SECRET in production
-      event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET || 'test');
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
     } catch (err: any) {
       console.log(`Webhook signature verification failed.`, err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -1250,25 +1252,338 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Handle the event
     switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        console.log('Payment session completed:', session.id);
+        
+        // Handle successful payment for courses
+        if (session.payment_intent && session.metadata?.type === 'course') {
+          try {
+            const purchase = await storage.getCoursePurchaseByPaymentIntent(session.payment_intent as string);
+            if (purchase) {
+              await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+              console.log(`Course purchase ${purchase.id} marked as completed`);
+            }
+          } catch (error) {
+            console.error('Error updating course purchase:', error);
+          }
+        }
+        
+        // Handle subscription checkout completion
+        if (session.subscription && session.metadata?.type === 'subscription') {
+          try {
+            const customerId = session.customer as string;
+            const subscriptionId = session.subscription as string;
+            const userEmail = session.customer_details?.email || session.metadata?.email;
+            
+            if (userEmail) {
+              const user = await storage.getUserByEmail(userEmail);
+              if (user) {
+                await storage.updateUserStripeCustomerId(user.id, customerId);
+                console.log(`User ${user.id} linked to Stripe customer ${customerId}`);
+              }
+            }
+          } catch (error) {
+            console.error('Error processing subscription checkout:', error);
+          }
+        }
+        break;
+
+      case 'customer.subscription.created':
+        const createdSub = event.data.object;
+        console.log('Subscription created:', createdSub.id);
+        
+        try {
+          // Find user by customer ID
+          const user = await storage.getUserByStripeCustomerId(createdSub.customer as string);
+          if (user && createdSub.metadata?.plan_tier) {
+            const nextBillingDate = new Date(createdSub.current_period_end * 1000);
+            const billingPeriod = createdSub.items.data[0]?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+            
+            await storage.updateUserSubscription(
+              user.id,
+              createdSub.metadata.plan_tier,
+              billingPeriod,
+              nextBillingDate
+            );
+            
+            console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
+          }
+        } catch (error) {
+          console.error('Error processing subscription creation:', error);
+        }
+        break;
+
+      case 'customer.subscription.updated':
+        const updatedSub = event.data.object;
+        console.log('Subscription updated:', updatedSub.id);
+        
+        try {
+          const user = await storage.getUserByStripeCustomerId(updatedSub.customer as string);
+          if (user) {
+            const nextBillingDate = new Date(updatedSub.current_period_end * 1000);
+            const billingPeriod = updatedSub.items.data[0]?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+            
+            // Determine plan tier from metadata or price
+            let planTier = updatedSub.metadata?.plan_tier || 'free';
+            
+            await storage.updateUserSubscription(
+              user.id,
+              planTier,
+              billingPeriod,
+              nextBillingDate
+            );
+            
+            console.log(`User ${user.id} subscription updated: ${planTier}`);
+          }
+        } catch (error) {
+          console.error('Error processing subscription update:', error);
+        }
+        break;
+
+      case 'customer.subscription.deleted':
+        const deletedSub = event.data.object;
+        console.log('Subscription cancelled:', deletedSub.id);
+        
+        try {
+          const user = await storage.getUserByStripeCustomerId(deletedSub.customer as string);
+          if (user) {
+            // If cancelled at period end, user keeps access until then
+            const accessEndDate = deletedSub.canceled_at_period_end 
+              ? new Date(deletedSub.current_period_end * 1000)
+              : new Date(); // Immediate cancellation
+            
+            // Downgrade to free but set the end date
+            await storage.updateUserSubscription(
+              user.id,
+              'free',
+              'monthly',
+              accessEndDate
+            );
+            
+            console.log(`User ${user.id} subscription cancelled, access until: ${accessEndDate}`);
+          }
+        } catch (error) {
+          console.error('Error processing subscription cancellation:', error);
+        }
+        break;
+
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
+        console.log('Payment succeeded:', paymentIntent.id);
+        
+        // Handle course purchases
         const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
         if (purchase) {
           await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
         }
         break;
+
       case 'payment_intent.payment_failed':
         const failedPayment = event.data.object;
+        console.log('Payment failed:', failedPayment.id);
+        
         const failedPurchase = await storage.getCoursePurchaseByPaymentIntent(failedPayment.id);
         if (failedPurchase) {
           await storage.updateCoursePurchaseStatus(failedPurchase.id, 'failed');
         }
         break;
+
+      case 'invoice.payment_succeeded':
+        const invoice = event.data.object;
+        console.log('Invoice payment succeeded:', invoice.id);
+        
+        // Handle successful recurring payment
+        if (invoice.subscription) {
+          try {
+            const user = await storage.getUserByStripeCustomerId(invoice.customer as string);
+            if (user) {
+              // Update next billing date
+              const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+              const nextBillingDate = new Date(subscription.current_period_end * 1000);
+              
+              await storage.updateUserSubscription(
+                user.id,
+                user.subscriptionTier || 'free',
+                user.billingPeriod || 'monthly',
+                nextBillingDate
+              );
+              
+              console.log(`User ${user.id} billing updated, next billing: ${nextBillingDate}`);
+            }
+          } catch (error) {
+            console.error('Error updating billing date:', error);
+          }
+        }
+        break;
+
+      case 'invoice.payment_failed':
+        const failedInvoice = event.data.object;
+        console.log('Invoice payment failed:', failedInvoice.id);
+        
+        // Handle failed recurring payment
+        try {
+          const user = await storage.getUserByStripeCustomerId(failedInvoice.customer as string);
+          if (user) {
+            console.log(`Payment failed for user ${user.id}, subscription may be at risk`);
+            // Could implement additional logic here like email notifications
+          }
+        } catch (error) {
+          console.error('Error processing failed payment:', error);
+        }
+        break;
+
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
 
     res.json({ received: true });
+  });
+
+  // Stripe subscription checkout route
+  app.post("/api/create-subscription-checkout", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.email) {
+        return res.status(400).json({ message: "User email required" });
+      }
+
+      const { planTier, billingPeriod, priceAmount } = req.body;
+      
+      if (!planTier || !billingPeriod || !priceAmount) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Create or get customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          metadata: {
+            userId: userId
+          }
+        });
+        customerId = customer.id;
+        await storage.updateUserStripeCustomerId(userId, customerId);
+      }
+
+      // Create price object for the subscription
+      const price = await stripe.prices.create({
+        unit_amount: Math.round(priceAmount * 100),
+        currency: 'usd',
+        recurring: {
+          interval: billingPeriod === 'yearly' ? 'year' : 'month',
+        },
+        product_data: {
+          name: `Dr. Golly ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan`,
+        },
+        metadata: {
+          plan_tier: planTier
+        }
+      });
+
+      // Create subscription
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{
+          price: price.id,
+        }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+        metadata: {
+          plan_tier: planTier,
+          user_id: userId,
+          billing_period: billingPeriod
+        }
+      });
+
+      const paymentIntent = subscription.latest_invoice?.payment_intent;
+      
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: paymentIntent?.client_secret,
+      });
+    } catch (error: any) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Error creating subscription: " + error.message });
+    }
+  });
+
+  // Subscription management routes
+  app.post('/api/subscription/update', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const { tier, billingPeriod } = req.body;
+      
+      if (!tier || !billingPeriod) {
+        return res.status(400).json({ message: "Missing tier or billing period" });
+      }
+
+      // Calculate next billing date (30 days from now for monthly, 365 days for yearly)
+      const nextBillingDate = new Date();
+      if (billingPeriod === 'yearly') {
+        nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+      } else {
+        nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+      }
+
+      const updatedUser = await storage.updateUserSubscription(
+        userId,
+        tier,
+        billingPeriod,
+        nextBillingDate
+      );
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      res.status(500).json({ message: "Failed to update subscription" });
+    }
+  });
+
+  // Cancel subscription route
+  app.post('/api/subscription/cancel', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription found" });
+      }
+
+      // Find active subscription
+      const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        status: 'active'
+      });
+
+      if (subscriptions.data.length === 0) {
+        return res.status(400).json({ message: "No active subscription to cancel" });
+      }
+
+      const subscription = subscriptions.data[0];
+      
+      // Cancel at period end to maintain access
+      const cancelledSub = await stripe.subscriptions.update(subscription.id, {
+        cancel_at_period_end: true
+      });
+
+      res.json({ 
+        success: true, 
+        accessUntil: new Date(cancelledSub.current_period_end * 1000) 
+      });
+    } catch (error: any) {
+      console.error("Error cancelling subscription:", error);
+      res.status(500).json({ message: "Error cancelling subscription: " + error.message });
+    }
   });
 
   const httpServer = createServer(app);
