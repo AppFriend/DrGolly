@@ -63,11 +63,11 @@ export default function Landing() {
             <Button
               onClick={() => {
                 try {
-                  window.location.href = '/api/login';
+                  window.location.href = '/api/signup';
                 } catch (error) {
                   console.error('Navigation error:', error);
                   // Fallback for development
-                  window.open('/api/login', '_self');
+                  window.open('/api/signup', '_self');
                 }
               }}
               className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-3 text-base font-semibold rounded-full shadow-lg border-0 font-heading"
