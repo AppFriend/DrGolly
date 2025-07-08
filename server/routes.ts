@@ -69,6 +69,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User personalization routes
+  app.post('/api/user/personalization', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const personalizationData = req.body;
+      
+      // Update user with personalization preferences
+      await storage.updateUserPersonalization(userId, personalizationData);
+      
+      res.json({ message: "Personalization data saved successfully" });
+    } catch (error) {
+      console.error("Error saving personalization data:", error);
+      res.status(500).json({ message: "Failed to save personalization data" });
+    }
+  });
+
+  app.get('/api/user/personalization', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const personalization = {
+        primaryConcern: user.primaryConcern,
+        childAge: user.childAge,
+        childName: user.childName,
+        sleepChallenges: user.sleepChallenges,
+        previousExperience: user.previousExperience,
+        parentingStyle: user.parentingStyle,
+        timeCommitment: user.timeCommitment,
+        supportNetwork: user.supportNetwork,
+        additionalNotes: user.additionalNotes,
+        onboardingCompleted: user.onboardingCompleted
+      };
+      
+      res.json(personalization);
+    } catch (error) {
+      console.error("Error fetching personalization data:", error);
+      res.status(500).json({ message: "Failed to fetch personalization data" });
+    }
+  });
+
   // Course routes
   app.get('/api/courses', async (req, res) => {
     try {

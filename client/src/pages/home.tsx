@@ -4,6 +4,7 @@ import { Search, Bell } from "lucide-react";
 import { BlogCard } from "@/components/ui/blog-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { usePersonalization } from "@/hooks/usePersonalization";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,9 @@ export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeCategory, setActiveCategory] = useState("all");
+  
+  // Initialize personalization hook to save signup data after auth
+  const { personalization } = usePersonalization();
 
   const { data: blogPosts, isLoading, isFetching, error } = useQuery({
     queryKey: ["/api/blog-posts", activeCategory === "all" ? undefined : activeCategory],
