@@ -182,6 +182,16 @@ Changelog:
   * Updated AdminUserSettings to focus only on admin users (removed regular users section)
   * Implemented touch-friendly buttons and mobile-optimized spacing across all admin components
   * Created consistent mobile design patterns with smaller avatars, compact cards, and efficient layouts
+- July 08, 2025. Rebuilt comprehensive Dr. Golly signup flow matching exact app design:
+  * Reordered steps: Account → Personal Info → Interests → Offer → Complete
+  * Added phone number with country code selection, role selection, profile picture upload
+  * Implemented terms acceptance and marketing opt-in checkboxes
+  * Created multiple interest selection (Baby Sleep, Toddler Sleep, Toddler Behaviour, Partner discounts)
+  * Added new member Gold subscription offer with 50% discount
+  * Updated database schema with new personalization fields
+  * Implemented API endpoints for personalization data persistence
+  * Applied Dr. Golly brand colors (teal buttons, clean white background)
+  * Created mobile-first design with proper spacing and rounded inputs
 ```
 
 ## User Preferences

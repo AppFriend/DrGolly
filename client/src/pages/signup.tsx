@@ -135,8 +135,9 @@ export default function Signup() {
                     id="firstName"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Enter your first name"
+                    placeholder="First Name"
                     required
+                    className="rounded-xl border-gray-300 py-3 px-4"
                   />
                 </div>
                 <div>
@@ -145,8 +146,9 @@ export default function Signup() {
                     id="lastName"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Enter your last name"
+                    placeholder="Last Name"
                     required
+                    className="rounded-xl border-gray-300 py-3 px-4"
                   />
                 </div>
               </div>
@@ -158,8 +160,9 @@ export default function Signup() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="Email Address"
                   required
+                  className="rounded-xl border-gray-300 py-3 px-4"
                 />
               </div>
 
@@ -173,6 +176,7 @@ export default function Signup() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password"
                     required
+                    className="rounded-xl border-gray-300 py-3 px-4 pr-12"
                   />
                   <button
                     type="button"
@@ -184,7 +188,7 @@ export default function Signup() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              <Button type="submit" className="w-full bg-teal-500 hover:bg-teal-600 text-white rounded-xl py-3">
                 Continue <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
@@ -238,10 +242,9 @@ export default function Signup() {
 
               {/* Phone Number */}
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="flex rounded-md border border-gray-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+                <div className="flex rounded-xl border-2 border-red-300 focus-within:border-red-500 overflow-hidden">
                   <Select value={selectedCountryCode} onValueChange={setSelectedCountryCode}>
-                    <SelectTrigger className="w-24 border-0 border-r rounded-r-none focus:ring-0">
+                    <SelectTrigger className="w-20 border-0 border-r border-red-300 rounded-r-none focus:ring-0 bg-white">
                       <SelectValue>
                         {COUNTRY_CODES.find(c => c.code === selectedCountryCode)?.flag} {selectedCountryCode}
                       </SelectValue>
@@ -260,7 +263,7 @@ export default function Signup() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="412 345 678"
-                    className="border-0 rounded-l-none focus:ring-0"
+                    className="border-0 rounded-l-none focus:ring-0 py-3 px-4"
                   />
                 </div>
               </div>
@@ -326,7 +329,7 @@ export default function Signup() {
                 type="button"
                 onClick={() => setStep(3)}
                 disabled={!personalization.acceptedTerms || !personalization.userRole}
-                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-xl py-3"
               >
                 Continue
               </Button>
@@ -383,7 +386,7 @@ export default function Signup() {
               <Button
                 type="button"
                 onClick={() => setStep(4)}
-                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-xl py-3"
               >
                 Continue
               </Button>
@@ -503,7 +506,7 @@ export default function Signup() {
                   handlePersonalizationUpdate('newMemberOfferShown', true);
                   setStep(5);
                 }}
-                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-xl py-3"
               >
                 {personalization.newMemberOfferAccepted ? 'Try Gold' : 'Continue'}
               </Button>
@@ -543,7 +546,7 @@ export default function Signup() {
                 type="button"
                 onClick={handleCompleteSignup}
                 disabled={isLoading}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-xl py-3"
               >
                 {isLoading ? "Creating Account..." : "Complete Signup"}
               </Button>
@@ -557,26 +560,31 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 relative overflow-hidden">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="max-w-md mx-auto px-6 pt-8">
         <div className="flex items-center justify-between mb-8">
           <Link href="/">
             <Button variant="ghost" size="sm" className="p-2">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
             </Button>
           </Link>
-          <div className="text-xl font-bold text-gray-800">
+          <div className="text-xl font-bold text-gray-900">
             Dr. Golly
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-500">
             {step}/{totalSteps}
           </div>
         </div>
 
         {/* Progress Bar */}
         <div className="mb-8">
-          <Progress value={progress} className="h-2" />
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-teal-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
           <div className="flex justify-between text-xs text-gray-500 mt-2">
             <span>Account</span>
             <span>Profile</span>
@@ -587,24 +595,18 @@ export default function Signup() {
         </div>
 
         {/* Content */}
-        <Card className="bg-white shadow-lg">
-          <CardContent className="p-6">
-            {renderStep()}
-          </CardContent>
-        </Card>
+        <div className="bg-white">
+          {renderStep()}
+        </div>
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-600">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+          <Link href="/login" className="text-teal-600 hover:text-teal-800 font-medium">
             Sign in
           </Link>
         </div>
       </div>
-
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full opacity-20 -translate-y-16 translate-x-16"></div>
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-200 rounded-full opacity-20 translate-y-12 -translate-x-12"></div>
     </div>
   );
 }
