@@ -18,6 +18,13 @@ export default function BlogPostPage() {
   // Fetch blog post
   const { data: post, isLoading } = useQuery({
     queryKey: ["/api/blog-posts/slug", slug],
+    queryFn: async () => {
+      const response = await fetch(`/api/blog-posts/slug/${slug}`);
+      if (!response.ok) {
+        throw new Error('Blog post not found');
+      }
+      return response.json();
+    },
     enabled: !!slug,
   });
 
@@ -47,7 +54,7 @@ export default function BlogPostPage() {
 
   // Track view on mount
   React.useEffect(() => {
-    if (post && !viewMutation.isSuccess) {
+    if (post && !viewMutation.isSuccess && !viewMutation.isPending) {
       viewMutation.mutate(post.id);
     }
   }, [post]);
@@ -57,7 +64,7 @@ export default function BlogPostPage() {
   };
 
   const handleLike = () => {
-    if (post) {
+    if (post && !likeMutation.isPending) {
       likeMutation.mutate(post.id);
     }
   };
