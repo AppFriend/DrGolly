@@ -17,6 +17,7 @@ import Discounts from "@/pages/discounts";
 import Subscription from "@/pages/subscription";
 import Track from "@/pages/track";
 import Family from "@/pages/family";
+import FeatureDemo from "@/pages/feature-demo";
 
 function AuthenticatedApp() {
   const [activeTab, setActiveTab] = useState("home");
@@ -47,6 +48,7 @@ function AuthenticatedApp() {
           <Family />
           {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
         </Route>
+        <Route path="/feature-demo" component={FeatureDemo} />
         <Route path="/">
           <Home />
           {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}

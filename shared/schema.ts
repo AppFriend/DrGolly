@@ -51,6 +51,19 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Feature flags table to manage access control per subscription tier
+export const featureFlags = pgTable("feature_flags", {
+  id: serial("id").primaryKey(),
+  featureName: varchar("feature_name", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  freeAccess: boolean("free_access").default(false),
+  goldAccess: boolean("gold_access").default(false),
+  platinumAccess: boolean("platinum_access").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Courses table
 export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
