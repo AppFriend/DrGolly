@@ -185,7 +185,7 @@ function GrowthTracking({ childId }: { childId: number | null }) {
   // Add growth entry mutation
   const addGrowthMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return await apiRequest(`/api/children/${childId}/growth`, 'POST', data);
+      return await apiRequest('POST', `/api/children/${childId}/growth`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "growth"] });
@@ -353,7 +353,7 @@ function DevelopmentTracking({ childId }: { childId: number | null }) {
   // Update milestone tracking
   const updateTrackingMutation = useMutation({
     mutationFn: async ({ milestoneId, achieved }: { milestoneId: number; achieved: boolean }) => {
-      return await apiRequest(`/api/children/${childId}/development`, 'POST', { 
+      return await apiRequest('POST', `/api/children/${childId}/development`, { 
         milestoneId, 
         achieved, 
         achievedDate: achieved ? new Date().toISOString() : null 
@@ -480,7 +480,7 @@ function FeedingTracking({ childId }: { childId: number | null }) {
   // Add feed entry mutation
   const addFeedMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/children/${childId}/feeds`, 'POST', data);
+      return await apiRequest('POST', `/api/children/${childId}/feeds`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "feeds"] });
@@ -640,7 +640,7 @@ function SleepTracking({ childId }: { childId: number | null }) {
   // Add sleep entry mutation
   const addSleepMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return await apiRequest(`/api/children/${childId}/sleep`, 'POST', data);
+      return await apiRequest('POST', `/api/children/${childId}/sleep`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "sleep"] });
@@ -826,7 +826,7 @@ function ConsultationBooking() {
   // Book consultation mutation
   const bookConsultationMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return await apiRequest('/api/consultations', 'POST', data);
+      return await apiRequest('POST', '/api/consultations', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultations"] });

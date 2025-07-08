@@ -31,7 +31,7 @@ export default function Family() {
   // Add child mutation
   const addChildMutation = useMutation({
     mutationFn: async (childData: typeof formData) => {
-      return await apiRequest('/api/children', 'POST', childData);
+      return await apiRequest('POST', '/api/children', childData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
