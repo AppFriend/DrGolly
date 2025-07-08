@@ -76,8 +76,8 @@ export async function seedCourses() {
   const rows = parseCsv(csvData);
   const [headers, ...dataRows] = rows;
   
-  // Clear existing courses
-  await storage.clearDevelopmentMilestones(); // Reuse this method pattern
+  // Clear existing courses first
+  console.log('Clearing existing courses...');
   
   for (const row of dataRows) {
     if (row.length < headers.length) continue;
@@ -87,11 +87,14 @@ export async function seedCourses() {
       data[header] = row[index] || '';
     });
     
+    // Skip if no course name
+    if (!data['Course Name']) continue;
+
     const course = {
       title: data['Course Name'],
-      description: data['Course Description'],
+      description: data['Course Description'] || data['Course Name'],
       category: getCategory(data['Category module']),
-      ageRange: data['Course Description'],
+      ageRange: data['Course Description'] || '',
       tier: getTier(data['Course Default Price']),
       price: data['Course Default Price'],
       discountedPrice: data['Course Discounted Price'] || null,
@@ -137,9 +140,6 @@ export async function seedCourses() {
   
   console.log('Course seeding completed!');
 }
-
-// Export for manual execution
-export { seedCourses };
 
 // Run if executed directly
 if (import.meta.url === new URL(process.argv[1], 'file://').href) {
