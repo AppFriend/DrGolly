@@ -275,6 +275,416 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/seed/milestones', async (req, res) => {
+    try {
+      const sampleMilestones = [
+        {
+          name: "Waves Bye Bye",
+          description: "Can wave goodbye when prompted",
+          videoUrl: "https://example.com/milestone1.mp4",
+          ageRangeStart: 8,
+          ageRangeEnd: 12,
+          category: "social",
+        },
+        {
+          name: "Sits Without Support",
+          description: "Can sit upright without help for several minutes",
+          videoUrl: "https://example.com/milestone2.mp4",
+          ageRangeStart: 6,
+          ageRangeEnd: 8,
+          category: "motor",
+        },
+        {
+          name: "Says First Words",
+          description: "Uses first meaningful words like 'mama' or 'dada'",
+          videoUrl: "https://example.com/milestone3.mp4",
+          ageRangeStart: 10,
+          ageRangeEnd: 14,
+          category: "language",
+        },
+        {
+          name: "Crawls",
+          description: "Moves forward on hands and knees",
+          videoUrl: "https://example.com/milestone4.mp4",
+          ageRangeStart: 7,
+          ageRangeEnd: 10,
+          category: "motor",
+        }
+      ];
+
+      for (const milestone of sampleMilestones) {
+        try {
+          await storage.createDevelopmentMilestone(milestone);
+        } catch (error) {
+          console.log("Milestone already exists, skipping...");
+        }
+      }
+
+      res.json({ message: "Sample milestones created successfully" });
+    } catch (error) {
+      console.error("Error seeding milestones:", error);
+      res.status(500).json({ message: "Failed to seed milestones" });
+    }
+  });
+
+  // Seed CSV user data
+  app.post('/api/seed/users', async (req, res) => {
+    try {
+      const csvUsers = [
+        {
+          id: "user1",
+          firstName: "Natalie",
+          lastName: "Delac",
+          email: "ndelac265@gmail.com",
+          country: "+61",
+          phone: "",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 9,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement, Toddler Toolkit",
+          signInCount: 26,
+          lastSignIn: new Date("2023-05-25T04:42:00.000Z"),
+        },
+        {
+          id: "user2",
+          firstName: "Test",
+          lastName: "Test",
+          email: "julie_gb888@hotmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 1,
+          coursesPurchasedPreviously: "Preparation for Newborns",
+          signInCount: 1,
+          lastSignIn: new Date("2021-05-06T21:21:38.000Z"),
+        },
+        {
+          id: "user3",
+          firstName: "Isabella",
+          lastName: "Gozel",
+          email: "isabellagozel@gmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 8,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement",
+          signInCount: 26,
+          lastSignIn: new Date("2024-10-23T09:15:15.000Z"),
+        },
+        {
+          id: "user4",
+          firstName: "Jamie",
+          lastName: "Jakubowicz",
+          email: "jamiejakubowicz@yahoo.com.au",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 8,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement",
+          signInCount: 59,
+          lastSignIn: new Date("2025-04-14T05:37:07.000Z"),
+        },
+        {
+          id: "user5",
+          firstName: "Sarah",
+          lastName: "Johnson",
+          email: "danielgolly@hotmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 1,
+          coursesPurchasedPreviously: "Preparation for Newborns",
+          signInCount: 2,
+          lastSignIn: new Date("2021-05-20T00:43:41.000Z"),
+        },
+        {
+          id: "user6",
+          firstName: "Jennifer",
+          lastName: "Foster",
+          email: "jenny.burdick@gmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 8,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement",
+          signInCount: 31,
+          lastSignIn: new Date("2022-07-23T16:11:33.000Z"),
+        },
+        {
+          id: "user7",
+          firstName: "Chloe",
+          lastName: "Palmer",
+          email: "chloerosepalmer@gmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 8,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement",
+          signInCount: 41,
+          lastSignIn: new Date("2025-01-20T04:59:01.000Z"),
+        },
+        {
+          id: "user8",
+          firstName: "Jessica",
+          lastName: "Ridley",
+          email: "jessicaridleytv@gmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 8,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement",
+          signInCount: 24,
+          lastSignIn: new Date("2025-07-01T10:40:43.000Z"),
+        },
+        {
+          id: "user9",
+          firstName: "Georgie",
+          lastName: "Elliott",
+          email: "georgina.elliott26@gmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 8,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement",
+          signInCount: 488,
+          lastSignIn: new Date("2025-06-07T23:46:34.000Z"),
+        },
+        {
+          id: "user10",
+          firstName: "Lauren",
+          lastName: "Atkins",
+          email: "laurenashleeatkins@gmail.com",
+          country: "+61",
+          phone: "61412987846",
+          signupSource: "App",
+          migrated: true,
+          choosePlan: "free",
+          countCourses: 8,
+          coursesPurchasedPreviously: "Preparation for Newborns, Little Baby Sleep Program, Big Baby Sleep Program, Pre-Toddler Sleep Program, Toddler Sleep Program, Pre-School Sleep Program, New Sibling Supplement, Twins Supplement",
+          signInCount: 348,
+          lastSignIn: new Date("2025-06-21T22:41:56.000Z"),
+        }
+      ];
+
+      for (const userData of csvUsers) {
+        try {
+          await storage.upsertUser(userData);
+          console.log(`User ${userData.firstName} ${userData.lastName} imported successfully`);
+        } catch (error) {
+          console.log(`Error importing user ${userData.firstName} ${userData.lastName}:`, error);
+        }
+      }
+
+      res.json({ message: "CSV users imported successfully" });
+    } catch (error) {
+      console.error("Error seeding users:", error);
+      res.status(500).json({ message: "Failed to seed users" });
+    }
+  });
+
+  // Seed children for CSV users
+  app.post('/api/seed/children', async (req, res) => {
+    try {
+      const childrenData = [
+        { userId: "user1", name: "Emma Delac", dateOfBirth: "2024-12-20", gender: "female" },
+        { userId: "user2", name: "Baby Test", dateOfBirth: "2024-12-21", gender: "not-specified" },
+        { userId: "user3", name: "Oliver Gozel", dateOfBirth: "2024-12-22", gender: "male" },
+        { userId: "user4", name: "Sophia Jakubowicz", dateOfBirth: "2024-12-23", gender: "female" },
+        { userId: "user5", name: "Liam Johnson", dateOfBirth: "2024-12-27", gender: "male" },
+        { userId: "user6", name: "Ava Foster", dateOfBirth: "2024-12-29", gender: "female" },
+        { userId: "user7", name: "Noah Palmer", dateOfBirth: "2025-01-01", gender: "male" },
+        { userId: "user8", name: "Mia Ridley", dateOfBirth: "2025-01-04", gender: "female" },
+        { userId: "user9", name: "Lucas Elliott", dateOfBirth: "2025-01-11", gender: "male" },
+        { userId: "user10", name: "Isabella Atkins", dateOfBirth: "2025-02-02", gender: "female" },
+      ];
+
+      for (const childData of childrenData) {
+        try {
+          await storage.createChild(childData);
+          console.log(`Child ${childData.name} created for ${childData.userId}`);
+        } catch (error) {
+          console.log(`Error creating child ${childData.name}:`, error);
+        }
+      }
+
+      res.json({ message: "Children created successfully for CSV users" });
+    } catch (error) {
+      console.error("Error seeding children:", error);
+      res.status(500).json({ message: "Failed to seed children" });
+    }
+  });
+
+  // Children routes
+  app.get('/api/children', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const children = await storage.getUserChildren(userId);
+      res.json(children);
+    } catch (error) {
+      console.error("Error fetching children:", error);
+      res.status(500).json({ message: "Failed to fetch children" });
+    }
+  });
+
+  app.post('/api/children', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const childData = { ...req.body, userId };
+      const child = await storage.createChild(childData);
+      res.json(child);
+    } catch (error) {
+      console.error("Error creating child:", error);
+      res.status(500).json({ message: "Failed to create child" });
+    }
+  });
+
+  // Growth tracking routes
+  app.get('/api/children/:childId/growth', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const entries = await storage.getChildGrowthEntries(parseInt(childId));
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching growth entries:", error);
+      res.status(500).json({ message: "Failed to fetch growth entries" });
+    }
+  });
+
+  app.post('/api/children/:childId/growth', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const entryData = { ...req.body, childId: parseInt(childId) };
+      const entry = await storage.createGrowthEntry(entryData);
+      res.json(entry);
+    } catch (error) {
+      console.error("Error creating growth entry:", error);
+      res.status(500).json({ message: "Failed to create growth entry" });
+    }
+  });
+
+  // Development tracking routes
+  app.get('/api/milestones', async (req, res) => {
+    try {
+      const milestones = await storage.getDevelopmentMilestones();
+      res.json(milestones);
+    } catch (error) {
+      console.error("Error fetching milestones:", error);
+      res.status(500).json({ message: "Failed to fetch milestones" });
+    }
+  });
+
+  app.get('/api/children/:childId/development', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const tracking = await storage.getChildDevelopmentTracking(parseInt(childId));
+      res.json(tracking);
+    } catch (error) {
+      console.error("Error fetching development tracking:", error);
+      res.status(500).json({ message: "Failed to fetch development tracking" });
+    }
+  });
+
+  app.post('/api/children/:childId/development', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const trackingData = { ...req.body, childId: parseInt(childId) };
+      const tracking = await storage.createDevelopmentTracking(trackingData);
+      res.json(tracking);
+    } catch (error) {
+      console.error("Error creating development tracking:", error);
+      res.status(500).json({ message: "Failed to create development tracking" });
+    }
+  });
+
+  // Feed tracking routes
+  app.get('/api/children/:childId/feeds', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const feeds = await storage.getChildFeedEntries(parseInt(childId));
+      res.json(feeds);
+    } catch (error) {
+      console.error("Error fetching feed entries:", error);
+      res.status(500).json({ message: "Failed to fetch feed entries" });
+    }
+  });
+
+  app.post('/api/children/:childId/feeds', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const feedData = { ...req.body, childId: parseInt(childId) };
+      const feed = await storage.createFeedEntry(feedData);
+      res.json(feed);
+    } catch (error) {
+      console.error("Error creating feed entry:", error);
+      res.status(500).json({ message: "Failed to create feed entry" });
+    }
+  });
+
+  // Sleep tracking routes
+  app.get('/api/children/:childId/sleep', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const sleepEntries = await storage.getChildSleepEntries(parseInt(childId));
+      res.json(sleepEntries);
+    } catch (error) {
+      console.error("Error fetching sleep entries:", error);
+      res.status(500).json({ message: "Failed to fetch sleep entries" });
+    }
+  });
+
+  app.post('/api/children/:childId/sleep', isAuthenticated, async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const sleepData = { ...req.body, childId: parseInt(childId) };
+      const sleep = await storage.createSleepEntry(sleepData);
+      res.json(sleep);
+    } catch (error) {
+      console.error("Error creating sleep entry:", error);
+      res.status(500).json({ message: "Failed to create sleep entry" });
+    }
+  });
+
+  // Consultation booking routes
+  app.get('/api/consultations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookings = await storage.getUserConsultationBookings(userId);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching consultation bookings:", error);
+      res.status(500).json({ message: "Failed to fetch consultation bookings" });
+    }
+  });
+
+  app.post('/api/consultations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookingData = { ...req.body, userId };
+      const booking = await storage.createConsultationBooking(bookingData);
+      res.json(booking);
+    } catch (error) {
+      console.error("Error creating consultation booking:", error);
+      res.status(500).json({ message: "Failed to create consultation booking" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

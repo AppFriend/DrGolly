@@ -1,23 +1,39 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, Calendar, Clock, Award, Target } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Baby, Calendar, Clock, TrendingUp, Video, Timer, Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
+import type { Child, GrowthEntry, DevelopmentMilestone, DevelopmentTracking, FeedEntry, SleepEntry, ConsultationBooking } from "@shared/schema";
 
 export default function Track() {
-  const { user } = useAuth();
   const { toast } = useToast();
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const [activeChild, setActiveChild] = useState<number | null>(null);
 
-  const { data: userProgress, isLoading, error } = useQuery({
-    queryKey: ["/api/user/progress"],
-    enabled: !!user,
+  // Fetch user's children
+  const { data: children = [], isLoading: isChildrenLoading } = useQuery({
+    queryKey: ["/api/children"],
+    enabled: isAuthenticated,
   });
 
+  // Set first child as active by default
   useEffect(() => {
-    if (error && isUnauthorizedError(error as Error)) {
+    if (children.length > 0 && !activeChild) {
+      setActiveChild(children[0].id);
+    }
+  }, [children, activeChild]);
+
+  // Authorization check
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
       toast({
         title: "Unauthorized",
         description: "You are logged out. Logging in again...",
@@ -26,184 +42,932 @@ export default function Track() {
       setTimeout(() => {
         window.location.href = "/api/login";
       }, 500);
+      return;
     }
-  }, [error, toast]);
+  }, [isAuthenticated, isAuthLoading, toast]);
 
-  const calculateOverallProgress = () => {
-    if (!userProgress || userProgress.length === 0) return 0;
-    const totalProgress = userProgress.reduce((sum: number, item: any) => sum + item.progress, 0);
-    return Math.round(totalProgress / userProgress.length);
-  };
-
-  const getCompletedCourses = () => {
-    if (!userProgress) return 0;
-    return userProgress.filter((item: any) => item.isCompleted).length;
-  };
-
-  const getStreakDays = () => {
-    // Mock streak calculation - in real app, this would be calculated from actual data
-    return 7;
-  };
-
-  if (isLoading) {
+  if (isAuthLoading || isChildrenLoading) {
     return (
-      <div className="min-h-screen bg-dr-bg">
-        <div className="animate-pulse p-4 space-y-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded-2xl"></div>
-          ))}
+      <div className="min-h-screen bg-white">
+        <div className="animate-pulse">
+          <div className="h-16 bg-gray-200"></div>
+          <div className="p-4 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
+  if (children.length === 0) {
+    return (
+      <div className="min-h-screen bg-white pb-20">
+        <div className="bg-white border-b border-gray-100 p-4">
+          <h1 className="text-lg font-semibold flex items-center font-heading">
+            <TrendingUp className="mr-2 h-5 w-5 text-[#83CFCC]" />
+            Track
+          </h1>
+        </div>
+        <div className="text-center py-12 px-4">
+          <Baby className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+          <h2 className="text-xl font-semibold mb-2 font-heading">No Children Added</h2>
+          <p className="text-gray-600 mb-6 font-sans">
+            Add your children in the Family section to start tracking their growth and development.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const activeChildData = children.find((child: Child) => child.id === activeChild);
+
   return (
     <div className="min-h-screen bg-white pb-20">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 p-4">
-        <h1 className="text-lg font-semibold flex items-center">
-          <TrendingUp className="h-5 w-5 mr-2 text-dr-teal" />
-          Your Progress
+        <h1 className="text-lg font-semibold flex items-center font-heading">
+          <TrendingUp className="mr-2 h-5 w-5 text-[#83CFCC]" />
+          Track
         </h1>
-        <p className="text-sm text-gray-600">Track your learning journey and achievements</p>
       </div>
 
-      {/* Progress Stats */}
-      <div className="p-4 space-y-4">
-        {/* Overall Progress */}
-        <Card className="border-dr-teal/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Target className="h-5 w-5 mr-2 text-dr-teal" />
-              Overall Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Completion Rate</span>
-                <span className="text-2xl font-bold text-dr-teal">{calculateOverallProgress()}%</span>
+      <div className="p-4">
+        {/* Child Selector */}
+        {children.length > 1 && (
+          <div className="mb-4">
+            <Label>Select Child</Label>
+            <select
+              value={activeChild || ""}
+              onChange={(e) => setActiveChild(parseInt(e.target.value))}
+              className="w-full p-2 border border-gray-300 rounded-md mt-1"
+            >
+              {children.map((child: Child) => (
+                <option key={child.id} value={child.id}>
+                  {child.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Active Child Info */}
+        {activeChildData && (
+          <Card className="mb-4">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-[#83CFCC]/10 rounded-full flex items-center justify-center">
+                  <Baby className="h-6 w-6 text-[#83CFCC]" />
+                </div>
+                <div>
+                  <h3 className="font-semibold font-heading">{activeChildData.name}</h3>
+                  <p className="text-sm text-gray-600 font-sans">
+                    Born: {new Date(activeChildData.dateOfBirth).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-              <Progress value={calculateOverallProgress()} className="h-3" />
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-dr-teal/10 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-dr-teal">{userProgress?.length || 0}</div>
-                  <div className="text-xs text-gray-600">Started</div>
-                </div>
-                <div className="bg-green-100 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-green-600">{getCompletedCourses()}</div>
-                  <div className="text-xs text-gray-600">Completed</div>
-                </div>
-                <div className="bg-orange-100 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-orange-600">{getStreakDays()}</div>
-                  <div className="text-xs text-gray-600">Day Streak</div>
-                </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tracking Tabs */}
+        <Tabs defaultValue="growth" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="growth" className="text-xs">Growth</TabsTrigger>
+            <TabsTrigger value="development" className="text-xs">Dev</TabsTrigger>
+            <TabsTrigger value="feed" className="text-xs">Feed</TabsTrigger>
+            <TabsTrigger value="sleep" className="text-xs">Sleep</TabsTrigger>
+            <TabsTrigger value="review" className="text-xs">Review</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="growth">
+            <GrowthTracking childId={activeChild} />
+          </TabsContent>
+          
+          <TabsContent value="development">
+            <DevelopmentTracking childId={activeChild} />
+          </TabsContent>
+          
+          <TabsContent value="feed">
+            <FeedingTracking childId={activeChild} />
+          </TabsContent>
+          
+          <TabsContent value="sleep">
+            <SleepTracking childId={activeChild} />
+          </TabsContent>
+          
+          <TabsContent value="review">
+            <ConsultationBooking />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+
+function GrowthTracking({ childId }: { childId: number | null }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    weight: "",
+    height: "",
+    headCircumference: "",
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  // Fetch growth entries
+  const { data: growthEntries = [], isLoading } = useQuery({
+    queryKey: ["/api/children", childId, "growth"],
+    enabled: !!childId,
+  });
+
+  // Add growth entry mutation
+  const addGrowthMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return await apiRequest(`/api/children/${childId}/growth`, 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "growth"] });
+      setFormData({ weight: "", height: "", headCircumference: "", date: new Date().toISOString().split('T')[0] });
+      toast({
+        title: "Success",
+        description: "Growth entry added successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to add growth entry.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.weight && !formData.height && !formData.headCircumference) {
+      toast({
+        title: "Error",
+        description: "Please enter at least one measurement.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addGrowthMutation.mutate(formData);
+  };
+
+  if (!childId) return <div>Please select a child to track growth.</div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Add New Entry Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-heading">Add Growth Entry</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="weight">Weight (kg)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  step="0.01"
+                  value={formData.weight}
+                  onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
+                  placeholder="4.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="height">Height (cm)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  step="0.1"
+                  value={formData.height}
+                  onChange={(e) => setFormData(prev => ({ ...prev, height: e.target.value }))}
+                  placeholder="52.5"
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
+            
+            <div>
+              <Label htmlFor="headCircumference">Head Circumference (cm)</Label>
+              <Input
+                id="headCircumference"
+                type="number"
+                step="0.1"
+                value={formData.headCircumference}
+                onChange={(e) => setFormData(prev => ({ ...prev, headCircumference: e.target.value }))}
+                placeholder="35.2"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                required
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              disabled={addGrowthMutation.isPending}
+              className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
+            >
+              {addGrowthMutation.isPending ? "Adding..." : "Add Entry"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-dr-teal" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {userProgress?.slice(0, 5).map((item: any, index: number) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-dr-teal rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">{item.progress}%</span>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-sm">Course Progress</h4>
-                      <p className="text-xs text-gray-500">
-                        Last watched: {new Date(item.lastWatched).toLocaleDateString()}
-                      </p>
+      {/* Growth History */}
+      <div className="space-y-2">
+        <h3 className="font-semibold font-heading">Growth History</h3>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+        ) : growthEntries.length > 0 ? (
+          growthEntries.map((entry: GrowthEntry) => (
+            <Card key={entry.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold font-heading">
+                      {new Date(entry.date).toLocaleDateString()}
+                    </p>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      {entry.weight && <p>Weight: {entry.weight} kg</p>}
+                      {entry.height && <p>Height: {entry.height} cm</p>}
+                      {entry.headCircumference && <p>Head: {entry.headCircumference} cm</p>}
                     </div>
                   </div>
-                  {item.isCompleted && (
-                    <Award className="h-5 w-5 text-green-500" />
-                  )}
+                  <TrendingUp className="h-5 w-5 text-[#83CFCC]" />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <p className="text-gray-500 text-center py-8">No growth entries yet</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
-        {/* Learning Goals */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Calendar className="h-5 w-5 mr-2 text-dr-teal" />
-              Learning Goals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Weekly Goal</span>
-                <span className="text-sm font-medium">3 courses</span>
-              </div>
-              <Progress value={66} className="h-2" />
-              <div className="text-xs text-gray-500">2 of 3 courses completed this week</div>
-            </div>
-          </CardContent>
-        </Card>
+function DevelopmentTracking({ childId }: { childId: number | null }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-        {/* Achievements */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Award className="h-5 w-5 mr-2 text-dr-teal" />
-              Achievements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-dr-teal/10 rounded-lg p-3 text-center">
-                <Award className="h-8 w-8 text-dr-teal mx-auto mb-2" />
-                <div className="text-sm font-medium">First Course</div>
-                <div className="text-xs text-gray-500">Completed</div>
-              </div>
-              <div className="bg-gray-100 rounded-lg p-3 text-center">
-                <Award className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <div className="text-sm font-medium text-gray-400">Sleep Expert</div>
-                <div className="text-xs text-gray-400">Locked</div>
-              </div>
-              <div className="bg-gray-100 rounded-lg p-3 text-center">
-                <Award className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <div className="text-sm font-medium text-gray-400">Nutrition Pro</div>
-                <div className="text-xs text-gray-400">Locked</div>
-              </div>
-              <div className="bg-gray-100 rounded-lg p-3 text-center">
-                <Award className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <div className="text-sm font-medium text-gray-400">Streak Master</div>
-                <div className="text-xs text-gray-400">Locked</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+  // Fetch milestones
+  const { data: milestones = [] } = useQuery({
+    queryKey: ["/api/milestones"],
+  });
 
-        {/* Empty State */}
-        {(!userProgress || userProgress.length === 0) && (
-          <div className="text-center py-12">
-            <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Start Your Learning Journey</h3>
-            <p className="text-gray-500 mb-4">
-              Begin watching courses to track your progress and earn achievements.
-            </p>
-            <button
-              onClick={() => window.location.href = "/courses"}
-              className="bg-dr-teal text-white px-6 py-2 rounded-lg hover:bg-dr-teal-dark transition-colors"
+  // Fetch child's development tracking
+  const { data: tracking = [], isLoading } = useQuery({
+    queryKey: ["/api/children", childId, "development"],
+    enabled: !!childId,
+  });
+
+  // Update milestone tracking
+  const updateTrackingMutation = useMutation({
+    mutationFn: async ({ milestoneId, achieved }: { milestoneId: number; achieved: boolean }) => {
+      return await apiRequest(`/api/children/${childId}/development`, 'POST', { 
+        milestoneId, 
+        achieved, 
+        achievedDate: achieved ? new Date().toISOString() : null 
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "development"] });
+      toast({
+        title: "Success",
+        description: "Milestone updated successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update milestone.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getMilestoneStatus = (milestoneId: number) => {
+    return tracking.find((t: DevelopmentTracking) => t.milestoneId === milestoneId);
+  };
+
+  if (!childId) return <div>Please select a child to track development.</div>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold font-heading">Development Milestones</h3>
+      
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-gray-200 rounded animate-pulse"></div>
+          ))}
+        </div>
+      ) : milestones.length > 0 ? (
+        milestones.map((milestone: DevelopmentMilestone) => {
+          const status = getMilestoneStatus(milestone.id);
+          const isAchieved = status?.achieved || false;
+          
+          return (
+            <Card key={milestone.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Video className="h-4 w-4 text-[#83CFCC]" />
+                      <h4 className="font-semibold font-heading">{milestone.name}</h4>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{milestone.description}</p>
+                    <p className="text-xs text-gray-500">
+                      Age range: {milestone.ageRangeStart}-{milestone.ageRangeEnd} months
+                    </p>
+                    {status?.achievedDate && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Achieved: {new Date(status.achievedDate).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant={isAchieved ? "default" : "outline"}
+                      onClick={() => updateTrackingMutation.mutate({ 
+                        milestoneId: milestone.id, 
+                        achieved: !isAchieved 
+                      })}
+                      disabled={updateTrackingMutation.isPending}
+                      className={isAchieved ? "bg-green-600 hover:bg-green-700" : ""}
+                    >
+                      {isAchieved ? "✓ Done" : "Mark Done"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })
+      ) : (
+        <p className="text-gray-500 text-center py-8">No milestones available</p>
+      )}
+    </div>
+  );
+}
+
+function FeedingTracking({ childId }: { childId: number | null }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isFeeding, setIsFeeding] = useState(false);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [timer, setTimer] = useState(0);
+  const [feedType, setFeedType] = useState<"breast" | "bottle">("breast");
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isFeeding && startTime) {
+      interval = setInterval(() => {
+        setTimer(Math.floor((Date.now() - startTime.getTime()) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isFeeding, startTime]);
+
+  // Fetch feed entries
+  const { data: feedEntries = [], isLoading } = useQuery({
+    queryKey: ["/api/children", childId, "feeds"],
+    enabled: !!childId,
+  });
+
+  // Add feed entry mutation
+  const addFeedMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest(`/api/children/${childId}/feeds`, 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "feeds"] });
+      toast({
+        title: "Success",
+        description: "Feed entry added successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to add feed entry.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const startFeeding = () => {
+    setIsFeeding(true);
+    setStartTime(new Date());
+    setTimer(0);
+  };
+
+  const stopFeeding = () => {
+    if (startTime) {
+      const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
+      addFeedMutation.mutate({
+        type: feedType,
+        duration,
+        startTime: startTime.toISOString(),
+        endTime: new Date().toISOString(),
+      });
+    }
+    setIsFeeding(false);
+    setStartTime(null);
+    setTimer(0);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!childId) return <div>Please select a child to track feeding.</div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Feed Timer */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-heading">Feed Timer</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Feed Type</Label>
+            <select
+              value={feedType}
+              onChange={(e) => setFeedType(e.target.value as "breast" | "bottle")}
+              className="w-full p-2 border border-gray-300 rounded-md mt-1"
+              disabled={isFeeding}
             >
-              Browse Courses
-            </button>
+              <option value="breast">Breastfeeding</option>
+              <option value="bottle">Bottle</option>
+            </select>
           </div>
+          
+          <div className="text-center">
+            <div className="text-4xl font-mono font-bold text-[#83CFCC] mb-4">
+              {formatTime(timer)}
+            </div>
+            
+            {!isFeeding ? (
+              <Button 
+                onClick={startFeeding}
+                className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
+              >
+                <Timer className="mr-2 h-4 w-4" />
+                Start {feedType === "breast" ? "Breastfeeding" : "Bottle"}
+              </Button>
+            ) : (
+              <Button 
+                onClick={stopFeeding}
+                variant="destructive"
+                className="w-full"
+                disabled={addFeedMutation.isPending}
+              >
+                {addFeedMutation.isPending ? "Saving..." : "Stop & Save"}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Feed History */}
+      <div className="space-y-2">
+        <h3 className="font-semibold font-heading">Recent Feeds</h3>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+        ) : feedEntries.length > 0 ? (
+          feedEntries.slice(0, 10).map((entry: FeedEntry) => (
+            <Card key={entry.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold font-heading capitalize">
+                      {entry.type} - {formatTime(entry.duration)}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(entry.startTime).toLocaleString()}
+                    </p>
+                  </div>
+                  <Timer className="h-5 w-5 text-[#83CFCC]" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <p className="text-gray-500 text-center py-8">No feed entries yet</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SleepTracking({ childId }: { childId: number | null }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    sleepStart: "",
+    sleepEnd: "",
+    quality: "good" as "poor" | "fair" | "good" | "excellent",
+    notes: ""
+  });
+
+  // Fetch sleep entries
+  const { data: sleepEntries = [], isLoading } = useQuery({
+    queryKey: ["/api/children", childId, "sleep"],
+    enabled: !!childId,
+  });
+
+  // Add sleep entry mutation
+  const addSleepMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return await apiRequest(`/api/children/${childId}/sleep`, 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "sleep"] });
+      setFormData({ sleepStart: "", sleepEnd: "", quality: "good", notes: "" });
+      toast({
+        title: "Success",
+        description: "Sleep entry added successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to add sleep entry.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.sleepStart || !formData.sleepEnd) {
+      toast({
+        title: "Error",
+        description: "Please enter both start and end times.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addSleepMutation.mutate(formData);
+  };
+
+  const calculateDuration = (start: string, end: string) => {
+    if (!start || !end) return "";
+    const startTime = new Date(start);
+    const endTime = new Date(end);
+    const diff = endTime.getTime() - startTime.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
+  if (!childId) return <div>Please select a child to track sleep.</div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Add Sleep Entry */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-heading">Add Sleep Entry</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="sleepStart">Sleep Start</Label>
+                <Input
+                  id="sleepStart"
+                  type="datetime-local"
+                  value={formData.sleepStart}
+                  onChange={(e) => setFormData(prev => ({ ...prev, sleepStart: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="sleepEnd">Sleep End</Label>
+                <Input
+                  id="sleepEnd"
+                  type="datetime-local"
+                  value={formData.sleepEnd}
+                  onChange={(e) => setFormData(prev => ({ ...prev, sleepEnd: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="quality">Sleep Quality</Label>
+              <select
+                id="quality"
+                value={formData.quality}
+                onChange={(e) => setFormData(prev => ({ ...prev, quality: e.target.value as any }))}
+                className="w-full p-2 border border-gray-300 rounded-md mt-1"
+              >
+                <option value="poor">Poor</option>
+                <option value="fair">Fair</option>
+                <option value="good">Good</option>
+                <option value="excellent">Excellent</option>
+              </select>
+            </div>
+            
+            <div>
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Input
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Any observations about the sleep..."
+              />
+            </div>
+            
+            {formData.sleepStart && formData.sleepEnd && (
+              <div className="text-center p-2 bg-[#83CFCC]/10 rounded">
+                <p className="text-sm font-semibold">
+                  Duration: {calculateDuration(formData.sleepStart, formData.sleepEnd)}
+                </p>
+              </div>
+            )}
+            
+            <Button 
+              type="submit" 
+              disabled={addSleepMutation.isPending}
+              className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
+            >
+              {addSleepMutation.isPending ? "Adding..." : "Add Sleep Entry"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Sleep History */}
+      <div className="space-y-2">
+        <h3 className="font-semibold font-heading">Sleep History</h3>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+        ) : sleepEntries.length > 0 ? (
+          sleepEntries.slice(0, 10).map((entry: SleepEntry) => (
+            <Card key={entry.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold font-heading">
+                      {calculateDuration(entry.sleepStart, entry.sleepEnd)}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(entry.sleepStart).toLocaleString()} - {new Date(entry.sleepEnd).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500 capitalize">Quality: {entry.quality}</p>
+                    {entry.notes && <p className="text-xs text-gray-500">{entry.notes}</p>}
+                  </div>
+                  <Moon className="h-5 w-5 text-[#83CFCC]" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <p className="text-gray-500 text-center py-8">No sleep entries yet</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConsultationBooking() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    consultationType: "sleep-review" as "sleep-review" | "development" | "nutrition",
+    preferredDate: "",
+    preferredTime: "",
+    concerns: ""
+  });
+
+  // Fetch consultation bookings
+  const { data: bookings = [], isLoading } = useQuery({
+    queryKey: ["/api/consultations"],
+  });
+
+  // Book consultation mutation
+  const bookConsultationMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return await apiRequest('/api/consultations', 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultations"] });
+      setFormData({ consultationType: "sleep-review", preferredDate: "", preferredTime: "", concerns: "" });
+      toast({
+        title: "Success",
+        description: "Consultation booked successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to book consultation.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.preferredDate || !formData.preferredTime) {
+      toast({
+        title: "Error",
+        description: "Please select a preferred date and time.",
+        variant: "destructive",
+      });
+      return;
+    }
+    bookConsultationMutation.mutate(formData);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Book Consultation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-heading">Book Sleep Review</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="consultationType">Consultation Type</Label>
+              <select
+                id="consultationType"
+                value={formData.consultationType}
+                onChange={(e) => setFormData(prev => ({ ...prev, consultationType: e.target.value as any }))}
+                className="w-full p-2 border border-gray-300 rounded-md mt-1"
+              >
+                <option value="sleep-review">Sleep Review</option>
+                <option value="development">Development Consultation</option>
+                <option value="nutrition">Nutrition Consultation</option>
+              </select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="preferredDate">Preferred Date</Label>
+                <Input
+                  id="preferredDate"
+                  type="date"
+                  value={formData.preferredDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, preferredDate: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="preferredTime">Preferred Time</Label>
+                <Input
+                  id="preferredTime"
+                  type="time"
+                  value={formData.preferredTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, preferredTime: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="concerns">Concerns/Questions</Label>
+              <textarea
+                id="concerns"
+                value={formData.concerns}
+                onChange={(e) => setFormData(prev => ({ ...prev, concerns: e.target.value }))}
+                placeholder="What would you like to discuss during the consultation?"
+                className="w-full p-2 border border-gray-300 rounded-md mt-1 h-20 resize-none"
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              disabled={bookConsultationMutation.isPending}
+              className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
+            >
+              {bookConsultationMutation.isPending ? "Booking..." : "Book Consultation"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Booked Consultations */}
+      <div className="space-y-2">
+        <h3 className="font-semibold font-heading">Your Consultations</h3>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+        ) : bookings.length > 0 ? (
+          bookings.map((booking: ConsultationBooking) => (
+            <Card key={booking.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold font-heading capitalize">
+                      {booking.consultationType.replace('-', ' ')}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(booking.preferredDate).toLocaleDateString()} at {booking.preferredTime}
+                    </p>
+                    <p className="text-xs text-gray-500 capitalize">Status: {booking.status}</p>
+                    {booking.concerns && <p className="text-xs text-gray-500 mt-1">{booking.concerns}</p>}
+                  </div>
+                  <Calendar className="h-5 w-5 text-[#83CFCC]" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <p className="text-gray-500 text-center py-8">No consultations booked yet</p>
         )}
       </div>
     </div>

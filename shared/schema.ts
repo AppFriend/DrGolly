@@ -36,6 +36,16 @@ export const users = pgTable("users", {
   subscriptionStatus: varchar("subscription_status").default("active").notNull(), // active, cancelled, expired
   nextBillingDate: timestamp("next_billing_date"),
   billingPeriod: varchar("billing_period").default("monthly"), // monthly, yearly
+  // Additional CSV attributes
+  country: varchar("country"),
+  phone: varchar("phone"),
+  signupSource: varchar("signup_source"),
+  migrated: boolean("migrated").default(false),
+  choosePlan: varchar("choose_plan").default("free"),
+  countCourses: integer("count_courses").default(0),
+  coursesPurchasedPreviously: text("courses_purchased_previously"),
+  signInCount: integer("sign_in_count").default(0),
+  lastSignIn: timestamp("last_sign_in"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -96,10 +106,145 @@ export const billingHistory = pgTable("billing_history", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Children profiles for family tracking
+export const children = pgTable("children", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  name: varchar("name").notNull(),
+  dateOfBirth: timestamp("date_of_birth").notNull(),
+  gender: varchar("gender"), // male, female, other
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Growth tracking data
+export const growthEntries = pgTable("growth_entries", {
+  id: serial("id").primaryKey(),
+  childId: integer("child_id").references(() => children.id).notNull(),
+  measurementType: varchar("measurement_type").notNull(), // weight, height, head_circumference
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  unit: varchar("unit").notNull(), // kg, cm, etc.
+  percentile: decimal("percentile", { precision: 5, scale: 2 }),
+  logDate: timestamp("log_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Development milestone tracking
+export const developmentMilestones = pgTable("development_milestones", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  videoUrl: varchar("video_url"),
+  ageRangeStart: integer("age_range_start"), // in months
+  ageRangeEnd: integer("age_range_end"), // in months
+  category: varchar("category"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const developmentTracking = pgTable("development_tracking", {
+  id: serial("id").primaryKey(),
+  childId: integer("child_id").references(() => children.id).notNull(),
+  milestoneId: integer("milestone_id").references(() => developmentMilestones.id).notNull(),
+  status: varchar("status").notNull(), // yes, sometimes, maybe, never
+  logDate: timestamp("log_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Feed tracking
+export const feedEntries = pgTable("feed_entries", {
+  id: serial("id").primaryKey(),
+  childId: integer("child_id").references(() => children.id).notNull(),
+  feedDate: timestamp("feed_date").defaultNow(),
+  leftDuration: integer("left_duration"), // in minutes
+  rightDuration: integer("right_duration"), // in minutes
+  totalDuration: integer("total_duration"), // in minutes
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Sleep tracking
+export const sleepEntries = pgTable("sleep_entries", {
+  id: serial("id").primaryKey(),
+  childId: integer("child_id").references(() => children.id).notNull(),
+  sleepDate: timestamp("sleep_date").defaultNow(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  duration: integer("duration"), // in minutes
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Consultation bookings
+export const consultationBookings = pgTable("consultation_bookings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  consultationType: varchar("consultation_type").notNull(), // sleep, lactation
+  requestedDate: timestamp("requested_date"),
+  status: varchar("status").default("pending"), // pending, confirmed, completed, cancelled
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   courseProgress: many(userCourseProgress),
   billingHistory: many(billingHistory),
+  children: many(children),
+  consultationBookings: many(consultationBookings),
+}));
+
+export const childrenRelations = relations(children, ({ one, many }) => ({
+  user: one(users, {
+    fields: [children.userId],
+    references: [users.id],
+  }),
+  growthEntries: many(growthEntries),
+  developmentTracking: many(developmentTracking),
+  feedEntries: many(feedEntries),
+  sleepEntries: many(sleepEntries),
+}));
+
+export const growthEntriesRelations = relations(growthEntries, ({ one }) => ({
+  child: one(children, {
+    fields: [growthEntries.childId],
+    references: [children.id],
+  }),
+}));
+
+export const developmentMilestonesRelations = relations(developmentMilestones, ({ many }) => ({
+  tracking: many(developmentTracking),
+}));
+
+export const developmentTrackingRelations = relations(developmentTracking, ({ one }) => ({
+  child: one(children, {
+    fields: [developmentTracking.childId],
+    references: [children.id],
+  }),
+  milestone: one(developmentMilestones, {
+    fields: [developmentTracking.milestoneId],
+    references: [developmentMilestones.id],
+  }),
+}));
+
+export const feedEntriesRelations = relations(feedEntries, ({ one }) => ({
+  child: one(children, {
+    fields: [feedEntries.childId],
+    references: [children.id],
+  }),
+}));
+
+export const sleepEntriesRelations = relations(sleepEntries, ({ one }) => ({
+  child: one(children, {
+    fields: [sleepEntries.childId],
+    references: [children.id],
+  }),
+}));
+
+export const consultationBookingsRelations = relations(consultationBookings, ({ one }) => ({
+  user: one(users, {
+    fields: [consultationBookings.userId],
+    references: [users.id],
+  }),
 }));
 
 export const coursesRelations = relations(courses, ({ many }) => ({
@@ -152,6 +297,43 @@ export const insertBillingHistorySchema = createInsertSchema(billingHistory).omi
   createdAt: true,
 });
 
+// New tracking schemas
+export const insertChildSchema = createInsertSchema(children).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGrowthEntrySchema = createInsertSchema(growthEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDevelopmentMilestoneSchema = createInsertSchema(developmentMilestones).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDevelopmentTrackingSchema = createInsertSchema(developmentTracking).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFeedEntrySchema = createInsertSchema(feedEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSleepEntrySchema = createInsertSchema(sleepEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertConsultationBookingSchema = createInsertSchema(consultationBookings).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -163,3 +345,19 @@ export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type InsertUserCourseProgress = z.infer<typeof insertUserCourseProgressSchema>;
 export type InsertPartnerDiscount = z.infer<typeof insertPartnerDiscountSchema>;
 export type InsertBillingHistory = z.infer<typeof insertBillingHistorySchema>;
+
+// New tracking types
+export type Child = typeof children.$inferSelect;
+export type GrowthEntry = typeof growthEntries.$inferSelect;
+export type DevelopmentMilestone = typeof developmentMilestones.$inferSelect;
+export type DevelopmentTracking = typeof developmentTracking.$inferSelect;
+export type FeedEntry = typeof feedEntries.$inferSelect;
+export type SleepEntry = typeof sleepEntries.$inferSelect;
+export type ConsultationBooking = typeof consultationBookings.$inferSelect;
+export type InsertChild = z.infer<typeof insertChildSchema>;
+export type InsertGrowthEntry = z.infer<typeof insertGrowthEntrySchema>;
+export type InsertDevelopmentMilestone = z.infer<typeof insertDevelopmentMilestoneSchema>;
+export type InsertDevelopmentTracking = z.infer<typeof insertDevelopmentTrackingSchema>;
+export type InsertFeedEntry = z.infer<typeof insertFeedEntrySchema>;
+export type InsertSleepEntry = z.infer<typeof insertSleepEntrySchema>;
+export type InsertConsultationBooking = z.infer<typeof insertConsultationBookingSchema>;
