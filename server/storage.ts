@@ -79,6 +79,7 @@ export interface IStorage {
   // Development milestone operations
   getDevelopmentMilestones(): Promise<DevelopmentMilestone[]>;
   createDevelopmentMilestone(milestone: InsertDevelopmentMilestone): Promise<DevelopmentMilestone>;
+  clearDevelopmentMilestones(): Promise<void>;
   getChildDevelopmentTracking(childId: number): Promise<DevelopmentTracking[]>;
   createDevelopmentTracking(tracking: InsertDevelopmentTracking): Promise<DevelopmentTracking>;
   updateDevelopmentTracking(id: number, tracking: Partial<InsertDevelopmentTracking>): Promise<DevelopmentTracking>;
@@ -319,6 +320,10 @@ export class DatabaseStorage implements IStorage {
       .values(milestone)
       .returning();
     return newMilestone;
+  }
+
+  async clearDevelopmentMilestones(): Promise<void> {
+    await db.delete(developmentMilestones);
   }
 
   async getChildDevelopmentTracking(childId: number): Promise<DevelopmentTracking[]> {
