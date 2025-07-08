@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,31 +45,22 @@ export function AdminUserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, error: usersError, refetch } = useQuery({
     queryKey: ["/api/admin/users"],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/admin/users");
-        return Array.isArray(response) ? response : [];
-      } catch (error) {
-        console.error("Users fetch error:", error);
-        return [];
-      }
-    },
+    staleTime: 0, // Force refresh
+    refetchOnMount: true,
+    // Use default query function to handle authentication properly
   });
 
+  // Force refetch on component mount
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
   const { data: searchResults, isLoading: isSearching } = useQuery({
-    queryKey: ["/api/admin/users/search", searchQuery],
+    queryKey: [`/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`],
     enabled: searchQuery.length > 2,
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", `/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`);
-        return Array.isArray(response) ? response : [];
-      } catch (error) {
-        console.error("Search error:", error);
-        return [];
-      }
-    },
+    // Use default query function to handle authentication properly
   });
 
   const updateUserMutation = useMutation({
@@ -98,6 +89,18 @@ export function AdminUserManagement() {
   };
 
   const displayUsers = searchQuery.length > 2 ? (searchResults || []) : (users || []);
+  
+  // Debug logging to see what's happening with the data
+  console.log('Admin User Management Debug:', {
+    searchQuery,
+    searchQueryLength: searchQuery.length,
+    users: users,
+    searchResults: searchResults,
+    displayUsers: displayUsers,
+    isLoading: isLoading,
+    isSearching: isSearching,
+    usersError: usersError
+  });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
