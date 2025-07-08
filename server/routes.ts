@@ -546,7 +546,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/children', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const childData = { ...req.body, userId };
+      const childData = { 
+        ...req.body, 
+        userId,
+        dateOfBirth: new Date(req.body.dateOfBirth)
+      };
       const child = await storage.createChild(childData);
       res.json(child);
     } catch (error) {
@@ -570,7 +574,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/children/:childId/growth', isAuthenticated, async (req, res) => {
     try {
       const { childId } = req.params;
-      const entryData = { ...req.body, childId: parseInt(childId) };
+      const entryData = { 
+        ...req.body, 
+        childId: parseInt(childId),
+        logDate: req.body.date ? new Date(req.body.date) : new Date()
+      };
       const entry = await storage.createGrowthEntry(entryData);
       res.json(entry);
     } catch (error) {
@@ -604,7 +612,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/children/:childId/development', isAuthenticated, async (req, res) => {
     try {
       const { childId } = req.params;
-      const trackingData = { ...req.body, childId: parseInt(childId) };
+      const trackingData = { 
+        ...req.body, 
+        childId: parseInt(childId),
+        achievedDate: req.body.achievedDate ? new Date(req.body.achievedDate) : null
+      };
       const tracking = await storage.createDevelopmentTracking(trackingData);
       res.json(tracking);
     } catch (error) {
@@ -628,7 +640,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/children/:childId/feeds', isAuthenticated, async (req, res) => {
     try {
       const { childId } = req.params;
-      const feedData = { ...req.body, childId: parseInt(childId) };
+      const feedData = { 
+        ...req.body, 
+        childId: parseInt(childId),
+        startTime: new Date(req.body.startTime),
+        endTime: new Date(req.body.endTime)
+      };
       const feed = await storage.createFeedEntry(feedData);
       res.json(feed);
     } catch (error) {
@@ -652,7 +669,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/children/:childId/sleep', isAuthenticated, async (req, res) => {
     try {
       const { childId } = req.params;
-      const sleepData = { ...req.body, childId: parseInt(childId) };
+      const sleepData = { 
+        ...req.body, 
+        childId: parseInt(childId),
+        sleepStart: new Date(req.body.sleepStart),
+        sleepEnd: new Date(req.body.sleepEnd)
+      };
       const sleep = await storage.createSleepEntry(sleepData);
       res.json(sleep);
     } catch (error) {
@@ -676,7 +698,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/consultations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const bookingData = { ...req.body, userId };
+      const bookingData = { 
+        ...req.body, 
+        userId,
+        preferredDate: new Date(req.body.preferredDate)
+      };
       const booking = await storage.createConsultationBooking(bookingData);
       res.json(booking);
     } catch (error) {
