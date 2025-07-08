@@ -23,9 +23,11 @@ export default function Home() {
   const { toast } = useToast();
   const [activeCategory, setActiveCategory] = useState("all");
 
-  const { data: blogPosts, isLoading, error } = useQuery({
+  const { data: blogPosts, isLoading, isFetching, error } = useQuery({
     queryKey: ["/api/blog-posts", activeCategory === "all" ? undefined : activeCategory],
     enabled: !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes - prevents unnecessary refetches
+    refetchOnWindowFocus: false, // Prevents unnecessary background fetches
   });
 
   useEffect(() => {
@@ -137,11 +139,14 @@ export default function Home() {
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              disabled={isFetching}
+              className={cn(
+                "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200",
                 activeCategory === category.id
-                  ? "bg-dr-teal text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+                  ? "bg-dr-teal text-white shadow-lg transform scale-105"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-105",
+                isFetching && "opacity-50 cursor-not-allowed"
+              )}
             >
               {category.label}
             </button>
@@ -149,23 +154,38 @@ export default function Home() {
         </div>
 
         {/* Blog Posts Grid */}
-        <div className="space-y-6">
-          {blogPosts
-            ?.filter(post => activeCategory === "all" || post.category === activeCategory)
-            ?.map((post) => (
-            <BlogCard
-              key={post.id}
-              post={post}
-              onClick={() => handleBlogClick(post)}
-            />
-          ))}
-        </div>
-
-        {blogPosts?.filter(post => activeCategory === "all" || post.category === activeCategory)?.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No blog posts available in this category.</p>
+        <div className="relative">
+          {/* Loading overlay for filter changes */}
+          {isFetching && blogPosts && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+              <div className="flex items-center space-x-2 text-dr-teal">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-dr-teal border-t-transparent"></div>
+                <span className="text-sm font-medium">Loading...</span>
+              </div>
+            </div>
+          )}
+          
+          <div className={cn(
+            "space-y-6 transition-opacity duration-200",
+            isFetching && blogPosts ? "opacity-50" : "opacity-100"
+          )}>
+            {blogPosts
+              ?.filter(post => activeCategory === "all" || post.category === activeCategory)
+              ?.map((post) => (
+              <BlogCard
+                key={post.id}
+                post={post}
+                onClick={() => handleBlogClick(post)}
+              />
+            ))}
           </div>
-        )}
+
+          {!isFetching && blogPosts?.filter(post => activeCategory === "all" || post.category === activeCategory)?.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No blog posts available in this category.</p>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );
