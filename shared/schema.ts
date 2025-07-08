@@ -55,15 +55,14 @@ export const users = pgTable("users", {
   passwordHash: varchar("password_hash"),
   lastPasswordChange: timestamp("last_password_change"),
   // Personalization preferences for enhanced signup flow
-  primaryConcern: varchar("primary_concern"), // The 4-option question response
-  childAge: varchar("child_age"), // Age range of child
-  childName: varchar("child_name"), // Name of child
-  sleepChallenges: text("sleep_challenges"), // Specific sleep challenges
-  previousExperience: varchar("previous_experience"), // Experience with sleep training
-  parentingStyle: varchar("parenting_style"), // Gentle, structured, flexible, etc.
-  timeCommitment: varchar("time_commitment"), // How much time they can dedicate
-  supportNetwork: varchar("support_network"), // Partner support level
-  additionalNotes: text("additional_notes"), // Any other relevant information
+  primaryConcerns: text("primary_concerns"), // JSON array of selected concerns (baby-sleep, toddler-sleep, toddler-behaviour, partner-discounts)
+  phoneNumber: varchar("phone_number"), // Phone number with country code
+  profilePictureUrl: varchar("profile_picture_url"), // Profile picture URL
+  userRole: varchar("user_role"), // Parent, Grandparent, Carer
+  acceptedTerms: boolean("accepted_terms").default(false), // Terms and conditions acceptance
+  marketingOptIn: boolean("marketing_opt_in").default(false), // Marketing materials opt-in
+  newMemberOfferShown: boolean("new_member_offer_shown").default(false), // Whether new member offer was shown
+  newMemberOfferAccepted: boolean("new_member_offer_accepted").default(false), // Whether they accepted the offer
   onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
