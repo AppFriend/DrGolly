@@ -41,17 +41,9 @@ export default function Home() {
     }
   }, [error, toast]);
 
-  const handleVideoClick = (course: Course) => {
-    if (course.tier === "gold" && user?.subscriptionTier === "free") {
-      toast({
-        title: "Subscription Required",
-        description: "This content requires a Gold or Platinum subscription.",
-        variant: "destructive",
-      });
-      return;
-    }
-    // Handle video playback
-    console.log("Playing video:", course.title);
+  const handleBlogClick = (blogPost: BlogPost) => {
+    // Navigate to blog post detail page
+    window.location.href = `/blog/${blogPost.slug}`;
   };
 
   if (isLoading) {

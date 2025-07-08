@@ -1035,6 +1035,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/blog-posts/:id', async (req, res) => {
     try {
       const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid blog post ID" });
+      }
       const blogPost = await storage.getBlogPost(postId);
       if (!blogPost) {
         return res.status(404).json({ message: "Blog post not found" });
