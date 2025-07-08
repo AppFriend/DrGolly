@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -17,31 +17,33 @@ import Family from "@/pages/family";
 
 function AuthenticatedApp() {
   const [activeTab, setActiveTab] = useState("home");
+  const [location] = useLocation();
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case "home":
-        return <Home />;
-      case "courses":
-        return <Courses />;
-      case "track":
-        return <Track />;
-      case "discounts":
-        return <Discounts />;
-      case "family":
-        return <Family />;
-      default:
-        return <Home />;
-    }
-  };
+  const showBottomNavigation = location !== "/subscription";
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen relative">
       <Switch>
         <Route path="/subscription" component={Subscription} />
+        <Route path="/courses">
+          <Courses />
+          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/track">
+          <Track />
+          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/discounts">
+          <Discounts />
+          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/family">
+          <Family />
+          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
+        </Route>
         <Route path="/">
-          {renderContent()}
-          <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+          <Home />
+          {showBottomNavigation && <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />}
         </Route>
         <Route component={NotFound} />
       </Switch>
