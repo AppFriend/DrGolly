@@ -285,6 +285,16 @@ Changelog:
   * Updated admin panel to use Dr. Golly logo in header with "Admin Panel" text
   * Ensured consistent logo sizing (h-8) and styling across all pages
   * Home page and Big Baby public page already had logo implementation
+- July 09, 2025. Enhanced /checkout page with seamless Apple Pay and Link payment functionality:
+  * Added intelligent device detection for mobile vs desktop payment options
+  * Implemented Stripe Payment Request API for Apple Pay (iOS) and Google Pay (Android) on mobile devices
+  * Created tabbed payment interface with Link and Card payment methods
+  * Simplified user details section for logged-in users - removed redundant form fields
+  * Added regional pricing support with proper currency detection (AUD/USD/EUR)
+  * Mobile users see express payment buttons followed by Link/Card tabs
+  * Desktop users see Link/Card tabs without express payment options
+  * Integrated multi-currency support matching Big Baby public checkout functionality
+  * Updated checkout form to use regional pricing for accurate payment processing
 ```
 
 ## User Preferences

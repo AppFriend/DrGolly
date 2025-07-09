@@ -28,7 +28,16 @@ export default function Checkout() {
     dueDate: "",
   });
 
+  // Fetch regional pricing
+  const { data: regionalPricing } = useQuery({
+    queryKey: ["/api/regional-pricing"],
+    retry: false,
+  });
+
   const courseId = params?.courseId ? parseInt(params.courseId) : null;
+  const coursePrice = regionalPricing?.coursePrice || 120;
+  const currency = regionalPricing?.currency || 'USD';
+  const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
 
   // Fetch course details
   const { data: course, isLoading: courseLoading } = useQuery({
@@ -90,36 +99,23 @@ export default function Checkout() {
       </div>
 
       <div className="p-4 max-w-md mx-auto">
-        {/* Your Details Section */}
+        {/* Your Details Section - Simplified for logged-in users */}
         <div className="bg-white rounded-lg p-4 mb-4">
           <h2 className="text-lg font-semibold mb-4">Your Details</h2>
           
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="firstName" className="text-sm text-gray-600">First Name</Label>
-              <Input
-                id="firstName"
-                value={customerDetails.firstName}
-                onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                className="mt-1"
-                placeholder="First Name"
-              />
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-dr-teal rounded-full flex items-center justify-center">
+                <Check className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
+                <p className="text-sm text-gray-600">{user?.email}</p>
+              </div>
             </div>
             
             <div>
-              <Label htmlFor="email" className="text-sm text-gray-600">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={customerDetails.email}
-                onChange={(e) => handleDetailsChange("email", e.target.value)}
-                className="mt-1"
-                placeholder="frazer@gmail.com"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="dueDate" className="text-sm text-gray-600">Due Date / Baby Birthday</Label>
+              <Label htmlFor="dueDate" className="text-sm text-gray-600">Due Date / Baby Birthday (Optional)</Label>
               <Input
                 id="dueDate"
                 type="date"
@@ -149,7 +145,7 @@ export default function Checkout() {
             <div className="flex-1">
               <h3 className="font-semibold">{course.title}</h3>
               <p className="text-sm text-gray-600">Course</p>
-              <p className="text-sm text-gray-600">${course.price || 120}.00</p>
+              <p className="text-sm text-gray-600">{currencySymbol}{coursePrice}.00</p>
             </div>
             <div className="text-right">
               <span className="text-sm text-gray-500">4.5 ⭐</span>
@@ -163,7 +159,7 @@ export default function Checkout() {
             
             <div className="flex justify-between items-center text-lg font-semibold">
               <span>Total</span>
-              <span>${course.price || 120}.00</span>
+              <span>{currencySymbol}{coursePrice}.00</span>
             </div>
           </div>
         </div>
@@ -174,7 +170,7 @@ export default function Checkout() {
             <CheckoutForm 
               course={course} 
               customerDetails={customerDetails}
-              total={course.price || 120}
+              total={coursePrice}
             />
           </Elements>
         ) : (
