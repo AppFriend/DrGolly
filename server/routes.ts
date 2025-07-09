@@ -447,7 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/create-account-with-purchase', async (req, res) => {
     try {
-      const { customerDetails, paymentIntentId, interests } = req.body;
+      const { customerDetails, paymentIntentId, interests, password } = req.body;
       
       // Verify payment intent was successful
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -455,10 +455,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Payment not completed" });
       }
       
-      // Generate temporary user ID and password
+      // Generate temporary user ID and hash provided password
       const tempUserId = AuthUtils.generateUserId();
-      const tempPassword = AuthUtils.generateTemporaryPassword();
-      const hashedPassword = await AuthUtils.hashPassword(tempPassword);
+      const hashedPassword = await AuthUtils.hashPassword(password);
       
       // Create user account
       const user = await storage.upsertUser({
@@ -472,21 +471,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         interests: interests.join(','),
         role: customerDetails.role || 'Parent',
         dueDate: customerDetails.dueDate || null,
-        hasSetPassword: false,
-        isFirstLogin: true,
+        hasSetPassword: true,
+        isFirstLogin: false,
         passwordHash: hashedPassword,
         signupSource: 'public_checkout',
         country: 'US',
         profileImageUrl: '',
       });
       
-      // Create temporary password record
-      await storage.createTemporaryPassword({
-        userId: tempUserId,
-        temporaryPassword: tempPassword,
-        expiresAt: AuthUtils.createTempPasswordExpiry(),
-        isUsed: false,
-      });
+      // Skip temporary password creation since user set permanent password
       
       // Create Stripe customer
       const stripeCustomer = await stripe.customers.create({
@@ -517,12 +510,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Send welcome email with temporary login credentials
-      await klaviyoService.sendPublicCheckoutWelcome(user, tempPassword);
+      await klaviyoService.syncBigBabySignupToKlaviyo(user, customerDetails);
       
       res.json({ 
         message: "Account created successfully",
         userId: tempUserId,
-        temporaryPassword: tempPassword,
         loginUrl: "/login",
       });
     } catch (error) {

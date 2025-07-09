@@ -250,6 +250,41 @@ export default function BigBabyPublic() {
     },
   });
 
+  const completeSignupMutation = useMutation({
+    mutationFn: async ({ customerDetails, interests, password, paymentIntentId }: { 
+      customerDetails: any, 
+      interests: string[], 
+      password: string,
+      paymentIntentId: string 
+    }) => {
+      const response = await apiRequest('POST', '/api/create-account-with-purchase', {
+        customerDetails,
+        interests,
+        password,
+        paymentIntentId
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Account Created Successfully!",
+        description: "You can now log in with your email and password.",
+      });
+      // Redirect to login page after short delay
+      setTimeout(() => {
+        setLocation("/login");
+      }, 2000);
+    },
+    onError: (error) => {
+      console.error('Account creation error:', error);
+      toast({
+        title: "Account Creation Failed",
+        description: "Please try again or contact support.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Handle post-payment account setup
   const handleAccountSetup = () => {
     toast({
@@ -279,10 +314,14 @@ export default function BigBabyPublic() {
     setStep('success');
   };
 
-  const handleCreateAccount = (interests: string[]) => {
-    // Account creation is handled automatically by webhook
-    // Just redirect to login
-    handleAccountSetup();
+  const handleCreateAccount = (interests: string[], password: string) => {
+    // Complete signup by creating account
+    completeSignupMutation.mutate({ 
+      customerDetails, 
+      interests,
+      password,
+      paymentIntentId: paymentIntentId 
+    });
   };
 
   const isDetailsComplete = customerDetails.firstName && customerDetails.email && isValidEmail(customerDetails.email);
@@ -632,13 +671,15 @@ function SuccessPage({ onContinue }: { onContinue: () => void }) {
 
 // Signup Flow Component
 function SignupFlow({ onComplete, customerDetails }: { 
-  onComplete: (interests: string[]) => void; 
+  onComplete: (interests: string[], password: string) => void; 
   customerDetails: any;
 }) {
   const [interests, setInterests] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [countryCode, setCountryCode] = useState("+1");
   const [role, setRole] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
 
@@ -658,8 +699,8 @@ function SignupFlow({ onComplete, customerDetails }: {
   };
 
   const handleComplete = () => {
-    if (interests.length > 0 && role && agreedToTerms) {
-      onComplete(interests);
+    if (interests.length > 0 && role && agreedToTerms && password && password === confirmPassword) {
+      onComplete(interests, password);
     }
   };
 
@@ -681,7 +722,11 @@ function SignupFlow({ onComplete, customerDetails }: {
                     key={interest}
                     variant={interests.includes(interest) ? "default" : "outline"}
                     onClick={() => handleInterestToggle(interest)}
-                    className="h-auto py-3 px-4 text-sm"
+                    className={`h-auto py-3 px-4 text-sm ${
+                      interests.includes(interest) 
+                        ? "bg-[#095D66] hover:bg-[#095D66]/90 text-white" 
+                        : "border-gray-300 hover:bg-gray-50"
+                    }`}
                   >
                     {interest}
                   </Button>
@@ -715,12 +760,37 @@ function SignupFlow({ onComplete, customerDetails }: {
                     key={roleOption}
                     variant={role === roleOption ? "default" : "outline"}
                     onClick={() => setRole(roleOption)}
-                    className="h-auto py-3 px-4 text-sm"
+                    className={`h-auto py-3 px-4 text-sm ${
+                      role === roleOption 
+                        ? "bg-[#095D66] hover:bg-[#095D66]/90 text-white" 
+                        : "border-gray-300 hover:bg-gray-50"
+                    }`}
                   >
                     {roleOption}
                   </Button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <Label className="text-sm text-gray-600 mb-2 block">Create Password *</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a secure password"
+                className="mb-2"
+              />
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                className={confirmPassword && password !== confirmPassword ? "border-red-500" : ""}
+              />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -751,8 +821,8 @@ function SignupFlow({ onComplete, customerDetails }: {
 
             <Button 
               onClick={handleComplete}
-              disabled={interests.length === 0 || !role || !agreedToTerms}
-              className="w-full bg-dr-teal hover:bg-dr-teal/90"
+              disabled={interests.length === 0 || !role || !agreedToTerms || !password || password !== confirmPassword}
+              className="w-full bg-[#095D66] hover:bg-[#095D66]/90 text-white"
             >
               Complete Setup & Access Course
             </Button>
