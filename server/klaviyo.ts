@@ -76,6 +76,7 @@ export class KlaviyoService {
         user_role: user.userRole,
         primary_concerns: user.primaryConcerns,
         marketing_opt_in: user.marketingOptIn || false,
+        sms_marketing_opt_in: user.smsMarketingOptIn || false,
         accepted_terms: user.acceptedTerms || false,
         
         // Course and engagement data
@@ -737,6 +738,132 @@ export class KlaviyoService {
       return true;
     } catch (error) {
       console.error("Error syncing login to Klaviyo:", error);
+      return false;
+    }
+  }
+
+  async updateMarketingPreferences(email: string, preferences: { emailMarketing: boolean; smsMarketing: boolean }): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !email) {
+      console.error("Klaviyo API key not configured or email missing");
+      return false;
+    }
+
+    try {
+      // First, get the profile ID
+      const profileSearchResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/?filter=equals(email,"${email}")`, {
+        method: "GET",
+        headers: this.headers
+      });
+
+      if (!profileSearchResponse.ok) {
+        console.error("Failed to search for profile:", profileSearchResponse.status);
+        return false;
+      }
+
+      const profileData = await profileSearchResponse.json();
+      if (!profileData.data || profileData.data.length === 0) {
+        console.error("Profile not found for email:", email);
+        return false;
+      }
+
+      const profileId = profileData.data[0].id;
+
+      // Update the profile with marketing preferences
+      const updateResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/${profileId}/`, {
+        method: "PATCH",
+        headers: this.headers,
+        body: JSON.stringify({
+          data: {
+            type: "profile",
+            id: profileId,
+            attributes: {
+              properties: {
+                marketing_opt_in: preferences.emailMarketing,
+                sms_marketing_opt_in: preferences.smsMarketing,
+                marketing_preferences_updated_at: new Date().toISOString()
+              }
+            }
+          }
+        })
+      });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error("Failed to update marketing preferences in Klaviyo:", updateResponse.status, errorText);
+        return false;
+      }
+
+      // Handle email subscription status
+      if (preferences.emailMarketing) {
+        // Subscribe to email marketing
+        const subscribeResponse = await fetch(`${KLAVIYO_BASE_URL}/profile-subscription-bulk-create-jobs/`, {
+          method: "POST",
+          headers: this.headers,
+          body: JSON.stringify({
+            data: {
+              type: "profile-subscription-bulk-create-job",
+              attributes: {
+                profiles: {
+                  data: [{
+                    type: "profile",
+                    attributes: {
+                      email: email,
+                      subscriptions: {
+                        email: {
+                          marketing: {
+                            consent: "SUBSCRIBED"
+                          }
+                        }
+                      }
+                    }
+                  }]
+                }
+              }
+            }
+          })
+        });
+
+        if (!subscribeResponse.ok) {
+          console.error("Failed to subscribe to email marketing:", subscribeResponse.status);
+        }
+      } else {
+        // Unsubscribe from email marketing
+        const unsubscribeResponse = await fetch(`${KLAVIYO_BASE_URL}/profile-subscription-bulk-delete-jobs/`, {
+          method: "POST",
+          headers: this.headers,
+          body: JSON.stringify({
+            data: {
+              type: "profile-subscription-bulk-delete-job",
+              attributes: {
+                profiles: {
+                  data: [{
+                    type: "profile",
+                    attributes: {
+                      email: email,
+                      subscriptions: {
+                        email: {
+                          marketing: {
+                            consent: "UNSUBSCRIBED"
+                          }
+                        }
+                      }
+                    }
+                  }]
+                }
+              }
+            }
+          })
+        });
+
+        if (!unsubscribeResponse.ok) {
+          console.error("Failed to unsubscribe from email marketing:", unsubscribeResponse.status);
+        }
+      }
+
+      console.log("Marketing preferences updated successfully in Klaviyo");
+      return true;
+    } catch (error) {
+      console.error("Error updating marketing preferences in Klaviyo:", error);
       return false;
     }
   }

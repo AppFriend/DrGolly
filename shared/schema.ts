@@ -62,7 +62,8 @@ export const users = pgTable("users", {
   profilePictureUrl: varchar("profile_picture_url"), // Profile picture URL
   userRole: varchar("user_role"), // Parent, Grandparent, Carer
   acceptedTerms: boolean("accepted_terms").default(false), // Terms and conditions acceptance
-  marketingOptIn: boolean("marketing_opt_in").default(false), // Marketing materials opt-in
+  marketingOptIn: boolean("marketing_opt_in").default(false), // Email marketing opt-in
+  smsMarketingOptIn: boolean("sms_marketing_opt_in").default(false), // SMS marketing opt-in
   newMemberOfferShown: boolean("new_member_offer_shown").default(false), // Whether new member offer was shown
   newMemberOfferAccepted: boolean("new_member_offer_accepted").default(false), // Whether they accepted the offer
   onboardingCompleted: boolean("onboarding_completed").default(false),

@@ -235,6 +235,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionEndDate: user.subscriptionEndDate,
         stripeCustomerId: user.stripeCustomerId,
         stripeSubscriptionId: user.stripeSubscriptionId,
+        marketingOptIn: user.marketingOptIn,
+        smsMarketingOptIn: user.smsMarketingOptIn,
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -259,6 +261,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.patch('/api/profile/marketing-preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { emailMarketing, smsMarketing } = req.body;
+      
+      // Update user marketing preferences
+      await storage.updateUserProfile(userId, {
+        marketingOptIn: emailMarketing,
+        smsMarketingOptIn: smsMarketing,
+      });
+      
+      // Get updated user data for Klaviyo sync
+      const user = await storage.getUser(userId);
+      if (user) {
+        // Sync marketing preferences to Klaviyo
+        try {
+          await klaviyoService.updateMarketingPreferences(user.email, {
+            emailMarketing,
+            smsMarketing,
+          });
+        } catch (klaviyoError) {
+          console.error("Failed to sync marketing preferences to Klaviyo:", klaviyoError);
+        }
+      }
+      
+      res.json({ message: "Marketing preferences updated successfully" });
+    } catch (error) {
+      console.error("Error updating marketing preferences:", error);
+      res.status(500).json({ message: "Failed to update marketing preferences" });
     }
   });
 
