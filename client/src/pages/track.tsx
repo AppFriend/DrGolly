@@ -674,50 +674,53 @@ function FeedingTracking({ childId }: { childId: number | null }) {
           
           {feedType === "breast" ? (
             <div className="space-y-4">
-              {/* Left Breast Timer */}
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-gray-700">Left Breast</h3>
-                  <div className="text-sm text-gray-500">
-                    Total: {formatTime(leftTotalDuration)}
+              {/* Left and Right Breast Timers Side by Side */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Left Breast Timer */}
+                <div className="border rounded-lg p-3 bg-gray-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-gray-700 text-sm">Left Breast</h3>
+                    <div className="text-xs text-gray-500">
+                      Total: {formatTime(leftTotalDuration)}
+                    </div>
                   </div>
-                </div>
-                <div className="text-center mb-3">
-                  <div className="text-2xl font-mono font-bold text-[#83CFCC]">
-                    {formatTime(leftIsActive ? leftTimer : 0)}
+                  <div className="text-center mb-2">
+                    <div className="text-xl font-mono font-bold text-[#83CFCC]">
+                      {formatTime(leftIsActive ? leftTimer : 0)}
+                    </div>
                   </div>
+                  <Button
+                    onClick={leftIsActive ? stopLeftTimer : startLeftTimer}
+                    className={`w-full text-sm py-2 ${leftIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
+                    disabled={rightIsActive && !leftIsActive}
+                  >
+                    <Timer className="mr-1 h-3 w-3" />
+                    {leftIsActive ? 'Stop Left' : 'Start Left'}
+                  </Button>
                 </div>
-                <Button
-                  onClick={leftIsActive ? stopLeftTimer : startLeftTimer}
-                  className={`w-full ${leftIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
-                  disabled={rightIsActive && !leftIsActive}
-                >
-                  <Timer className="mr-2 h-4 w-4" />
-                  {leftIsActive ? 'Stop Left' : 'Start Left'}
-                </Button>
-              </div>
 
-              {/* Right Breast Timer */}
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-gray-700">Right Breast</h3>
-                  <div className="text-sm text-gray-500">
-                    Total: {formatTime(rightTotalDuration)}
+                {/* Right Breast Timer */}
+                <div className="border rounded-lg p-3 bg-gray-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-gray-700 text-sm">Right Breast</h3>
+                    <div className="text-xs text-gray-500">
+                      Total: {formatTime(rightTotalDuration)}
+                    </div>
                   </div>
-                </div>
-                <div className="text-center mb-3">
-                  <div className="text-2xl font-mono font-bold text-[#83CFCC]">
-                    {formatTime(rightIsActive ? rightTimer : 0)}
+                  <div className="text-center mb-2">
+                    <div className="text-xl font-mono font-bold text-[#83CFCC]">
+                      {formatTime(rightIsActive ? rightTimer : 0)}
+                    </div>
                   </div>
+                  <Button
+                    onClick={rightIsActive ? stopRightTimer : startRightTimer}
+                    className={`w-full text-sm py-2 ${rightIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
+                    disabled={leftIsActive && !rightIsActive}
+                  >
+                    <Timer className="mr-1 h-3 w-3" />
+                    {rightIsActive ? 'Stop Right' : 'Start Right'}
+                  </Button>
                 </div>
-                <Button
-                  onClick={rightIsActive ? stopRightTimer : startRightTimer}
-                  className={`w-full ${rightIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
-                  disabled={leftIsActive && !rightIsActive}
-                >
-                  <Timer className="mr-2 h-4 w-4" />
-                  {rightIsActive ? 'Stop Right' : 'Start Right'}
-                </Button>
               </div>
 
               {/* Session Summary */}
