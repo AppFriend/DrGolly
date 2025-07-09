@@ -370,10 +370,25 @@ Changelog:
   * Fixed discounts page header to have consistent icon-left, text-right formatting
   * Enhanced growth tracking with personalized titles showing child's name ("Add Growth Entry for Parker")
   * Improved mobile feed timer layout with consistent spacing, smaller text, and compact button sizes
+- July 09, 2025. Enhanced course module system with clickable content and improved navigation:
+  * Fixed module progress API date handling error (completedAt timestamp generation)
+  * Implemented clickable module cards with "Read More" functionality instead of "Mark Complete"
+  * Created ModuleDetail component for rich text content display with copy protection
+  * Added comprehensive content from 8 screenshots to "1.1 Sleep Environment" modules
+  * Enhanced module navigation with prominent "Back to Course" buttons (top and mobile floating)
+  * Added "Mark Complete" button at bottom of content for better user flow
+  * Updated all buttons to use brand colors (Dark Green for completion, Brand Teal for navigation)
+  * Documented brand color guidelines: no blue buttons, use brand teal or dark green only
 ```
 
 ## User Preferences
 
 ```
 Preferred communication style: Simple, everyday language.
+
+Brand Color Guidelines:
+- Primary Button Colors: Brand Teal (#095D66) or Dark Green (#166534/green-700)
+- No blue buttons should be created - always use brand colors
+- Dark Green (green-700/green-800) preferred for completion and success states
+- Brand Teal preferred for navigation and primary actions
 ```
