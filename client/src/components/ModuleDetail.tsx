@@ -128,18 +128,30 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
             <ArrowLeft className="w-4 h-4" />
             Back to Course
           </Button>
-          <Button
-            onClick={handleMarkComplete}
-            disabled={moduleProgressMutation.isPending || isCompleted}
-            className={`${
-              isCompleted 
-                ? 'bg-green-700 hover:bg-green-800' 
-                : 'bg-green-700 hover:bg-green-800'
-            } text-white`}
-          >
-            <CheckCircle className="w-4 h-4 mr-2" />
-            {isCompleted ? 'Completed' : 'Mark Complete'}
-          </Button>
+          {isCompleted ? (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span className="font-medium">Completed</span>
+              </div>
+              <Button
+                variant="outline"
+                className="text-gray-500 hover:text-gray-700 border-gray-300"
+                size="sm"
+              >
+                Read Again
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={handleMarkComplete}
+              disabled={moduleProgressMutation.isPending}
+              className="bg-green-700 hover:bg-green-800 text-white"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {moduleProgressMutation.isPending ? 'Marking...' : 'Mark Complete'}
+            </Button>
+          )}
         </div>
 
         {/* Module Content */}

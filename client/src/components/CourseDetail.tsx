@@ -59,6 +59,33 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
   const [expandedChapters, setExpandedChapters] = useState<number[]>([]);
   const [copyProtection, setCopyProtection] = useState<CopyProtection | null>(null);
   const [completedModules, setCompletedModules] = useState<Set<number>>(new Set());
+
+  // Fetch user's module progress
+  const { data: moduleProgressData } = useQuery({
+    queryKey: ['/api/user/module-progress'],
+    queryFn: async () => {
+      const response = await fetch('/api/user/module-progress', {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch module progress');
+      }
+      return response.json();
+    },
+  });
+
+  // Update completed modules when progress data changes
+  useEffect(() => {
+    if (moduleProgressData) {
+      const completedSet = new Set<number>();
+      moduleProgressData.forEach((progress: any) => {
+        if (progress.completed) {
+          completedSet.add(progress.moduleId);
+        }
+      });
+      setCompletedModules(completedSet);
+    }
+  }, [moduleProgressData]);
   const [completedChapters, setCompletedChapters] = useState<Set<number>>(new Set());
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const { toast } = useToast();
@@ -406,9 +433,13 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                                   e.stopPropagation();
                                   handleModuleClick(module);
                                 }}
-                                className="text-blue-600 hover:text-blue-700"
+                                className={`${
+                                  completedModules.has(module.id) 
+                                    ? 'text-gray-500 hover:text-gray-700' 
+                                    : 'text-blue-600 hover:text-blue-700'
+                                }`}
                               >
-                                Read More
+                                {completedModules.has(module.id) ? 'Read Again' : 'Read More'}
                               </Button>
                             </div>
                           </div>
