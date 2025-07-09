@@ -11,7 +11,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { User, CreditCard, Receipt, Share2, LogOut, Camera, Edit2, ArrowLeft, Home, Plus } from "lucide-react";
+import { User, CreditCard, Receipt, Share2, LogOut, Camera, Edit2, ArrowLeft, Home, Plus, Mail, MessageCircle, Bell } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useLocation } from "wouter";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -28,6 +29,8 @@ interface ProfileData {
   subscriptionEndDate?: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  marketingOptIn?: boolean;
+  smsMarketingOptIn?: boolean;
 }
 
 interface InvoiceData {
@@ -184,6 +187,27 @@ export default function Profile() {
     },
   });
 
+  // Marketing preferences mutation
+  const updateMarketingPreferencesMutation = useMutation({
+    mutationFn: async (preferences: { emailMarketing: boolean; smsMarketing: boolean }) => {
+      return apiRequest("PATCH", "/api/profile/marketing-preferences", preferences);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({
+        title: "Marketing Preferences Updated",
+        description: "Your marketing preferences have been successfully updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update marketing preferences. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Set default payment method mutation
   const setDefaultPaymentMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
@@ -300,6 +324,23 @@ export default function Profile() {
       };
       updateProfileMutation.mutate(dataToSave);
     }
+  };
+
+  // Handle marketing preferences toggle
+  const handleMarketingPreferenceToggle = (type: 'email' | 'sms', value: boolean) => {
+    const preferences = {
+      emailMarketing: type === 'email' ? value : profileData?.marketingOptIn || false,
+      smsMarketing: type === 'sms' ? value : profileData?.smsMarketingOptIn || false
+    };
+    
+    updateMarketingPreferencesMutation.mutate(preferences);
+    
+    // Update local state for immediate UI feedback
+    setProfileData(prev => prev ? {
+      ...prev,
+      marketingOptIn: type === 'email' ? value : prev.marketingOptIn,
+      smsMarketingOptIn: type === 'sms' ? value : prev.smsMarketingOptIn
+    } : null);
   };
 
   // Initialize profile data when loaded
@@ -424,7 +465,7 @@ export default function Profile() {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -440,6 +481,10 @@ export default function Profile() {
             <TabsTrigger value="payment" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Payment
+            </TabsTrigger>
+            <TabsTrigger value="marketing" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Marketing
             </TabsTrigger>
             <TabsTrigger value="referral" className="flex items-center gap-2">
               <Share2 className="h-4 w-4" />
@@ -715,6 +760,63 @@ export default function Profile() {
                 )}
               </DialogContent>
             </Dialog>
+          </TabsContent>
+
+          {/* Marketing Preferences Tab */}
+          <TabsContent value="marketing">
+            <Card>
+              <CardHeader>
+                <CardTitle>Marketing Preferences</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">Email Marketing</h3>
+                        <p className="text-sm text-gray-600">
+                          Receive updates about new courses, parenting tips, and special offers via email
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={profileData?.marketingOptIn || false}
+                      onCheckedChange={(checked) => handleMarketingPreferenceToggle('email', checked)}
+                      disabled={updateMarketingPreferencesMutation.isPending}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">SMS Marketing</h3>
+                        <p className="text-sm text-gray-600">
+                          Get text messages about urgent updates, course reminders, and exclusive deals
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={profileData?.smsMarketingOptIn || false}
+                      onCheckedChange={(checked) => handleMarketingPreferenceToggle('sms', checked)}
+                      disabled={updateMarketingPreferencesMutation.isPending}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">About Your Marketing Preferences</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• You can change these preferences at any time</li>
+                      <li>• Your preferences sync automatically with our email and SMS systems</li>
+                      <li>• Unsubscribing from marketing won't affect important account notifications</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Referral Tab */}
