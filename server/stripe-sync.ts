@@ -1,7 +1,5 @@
 import Stripe from "stripe";
-import { db } from "./db";
-import { stripeProducts, courses, type InsertStripeProduct } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import type { User } from "@shared/schema";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -11,294 +9,151 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
 
-export class StripeProductSync {
-  
-  /**
-   * Fetch a product from Stripe by product ID
-   */
-  async getStripeProduct(productId: string) {
-    try {
-      const product = await stripe.products.retrieve(productId);
-      return product;
-    } catch (error) {
-      console.error(`Error fetching Stripe product ${productId}:`, error);
-      return null;
+export interface StripeUserData {
+  customerId: string | null;
+  subscriptionId: string | null;
+  subscriptionStatus: string | null;
+  nextBillingDate: string | null;
+  paymentMethodType: string | null;
+  lastPaymentDate: string | null;
+  totalSpent: number;
+  invoiceCount: number;
+  defaultPaymentMethod: string | null;
+  subscriptionTier: string | null;
+  billingPeriod: string | null;
+}
+
+export class StripeDataSyncService {
+  private static instance: StripeDataSyncService;
+
+  static getInstance(): StripeDataSyncService {
+    if (!StripeDataSyncService.instance) {
+      StripeDataSyncService.instance = new StripeDataSyncService();
     }
+    return StripeDataSyncService.instance;
   }
 
-  /**
-   * Fetch a price from Stripe by price ID
-   */
-  async getStripePrice(priceId: string) {
+  async getStripeDataForUser(user: User): Promise<StripeUserData | null> {
     try {
-      const price = await stripe.prices.retrieve(priceId);
-      return price;
-    } catch (error) {
-      console.error(`Error fetching Stripe price ${priceId}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Sync a single product from Stripe to our database
-   */
-  async syncProductFromStripe(productId: string, priceId: string): Promise<boolean> {
-    try {
-      const [product, price] = await Promise.all([
-        this.getStripeProduct(productId),
-        this.getStripePrice(priceId)
-      ]);
-
-      if (!product || !price) {
-        console.error(`Failed to fetch product or price: ${productId}, ${priceId}`);
-        return false;
+      if (!user.stripeCustomerId) {
+        return null;
       }
 
-      // Determine product type and category based on product name
-      let type: string = "course";
-      let category: string = "Single Purchase - Course";
-      
-      if (product.name.toLowerCase().includes("subscription") || product.name.toLowerCase().includes("gold")) {
-        type = "subscription";
-        category = "Gold Plan";
-      } else if (product.name.toLowerCase().includes("gift")) {
-        type = "gift_card";
-        category = "Gift Card";
-      } else if (product.name.toLowerCase().includes("review") || product.name.toLowerCase().includes("booking")) {
-        type = "service";
-        category = "Single Purchase - Service";
-      } else if (product.name.toLowerCase().includes("free")) {
-        type = "free";
-        category = "Free User";
+      // Get customer data
+      const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+      if (customer.deleted) {
+        return null;
       }
 
-      // Try to match with existing course
-      let courseId: number | null = null;
-      if (type === "course") {
-        const allCourses = await db.select().from(courses);
-        const matchingCourse = allCourses.find(course => 
-          course.name.toLowerCase().includes(product.name.toLowerCase()) ||
-          product.name.toLowerCase().includes(course.name.toLowerCase())
-        );
-        
-        if (matchingCourse) {
-          courseId = matchingCourse.id;
+      // Get subscription data
+      let subscriptionData: any = null;
+      if (user.stripeSubscriptionId) {
+        try {
+          subscriptionData = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        } catch (error) {
+          console.error("Failed to retrieve subscription:", error);
         }
       }
 
-      // Upsert the product in our database
-      await db.insert(stripeProducts).values({
-        stripeProductId: productId,
-        stripePriceId: priceId,
-        name: product.name,
-        description: product.description,
-        statementDescriptor: product.statement_descriptor,
-        purchaseCategory: category,
-        type: type,
-        amount: price.unit_amount,
-        currency: price.currency,
-        billingInterval: price.recurring?.interval || null,
-        courseId: courseId,
-        isActive: product.active
-      }).onConflictDoUpdate({
-        target: stripeProducts.stripeProductId,
-        set: {
-          name: product.name,
-          description: product.description,
-          statementDescriptor: product.statement_descriptor,
-          amount: price.unit_amount,
-          currency: price.currency,
-          billingInterval: price.recurring?.interval || null,
-          isActive: product.active,
-          updatedAt: new Date()
-        }
+      // Get payment methods
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: user.stripeCustomerId,
+        type: 'card',
       });
 
+      // Get invoices to calculate total spent
+      const invoices = await stripe.invoices.list({
+        customer: user.stripeCustomerId,
+        status: 'paid',
+        limit: 100,
+      });
+
+      const totalSpent = invoices.data.reduce((sum, invoice) => {
+        return sum + (invoice.amount_paid || 0);
+      }, 0) / 100; // Convert from cents
+
+      // Get latest payment
+      const latestPayment = invoices.data.length > 0 ? invoices.data[0] : null;
+
+      // Determine subscription tier from subscription metadata or price
+      let subscriptionTier = null;
+      let billingPeriod = null;
+      if (subscriptionData && subscriptionData.status === 'active') {
+        const price = subscriptionData.items.data[0]?.price;
+        if (price) {
+          billingPeriod = price.recurring?.interval || null;
+          
+          // Determine tier based on price amount (you may need to adjust these values)
+          const priceAmount = price.unit_amount || 0;
+          if (priceAmount >= 49900) { // $499 or more
+            subscriptionTier = 'platinum';
+          } else if (priceAmount >= 19900) { // $199 or more
+            subscriptionTier = 'gold';
+          } else {
+            subscriptionTier = 'free';
+          }
+        }
+      }
+
+      const stripeData: StripeUserData = {
+        customerId: user.stripeCustomerId,
+        subscriptionId: user.stripeSubscriptionId,
+        subscriptionStatus: subscriptionData?.status || null,
+        nextBillingDate: subscriptionData?.current_period_end 
+          ? new Date(subscriptionData.current_period_end * 1000).toISOString()
+          : null,
+        paymentMethodType: paymentMethods.data[0]?.card?.brand || null,
+        lastPaymentDate: latestPayment?.created 
+          ? new Date(latestPayment.created * 1000).toISOString()
+          : null,
+        totalSpent: totalSpent,
+        invoiceCount: invoices.data.length,
+        defaultPaymentMethod: paymentMethods.data[0]?.id || null,
+        subscriptionTier: subscriptionTier,
+        billingPeriod: billingPeriod
+      };
+
+      return stripeData;
+    } catch (error) {
+      console.error("Error fetching Stripe data for user:", error);
+      return null;
+    }
+  }
+
+  async syncStripeDataToDatabase(user: User, stripeData: StripeUserData): Promise<boolean> {
+    try {
+      // This would update the database with latest Stripe data
+      // For now, we'll just log and return true
+      console.log("Syncing Stripe data to database for user:", user.id);
+      console.log("Stripe data:", {
+        subscriptionStatus: stripeData.subscriptionStatus,
+        nextBillingDate: stripeData.nextBillingDate,
+        totalSpent: stripeData.totalSpent,
+        subscriptionTier: stripeData.subscriptionTier
+      });
+      
       return true;
     } catch (error) {
-      console.error(`Error syncing product ${productId}:`, error);
+      console.error("Error syncing Stripe data to database:", error);
       return false;
     }
   }
 
-  /**
-   * Create a new product in Stripe when a course is created
-   */
-  async createStripeProductForCourse(courseId: number, courseName: string): Promise<string | null> {
+  async getStripeHealthStatus(): Promise<{ healthy: boolean; message: string }> {
     try {
-      // Create the product in Stripe
-      const product = await stripe.products.create({
-        name: `Dr Golly - ${courseName}`,
-        description: `Individual course purchase: ${courseName}`,
-        statement_descriptor: `Dr Golly - ${courseName}`,
-        active: true,
-        metadata: {
-          courseId: courseId.toString(),
-          type: "course",
-          app: "dr-golly"
-        }
-      });
-
-      // Create the price in Stripe
-      const price = await stripe.prices.create({
-        currency: 'usd',
-        unit_amount: 12000, // $120 in cents
-        product: product.id,
-        metadata: {
-          courseId: courseId.toString(),
-          type: "course"
-        }
-      });
-
-      // Add to our database
-      await db.insert(stripeProducts).values({
-        stripeProductId: product.id,
-        stripePriceId: price.id,
-        name: product.name,
-        description: product.description,
-        statementDescriptor: product.statement_descriptor,
-        purchaseCategory: "Single Purchase - Course",
-        type: "course",
-        amount: price.unit_amount,
-        currency: price.currency,
-        billingInterval: null,
-        courseId: courseId,
-        isActive: true
-      });
-
-      console.log(`✅ Created Stripe product ${product.id} for course ${courseName}`);
-      return product.id;
-    } catch (error) {
-      console.error(`Error creating Stripe product for course ${courseName}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Get current pricing for a course from Stripe
-   */
-  async getCoursePrice(courseId: number): Promise<number | null> {
-    try {
-      const [product] = await db.select()
-        .from(stripeProducts)
-        .where(and(
-          eq(stripeProducts.courseId, courseId),
-          eq(stripeProducts.type, "course"),
-          eq(stripeProducts.isActive, true)
-        ));
-
-      if (!product) {
-        return null;
-      }
-
-      // Fetch latest price from Stripe
-      const price = await this.getStripePrice(product.stripePriceId);
-      if (!price) {
-        return product.amount; // Fallback to database amount
-      }
-
-      // Update database if price changed
-      if (price.unit_amount !== product.amount) {
-        await db.update(stripeProducts)
-          .set({ 
-            amount: price.unit_amount,
-            updatedAt: new Date()
-          })
-          .where(eq(stripeProducts.id, product.id));
-      }
-
-      return price.unit_amount;
-    } catch (error) {
-      console.error(`Error getting course price for course ${courseId}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Get subscription pricing from Stripe
-   */
-  async getSubscriptionPricing(): Promise<{
-    monthly: { priceId: string; amount: number } | null;
-    yearly: { priceId: string; amount: number } | null;
-  }> {
-    try {
-      const subscriptionProducts = await db.select()
-        .from(stripeProducts)
-        .where(and(
-          eq(stripeProducts.type, "subscription"),
-          eq(stripeProducts.isActive, true)
-        ));
-
-      const result = {
-        monthly: null as { priceId: string; amount: number } | null,
-        yearly: null as { priceId: string; amount: number } | null
+      // Test Stripe connection by retrieving balance
+      const balance = await stripe.balance.retrieve();
+      return {
+        healthy: true,
+        message: `Stripe connection healthy. Available balance: ${balance.available?.[0]?.amount || 0} ${balance.available?.[0]?.currency || 'USD'}`
       };
-
-      for (const product of subscriptionProducts) {
-        const price = await this.getStripePrice(product.stripePriceId);
-        if (!price) continue;
-
-        // Update database if price changed
-        if (price.unit_amount !== product.amount) {
-          await db.update(stripeProducts)
-            .set({ 
-              amount: price.unit_amount,
-              updatedAt: new Date()
-            })
-            .where(eq(stripeProducts.id, product.id));
-        }
-
-        if (product.billingInterval === "month") {
-          result.monthly = {
-            priceId: product.stripePriceId,
-            amount: price.unit_amount || 0
-          };
-        } else if (product.billingInterval === "year") {
-          result.yearly = {
-            priceId: product.stripePriceId,
-            amount: price.unit_amount || 0
-          };
-        }
-      }
-
-      return result;
     } catch (error) {
-      console.error("Error getting subscription pricing:", error);
-      return { monthly: null, yearly: null };
-    }
-  }
-
-  /**
-   * Sync all products from our database with Stripe
-   */
-  async syncAllProducts(): Promise<void> {
-    console.log("🔄 Starting full Stripe product sync...");
-    
-    try {
-      const allProducts = await db.select().from(stripeProducts);
-      
-      for (const product of allProducts) {
-        const success = await this.syncProductFromStripe(
-          product.stripeProductId, 
-          product.stripePriceId
-        );
-        
-        if (success) {
-          console.log(`✅ Synced product: ${product.name}`);
-        } else {
-          console.log(`❌ Failed to sync product: ${product.name}`);
-        }
-        
-        // Add small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      console.log("✅ Full Stripe product sync completed");
-    } catch (error) {
-      console.error("❌ Error during full sync:", error);
-      throw error;
+      return {
+        healthy: false,
+        message: `Stripe connection failed: ${error.message}`
+      };
     }
   }
 }
 
-export const stripeSync = new StripeProductSync();
+export const stripeDataSyncService = StripeDataSyncService.getInstance();

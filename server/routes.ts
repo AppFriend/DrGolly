@@ -16,7 +16,7 @@ import {
   insertStripeProductSchema,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
-import { stripeSync } from "./stripe-sync";
+import { stripeDataSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
 
 // Initialize Stripe
@@ -80,8 +80,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get updated user data
         const updatedUser = await storage.getUser(userId);
         if (updatedUser) {
-          // Sync to Klaviyo with comprehensive data including children
-          klaviyoService.syncLoginToKlaviyo(updatedUser, children).catch(error => {
+          // Fetch latest Stripe data for user
+          let stripeData = null;
+          if (updatedUser.stripeCustomerId) {
+            stripeData = await stripeDataSyncService.getStripeDataForUser(updatedUser);
+          }
+
+          // Sync to Klaviyo with comprehensive data including children and Stripe data
+          klaviyoService.syncLoginToKlaviyo(updatedUser, children, stripeData).catch(error => {
             console.error("Failed to sync login to Klaviyo:", error);
           });
         }
@@ -3844,6 +3850,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Klaviyo status check error:", error);
       res.status(500).json({ message: "Klaviyo status check failed", error: error.message });
+    }
+  });
+
+  // Stripe sync test endpoints
+  app.get('/api/test/stripe/status', async (req, res) => {
+    try {
+      const healthStatus = await stripeDataSyncService.getStripeHealthStatus();
+      res.json({
+        stripe_configured: !!process.env.STRIPE_SECRET_KEY,
+        ...healthStatus,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/test/stripe/sync', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const stripeData = await stripeDataSyncService.getStripeDataForUser(user);
+      
+      if (!stripeData) {
+        return res.json({
+          message: 'No Stripe data found for user',
+          hasStripeCustomer: !!user.stripeCustomerId,
+          user: { id: user.id, email: user.email }
+        });
+      }
+
+      // Sync to database (when implemented)
+      const syncResult = await stripeDataSyncService.syncStripeDataToDatabase(user, stripeData);
+      
+      res.json({
+        message: 'Stripe data sync test completed',
+        success: syncResult,
+        stripeData: stripeData,
+        user: { id: user.id, email: user.email },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 
