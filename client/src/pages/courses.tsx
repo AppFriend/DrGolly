@@ -52,11 +52,10 @@ export default function Courses() {
   }, [error, toast]);
 
   const filteredCourses = courses?.filter((course: Course) => {
-    // For "My Courses" tab, only show purchased courses
+    // For "My Courses" tab, show purchased courses + all courses if Gold/Platinum
     if (activeTab === "my") {
       const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
-      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
-      return hasPurchased || hasGoldAccess;
+      return hasPurchased; // Only show actually purchased courses in "My Courses"
     }
     
     // Apply search filter
@@ -68,7 +67,11 @@ export default function Courses() {
   });
 
   const handleCourseClick = (course: Course) => {
-    if (course.tier === "gold" && user?.subscriptionTier === "free") {
+    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
+    const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+    
+    // Allow access if user has Gold/Platinum or has purchased this specific course
+    if (!hasPurchased && !hasGoldAccess) {
       toast({
         title: "Subscription Required",
         description: "This content requires a Gold or Platinum subscription.",
@@ -205,7 +208,7 @@ export default function Courses() {
                   return (
                     <>
                       <Button
-                        onClick={() => handleCourseClick(course)}
+                        onClick={() => window.location.href = "/manage"}
                         className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
                       >
                         Unlimited Access with Gold

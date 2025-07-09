@@ -79,8 +79,16 @@ export default function Home() {
             onClick={() => window.location.href = '/manage'}
             className="flex items-center space-x-2 hover:bg-white/10 rounded-lg px-2 py-1 transition-colors"
           >
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-              <span className="text-[#095D66] text-xs font-bold">
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center",
+              user?.subscriptionTier === "gold" ? "bg-gradient-to-r from-[#FFD700] to-[#FFA500]" :
+              user?.subscriptionTier === "platinum" ? "bg-gradient-to-r from-[#E5E4E2] to-[#C0C0C0]" :
+              "bg-white"
+            )}>
+              <span className={cn(
+                "text-xs font-bold",
+                user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" ? "text-black" : "text-[#095D66]"
+              )}>
                 {user?.subscriptionTier === "free" ? "F" : user?.subscriptionTier === "gold" ? "G" : "P"}
               </span>
             </div>
@@ -118,13 +126,28 @@ export default function Home() {
       </header>
 
       {/* Welcome Hero */}
-      <section className="bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] text-white p-6 rounded-b-3xl">
+      <section className={cn(
+        "p-6 rounded-b-3xl",
+        user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+          ? "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black" 
+          : "bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] text-white"
+      )}>
         <div className="flex items-center space-x-4">
           <div className="flex-1">
-            <h1 className="text-xl font-bold mb-2 text-white">
+            <h1 className={cn(
+              "text-xl font-bold mb-2",
+              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                ? "text-black" 
+                : "text-white"
+            )}>
               Welcome {user?.firstName || "there"}!
             </h1>
-            <p className="text-sm text-white/95 mb-4">
+            <p className={cn(
+              "text-sm mb-4",
+              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                ? "text-black/80" 
+                : "text-white/95"
+            )}>
               I'm here to help you navigate sleep, parenthood & beyond
             </p>
             {user?.subscriptionTier === "free" && (
@@ -136,11 +159,24 @@ export default function Home() {
                 Try Gold 50% off for 1 month
               </Button>
             )}
+            {(user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum") && (
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-black rounded-full"></div>
+                <span className="text-sm font-medium text-black">
+                  {user?.subscriptionTier === "gold" ? "Gold" : "Platinum"} Member - Unlimited Access
+                </span>
+              </div>
+            )}
           </div>
           <img
             src={drGollyImage}
             alt="Dr. Golly"
-            className="w-20 h-20 rounded-2xl object-cover border-2 border-white/20"
+            className={cn(
+              "w-20 h-20 rounded-2xl object-cover border-2",
+              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                ? "border-black/20" 
+                : "border-white/20"
+            )}
           />
         </div>
       </section>
