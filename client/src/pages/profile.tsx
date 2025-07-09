@@ -236,7 +236,7 @@ export default function Profile() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-    }).format(amount); // Amount is already in dollars from backend
+    }).format(amount / 100); // Convert cents to dollars
   };
 
   const formatDate = (dateString: string) => {
