@@ -464,6 +464,27 @@ export class DatabaseStorage implements IStorage {
     return newChild;
   }
 
+  async getChild(childId: number, userId: string): Promise<Child | undefined> {
+    const [child] = await db
+      .select()
+      .from(children)
+      .where(and(eq(children.id, childId), eq(children.userId, userId)));
+    return child;
+  }
+
+  async updateChild(childId: number, childData: Partial<InsertChild>): Promise<Child> {
+    const [updatedChild] = await db
+      .update(children)
+      .set(childData)
+      .where(eq(children.id, childId))
+      .returning();
+    return updatedChild;
+  }
+
+  async deleteChild(childId: number): Promise<void> {
+    await db.delete(children).where(eq(children.id, childId));
+  }
+
   async updateChild(id: number, child: Partial<InsertChild>): Promise<Child> {
     const [updatedChild] = await db
       .update(children)
@@ -1291,10 +1312,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(familyInvites.id, inviteId));
   }
 
-  async deleteFamilyMember(memberId: string): Promise<void> {
+  async getFamilyMember(memberId: number, familyOwnerId: string): Promise<FamilyMember | undefined> {
+    const [member] = await db
+      .select()
+      .from(familyMembers)
+      .where(and(eq(familyMembers.id, memberId), eq(familyMembers.familyOwnerId, familyOwnerId)));
+    return member;
+  }
+
+  async deleteFamilyMember(memberId: number): Promise<void> {
     await db
       .delete(familyMembers)
-      .where(eq(familyMembers.memberId, memberId));
+      .where(eq(familyMembers.id, memberId));
   }
 }
 

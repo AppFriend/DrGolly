@@ -1026,6 +1026,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/children/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const childId = parseInt(req.params.id);
+      const { name, dateOfBirth, gender } = req.body;
+      
+      if (!name || !dateOfBirth) {
+        return res.status(400).json({ message: 'Name and date of birth are required' });
+      }
+      
+      // Verify the child belongs to the user
+      const existingChild = await storage.getChild(childId, userId);
+      if (!existingChild) {
+        return res.status(404).json({ message: 'Child not found' });
+      }
+      
+      const updatedChild = await storage.updateChild(childId, {
+        name,
+        dateOfBirth: new Date(dateOfBirth),
+        gender: gender || 'not-specified',
+      });
+      
+      res.json(updatedChild);
+    } catch (error) {
+      console.error("Error updating child:", error);
+      res.status(500).json({ message: "Failed to update child" });
+    }
+  });
+
+  app.delete('/api/children/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const childId = parseInt(req.params.id);
+      
+      // Verify the child belongs to the user
+      const existingChild = await storage.getChild(childId, userId);
+      if (!existingChild) {
+        return res.status(404).json({ message: 'Child not found' });
+      }
+      
+      await storage.deleteChild(childId);
+      res.json({ message: 'Child deleted successfully' });
+    } catch (error) {
+      console.error("Error deleting child:", error);
+      res.status(500).json({ message: "Failed to delete child" });
+    }
+  });
+
   // Growth tracking routes
   app.get('/api/children/:childId/growth', isAuthenticated, async (req, res) => {
     try {
@@ -2417,6 +2465,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error accepting family invite:", error);
       res.status(500).json({ message: "Failed to accept family invite" });
+    }
+  });
+
+  app.delete('/api/family/members/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      const memberId = parseInt(req.params.id);
+      
+      if (!user || user.subscriptionTier !== 'gold') {
+        return res.status(403).json({ message: 'Gold subscription required for family sharing' });
+      }
+      
+      // Verify the family member belongs to this user's family
+      const familyMember = await storage.getFamilyMember(memberId, userId);
+      if (!familyMember) {
+        return res.status(404).json({ message: 'Family member not found' });
+      }
+      
+      await storage.deleteFamilyMember(memberId);
+      res.json({ message: 'Family member removed successfully' });
+    } catch (error) {
+      console.error("Error removing family member:", error);
+      res.status(500).json({ message: "Failed to remove family member" });
     }
   });
 
