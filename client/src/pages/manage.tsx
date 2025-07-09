@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Star, Crown, Info } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Star, Crown, Info, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 export default function Manage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,8 +179,12 @@ export default function Manage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <header className="bg-[#095D66] text-white p-4 flex items-center">
-        <button onClick={() => window.history.back()} className="mr-3">
-          <ArrowLeft className="h-6 w-6" />
+        <button 
+          onClick={() => setLocation("/home")} 
+          className="mr-3 flex items-center gap-2 hover:bg-white/10 rounded-lg px-2 py-1 transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-sm">Back to Home</span>
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold">Choose Your Plan</h1>
