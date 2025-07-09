@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Search, Bell } from "lucide-react";
 import { BlogCard } from "@/components/ui/blog-card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ const categories = [
 export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [activeCategory, setActiveCategory] = useState("all");
   
   // Initialize personalization hook to save signup data after auth
@@ -94,11 +96,16 @@ export default function Home() {
           <button className="text-white hover:text-gray-200 transition-colors">
             <Bell className="h-5 w-5" />
           </button>
-          <img
-            src={user?.profileImageUrl || drGollyImage}
-            alt="Profile"
-            className="w-8 h-8 rounded-full object-cover border-2 border-white"
-          />
+          <button
+            onClick={() => setLocation("/profile")}
+            className="transition-transform hover:scale-105"
+          >
+            <img
+              src={user?.profileImageUrl || drGollyImage}
+              alt="Profile"
+              className="w-8 h-8 rounded-full object-cover border-2 border-white"
+            />
+          </button>
         </div>
       </header>
 

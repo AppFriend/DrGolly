@@ -72,6 +72,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserSubscription(userId: string, tier: string, billingPeriod: string, nextBillingDate: Date): Promise<User>;
   updateUserPersonalization(userId: string, personalizationData: any): Promise<User>;
+  updateUserProfile(userId: string, profileData: Partial<User>): Promise<User>;
   
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
@@ -270,6 +271,18 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({
         ...personalizationData,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserProfile(userId: string, profileData: Partial<User>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...profileData,
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId))
