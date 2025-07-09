@@ -1619,6 +1619,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Profile management routes
+  app.get('/api/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        profileImageUrl: user.profileImageUrl,
+        subscriptionTier: user.subscriptionTier || 'free',
+        subscriptionStatus: user.subscriptionStatus || 'inactive',
+        subscriptionEndDate: user.subscriptionEndDate,
+        stripeCustomerId: user.stripeCustomerId,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        referralCode: user.referralCode
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.patch('/api/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const updates = req.body;
+      
+      // Update user in database
+      const user = await storage.updateUser(userId, updates);
+      
+      res.json({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        profileImageUrl: user.profileImageUrl,
+        subscriptionTier: user.subscriptionTier || 'free',
+        subscriptionStatus: user.subscriptionStatus || 'inactive',
+        subscriptionEndDate: user.subscriptionEndDate,
+        stripeCustomerId: user.stripeCustomerId,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        referralCode: user.referralCode
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Stripe invoice routes
+  app.get('/api/profile/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.stripeCustomerId) {
+        return res.json([]);
+      }
+      
+      // Get all invoices for this customer
+      const invoices = await stripe.invoices.list({
+        customer: user.stripeCustomerId,
+        limit: 100,
+        expand: ['data.payment_intent']
+      });
+      
+      // Format invoices for frontend
+      const formattedInvoices = invoices.data.map(invoice => ({
+        id: invoice.id,
+        amount: invoice.amount_paid / 100, // Convert from cents
+        currency: invoice.currency.toUpperCase(),
+        date: new Date(invoice.created * 1000).toISOString(),
+        status: invoice.status,
+        downloadUrl: invoice.hosted_invoice_url,
+        description: invoice.description || 
+                    invoice.lines.data[0]?.description || 
+                    `Invoice #${invoice.number}`,
+        invoiceNumber: invoice.number,
+        dueDate: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : null,
+        subtotal: invoice.subtotal / 100,
+        tax: invoice.tax / 100,
+        total: invoice.total / 100
+      }));
+      
+      res.json(formattedInvoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  // Stripe payment methods routes
+  app.get('/api/profile/payment-methods', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.stripeCustomerId) {
+        return res.json([]);
+      }
+      
+      // Get all payment methods for this customer
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: user.stripeCustomerId,
+        type: 'card',
+      });
+      
+      // Get default payment method
+      const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+      const defaultPaymentMethod = typeof customer !== 'string' ? customer.invoice_settings.default_payment_method : null;
+      
+      // Format payment methods for frontend
+      const formattedPaymentMethods = paymentMethods.data.map(pm => ({
+        id: pm.id,
+        type: pm.type,
+        last4: pm.card?.last4 || '',
+        brand: pm.card?.brand || '',
+        expMonth: pm.card?.exp_month || 0,
+        expYear: pm.card?.exp_year || 0,
+        isDefault: pm.id === defaultPaymentMethod,
+        created: new Date(pm.created * 1000).toISOString()
+      }));
+      
+      res.json(formattedPaymentMethods);
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+      res.status(500).json({ message: "Failed to fetch payment methods" });
+    }
+  });
+
+  // Update default payment method
+  app.patch('/api/profile/payment-methods/:paymentMethodId/default', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { paymentMethodId } = req.params;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.stripeCustomerId) {
+        return res.status(404).json({ message: "Stripe customer not found" });
+      }
+      
+      // Update customer's default payment method
+      await stripe.customers.update(user.stripeCustomerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId
+        }
+      });
+      
+      res.json({ success: true, message: "Default payment method updated" });
+    } catch (error) {
+      console.error("Error updating default payment method:", error);
+      res.status(500).json({ message: "Failed to update default payment method" });
+    }
+  });
+
+  // Remove payment method
+  app.delete('/api/profile/payment-methods/:paymentMethodId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { paymentMethodId } = req.params;
+      
+      // Detach payment method from customer
+      await stripe.paymentMethods.detach(paymentMethodId);
+      
+      res.json({ success: true, message: "Payment method removed" });
+    } catch (error) {
+      console.error("Error removing payment method:", error);
+      res.status(500).json({ message: "Failed to remove payment method" });
+    }
+  });
+
   app.post('/api/confirm-course-payment', isAuthenticated, async (req: any, res) => {
     try {
       const { paymentIntentId } = req.body;

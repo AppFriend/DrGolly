@@ -272,6 +272,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUser(userId: string, userData: Partial<User>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...userData,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
   async updateUserPersonalization(userId: string, personalizationData: {
     primaryConcerns?: string;
     phoneNumber?: string;
@@ -320,26 +332,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserPersonalization(userId: string, personalizationData: any): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({
-        primaryConcern: personalizationData.primaryConcern,
-        childAge: personalizationData.childAge,
-        childName: personalizationData.childName,
-        sleepChallenges: personalizationData.sleepChallenges,
-        previousExperience: personalizationData.previousExperience,
-        parentingStyle: personalizationData.parentingStyle,
-        timeCommitment: personalizationData.timeCommitment,
-        supportNetwork: personalizationData.supportNetwork,
-        additionalNotes: personalizationData.additionalNotes,
-        onboardingCompleted: personalizationData.onboardingCompleted ?? true,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
-  }
+
 
   // Course operations
   async getCourses(category?: string, tier?: string): Promise<Course[]> {

@@ -35,6 +35,11 @@ interface InvoiceData {
   status: string;
   downloadUrl?: string;
   description: string;
+  invoiceNumber: string;
+  dueDate?: string;
+  subtotal: number;
+  tax: number;
+  total: number;
 }
 
 interface PaymentMethod {
@@ -45,6 +50,7 @@ interface PaymentMethod {
   expMonth: number;
   expYear: number;
   isDefault: boolean;
+  created: string;
 }
 
 export default function Profile() {
@@ -99,22 +105,43 @@ export default function Profile() {
     },
   });
 
-  // Update payment method mutation
-  const updatePaymentMethodMutation = useMutation({
+  // Set default payment method mutation
+  const setDefaultPaymentMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
-      return apiRequest("PATCH", "/api/profile/payment-methods", { paymentMethodId });
+      return apiRequest("PATCH", `/api/profile/payment-methods/${paymentMethodId}/default`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile/payment-methods"] });
       toast({
-        title: "Payment Method Updated",
-        description: "Your default payment method has been updated.",
+        title: "Default Payment Method Updated",
+        description: "Your default payment method has been successfully updated.",
       });
     },
     onError: (error) => {
       toast({
         title: "Update Failed",
-        description: "Failed to update payment method. Please try again.",
+        description: "Failed to update default payment method. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Remove payment method mutation
+  const removePaymentMethodMutation = useMutation({
+    mutationFn: async (paymentMethodId: string) => {
+      return apiRequest("DELETE", `/api/profile/payment-methods/${paymentMethodId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/payment-methods"] });
+      toast({
+        title: "Payment Method Removed",
+        description: "Your payment method has been successfully removed.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Remove Failed",
+        description: "Failed to remove payment method. Please try again.",
         variant: "destructive",
       });
     },
@@ -205,7 +232,7 @@ export default function Profile() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-    }).format(amount / 100);
+    }).format(amount); // Amount is already in dollars from backend
   };
 
   const formatDate = (dateString: string) => {
@@ -451,16 +478,31 @@ export default function Profile() {
                 ) : (
                   <div className="space-y-4">
                     {invoices.map((invoice: InvoiceData) => (
-                      <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
+                      <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                        <div className="flex-1">
                           <p className="font-medium">{invoice.description}</p>
                           <p className="text-sm text-gray-600">{formatDate(invoice.date)}</p>
+                          {invoice.invoiceNumber && (
+                            <p className="text-xs text-gray-500">Invoice #{invoice.invoiceNumber}</p>
+                          )}
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">{formatCurrency(invoice.amount)}</p>
-                          <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
-                            {invoice.status}
-                          </Badge>
+                          <p className="font-semibold">{formatCurrency(invoice.total)}</p>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
+                              {invoice.status}
+                            </Badge>
+                            {invoice.downloadUrl && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(invoice.downloadUrl, '_blank')}
+                                className="text-xs"
+                              >
+                                Download
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -508,12 +550,25 @@ export default function Profile() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => updatePaymentMethodMutation.mutate(method.id)}
-                              disabled={updatePaymentMethodMutation.isPending}
+                              onClick={() => setDefaultPaymentMethodMutation.mutate(method.id)}
+                              disabled={setDefaultPaymentMethodMutation.isPending}
                             >
                               Set as Default
                             </Button>
                           )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to remove this payment method?')) {
+                                removePaymentMethodMutation.mutate(method.id);
+                              }
+                            }}
+                            disabled={removePaymentMethodMutation.isPending}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </Button>
                         </div>
                       </div>
                     ))}
