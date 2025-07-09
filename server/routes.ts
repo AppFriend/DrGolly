@@ -1,6 +1,7 @@
 import type { Express, RequestHandler } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { regionalPricingService } from "./regional-pricing";
@@ -4296,6 +4297,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating course:", error);
       res.status(500).json({ message: "Failed to create course" });
     }
+  });
+
+  // Serve temperature chart image
+  app.get('/assets/temperature-chart.png', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/src/assets/temperature-chart.png'));
   });
 
   const httpServer = createServer(app);
