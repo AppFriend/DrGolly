@@ -88,7 +88,7 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
         {post.category === "freebies" && post.pdfUrl ? (
           <button 
             onClick={handleDownload}
-            className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-colors"
+            className="w-full bg-[#095D66] hover:bg-[#074A52] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-colors"
           >
             <Download className="h-5 w-5" />
             <span>Download Now</span>
