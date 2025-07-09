@@ -94,6 +94,11 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     enabled: !!courseId,
   });
 
+  // Debug logging
+  console.log('Chapters data:', chapters);
+  console.log('Chapters loading:', chaptersLoading);
+  console.log('Chapters length:', chapters?.length);
+
   // Fetch modules for expanded chapters
   const { data: modulesByChapter = {} } = useQuery({
     queryKey: ['/api/chapters', expandedChapters, 'modules'],
