@@ -105,32 +105,19 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
               </div>
             </div>
             
-            <div className="flex flex-wrap gap-2 mb-6">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                {module.contentType === 'video' ? (
-                  <>
-                    <Play className="w-3 h-3" />
-                    Video
-                  </>
-                ) : (
-                  <>
-                    <div className="w-3 h-3 bg-gray-500 rounded-sm"></div>
-                    Text
-                  </>
-                )}
-              </Badge>
-              {module.duration && (
+            {module.duration && (
+              <div className="flex flex-wrap gap-2 mb-4">
                 <Badge variant="outline" className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {formatDuration(module.duration)}
                 </Badge>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
           <Button 
             onClick={onBack} 
             variant="outline" 
