@@ -12,8 +12,10 @@ import {
   insertBillingHistorySchema,
   insertBlogPostSchema,
   insertCoursePurchaseSchema,
+  insertStripeProductSchema,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
+import { stripeSync } from "./stripe-sync";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -220,27 +222,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user?.stripeCustomerId) {
-        return res.json([]);
+      let stripeInvoices = [];
+      
+      // Fetch invoices from Stripe if user has a Stripe customer ID
+      if (user?.stripeCustomerId) {
+        try {
+          const invoices = await stripe.invoices.list({
+            customer: user.stripeCustomerId,
+            limit: 50,
+          });
+          
+          stripeInvoices = invoices.data.map(invoice => ({
+            id: invoice.id,
+            amount: invoice.amount_paid,
+            currency: invoice.currency,
+            date: new Date(invoice.created * 1000).toISOString(),
+            status: invoice.status,
+            description: invoice.description || `${invoice.lines.data[0]?.description || 'Subscription'} - ${new Date(invoice.created * 1000).toLocaleDateString()}`,
+            downloadUrl: invoice.hosted_invoice_url,
+            type: 'stripe',
+            invoiceNumber: invoice.number,
+            subtotal: invoice.subtotal,
+            tax: invoice.tax || 0,
+            total: invoice.total,
+          }));
+        } catch (stripeError) {
+          console.error("Error fetching Stripe invoices:", stripeError);
+        }
       }
       
-      // Fetch invoices from Stripe
-      const invoices = await stripe.invoices.list({
-        customer: user.stripeCustomerId,
-        limit: 50,
-      });
+      // Fetch course purchases from our database
+      const coursePurchases = await storage.getUserCoursePurchases(userId);
+      const completedPurchases = coursePurchases.filter(purchase => purchase.status === 'completed');
       
-      const formattedInvoices = invoices.data.map(invoice => ({
-        id: invoice.id,
-        amount: invoice.amount_paid,
-        currency: invoice.currency,
-        date: new Date(invoice.created * 1000).toISOString(),
-        status: invoice.status,
-        description: invoice.description || `${invoice.lines.data[0]?.description || 'Subscription'} - ${new Date(invoice.created * 1000).toLocaleDateString()}`,
-        downloadUrl: invoice.hosted_invoice_url,
-      }));
+      // Get course details for each purchase
+      const coursePurchaseInvoices = await Promise.all(
+        completedPurchases.map(async (purchase) => {
+          const course = await storage.getCourse(purchase.courseId);
+          return {
+            id: `course_${purchase.id}`,
+            amount: purchase.amount,
+            currency: 'usd',
+            date: purchase.purchasedAt.toISOString(),
+            status: 'paid',
+            description: course ? `${course.title} - Course Purchase` : 'Course Purchase',
+            downloadUrl: null,
+            type: 'course',
+            invoiceNumber: `CP-${purchase.id.toString().padStart(6, '0')}`,
+            subtotal: purchase.amount,
+            tax: 0,
+            total: purchase.amount,
+          };
+        })
+      );
       
-      res.json(formattedInvoices);
+      // Combine and sort all invoices by date (newest first)
+      const allInvoices = [...stripeInvoices, ...coursePurchaseInvoices]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      res.json(allInvoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
@@ -319,7 +359,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category as string | undefined,
         tier as string | undefined
       );
-      res.json(courses);
+      
+      // Enhance courses with dynamic pricing from Stripe products
+      const coursesWithPricing = await Promise.all(
+        courses.map(async (course) => {
+          const price = await storage.getCoursePricing(course.id);
+          return {
+            ...course,
+            price: price || 12000 // Default to $120 (in cents) if no Stripe product found
+          };
+        })
+      );
+      
+      res.json(coursesWithPricing);
     } catch (error) {
       console.error("Error fetching courses:", error);
       res.status(500).json({ message: "Failed to fetch courses" });
@@ -2941,6 +2993,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending admin invite:", error);
       res.status(500).json({ message: "Failed to send admin invite" });
+    }
+  });
+
+  // Stripe product sync API endpoints
+  app.get('/api/stripe/products', isAuthenticated, async (req, res) => {
+    try {
+      const products = await storage.getStripeProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching Stripe products:", error);
+      res.status(500).json({ message: "Failed to fetch Stripe products" });
+    }
+  });
+
+  app.get('/api/stripe/products/:productId', isAuthenticated, async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const product = await storage.getStripeProductById(productId);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching Stripe product:", error);
+      res.status(500).json({ message: "Failed to fetch Stripe product" });
+    }
+  });
+
+  app.post('/api/stripe/products', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const productData = insertStripeProductSchema.parse(req.body);
+      const product = await storage.createStripeProduct(productData);
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Error creating Stripe product:", error);
+      res.status(500).json({ message: "Failed to create Stripe product" });
+    }
+  });
+
+  app.put('/api/stripe/products/:productId', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const { productId } = req.params;
+      const updates = req.body;
+      
+      const product = await storage.updateStripeProduct(productId, updates);
+      res.json(product);
+    } catch (error) {
+      console.error("Error updating Stripe product:", error);
+      res.status(500).json({ message: "Failed to update Stripe product" });
+    }
+  });
+
+  app.post('/api/stripe/sync/:productId', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      const { productId } = req.params;
+      const { priceId } = req.body;
+      
+      if (!priceId) {
+        return res.status(400).json({ message: 'Price ID is required' });
+      }
+      
+      const success = await stripeSync.syncProductFromStripe(productId, priceId);
+      
+      if (success) {
+        res.json({ message: 'Product synced successfully' });
+      } else {
+        res.status(400).json({ message: 'Failed to sync product' });
+      }
+    } catch (error) {
+      console.error("Error syncing Stripe product:", error);
+      res.status(500).json({ message: "Failed to sync Stripe product" });
+    }
+  });
+
+  app.post('/api/stripe/sync/all', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      await stripeSync.syncAllProducts();
+      res.json({ message: 'All products synced successfully' });
+    } catch (error) {
+      console.error("Error syncing all Stripe products:", error);
+      res.status(500).json({ message: "Failed to sync all Stripe products" });
+    }
+  });
+
+  app.get('/api/stripe/pricing/course/:courseId', isAuthenticated, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const price = await storage.getCoursePricing(parseInt(courseId));
+      res.json({ price });
+    } catch (error) {
+      console.error("Error fetching course pricing:", error);
+      res.status(500).json({ message: "Failed to fetch course pricing" });
+    }
+  });
+
+  app.get('/api/stripe/pricing/subscription', isAuthenticated, async (req, res) => {
+    try {
+      const pricing = await storage.getSubscriptionPricing();
+      res.json(pricing);
+    } catch (error) {
+      console.error("Error fetching subscription pricing:", error);
+      res.status(500).json({ message: "Failed to fetch subscription pricing" });
     }
   });
 
