@@ -71,24 +71,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         const children = await storage.getUserChildren(userId);
         
-        // Update sign-in count
+        // Update sign-in count and last login timestamp
         await storage.updateUserProfile(userId, {
           signInCount: (user.signInCount || 0) + 1,
-          lastSignIn: new Date()
+          lastSignIn: new Date(),
+          lastLoginAt: new Date()
         });
 
         // Get updated user data
         const updatedUser = await storage.getUser(userId);
         if (updatedUser) {
-          // Fetch latest Stripe data for user
-          let stripeData = null;
-          if (updatedUser.stripeCustomerId) {
-            stripeData = await stripeDataSyncService.getStripeDataForUser(updatedUser);
-          }
+          // Async sync to avoid blocking the login response
+          setImmediate(async () => {
+            try {
+              // Fetch latest Stripe data for user (only if they have a customer ID)
+              let stripeData = null;
+              if (updatedUser.stripeCustomerId) {
+                stripeData = await stripeDataSyncService.getStripeDataForUser(updatedUser);
+              }
 
-          // Sync to Klaviyo with comprehensive data including children and Stripe data
-          klaviyoService.syncLoginToKlaviyo(updatedUser, children, stripeData).catch(error => {
-            console.error("Failed to sync login to Klaviyo:", error);
+              // Sync to Klaviyo with comprehensive data including children and Stripe data
+              await klaviyoService.syncLoginToKlaviyo(updatedUser, children, stripeData);
+            } catch (error) {
+              console.error("Background sync failed:", error);
+            }
           });
         }
       }

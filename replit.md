@@ -340,6 +340,13 @@ Changelog:
   * Added comprehensive test interface with Stripe status checks and sync testing endpoints
   * Updated Integration Testing Dashboard with both Klaviyo and Stripe sync test functionality
   * Login-based sync ensures real-time data accuracy vs daily batch updates for better customer data management
+- July 09, 2025. Added performance optimizations and Monthly Active Users tracking:
+  * Implemented 5-minute caching for Stripe API calls to prevent rate limiting and improve response times
+  * Added asynchronous background sync using setImmediate() to prevent blocking login responses
+  * Added lastLoginAt timestamp field to users table for accurate MAU calculation
+  * Enhanced admin metrics to include rolling 30-day Monthly Active Users count
+  * Implemented cache invalidation methods for Stripe data to ensure freshness when needed
+  * Optimized database queries for MAU calculation using proper indexes on lastLoginAt field
 ```
 
 ## User Preferences
