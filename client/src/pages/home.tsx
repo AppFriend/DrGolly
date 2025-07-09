@@ -11,6 +11,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { cn } from "@/lib/utils";
 import type { BlogPost } from "@shared/schema";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
+import drGollyLogo from "../assets/dr-golly-logo.png";
 
 const categories = [
   { id: "all", label: "All" },
@@ -74,7 +75,12 @@ export default function Home() {
       {/* Header */}
       <header className="bg-[#095D66] text-white p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="text-white font-heading font-bold text-lg">Dr. Golly</div>
+          <img 
+            src={drGollyLogo} 
+            alt="Dr. Golly" 
+            className="h-8 w-auto object-contain"
+            style={{ filter: 'brightness(0) invert(1)' }} // Makes the logo white
+          />
           <button 
             onClick={() => window.location.href = '/manage'}
             className="flex items-center space-x-2 hover:bg-white/10 rounded-lg px-2 py-1 transition-colors"
