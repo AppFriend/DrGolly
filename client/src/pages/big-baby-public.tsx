@@ -22,7 +22,6 @@ const BIG_BABY_COURSE = {
   id: 6,
   title: "Big Baby Sleep Program",
   description: "4-8 Months",
-  price: 120,
   duration: 60,
   ageRange: "4-8 Months",
   thumbnailUrl: "https://25c623a83912a41d23bcc5865ecf275d.cdn.bubble.io/f1741818614506x569606633915210600/2.png",
@@ -33,7 +32,12 @@ const BIG_BABY_COURSE = {
 };
 
 // Enhanced payment form component with Apple Pay support
-function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
+function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }: { 
+  onSuccess: () => void,
+  coursePrice: number,
+  currencySymbol: string,
+  currency: string
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -58,10 +62,10 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
     const pr = stripe.paymentRequest({
       country: 'US',
-      currency: 'usd',
+      currency: currency.toLowerCase(),
       total: {
         label: BIG_BABY_COURSE.title,
-        amount: BIG_BABY_COURSE.price * 100, // Convert to cents
+        amount: coursePrice * 100, // Convert to cents
       },
       requestPayerName: true,
       requestPayerEmail: true,
@@ -211,7 +215,7 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
           disabled={!stripe || isProcessing}
           className="w-full bg-dr-teal hover:bg-dr-teal/90 h-12 text-base font-semibold"
         >
-          {isProcessing ? "Processing..." : `Pay $${BIG_BABY_COURSE.price}`}
+          {isProcessing ? "Processing..." : `Pay ${currencySymbol}${coursePrice}`}
         </Button>
       </form>
     </div>
@@ -230,6 +234,23 @@ export default function BigBabyPublic() {
     email: "",
     dueDate: "",
   });
+  const [regionalPricing, setRegionalPricing] = useState<any>(null);
+
+  // Fetch regional pricing
+  const { data: pricingData } = useQuery({
+    queryKey: ['/api/regional-pricing'],
+  });
+
+  useEffect(() => {
+    if (pricingData) {
+      setRegionalPricing(pricingData);
+    }
+  }, [pricingData]);
+
+  // Get pricing details
+  const coursePrice = regionalPricing?.coursePrice || 120;
+  const currency = regionalPricing?.currency || 'USD';
+  const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
 
   // Create payment intent for anonymous users
   const createPaymentMutation = useMutation({
@@ -476,7 +497,7 @@ export default function BigBabyPublic() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-lg font-semibold">${BIG_BABY_COURSE.price}</span>
+                    <span className="text-lg font-semibold">{currencySymbol}{coursePrice}</span>
                   </div>
                 </div>
 
@@ -516,7 +537,12 @@ export default function BigBabyPublic() {
                       }
                     }}
                   >
-                    <BigBabyPaymentForm onSuccess={handlePaymentSuccess} />
+                    <BigBabyPaymentForm 
+                      onSuccess={handlePaymentSuccess} 
+                      coursePrice={coursePrice}
+                      currencySymbol={currencySymbol}
+                      currency={currency}
+                    />
                   </Elements>
                 </CardContent>
               </Card>

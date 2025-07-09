@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Star, Crown, Info, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -20,64 +20,86 @@ export default function Manage() {
 
   const currentTier = user?.subscriptionTier || "free";
   const nextBillingDate = user?.nextBillingDate ? new Date(user.nextBillingDate) : null;
+  
+  // Fetch regional pricing
+  const { data: regionalPricing } = useQuery({
+    queryKey: ['/api/regional-pricing'],
+    enabled: !!user,
+  });
 
-  const plans = {
-    free: {
-      name: "Free Plan",
-      description: "Pay as you go courses",
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      features: [
-        "Pay as you go Courses",
-        "Exclusive Dr Golly Content"
-      ],
-      expandedFeatures: [
-        "Buy individual courses as needed",
-        "Access limited community content",
-        "Email support when needed"
-      ]
-    },
-    gold: {
-      name: "Gold Plan",
-      description: "Unlimited Courses + Free Dr Golly Book",
-      monthlyPrice: 199,
-      yearlyPrice: 99, // 50% discount
-      features: [
-        "Unlimited Courses",
-        "Exclusive Partner Discounts"
-      ],
-      expandedFeatures: [
-        "Everything in Free plan...",
-        "Unlimited access to all courses",
-        "Free copy of the Dr Golly Book",
-        "Growth tracking tools",
-        "Loyalty program benefits",
-        "Exclusive partner discounts",
-        "Family sharing (up to 4 members)"
-      ],
-      popular: true
-    },
-    platinum: {
-      name: "Platinum Plan",
-      description: "The Ultimate Dr Golly Program",
-      monthlyPrice: 499,
-      yearlyPrice: 249, // 50% discount
-      features: [
-        "Everything in Gold Plan +",
-        "1:1 Consultation"
-      ],
-      expandedFeatures: [
-        "Everything in Free plan...",
-        "Unlimited access to all courses",
-        "Free copy of the Dr Golly Book",
-        "Growth tracking tools",
-        "Loyalty program benefits",
-        "Exclusive partner discounts",
-        "Family sharing (up to 4 members)"
-      ],
-      comingSoon: true
-    }
+  // Get currency symbol from regional pricing
+  const getCurrencySymbol = () => {
+    if (!regionalPricing) return '$';
+    return regionalPricing.currency === 'AUD' ? '$' : regionalPricing.currency === 'USD' ? '$' : '€';
   };
+
+  const currencySymbol = getCurrencySymbol();
+
+  const getPlans = () => {
+    const coursePriceText = regionalPricing ? 
+      `${currencySymbol}${regionalPricing.coursePrice} per course` : 
+      'Pay as you go courses';
+    
+    return {
+      free: {
+        name: "Free Plan",
+        description: "Pay as you go courses",
+        monthlyPrice: 0,
+        yearlyPrice: 0,
+        features: [
+          coursePriceText,
+          "Exclusive Dr Golly Content"
+        ],
+        expandedFeatures: [
+          "Buy individual courses as needed",
+          "Access limited community content",
+          "Email support when needed"
+        ]
+      },
+      gold: {
+        name: "Gold Plan",
+        description: "Unlimited Courses + Free Dr Golly Book",
+        monthlyPrice: regionalPricing?.goldMonthly || 199,
+        yearlyPrice: regionalPricing?.goldYearly || 99,
+        features: [
+          "Unlimited Courses",
+          "Exclusive Partner Discounts"
+        ],
+        expandedFeatures: [
+          "Everything in Free plan...",
+          "Unlimited access to all courses",
+          "Free copy of the Dr Golly Book",
+          "Growth tracking tools",
+          "Loyalty program benefits",
+          "Exclusive partner discounts",
+          "Family sharing (up to 4 members)"
+        ],
+        popular: true
+      },
+      platinum: {
+        name: "Platinum Plan",
+        description: "The Ultimate Dr Golly Program",
+        monthlyPrice: regionalPricing?.platinumMonthly || 499,
+        yearlyPrice: regionalPricing?.platinumYearly || 249,
+        features: [
+          "Everything in Gold Plan +",
+          "1:1 Consultation"
+        ],
+        expandedFeatures: [
+          "Everything in Free plan...",
+          "Unlimited access to all courses",
+          "Free copy of the Dr Golly Book",
+          "Growth tracking tools",
+          "Loyalty program benefits",
+          "Exclusive partner discounts",
+          "Family sharing (up to 4 members)"
+        ],
+        comingSoon: true
+      }
+    };
+  };
+
+  const plans = getPlans();
 
   const updateSubscription = useMutation({
     mutationFn: async ({ tier, period }: { tier: string; period: string }) => {
@@ -300,11 +322,11 @@ export default function Manage() {
                   <div className="flex items-baseline gap-2">
                     {billingPeriod === "yearly" && planKey !== "free" && (
                       <span className="text-lg text-gray-400 line-through">
-                        ${originalPrice}
+                        {currencySymbol}{originalPrice}
                       </span>
                     )}
                     <span className="text-3xl font-bold">
-                      ${price}
+                      {currencySymbol}{price}
                     </span>
                     <span className="text-gray-500">
                       /{billingPeriod === "yearly" ? "Month" : "Month"}
@@ -378,7 +400,7 @@ export default function Manage() {
 
                   {billingPeriod === "yearly" && planKey !== "free" && (
                     <p className="text-center text-xs text-gray-500 mt-2">
-                      Billed ${price * 12}/year
+                      Billed {currencySymbol}{price * 12}/year
                     </p>
                   )}
                 </CardContent>
