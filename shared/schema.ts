@@ -9,6 +9,7 @@ import {
   integer,
   boolean,
   decimal,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -209,7 +210,10 @@ export const userModuleProgress = pgTable("user_module_progress", {
   watchTime: integer("watch_time").default(0), // in seconds for videos
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint on userId and moduleId for upsert operations
+  uniqueUserModule: unique().on(table.userId, table.moduleId),
+}));
 
 // User progress on submodules
 export const userSubmoduleProgress = pgTable("user_submodule_progress", {
