@@ -81,6 +81,7 @@ function AuthenticatedApp() {
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
         <Route path="/admin" component={Admin} />
         <Route path="/profile" component={Profile} />
+        <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/home">
           <Home />
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
@@ -113,11 +114,6 @@ function Router() {
 
   // Handle redirects based on authentication state
   useEffect(() => {
-    // Skip redirect for big-baby-public page
-    if (location === '/big-baby-public') {
-      return;
-    }
-    
     const redirectPath = getRedirectPath(location, { isAuthenticated, isLoading, user });
     if (redirectPath && redirectPath !== location) {
       setLocation(redirectPath);
