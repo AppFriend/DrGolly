@@ -416,19 +416,19 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {chapter.chapterNumber}.{index + 1}
-                                  </Badge>
-                                  <CheckCircle className={`w-4 h-4 ${
+                                <Badge variant="outline" className="text-xs">
+                                  {chapter.chapterNumber}.{index + 1}
+                                </Badge>
+                                <div className="flex items-center gap-3">
+                                  <div>
+                                    <h4 className="font-medium cursor-pointer hover:text-teal-600">{module.title}</h4>
+                                    <p className="text-sm text-gray-600">{module.description}</p>
+                                  </div>
+                                  <CheckCircle className={`w-5 h-5 ${
                                     completedModules.has(module.id) 
                                       ? 'text-green-500' 
                                       : 'text-gray-300'
                                   }`} />
-                                </div>
-                                <div>
-                                  <h4 className="font-medium cursor-pointer hover:text-teal-600">{module.title}</h4>
-                                  <p className="text-sm text-gray-600">{module.description}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
