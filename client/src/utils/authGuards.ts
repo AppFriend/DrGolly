@@ -15,7 +15,8 @@ export const PUBLIC_ROUTES = [
   '/',
   '/signup',
   '/login',
-  '/landing'
+  '/landing',
+  '/big-baby-public'
 ];
 
 /**
