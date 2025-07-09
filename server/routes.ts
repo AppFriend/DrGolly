@@ -2244,6 +2244,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Family invite routes (Gold subscribers only)
+  app.get('/api/family/members', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.subscriptionTier !== 'gold') {
+        return res.status(403).json({ message: 'Gold subscription required for family sharing' });
+      }
+      
+      const members = await storage.getFamilyMembers(userId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching family members:", error);
+      res.status(500).json({ message: "Failed to fetch family members" });
+    }
+  });
+
+  app.post('/api/family/invite', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.subscriptionTier !== 'gold') {
+        return res.status(403).json({ message: 'Gold subscription required for family sharing' });
+      }
+      
+      const { name, email, role } = req.body;
+      
+      if (!name || !email || !role) {
+        return res.status(400).json({ message: 'Name, email, and role are required' });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+
+      // Generate temporary password
+      const tempPassword = AuthUtils.generateTemporaryPassword();
+      
+      // Create family invite
+      const invite = await storage.createFamilyInvite({
+        familyOwnerId: userId,
+        inviteeEmail: email,
+        inviteeName: name,
+        inviteeRole: role,
+        tempPassword,
+        status: 'pending',
+        expiresAt: AuthUtils.createTempPasswordExpiry(),
+      });
+
+      // Create user account with temporary password
+      const newUser = await storage.upsertUser({
+        id: AuthUtils.generateUserId(),
+        email,
+        firstName: name.split(' ')[0],
+        lastName: name.split(' ').slice(1).join(' ') || '',
+        subscriptionTier: 'gold', // Inherit family owner's subscription
+        temporaryPassword: tempPassword,
+        isFirstLogin: true,
+        hasSetPassword: false,
+        userRole: role,
+      });
+
+      // Create temporary password record
+      await storage.createTemporaryPassword(newUser.id, tempPassword);
+
+      // Send invite via Klaviyo
+      try {
+        const { klaviyoService } = await import('./klaviyo');
+        await klaviyoService.sendFamilyInvite(newUser, tempPassword, user.firstName || 'Family Member');
+      } catch (klaviyoError) {
+        console.error('Klaviyo error:', klaviyoError);
+        // Continue even if Klaviyo fails
+      }
+
+      res.json({ 
+        message: 'Family invitation sent successfully',
+        inviteId: invite.id,
+        tempPassword // For testing purposes
+      });
+    } catch (error) {
+      console.error("Error sending family invite:", error);
+      res.status(500).json({ message: "Failed to send family invite" });
+    }
+  });
+
+  app.get('/api/family/invites', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.subscriptionTier !== 'gold') {
+        return res.status(403).json({ message: 'Gold subscription required for family sharing' });
+      }
+      
+      const invites = await storage.getFamilyInvites(userId);
+      res.json(invites);
+    } catch (error) {
+      console.error("Error fetching family invites:", error);
+      res.status(500).json({ message: "Failed to fetch family invites" });
+    }
+  });
+
+  // Admin invite routes
+  app.post('/api/admin/invite', isAdmin, async (req, res) => {
+    try {
+      const { name, email, role } = req.body;
+      
+      if (!name || !email || !role) {
+        return res.status(400).json({ message: 'Name, email, and role are required' });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+
+      // Generate temporary password
+      const tempPassword = AuthUtils.generateTemporaryPassword();
+      
+      // Create admin user account with temporary password
+      const newUser = await storage.upsertUser({
+        id: AuthUtils.generateUserId(),
+        email,
+        firstName: name.split(' ')[0],
+        lastName: name.split(' ').slice(1).join(' ') || '',
+        subscriptionTier: 'gold', // Admins get gold by default
+        temporaryPassword: tempPassword,
+        isFirstLogin: true,
+        hasSetPassword: false,
+        userRole: role,
+        isAdmin: true, // Grant admin privileges
+      });
+
+      // Create temporary password record
+      await storage.createTemporaryPassword(newUser.id, tempPassword);
+
+      // Send invite via Klaviyo
+      try {
+        const { klaviyoService } = await import('./klaviyo');
+        await klaviyoService.sendAdminInvite(newUser, tempPassword);
+      } catch (klaviyoError) {
+        console.error('Klaviyo error:', klaviyoError);
+        // Continue even if Klaviyo fails
+      }
+
+      res.json({ 
+        message: 'Admin invitation sent successfully',
+        userId: newUser.id,
+        tempPassword // For testing purposes
+      });
+    } catch (error) {
+      console.error("Error sending admin invite:", error);
+      res.status(500).json({ message: "Failed to send admin invite" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
