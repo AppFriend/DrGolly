@@ -3586,6 +3586,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Klaviyo Testing Endpoints
+  app.post('/api/test/klaviyo/signup', async (req, res) => {
+    try {
+      const { firstName, lastName, email, signupSource = "test_signup" } = req.body;
+      
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: 'firstName, lastName, and email are required' });
+      }
+
+      // Create a test user object
+      const testUser = {
+        id: `test_${Date.now()}`,
+        firstName,
+        lastName,
+        email,
+        phoneNumber: null,
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Test the signup Klaviyo flow
+      const syncResult = await klaviyoService.syncUserToKlaviyo(testUser);
+      
+      res.json({ 
+        message: 'Klaviyo signup test completed',
+        success: syncResult,
+        user: testUser,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Klaviyo signup test error:", error);
+      res.status(500).json({ message: "Klaviyo signup test failed", error: error.message });
+    }
+  });
+
+  app.post('/api/test/klaviyo/public-checkout', async (req, res) => {
+    try {
+      const { firstName, lastName, email, dueDate, signupSource = "test_public_checkout" } = req.body;
+      
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: 'firstName, lastName, and email are required' });
+      }
+
+      // Create a test user object
+      const testUser = {
+        id: `test_${Date.now()}`,
+        firstName,
+        lastName,
+        email,
+        phoneNumber: null,
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Create test customer details
+      const customerDetails = {
+        dueDate: dueDate || "2025-08-15",
+        interests: ["Baby Sleep", "Toddler Sleep"],
+        signupSource: signupSource
+      };
+
+      // Test the public checkout Klaviyo flow
+      const syncResult = await klaviyoService.syncBigBabySignupToKlaviyo(testUser, customerDetails);
+      
+      res.json({ 
+        message: 'Klaviyo public checkout test completed',
+        success: syncResult,
+        user: testUser,
+        customerDetails,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Klaviyo public checkout test error:", error);
+      res.status(500).json({ message: "Klaviyo public checkout test failed", error: error.message });
+    }
+  });
+
+  app.post('/api/test/klaviyo/welcome-email', async (req, res) => {
+    try {
+      const { firstName, lastName, email, tempPassword = "TempPass123!" } = req.body;
+      
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: 'firstName, lastName, and email are required' });
+      }
+
+      // Create a test user object
+      const testUser = {
+        id: `test_${Date.now()}`,
+        firstName,
+        lastName,
+        email,
+        phoneNumber: null,
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Test the welcome email flow
+      const welcomeResult = await klaviyoService.sendPublicCheckoutWelcome(testUser, tempPassword);
+      
+      res.json({ 
+        message: 'Klaviyo welcome email test completed',
+        success: welcomeResult,
+        user: testUser,
+        tempPassword,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Klaviyo welcome email test error:", error);
+      res.status(500).json({ message: "Klaviyo welcome email test failed", error: error.message });
+    }
+  });
+
+  app.get('/api/test/klaviyo/status', async (req, res) => {
+    try {
+      const hasApiKey = !!process.env.KLAVIYO_API_KEY;
+      const listIds = {
+        superapp: "XBRBuN",
+        appSignups: "WyGwy9"
+      };
+      
+      res.json({
+        klaviyoConfigured: hasApiKey,
+        listIds,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Klaviyo status check error:", error);
+      res.status(500).json({ message: "Klaviyo status check failed", error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

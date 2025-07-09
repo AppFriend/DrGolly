@@ -306,6 +306,14 @@ Changelog:
   * Updated child display cards to show circular profile pictures or default baby icon
   * Enhanced growth tracking dropdown to display child profile pictures as circular avatars
   * Implemented Base64 image encoding for profile picture storage and display
+- July 09, 2025. Created comprehensive Klaviyo integration testing system:
+  * Added /api/test/klaviyo/signup endpoint to test regular signup flow with syncUserToKlaviyo()
+  * Added /api/test/klaviyo/public-checkout endpoint to test Big Baby checkout flow with syncBigBabySignupToKlaviyo()
+  * Added /api/test/klaviyo/welcome-email endpoint to test welcome email sending with sendPublicCheckoutWelcome()
+  * Added /api/test/klaviyo/status endpoint to verify API key configuration and list IDs
+  * Created /klaviyo-test page with interactive testing interface for both authenticated and unauthenticated users
+  * Implemented comprehensive test result display with success/failure indicators and JSON response details
+  * Added real-time testing of both signup flows to verify users are properly added to Klaviyo lists
 ```
 
 ## User Preferences
