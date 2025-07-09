@@ -110,22 +110,22 @@ export default function Home() {
       </header>
 
       {/* Welcome Hero */}
-      <section className="bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] text-[#095D66] p-6 rounded-b-3xl">
+      <section className="bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] text-white p-6 rounded-b-3xl">
         <div className="flex items-center space-x-4">
           <div className="flex-1">
-            <h1 className="text-xl font-bold mb-2">
+            <h1 className="text-xl font-bold mb-2 text-white">
               Welcome {user?.firstName || "there"}!
             </h1>
-            <p className="text-sm text-white/90 mb-4">
+            <p className="text-sm text-white/95 mb-4">
               I'm here to help you navigate sleep, parenthood & beyond
             </p>
             {user?.subscriptionTier === "free" && (
               <Button
                 variant="secondary"
-                className="bg-white text-dr-teal hover:bg-gray-100"
+                className="bg-white text-[#095D66] hover:bg-gray-100 font-medium"
                 onClick={() => window.location.href = "/subscription"}
               >
-                Try Gold Plan for 30 days
+                Try Gold 50% off for 1 month
               </Button>
             )}
           </div>
