@@ -300,6 +300,12 @@ Changelog:
   * Cleaned up duplicate getChild and updateChild functions in storage.ts
   * Proper cascade deletion now works: removes all related records (growth entries, development tracking, feed entries, sleep entries) before deleting child
   * Fixed "Failed to delete child" error when removing family members from family section
+- July 09, 2025. Added optional profile picture support for children:
+  * Extended children database schema with profilePicture field for storing image data
+  * Added profile picture upload functionality to family management page with file input and preview
+  * Updated child display cards to show circular profile pictures or default baby icon
+  * Enhanced growth tracking dropdown to display child profile pictures as circular avatars
+  * Implemented Base64 image encoding for profile picture storage and display
 ```
 
 ## User Preferences
