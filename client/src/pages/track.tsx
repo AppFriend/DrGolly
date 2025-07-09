@@ -195,10 +195,11 @@ function GrowthTracking({ childId }: { childId: number | null }) {
   });
 
   // Fetch child data
-  const { data: childData } = useQuery({
-    queryKey: ["/api/children", childId],
-    enabled: !!childId,
+  const { data: children = [] } = useQuery({
+    queryKey: ["/api/children"],
   });
+  
+  const childData = children.find((child: any) => child.id === childId);
 
   // Fetch growth entries
   const { data: growthEntries = [], isLoading } = useQuery({
@@ -683,23 +684,23 @@ function FeedingTracking({ childId }: { childId: number | null }) {
           {feedType === "breast" ? (
             <div className="space-y-4">
               {/* Left and Right Breast Timers Side by Side */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Left Breast Timer */}
-                <div className="border rounded-lg p-3 bg-gray-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-700 text-sm">Left Breast</h3>
+                <div className="border rounded-lg p-2 bg-gray-50">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-medium text-gray-700 text-xs">Left Breast</h3>
                     <div className="text-xs text-gray-500">
                       Total: {formatTime(leftTotalDuration)}
                     </div>
                   </div>
                   <div className="text-center mb-2">
-                    <div className="text-xl font-mono font-bold text-[#83CFCC]">
+                    <div className="text-lg font-mono font-bold text-[#83CFCC]">
                       {formatTime(leftIsActive ? leftTimer : 0)}
                     </div>
                   </div>
                   <Button
                     onClick={leftIsActive ? stopLeftTimer : startLeftTimer}
-                    className={`w-full text-sm py-2 ${leftIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
+                    className={`w-full text-xs py-1.5 ${leftIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
                     disabled={rightIsActive && !leftIsActive}
                   >
                     <Timer className="mr-1 h-3 w-3" />
@@ -708,21 +709,21 @@ function FeedingTracking({ childId }: { childId: number | null }) {
                 </div>
 
                 {/* Right Breast Timer */}
-                <div className="border rounded-lg p-3 bg-gray-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-700 text-sm">Right Breast</h3>
+                <div className="border rounded-lg p-2 bg-gray-50">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-medium text-gray-700 text-xs">Right Breast</h3>
                     <div className="text-xs text-gray-500">
                       Total: {formatTime(rightTotalDuration)}
                     </div>
                   </div>
                   <div className="text-center mb-2">
-                    <div className="text-xl font-mono font-bold text-[#83CFCC]">
+                    <div className="text-lg font-mono font-bold text-[#83CFCC]">
                       {formatTime(rightIsActive ? rightTimer : 0)}
                     </div>
                   </div>
                   <Button
                     onClick={rightIsActive ? stopRightTimer : startRightTimer}
-                    className={`w-full text-sm py-2 ${rightIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
+                    className={`w-full text-xs py-1.5 ${rightIsActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#83CFCC] hover:bg-[#095D66]'}`}
                     disabled={leftIsActive && !rightIsActive}
                   >
                     <Timer className="mr-1 h-3 w-3" />
