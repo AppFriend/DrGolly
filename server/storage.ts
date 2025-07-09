@@ -467,11 +467,6 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(children).where(eq(children.userId, userId));
   }
 
-  async getChild(id: number): Promise<Child | undefined> {
-    const [child] = await db.select().from(children).where(eq(children.id, id));
-    return child;
-  }
-
   async createChild(child: InsertChild): Promise<Child> {
     const [newChild] = await db
       .insert(children)
@@ -508,18 +503,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(children).where(eq(children.id, childId));
   }
 
-  async updateChild(id: number, child: Partial<InsertChild>): Promise<Child> {
-    const [updatedChild] = await db
-      .update(children)
-      .set({ ...child, updatedAt: new Date() })
-      .where(eq(children.id, id))
-      .returning();
-    return updatedChild;
-  }
 
-  async deleteChild(id: number): Promise<void> {
-    await db.delete(children).where(eq(children.id, id));
-  }
 
   // Growth tracking operations
   async getChildGrowthEntries(childId: number): Promise<any[]> {

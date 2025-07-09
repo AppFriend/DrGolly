@@ -295,6 +295,11 @@ Changelog:
   * Desktop users see Link/Card tabs without express payment options
   * Integrated multi-currency support matching Big Baby public checkout functionality
   * Updated checkout form to use regional pricing for accurate payment processing
+- July 09, 2025. Fixed child deletion foreign key constraint error in family management:
+  * Removed duplicate deleteChild functions that were causing foreign key constraint violations
+  * Cleaned up duplicate getChild and updateChild functions in storage.ts
+  * Proper cascade deletion now works: removes all related records (growth entries, development tracking, feed entries, sleep entries) before deleting child
+  * Fixed "Failed to delete child" error when removing family members from family section
 ```
 
 ## User Preferences
