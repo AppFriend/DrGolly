@@ -1685,9 +1685,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe invoice routes
   app.get('/api/profile/invoices', isAuthenticated, async (req: any, res) => {
     // Disable caching for this endpoint
-    res.set('Cache-Control', 'no-store');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('ETag', ''); // Remove ETag to prevent 304 responses
     try {
       const userId = req.user.claims.sub;
       console.log('===== INVOICE FETCH START =====');
@@ -1797,9 +1798,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe payment methods routes
   app.get('/api/profile/payment-methods', isAuthenticated, async (req: any, res) => {
     // Disable caching for this endpoint
-    res.set('Cache-Control', 'no-store');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('ETag', ''); // Remove ETag to prevent 304 responses
     try {
       const userId = req.user.claims.sub;
       console.log('===== PAYMENT METHODS FETCH START =====');
