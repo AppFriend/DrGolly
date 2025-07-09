@@ -351,6 +351,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/profile/payment-methods/setup-intent', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      let user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create Stripe customer if doesn't exist
+      if (!user.stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: user.email!,
+          name: `${user.firstName} ${user.lastName}`.trim(),
+        });
+        
+        user = await storage.updateUserStripeCustomerId(userId, customer.id);
+      }
+      
+      // Create setup intent for adding payment method
+      const setupIntent = await stripe.setupIntents.create({
+        customer: user.stripeCustomerId,
+        usage: 'off_session',
+        payment_method_types: ['card'],
+      });
+      
+      res.json({ 
+        clientSecret: setupIntent.client_secret,
+        customerId: user.stripeCustomerId 
+      });
+    } catch (error) {
+      console.error("Error creating setup intent:", error);
+      res.status(500).json({ message: "Failed to create setup intent" });
+    }
+  });
+
+  app.delete('/api/profile/payment-methods/:paymentMethodId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { paymentMethodId } = req.params;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: "No Stripe customer found" });
+      }
+      
+      // Detach payment method from customer
+      await stripe.paymentMethods.detach(paymentMethodId);
+      
+      res.json({ message: "Payment method removed successfully" });
+    } catch (error) {
+      console.error("Error removing payment method:", error);
+      res.status(500).json({ message: "Failed to remove payment method" });
+    }
+  });
+
   // Course routes
   app.get('/api/courses', async (req, res) => {
     try {

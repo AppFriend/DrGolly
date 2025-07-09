@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { User, CreditCard, Receipt, Share2, LogOut, Camera, Edit2, ArrowLeft, Home } from "lucide-react";
+import { User, CreditCard, Receipt, Share2, LogOut, Camera, Edit2, ArrowLeft, Home, Plus } from "lucide-react";
 import { useLocation } from "wouter";
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface ProfileData {
   id: string;
@@ -50,8 +53,78 @@ interface PaymentMethod {
   expMonth: number;
   expYear: number;
   isDefault: boolean;
-  created: string;
+  created?: string;
 }
+
+// Load Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
+
+// Add Payment Method Form Component
+const AddPaymentMethodForm = ({ onSuccess }: { onSuccess: () => void }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!stripe || !elements) {
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      const { error } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + '/profile',
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        toast({
+          title: "Payment Method Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Payment Method Added",
+          description: "Your payment method has been successfully added.",
+        });
+        onSuccess();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add payment method. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 border rounded-lg">
+        <PaymentElement />
+      </div>
+      <div className="flex gap-2">
+        <Button 
+          type="submit" 
+          disabled={!stripe || isProcessing}
+          className="bg-dr-teal hover:bg-dr-teal/90"
+        >
+          {isProcessing ? "Processing..." : "Add Payment Method"}
+        </Button>
+      </div>
+    </form>
+  );
+};
 
 export default function Profile() {
   const { user, isLoading: authLoading } = useAuth();
@@ -61,6 +134,8 @@ export default function Profile() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isAddPaymentMethodOpen, setIsAddPaymentMethodOpen] = useState(false);
+  const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null);
 
   // Fetch profile data
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -146,6 +221,21 @@ export default function Profile() {
       toast({
         title: "Remove Failed",
         description: "Failed to remove payment method. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createSetupIntentMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/profile/payment-methods/setup-intent"),
+    onSuccess: (data) => {
+      setSetupIntentSecret(data.clientSecret);
+      setIsAddPaymentMethodOpen(true);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create payment method setup. Please try again.",
         variant: "destructive",
       });
     },
@@ -520,7 +610,17 @@ export default function Profile() {
           <TabsContent value="payment">
             <Card>
               <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  Payment Methods
+                  <Button
+                    onClick={() => createSetupIntentMutation.mutate()}
+                    disabled={createSetupIntentMutation.isPending}
+                    className="bg-dr-teal hover:bg-dr-teal/90"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {createSetupIntentMutation.isPending ? "Loading..." : "Add Card"}
+                  </Button>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {paymentMethodsLoading ? (
@@ -529,7 +629,11 @@ export default function Profile() {
                   </div>
                 ) : paymentMethods.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No payment methods found
+                    <div className="space-y-2">
+                      <CreditCard className="h-12 w-12 mx-auto text-gray-400" />
+                      <p>No payment methods found</p>
+                      <p className="text-sm">Add a payment method to make purchases</p>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -580,6 +684,37 @@ export default function Profile() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Add Payment Method Dialog */}
+            <Dialog open={isAddPaymentMethodOpen} onOpenChange={setIsAddPaymentMethodOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add Payment Method</DialogTitle>
+                </DialogHeader>
+                {setupIntentSecret && (
+                  <Elements 
+                    stripe={stripePromise} 
+                    options={{
+                      clientSecret: setupIntentSecret,
+                      appearance: {
+                        theme: 'stripe',
+                        variables: {
+                          colorPrimary: '#0ea5e9',
+                        },
+                      },
+                    }}
+                  >
+                    <AddPaymentMethodForm 
+                      onSuccess={() => {
+                        setIsAddPaymentMethodOpen(false);
+                        setSetupIntentSecret(null);
+                        queryClient.invalidateQueries({ queryKey: ["/api/profile/payment-methods"] });
+                      }}
+                    />
+                  </Elements>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Referral Tab */}
