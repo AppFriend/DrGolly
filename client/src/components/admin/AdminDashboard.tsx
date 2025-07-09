@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   Users, 
   Crown, 
@@ -9,9 +10,11 @@ import {
   ShoppingCart,
   TrendingUp,
   Calendar,
-  UserMinus
+  UserMinus,
+  BarChart3
 } from "lucide-react";
 import OrderAnalytics from "./OrderAnalytics";
+import { useState } from "react";
 
 interface MetricCardProps {
   title: string;
@@ -53,6 +56,8 @@ function MetricCard({ title, value, icon, description, trend }: MetricCardProps)
 }
 
 export function AdminDashboard() {
+  const [activeView, setActiveView] = useState<"orders" | "users">("orders");
+  
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["/api/admin/metrics"],
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -101,10 +106,34 @@ export function AdminDashboard() {
         </p>
       </div>
 
-      {/* Order Analytics Section - Moved to top */}
-      <OrderAnalytics />
+      {/* Toggle Pills */}
+      <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
+        <Button
+          variant={activeView === "orders" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveView("orders")}
+          className="flex items-center gap-2"
+        >
+          <BarChart3 className="h-4 w-4" />
+          Order Analytics
+        </Button>
+        <Button
+          variant={activeView === "users" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveView("users")}
+          className="flex items-center gap-2"
+        >
+          <Users className="h-4 w-4" />
+          User Analytics
+        </Button>
+      </div>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      {/* Conditional Content */}
+      {activeView === "orders" ? (
+        <OrderAnalytics />
+      ) : (
+        <div className="space-y-6">
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <MetricCard
           title="Total Users"
           value={metrics.totalUsers.toLocaleString()}
@@ -227,6 +256,8 @@ export function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
+        </div>
+      )}
     </div>
   );
 }
