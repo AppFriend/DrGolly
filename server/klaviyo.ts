@@ -47,10 +47,10 @@ export class KlaviyoService {
     "revision": "2024-10-15"
   };
 
-  async createOrUpdateProfile(user: User): Promise<boolean> {
+  async createOrUpdateProfile(user: User): Promise<string | null> {
     if (!KLAVIYO_API_KEY) {
       console.error("Klaviyo API key not configured");
-      return false;
+      return null;
     }
 
     try {
@@ -74,18 +74,28 @@ export class KlaviyoService {
         body: JSON.stringify({ data: profile })
       });
 
+      if (response.status === 409) {
+        // Profile already exists, let's get the existing profile ID
+        const errorResponse = await response.json();
+        const existingProfileId = errorResponse.errors?.[0]?.meta?.duplicate_profile_id;
+        if (existingProfileId) {
+          console.log("Klaviyo profile already exists, using existing ID:", existingProfileId);
+          return existingProfileId;
+        }
+      }
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Failed to create Klaviyo profile:", response.status, errorText);
-        return false;
+        return null;
       }
 
       const result = await response.json();
       console.log("Klaviyo profile created successfully:", result.data?.id);
-      return true;
+      return result.data?.id || null;
     } catch (error) {
       console.error("Error creating Klaviyo profile:", error);
-      return false;
+      return null;
     }
   }
 
@@ -96,31 +106,23 @@ export class KlaviyoService {
     }
 
     try {
-      const subscription = {
-        type: "profile-subscription-bulk-create-job",
-        attributes: {
-          profiles: {
-            data: [{
-              type: "profile",
-              attributes: {
-                email: user.email,
-                subscriptions: {
-                  email: {
-                    marketing: {
-                      consent: "SUBSCRIBED"
-                    }
-                  }
-                }
-              }
-            }]
-          }
-        }
-      };
+      // First get or create the profile to get the profile ID
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to get profile ID for list subscription");
+        return false;
+      }
+
+      // Use the correct format for adding profiles to lists
+      const relationshipData = [{
+        type: "profile",
+        id: profileId
+      }];
 
       const response = await fetch(`${KLAVIYO_BASE_URL}/lists/${KLAVIYO_APP_SIGNUPS_LIST_ID}/relationships/profiles/`, {
         method: "POST",
         headers: this.headers,
-        body: JSON.stringify({ data: subscription })
+        body: JSON.stringify({ data: relationshipData })
       });
 
       if (!response.ok) {
@@ -144,31 +146,23 @@ export class KlaviyoService {
     }
 
     try {
-      const subscription = {
-        type: "profile-subscription-bulk-create-job",
-        attributes: {
-          profiles: {
-            data: [{
-              type: "profile",
-              attributes: {
-                email: user.email,
-                subscriptions: {
-                  email: {
-                    marketing: {
-                      consent: "SUBSCRIBED" as const
-                    }
-                  }
-                }
-              }
-            }]
-          }
-        }
-      };
+      // First get or create the profile to get the profile ID
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to get profile ID for list subscription");
+        return false;
+      }
+
+      // Use the correct format for adding profiles to lists
+      const relationshipData = [{
+        type: "profile",
+        id: profileId
+      }];
 
       const response = await fetch(`${KLAVIYO_BASE_URL}/lists/${KLAVIYO_LIST_ID}/relationships/profiles/`, {
         method: "POST",
         headers: this.headers,
-        body: JSON.stringify({ data: subscription })
+        body: JSON.stringify({ data: relationshipData })
       });
 
       if (!response.ok) {
@@ -188,14 +182,15 @@ export class KlaviyoService {
   async syncUserToKlaviyo(user: User): Promise<boolean> {
     try {
       // First create or update the profile
-      const profileCreated = await this.createOrUpdateProfile(user);
+      const profileId = await this.createOrUpdateProfile(user);
       
       // Then add to superapp list if profile was created successfully
-      if (profileCreated && user.email) {
+      if (profileId && user.email) {
         await this.addToSuperAppList(user);
+        return true;
       }
 
-      return profileCreated;
+      return false;
     } catch (error) {
       console.error("Error syncing user to Klaviyo:", error);
       return false;
@@ -210,7 +205,11 @@ export class KlaviyoService {
 
     try {
       // Create profile first
-      await this.createOrUpdateProfile(user);
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to create or update Klaviyo profile for family invite");
+        return false;
+      }
 
       // Send family invite email via Klaviyo
       const eventData = {
@@ -260,7 +259,11 @@ export class KlaviyoService {
 
     try {
       // Create profile first
-      await this.createOrUpdateProfile(user);
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to create or update Klaviyo profile for admin invite");
+        return false;
+      }
 
       // Send admin invite email via Klaviyo
       const eventData = {
@@ -309,7 +312,11 @@ export class KlaviyoService {
 
     try {
       // Create profile first
-      await this.createOrUpdateProfile(user);
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to create or update Klaviyo profile for public checkout welcome");
+        return false;
+      }
 
       // Send public checkout welcome email via Klaviyo
       const eventData = {
@@ -353,35 +360,45 @@ export class KlaviyoService {
 
   async syncBigBabySignupToKlaviyo(user: User, customerDetails: any): Promise<boolean> {
     try {
-      // Create enhanced profile with Big Baby signup details
-      const profile = {
-        type: "profile",
-        attributes: {
-          email: user.email || undefined,
-          first_name: user.firstName || undefined,
-          last_name: user.lastName || undefined,
-          properties: {
-            signup_source: "Big Baby Public Checkout",
-            user_id: user.id,
-            signup_date: new Date().toISOString(),
-            due_date: customerDetails.dueDate || undefined,
-            course_purchased: "Big Baby Sleep Program",
-            purchase_amount: "$120",
-            purchase_date: new Date().toISOString(),
-          }
-        }
+      // Update user with Big Baby signup details temporarily for profile creation
+      const userWithDetails = {
+        ...user,
+        signupSource: "Big Baby Public Checkout"
       };
 
-      const profileResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/`, {
-        method: "POST",
+      // Create or update profile, which will handle duplicates gracefully
+      const profileId = await this.createOrUpdateProfile(userWithDetails);
+      
+      if (!profileId) {
+        console.error("Failed to create or update Klaviyo profile for Big Baby signup");
+        return false;
+      }
+
+      // Add additional Big Baby properties to the profile
+      const updateResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/${profileId}/`, {
+        method: "PATCH",
         headers: this.headers,
-        body: JSON.stringify({ data: profile })
+        body: JSON.stringify({
+          data: {
+            type: "profile",
+            id: profileId,
+            attributes: {
+              properties: {
+                signup_source: "Big Baby Public Checkout",
+                due_date: customerDetails.dueDate || undefined,
+                course_purchased: "Big Baby Sleep Program",
+                purchase_amount: "$120",
+                purchase_date: new Date().toISOString(),
+              }
+            }
+          }
+        })
       });
 
-      if (!profileResponse.ok) {
-        const errorText = await profileResponse.text();
-        console.error("Failed to create Klaviyo profile:", profileResponse.status, errorText);
-        return false;
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error("Failed to update Klaviyo profile with Big Baby details:", updateResponse.status, errorText);
+        // Continue anyway since the profile was created
       }
 
       // Add to App Signups list
