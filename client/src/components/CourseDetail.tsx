@@ -84,12 +84,14 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
   const { data: course, isLoading: courseLoading } = useQuery({
     queryKey: ['/api/courses', courseId],
     queryFn: () => apiRequest('GET', `/api/courses/${courseId}`),
+    enabled: !!courseId,
   });
 
   // Fetch chapters
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery({
     queryKey: ['/api/courses', courseId, 'chapters'],
     queryFn: () => apiRequest('GET', `/api/courses/${courseId}/chapters`),
+    enabled: !!courseId,
   });
 
   // Fetch modules for expanded chapters
@@ -267,15 +269,20 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                   style={{ width: '0%' }}
                 />
               </div>
-              <span className="text-sm text-gray-600">0 / {chapters.length} chapters</span>
+              <span className="text-sm text-gray-600">0 / {chapters?.length || 0} chapters</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Chapters List */}
         <div className="space-y-4">
-          {chapters.map((chapter: Chapter) => (
-            <Card key={chapter.id} className="course-chapter" data-protected="true">
+          {(!chapters || chapters.length === 0) ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No chapters available for this course</p>
+            </div>
+          ) : (
+            chapters.map((chapter: Chapter) => (
+              <Card key={chapter.id} className="course-chapter" data-protected="true">
               <Collapsible 
                 open={expandedChapters.includes(chapter.id)}
                 onOpenChange={() => toggleChapter(chapter.id)}
@@ -378,8 +385,9 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                   </CardContent>
                 </CollapsibleContent>
               </Collapsible>
-            </Card>
-          ))}
+              </Card>
+            ))
+          )}
         </div>
 
         {/* Copy Protection Notice */}
