@@ -10,7 +10,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Course } from "@shared/schema";
 
 const courseTabs = [
-  { id: "my", label: "My Courses", icon: Bookmark },
+  { id: "my", label: "Purchases", icon: Bookmark },
   { id: "all", label: "All Courses", icon: Grid },
   { id: "sleep", label: "Sleep", icon: Moon },
   { id: "toddler", label: "Toddler", icon: Baby },
@@ -52,10 +52,10 @@ export default function Courses() {
   }, [error, toast]);
 
   const filteredCourses = courses?.filter((course: Course) => {
-    // For "My Courses" tab, show purchased courses + all courses if Gold/Platinum
+    // For "Purchases" tab, show purchased courses + all courses if Gold/Platinum
     if (activeTab === "my") {
       const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
-      return hasPurchased; // Only show actually purchased courses in "My Courses"
+      return hasPurchased; // Only show actually purchased courses in "Purchases"
     }
     
     // Apply search filter
@@ -233,7 +233,7 @@ export default function Courses() {
             {activeTab === "my" ? (
               <div className="space-y-4">
                 <div className="bg-gradient-to-r from-dr-teal to-blue-600 text-white p-6 rounded-2xl">
-                  <h3 className="text-lg font-semibold mb-2">No Courses Yet</h3>
+                  <h3 className="text-lg font-semibold mb-2">No Purchases Yet</h3>
                   <p className="text-sm opacity-90 mb-4">
                     You haven't purchased any courses yet. Browse our extensive library to find the perfect course for your family's needs.
                   </p>
