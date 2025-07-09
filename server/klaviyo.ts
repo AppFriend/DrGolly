@@ -2,6 +2,7 @@ import { User } from "@shared/schema";
 
 const KLAVIYO_API_KEY = process.env.KLAVIYO_API_KEY;
 const KLAVIYO_LIST_ID = "XBRBuN"; // Superapp users list ID
+const KLAVIYO_APP_SIGNUPS_LIST_ID = "WyGwy9"; // App_signups_all list ID
 const KLAVIYO_BASE_URL = "https://a.klaviyo.com/api";
 
 interface KlaviyoProfile {
@@ -84,6 +85,54 @@ export class KlaviyoService {
       return true;
     } catch (error) {
       console.error("Error creating Klaviyo profile:", error);
+      return false;
+    }
+  }
+
+  async addToAppSignupsList(user: User): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !user.email) {
+      console.error("Klaviyo API key not configured or user email missing");
+      return false;
+    }
+
+    try {
+      const subscription = {
+        type: "profile-subscription-bulk-create-job",
+        attributes: {
+          profiles: {
+            data: [{
+              type: "profile",
+              attributes: {
+                email: user.email,
+                subscriptions: {
+                  email: {
+                    marketing: {
+                      consent: "SUBSCRIBED"
+                    }
+                  }
+                }
+              }
+            }]
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/lists/${KLAVIYO_APP_SIGNUPS_LIST_ID}/relationships/profiles/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: subscription })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to add to App Signups list:", response.status, errorText);
+        return false;
+      }
+
+      console.log("Successfully added to App Signups list");
+      return true;
+    } catch (error) {
+      console.error("Error adding to App Signups list:", error);
       return false;
     }
   }
@@ -298,6 +347,49 @@ export class KlaviyoService {
       return true;
     } catch (error) {
       console.error("Error sending public checkout welcome via Klaviyo:", error);
+      return false;
+    }
+  }
+
+  async syncBigBabySignupToKlaviyo(user: User, customerDetails: any): Promise<boolean> {
+    try {
+      // Create enhanced profile with Big Baby signup details
+      const profile = {
+        type: "profile",
+        attributes: {
+          email: user.email || undefined,
+          first_name: user.firstName || undefined,
+          last_name: user.lastName || undefined,
+          properties: {
+            signup_source: "Big Baby Public Checkout",
+            user_id: user.id,
+            signup_date: new Date().toISOString(),
+            due_date: customerDetails.dueDate || undefined,
+            course_purchased: "Big Baby Sleep Program",
+            purchase_amount: "$120",
+            purchase_date: new Date().toISOString(),
+          }
+        }
+      };
+
+      const profileResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: profile })
+      });
+
+      if (!profileResponse.ok) {
+        const errorText = await profileResponse.text();
+        console.error("Failed to create Klaviyo profile:", profileResponse.status, errorText);
+        return false;
+      }
+
+      // Add to App Signups list
+      const addedToList = await this.addToAppSignupsList(user);
+      
+      return addedToList;
+    } catch (error) {
+      console.error("Error syncing Big Baby signup to Klaviyo:", error);
       return false;
     }
   }

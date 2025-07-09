@@ -9,6 +9,7 @@ import { usePersonalization } from "@/hooks/usePersonalization";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { cn } from "@/lib/utils";
+import { WelcomePopup } from "@/components/WelcomePopup";
 import type { BlogPost } from "@shared/schema";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 import drGollyLogo from "../assets/dr-golly-logo.png";
@@ -26,6 +27,7 @@ export default function Home() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [activeCategory, setActiveCategory] = useState("all");
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   
   // Initialize personalization hook to save signup data after auth
   const { personalization } = usePersonalization();
@@ -49,6 +51,15 @@ export default function Home() {
       }, 500);
     }
   }, [error, toast]);
+
+  // Check if user should see welcome popup (first-time purchaser from Big Baby)
+  useEffect(() => {
+    if (user?.signupSource === 'public_checkout' && !localStorage.getItem('welcomeShown')) {
+      // Show welcome popup for first-time Big Baby purchasers
+      setShowWelcomePopup(true);
+      localStorage.setItem('welcomeShown', 'true');
+    }
+  }, [user]);
 
   const handleBlogClick = (blogPost: BlogPost) => {
     // Navigate to blog post detail page
@@ -248,6 +259,13 @@ export default function Home() {
           )}
         </div>
       </section>
+      
+      {/* Welcome Popup for first-time Big Baby purchasers */}
+      <WelcomePopup
+        isOpen={showWelcomePopup}
+        onClose={() => setShowWelcomePopup(false)}
+        userName={user?.firstName}
+      />
     </div>
   );
 }
