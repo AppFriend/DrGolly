@@ -59,6 +59,11 @@ export function getRedirectPath(currentPath: string, authState: AuthState): stri
     return null;
   }
   
+  // Allow access to big-baby-public regardless of authentication state
+  if (currentPath === '/big-baby-public') {
+    return null;
+  }
+  
   // If user is authenticated and tries to access public auth routes, redirect to home
   if (isAuthenticated && (currentPath === '/login' || currentPath === '/signup')) {
     return '/home';
