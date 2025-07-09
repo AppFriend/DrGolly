@@ -91,9 +91,9 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
               disabled={moduleProgressMutation.isPending || isCompleted}
               className={`${
                 isCompleted 
-                  ? 'bg-green-600 hover:bg-green-700' 
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+                  ? 'bg-green-700 hover:bg-green-800' 
+                  : 'bg-green-700 hover:bg-green-800'
+              } text-white`}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               {isCompleted ? 'Completed' : 'Mark Complete'}
@@ -151,10 +151,26 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
           </CardHeader>
           <CardContent>
             <div 
-              className="course-content prose prose-lg max-w-none"
+              className="course-content prose prose-lg max-w-none mb-6"
               data-protected="true"
               dangerouslySetInnerHTML={{ __html: module.content || 'No content available for this module.' }}
             />
+            
+            {/* Mark Complete Button at Bottom */}
+            <div className="flex justify-center pt-6 border-t border-gray-200">
+              <Button
+                onClick={handleMarkComplete}
+                disabled={moduleProgressMutation.isPending || isCompleted}
+                className={`${
+                  isCompleted 
+                    ? 'bg-green-700 hover:bg-green-800' 
+                    : 'bg-green-700 hover:bg-green-800'
+                } text-white px-8 py-2`}
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {isCompleted ? 'Completed' : 'Mark Complete'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
