@@ -735,10 +735,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/user/chapter-progress', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const progressData = insertUserChapterProgressSchema.parse({
+      const requestData = {
         ...req.body,
         userId,
-      });
+      };
+      
+      // If marking as completed, ensure completedAt is set
+      if (requestData.completed && !requestData.completedAt) {
+        requestData.completedAt = new Date();
+      }
+      
+      const progressData = insertUserChapterProgressSchema.parse(requestData);
       const progress = await storage.updateUserChapterProgress(progressData);
       res.json(progress);
     } catch (error) {
@@ -750,10 +757,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/user/module-progress', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const progressData = insertUserModuleProgressSchema.parse({
+      const requestData = {
         ...req.body,
         userId,
-      });
+      };
+      
+      // If marking as completed, ensure completedAt is set
+      if (requestData.completed && !requestData.completedAt) {
+        requestData.completedAt = new Date();
+      }
+      
+      const progressData = insertUserModuleProgressSchema.parse(requestData);
       const progress = await storage.updateUserModuleProgress(progressData);
       res.json(progress);
     } catch (error) {
