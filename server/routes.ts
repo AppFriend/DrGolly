@@ -1456,24 +1456,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Course not found" });
       }
 
-      // Get or create Stripe customer
+      // Get user details
       const user = await storage.getUser(userId);
-      let stripeCustomerId = user?.stripeCustomerId;
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check for existing Stripe customer by email first
+      let stripeCustomerId = user.stripeCustomerId;
 
       if (!stripeCustomerId) {
-        const customer = await stripe.customers.create({
-          email: customerDetails.email,
-          name: customerDetails.firstName,
-          metadata: {
-            userId: userId,
-            dueDate: customerDetails.dueDate || '',
-          },
+        // Search for existing customer by email
+        const existingCustomers = await stripe.customers.list({
+          email: user.email,
+          limit: 1,
         });
-        stripeCustomerId = customer.id;
+
+        if (existingCustomers.data.length > 0) {
+          // Use existing customer
+          stripeCustomerId = existingCustomers.data[0].id;
+        } else {
+          // Create new customer
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: `${user.firstName} ${user.lastName}`.trim(),
+            metadata: {
+              userId: userId,
+              signupSource: user.signupSource || 'direct',
+            },
+          });
+          stripeCustomerId = customer.id;
+        }
+        
+        // Update user with stripe customer ID
         await storage.updateUserStripeCustomerId(userId, stripeCustomerId);
       }
 
-      // Create payment intent
+      // Create payment intent with detailed metadata
       const paymentIntent = await stripe.paymentIntents.create({
         amount: (course.price || 120) * 100, // Convert to cents
         currency: 'usd',
@@ -1482,9 +1501,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           courseId: courseId.toString(),
           courseName: course.title,
           userId: userId,
-          customerName: customerDetails.firstName,
+          userEmail: user.email,
+          customerName: `${user.firstName} ${user.lastName}`.trim(),
+          productType: 'course',
+          tier: user.subscriptionTier || 'free',
         },
         description: `Course Purchase: ${course.title}`,
+        receipt_email: user.email,
       });
 
       // Create course purchase record
@@ -1505,6 +1528,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating course payment:", error);
       res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  // Stripe webhook endpoint for payment completion
+  app.post('/api/stripe-webhook', async (req, res) => {
+    try {
+      const event = req.body;
+
+      // Handle the event
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object;
+          
+          // Update course purchase status
+          const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
+          if (purchase) {
+            await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+            
+            // Update course purchase with full payment details
+            console.log(`Course purchase completed: ${paymentIntent.id} for user ${purchase.userId}`);
+          }
+          break;
+          
+        case 'payment_intent.payment_failed':
+          const failedPayment = event.data.object;
+          
+          // Update course purchase status to failed
+          const failedPurchase = await storage.getCoursePurchaseByPaymentIntent(failedPayment.id);
+          if (failedPurchase) {
+            await storage.updateCoursePurchaseStatus(failedPurchase.id, 'failed');
+            console.log(`Course purchase failed: ${failedPayment.id} for user ${failedPurchase.userId}`);
+          }
+          break;
+          
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Error processing webhook:", error);
+      res.status(400).json({ error: "Webhook error" });
+    }
+  });
+
+  // Manual payment confirmation endpoint (for development/testing)
+  app.post('/api/confirm-course-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Get payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      // Verify payment belongs to current user
+      if (paymentIntent.metadata.userId !== userId) {
+        return res.status(403).json({ message: "Payment not authorized for this user" });
+      }
+      
+      // Update course purchase status based on payment intent status
+      const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntentId);
+      if (purchase) {
+        let status = 'pending';
+        
+        if (paymentIntent.status === 'succeeded') {
+          status = 'completed';
+        } else if (paymentIntent.status === 'payment_failed') {
+          status = 'failed';
+        }
+        
+        await storage.updateCoursePurchaseStatus(purchase.id, status);
+        
+        // Get updated purchase with course details
+        const updatedPurchase = await storage.getCoursePurchase(purchase.id);
+        const course = await storage.getCourse(purchase.courseId);
+        
+        res.json({ 
+          success: true, 
+          purchase: updatedPurchase,
+          course: course,
+          paymentStatus: paymentIntent.status
+        });
+      } else {
+        res.status(404).json({ message: "Purchase not found" });
+      }
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      res.status(500).json({ message: "Failed to confirm payment" });
     }
   });
 
