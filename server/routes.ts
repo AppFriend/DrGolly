@@ -3701,6 +3701,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/test/klaviyo/password-reset', async (req, res) => {
+    try {
+      const { firstName, lastName, email, resetToken = "reset_token_123" } = req.body;
+      
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: 'firstName, lastName, and email are required' });
+      }
+
+      // Create a test user object
+      const testUser = {
+        id: `test_${Date.now()}`,
+        firstName,
+        lastName,
+        email,
+        phoneNumber: null,
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Test the password reset Klaviyo flow
+      const emailResult = await klaviyoService.sendPasswordResetEmail(testUser, resetToken);
+      
+      res.json({ 
+        message: 'Klaviyo password reset test completed',
+        success: emailResult,
+        user: testUser,
+        resetToken,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Klaviyo password reset test error:", error);
+      res.status(500).json({ message: "Klaviyo password reset test failed", error: error.message });
+    }
+  });
+
+  app.post('/api/test/klaviyo/otp', async (req, res) => {
+    try {
+      const { firstName, lastName, email, otpCode = "123456", purpose = "email_verification" } = req.body;
+      
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: 'firstName, lastName, and email are required' });
+      }
+
+      // Create a test user object
+      const testUser = {
+        id: `test_${Date.now()}`,
+        firstName,
+        lastName,
+        email,
+        phoneNumber: null,
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Test the OTP email Klaviyo flow
+      const emailResult = await klaviyoService.sendOTPEmail(testUser, otpCode, purpose);
+      
+      res.json({ 
+        message: 'Klaviyo OTP test completed',
+        success: emailResult,
+        user: testUser,
+        otpCode,
+        purpose,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Klaviyo OTP test error:", error);
+      res.status(500).json({ message: "Klaviyo OTP test failed", error: error.message });
+    }
+  });
+
   app.get('/api/test/klaviyo/status', async (req, res) => {
     try {
       const hasApiKey = !!process.env.KLAVIYO_API_KEY;
