@@ -303,9 +303,10 @@ export const blogPosts = pgTable("blog_posts", {
   slug: varchar("slug").unique().notNull(),
   excerpt: text("excerpt"),
   content: text("content").notNull(),
-  category: varchar("category").notNull(), // sleep, nutrition, health, parenting
+  category: varchar("category").notNull(), // sleep, nutrition, health, parenting, freebies
   tags: text("tags").array(),
   imageUrl: varchar("image_url"),
+  pdfUrl: varchar("pdf_url"), // For freebies downloads
   readTime: integer("read_time"), // in minutes
   publishedAt: timestamp("published_at").notNull(),
   views: integer("views").default(0),

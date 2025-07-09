@@ -33,6 +33,7 @@ interface BlogPost {
   slug: string;
   imageUrl?: string;
   excerpt?: string;
+  pdfUrl?: string;
   views: number;
   likes: number;
   createdAt: string;
@@ -94,9 +95,13 @@ export function AdminBlogManagement() {
     createPostMutation.mutate(postData);
   };
 
-  const handleUpdatePost = (updates: Partial<BlogPost>) => {
-    if (!selectedPost) return;
-    updatePostMutation.mutate({ id: selectedPost.id, updates });
+  const handleUpdatePost = (postData: Partial<BlogPost>) => {
+    if (selectedPost) {
+      updatePostMutation.mutate({
+        id: selectedPost.id,
+        updates: postData,
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -113,6 +118,8 @@ export function AdminBlogManagement() {
         return "bg-purple-100 text-purple-800";
       case "health":
         return "bg-red-100 text-red-800";
+      case "freebies":
+        return "bg-pink-100 text-pink-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -265,6 +272,7 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
     category: post?.category || "general",
     excerpt: post?.excerpt || "",
     imageUrl: post?.imageUrl || "",
+    pdfUrl: post?.pdfUrl || "",
     isPinned: post?.isPinned || false,
     isDraft: post?.isDraft || true,
   });
@@ -305,6 +313,7 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
               <SelectItem value="nutrition">Nutrition</SelectItem>
               <SelectItem value="development">Development</SelectItem>
               <SelectItem value="health">Health</SelectItem>
+              <SelectItem value="freebies">Freebies</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -318,6 +327,21 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
           />
         </div>
       </div>
+
+      {formData.category === "freebies" && (
+        <div>
+          <Label htmlFor="pdfUrl">PDF Download URL</Label>
+          <Input
+            id="pdfUrl"
+            value={formData.pdfUrl}
+            onChange={(e) => setFormData({ ...formData, pdfUrl: e.target.value })}
+            placeholder="https://example.com/document.pdf"
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Upload your PDF to a cloud storage service and paste the direct download link here. This will enable the "Download Now" button for freebies posts.
+          </p>
+        </div>
+      )}
 
       <div>
         <Label htmlFor="excerpt">Excerpt (Optional)</Label>
@@ -371,7 +395,7 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              {post ? "Update" : "Create"} Post
+              Save Post
             </>
           )}
         </Button>

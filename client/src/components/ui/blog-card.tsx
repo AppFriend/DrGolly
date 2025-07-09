@@ -1,4 +1,4 @@
-import { Eye, Heart, Clock, ArrowRight } from "lucide-react";
+import { Eye, Heart, Clock, ArrowRight, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BlogPost } from "@shared/schema";
 
@@ -23,6 +23,14 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
         return "bg-pink-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (post.pdfUrl) {
+      // Open PDF in new window for viewing and downloading
+      window.open(post.pdfUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -77,25 +85,35 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4 text-sm text-gray-500">
-            <span className="flex items-center">
-              <Heart className="h-4 w-4 mr-1" />
-              {post.likes || 0}
-            </span>
-            <span className="flex items-center">
-              <Eye className="h-4 w-4 mr-1" />
-              {post.views || 0}
-            </span>
-          </div>
+        {post.category === "freebies" && post.pdfUrl ? (
           <button 
-            onClick={() => window.location.href = `/blog/${post.slug}`}
-            className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors"
+            onClick={handleDownload}
+            className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-colors"
           >
-            Read More
-            <ArrowRight className="h-4 w-4 ml-1" />
+            <Download className="h-5 w-5" />
+            <span>Download Now</span>
           </button>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <span className="flex items-center">
+                <Heart className="h-4 w-4 mr-1" />
+                {post.likes || 0}
+              </span>
+              <span className="flex items-center">
+                <Eye className="h-4 w-4 mr-1" />
+                {post.views || 0}
+              </span>
+            </div>
+            <button 
+              onClick={() => window.location.href = `/blog/${post.slug}`}
+              className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors"
+            >
+              Read More
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
