@@ -43,10 +43,12 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/module-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/progress'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/course-purchases'] });
       
       if (variables.completed) {
         toast({
-          title: "Module Complete! 🎉",
+          title: "Module Complete",
           description: "Great job! You've completed this module.",
         });
         onMarkComplete?.(module.id);

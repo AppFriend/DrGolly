@@ -809,7 +809,66 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
+    
+    // Update course progress percentage after module completion
+    if (progress.completed) {
+      await this.updateCourseProgressPercentage(progress.userId, progress.moduleId);
+    }
+    
     return updatedProgress;
+  }
+
+  async updateCourseProgressPercentage(userId: string, moduleId: number): Promise<void> {
+    // Get the course ID for this module
+    const [module] = await db
+      .select({ courseId: courseModules.courseId })
+      .from(courseModules)
+      .where(eq(courseModules.id, moduleId));
+    
+    if (!module) return;
+    
+    // Count total modules in the course
+    const totalModulesResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(courseModules)
+      .where(eq(courseModules.courseId, module.courseId));
+    
+    const totalModules = totalModulesResult[0]?.count || 0;
+    
+    // Count completed modules for this user
+    const completedModulesResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(userModuleProgress)
+      .innerJoin(courseModules, eq(userModuleProgress.moduleId, courseModules.id))
+      .where(and(
+        eq(userModuleProgress.userId, userId),
+        eq(courseModules.courseId, module.courseId),
+        eq(userModuleProgress.completed, true)
+      ));
+    
+    const completedModules = completedModulesResult[0]?.count || 0;
+    
+    // Calculate percentage
+    const progressPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+    
+    // Update or insert course progress
+    await db
+      .insert(userCourseProgress)
+      .values({
+        userId,
+        courseId: module.courseId,
+        progress: progressPercentage,
+        isCompleted: progressPercentage === 100,
+        lastWatched: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [userCourseProgress.userId, userCourseProgress.courseId],
+        set: {
+          progress: progressPercentage,
+          isCompleted: progressPercentage === 100,
+          lastWatched: new Date(),
+        },
+      });
   }
 
   async getCourseSubmodules(moduleId: number): Promise<CourseSubmodule[]> {
