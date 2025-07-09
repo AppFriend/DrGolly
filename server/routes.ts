@@ -669,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Course chapter routes
-  app.get('/api/courses/:courseId/chapters', isAuthenticated, async (req, res) => {
+  app.get('/api/courses/:courseId/chapters', async (req, res) => {
     try {
       const courseId = parseInt(req.params.courseId);
       const chapters = await storage.getCourseChapters(courseId);
@@ -731,27 +731,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chapter progress routes
-  app.get('/api/courses/:courseId/chapters', async (req, res) => {
-    try {
-      const courseId = parseInt(req.params.courseId);
-      const chapters = await storage.getCourseChapters(courseId);
-      res.json(chapters);
-    } catch (error) {
-      console.error("Error fetching course chapters:", error);
-      res.status(500).json({ message: "Failed to fetch course chapters" });
-    }
-  });
-
-  app.get('/api/chapters/:chapterId/modules', async (req, res) => {
-    try {
-      const chapterId = parseInt(req.params.chapterId);
-      const modules = await storage.getChapterModules(chapterId);
-      res.json(modules);
-    } catch (error) {
-      console.error("Error fetching chapter modules:", error);
-      res.status(500).json({ message: "Failed to fetch chapter modules" });
-    }
-  });
 
   app.post('/api/user/chapter-progress', isAuthenticated, async (req: any, res) => {
     try {
@@ -4170,16 +4149,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced course management endpoints
-  app.get('/api/courses/:courseId/chapters', async (req, res) => {
-    try {
-      const { courseId } = req.params;
-      const chapters = await storage.getCourseChapters(parseInt(courseId));
-      res.json(chapters);
-    } catch (error) {
-      console.error("Error fetching course chapters:", error);
-      res.status(500).json({ message: "Failed to fetch chapters" });
-    }
-  });
 
   app.post('/api/courses/:courseId/chapters', async (req, res) => {
     try {

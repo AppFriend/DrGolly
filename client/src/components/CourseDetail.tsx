@@ -276,7 +276,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
 
         {/* Chapters List */}
         <div className="space-y-4">
-          {(!chapters || chapters.length === 0) ? (
+          {(!chapters || !Array.isArray(chapters) || chapters.length === 0) ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No chapters available for this course</p>
             </div>
