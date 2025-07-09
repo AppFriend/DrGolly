@@ -20,12 +20,40 @@ export default function CheckoutSubscription() {
   const [clientSecret, setClientSecret] = useState("");
   const [subscriptionId, setSubscriptionId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [regionalPricing, setRegionalPricing] = useState<any>(null);
 
   // Parse URL params
   const urlParams = new URLSearchParams(window.location.search);
   const plan = urlParams.get('plan') || 'gold';
   const period = urlParams.get('period') || 'monthly';
-  const price = parseInt(urlParams.get('price') || '199');
+
+  // Fetch regional pricing
+  const { data: pricingData } = useQuery({
+    queryKey: ['/api/regional-pricing'],
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (pricingData) {
+      setRegionalPricing(pricingData);
+    }
+  }, [pricingData]);
+
+  // Calculate price based on regional pricing
+  const getPrice = () => {
+    if (!regionalPricing) return 199;
+    
+    if (plan === 'gold') {
+      return period === 'yearly' ? regionalPricing.goldYearly : regionalPricing.goldMonthly;
+    } else if (plan === 'platinum') {
+      return period === 'yearly' ? regionalPricing.platinumYearly : regionalPricing.platinumMonthly;
+    }
+    return 199;
+  };
+
+  const price = getPrice();
+  const currency = regionalPricing?.currency || 'USD';
+  const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
 
   // Plan details
   const planDetails = {
@@ -66,6 +94,9 @@ export default function CheckoutSubscription() {
     onSuccess: (data) => {
       setClientSecret(data.clientSecret);
       setSubscriptionId(data.subscriptionId);
+      if (data.pricing) {
+        setRegionalPricing(data.pricing);
+      }
     },
     onError: (error) => {
       toast({
@@ -124,11 +155,16 @@ export default function CheckoutSubscription() {
           </div>
           
           <div className="flex items-baseline mb-4">
-            <span className="text-2xl font-bold">${price}</span>
+            <span className="text-2xl font-bold">{currencySymbol}{price}</span>
             <span className="text-gray-500 ml-1">/{period === 'yearly' ? 'year' : 'month'}</span>
             {period === 'yearly' && (
               <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">
                 Save 50%
+              </span>
+            )}
+            {regionalPricing && (
+              <span className="text-xs text-gray-500 ml-2">
+                {currency}
               </span>
             )}
           </div>

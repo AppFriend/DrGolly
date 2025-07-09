@@ -678,6 +678,30 @@ export type InsertAdminNotification = z.infer<typeof insertAdminNotificationSche
 export type TemporaryPassword = typeof temporaryPasswords.$inferSelect;
 export type InsertTemporaryPassword = typeof temporaryPasswords.$inferInsert;
 
+// Regional pricing table for multi-currency support
+export const regionalPricing = pgTable("regional_pricing", {
+  id: serial("id").primaryKey(),
+  region: varchar("region", { length: 50 }).notNull(), // 'AU', 'US', 'EU'
+  currency: varchar("currency", { length: 3 }).notNull(), // 'AUD', 'USD', 'EUR'
+  coursePrice: decimal("course_price", { precision: 10, scale: 2 }).notNull(), // Base course price
+  goldMonthly: decimal("gold_monthly", { precision: 10, scale: 2 }).notNull(), // Gold monthly price
+  goldYearly: decimal("gold_yearly", { precision: 10, scale: 2 }).notNull(), // Gold yearly price
+  platinumMonthly: decimal("platinum_monthly", { precision: 10, scale: 2 }).notNull(), // Platinum monthly price
+  platinumYearly: decimal("platinum_yearly", { precision: 10, scale: 2 }).notNull(), // Platinum yearly price
+  countryList: text("country_list").array(), // Countries for this region
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRegionalPricingSchema = createInsertSchema(regionalPricing).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Stripe product types
 export type StripeProduct = typeof stripeProducts.$inferSelect;
 export type InsertStripeProduct = z.infer<typeof insertStripeProductSchema>;
+export type RegionalPricing = typeof regionalPricing.$inferSelect;
+export type InsertRegionalPricing = z.infer<typeof insertRegionalPricingSchema>;

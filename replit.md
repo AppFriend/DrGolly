@@ -268,6 +268,17 @@ Changelog:
   * Fixed duplicate Link payment method issue by removing redundant buttons
   * Added proper email validation to prevent Stripe payment errors
   * Configured PaymentElement with Link-first ordering for optimal user experience
+- July 09, 2025. Implemented comprehensive regional pricing system with IP-based currency detection:
+  * Added regionalPricing database table with currency, region, amount fields for flexible multi-currency support
+  * Integrated geoip-lite package for automatic IP-based geographic region detection
+  * Created regional pricing service with default pricing: $120 AUD (Australia), $120 USD (US), €120 EUR (Europe)
+  * Updated all pricing endpoints to use regional pricing: course purchases, subscription creation, Big Baby public checkout
+  * Enhanced subscription checkout and manage pages to display regional currency symbols and pricing
+  * Implemented dynamic Stripe price creation for multi-currency subscription billing
+  * Added regional pricing API endpoints for frontend pricing display and management
+  * Updated all payment forms to show correct currency symbols ($ for AUD/USD, € for EUR)
+  * Connected regional pricing to Gold/Platinum subscription tiers with proper currency conversion
+  * Ensured consistent pricing display across all components: manage page, checkout forms, course displays
 ```
 
 ## User Preferences

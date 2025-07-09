@@ -3,6 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { regionalPricingService } from "./regional-pricing";
 import { z } from "zod";
 import Stripe from "stripe";
 import {
@@ -1721,10 +1722,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUserStripeCustomerId(userId, stripeCustomerId);
       }
 
-      // Create payment intent with detailed metadata
+      // Get regional pricing based on user's IP
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      const coursePrice = regionalPricing.coursePrice;
+
+      // Create payment intent with detailed metadata and regional pricing
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: (course.price || 120) * 100, // Convert to cents
-        currency: 'usd',
+        amount: Math.round(coursePrice * 100), // Convert to cents
+        currency: regionalPricing.currency.toLowerCase(),
         customer: stripeCustomerId,
         metadata: {
           courseId: courseId.toString(),
@@ -1734,19 +1740,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerName: `${user.firstName} ${user.lastName}`.trim(),
           productType: 'course',
           tier: user.subscriptionTier || 'free',
+          region: regionalPricing.region,
+          currency: regionalPricing.currency,
         },
         description: `Course Purchase: ${course.title}`,
         receipt_email: user.email,
       });
 
-      // Create course purchase record
+      // Create course purchase record with regional pricing
       await storage.createCoursePurchase({
         userId: userId,
         courseId: courseId,
         stripePaymentIntentId: paymentIntent.id,
         stripeCustomerId: stripeCustomerId,
-        amount: (course.price || 120) * 100,
-        currency: 'usd',
+        amount: Math.round(coursePrice * 100),
+        currency: regionalPricing.currency.toLowerCase(),
         status: 'pending',
       });
 
@@ -2522,7 +2530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ received: true });
   });
 
-  // Create subscription using existing stripe products
+  // Create subscription using regional pricing
   app.post("/api/create-subscription", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
@@ -2538,10 +2546,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      // Get the stripe product from database
-      const stripeProduct = await storage.getStripeProduct(planTier, billingPeriod);
-      if (!stripeProduct) {
-        return res.status(400).json({ message: "Invalid plan or billing period" });
+      // Get regional pricing based on user's IP
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      
+      // Calculate the price based on plan tier and billing period
+      let priceAmount: number;
+      if (planTier === 'gold') {
+        priceAmount = billingPeriod === 'yearly' ? regionalPricing.goldYearly : regionalPricing.goldMonthly;
+      } else if (planTier === 'platinum') {
+        priceAmount = billingPeriod === 'yearly' ? regionalPricing.platinumYearly : regionalPricing.platinumMonthly;
+      } else {
+        return res.status(400).json({ message: "Invalid plan tier" });
       }
 
       // Create or get customer
@@ -2551,18 +2567,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
           metadata: {
-            userId: userId
+            userId: userId,
+            region: regionalPricing.region
           }
         });
         customerId = customer.id;
         await storage.updateUserStripeCustomerId(userId, customerId);
       }
 
-      // Create subscription using the product price from database
+      // Create price object for the subscription with regional currency
+      const price = await stripe.prices.create({
+        unit_amount: Math.round(priceAmount * 100), // Convert to cents
+        currency: regionalPricing.currency.toLowerCase(),
+        recurring: {
+          interval: billingPeriod === 'yearly' ? 'year' : 'month',
+        },
+        product_data: {
+          name: `Dr. Golly ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan`,
+        },
+        metadata: {
+          plan_tier: planTier,
+          region: regionalPricing.region,
+          billing_period: billingPeriod
+        }
+      });
+
+      // Create subscription using the dynamically created price
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{
-          price: stripeProduct.stripePriceId,
+          price: price.id,
         }],
         payment_behavior: 'default_incomplete',
         payment_settings: { save_default_payment_method: 'on_subscription' },
@@ -2570,7 +2604,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: {
           plan_tier: planTier,
           user_id: userId,
-          billing_period: billingPeriod
+          billing_period: billingPeriod,
+          region: regionalPricing.region,
+          currency: regionalPricing.currency
         }
       });
 
@@ -2582,6 +2618,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         subscriptionId: subscription.id,
         clientSecret: paymentIntent?.client_secret,
+        pricing: regionalPricing,
+        amount: priceAmount
       });
     } catch (error: any) {
       console.error("Error creating subscription:", error);
@@ -2659,6 +2697,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating subscription:", error);
       res.status(500).json({ message: "Error creating subscription: " + error.message });
+    }
+  });
+
+  // Regional pricing routes
+  app.get('/api/regional-pricing', async (req, res) => {
+    try {
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const pricing = await regionalPricingService.getPricingForIP(userIP);
+      res.json(pricing);
+    } catch (error) {
+      console.error('Error getting regional pricing:', error);
+      res.status(500).json({ message: 'Failed to get regional pricing' });
+    }
+  });
+
+  app.get('/api/regional-pricing/:region', async (req, res) => {
+    try {
+      const { region } = req.params;
+      const pricing = regionalPricingService.getPricingForRegion(region);
+      if (!pricing) {
+        return res.status(404).json({ message: 'Region not found' });
+      }
+      res.json(pricing);
+    } catch (error) {
+      console.error('Error getting regional pricing:', error);
+      res.status(500).json({ message: 'Failed to get regional pricing' });
     }
   });
 

@@ -21,6 +21,7 @@ import {
   familyMembers,
   familyInvites,
   stripeProducts,
+  regionalPricing,
   type User,
   type UpsertUser,
   type FeatureFlag,
@@ -68,6 +69,8 @@ import {
   type InsertFamilyInvite,
   type StripeProduct,
   type InsertStripeProduct,
+  type RegionalPricing,
+  type InsertRegionalPricing,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, gte, or, ilike } from "drizzle-orm";
@@ -250,6 +253,12 @@ export interface IStorage {
   getStripeProduct(planTier: string, billingPeriod: string): Promise<StripeProduct | undefined>;
   createStripeProduct(product: InsertStripeProduct): Promise<StripeProduct>;
   updateStripeProduct(productId: string, updates: Partial<StripeProduct>): Promise<StripeProduct>;
+  
+  // Regional pricing operations
+  getRegionalPricing(): Promise<RegionalPricing[]>;
+  getRegionalPricingByRegion(region: string): Promise<RegionalPricing | undefined>;
+  createRegionalPricing(pricing: InsertRegionalPricing): Promise<RegionalPricing>;
+  updateRegionalPricing(id: number, updates: Partial<RegionalPricing>): Promise<RegionalPricing>;
   getCoursePricing(courseId: number): Promise<number | null>;
   getSubscriptionPricing(): Promise<{ monthly: number | null; yearly: number | null; }>;
 }
@@ -1434,6 +1443,46 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    return result;
+  }
+
+  // Regional pricing operations
+  async getRegionalPricing(): Promise<RegionalPricing[]> {
+    return await db
+      .select()
+      .from(regionalPricing)
+      .where(eq(regionalPricing.isActive, true))
+      .orderBy(regionalPricing.region);
+  }
+
+  async getRegionalPricingByRegion(region: string): Promise<RegionalPricing | undefined> {
+    const [pricing] = await db
+      .select()
+      .from(regionalPricing)
+      .where(and(
+        eq(regionalPricing.region, region),
+        eq(regionalPricing.isActive, true)
+      ));
+    return pricing;
+  }
+
+  async createRegionalPricing(pricing: InsertRegionalPricing): Promise<RegionalPricing> {
+    const [result] = await db
+      .insert(regionalPricing)
+      .values(pricing)
+      .returning();
+    return result;
+  }
+
+  async updateRegionalPricing(id: number, updates: Partial<RegionalPricing>): Promise<RegionalPricing> {
+    const [result] = await db
+      .update(regionalPricing)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(regionalPricing.id, id))
+      .returning();
     return result;
   }
 }
