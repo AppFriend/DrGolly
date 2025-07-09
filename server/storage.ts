@@ -18,6 +18,8 @@ import {
   coursePurchases,
   featureFlags,
   adminNotifications,
+  familyMembers,
+  familyInvites,
   type User,
   type UpsertUser,
   type FeatureFlag,
@@ -59,6 +61,10 @@ import {
   temporaryPasswords,
   type TemporaryPassword,
   type InsertTemporaryPassword,
+  type FamilyMember,
+  type FamilyInvite,
+  type InsertFamilyMember,
+  type InsertFamilyInvite,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, gte, or, ilike } from "drizzle-orm";
@@ -222,6 +228,16 @@ export interface IStorage {
   createBulkUsers(users: UpsertUser[]): Promise<User[]>;
   setUserPassword(userId: string, passwordHash: string): Promise<void>;
   authenticateWithTemporaryPassword(email: string, tempPassword: string): Promise<User | null>;
+
+  // Family invite operations
+  getFamilyMembers(familyOwnerId: string): Promise<FamilyMember[]>;
+  createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
+  getFamilyInvites(familyOwnerId: string): Promise<FamilyInvite[]>;
+  createFamilyInvite(invite: InsertFamilyInvite): Promise<FamilyInvite>;
+  getFamilyInviteByEmail(email: string): Promise<FamilyInvite | undefined>;
+  acceptFamilyInvite(inviteId: number, memberId: string): Promise<void>;
+  expireFamilyInvite(inviteId: number): Promise<void>;
+  deleteFamilyMember(memberId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1185,6 +1201,85 @@ export class DatabaseStorage implements IStorage {
     if (!isValidTemp) return null;
 
     return user;
+  }
+
+  // Family invite operations
+  async getFamilyMembers(familyOwnerId: string): Promise<FamilyMember[]> {
+    return await db
+      .select()
+      .from(familyMembers)
+      .where(eq(familyMembers.familyOwnerId, familyOwnerId));
+  }
+
+  async createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember> {
+    const [result] = await db
+      .insert(familyMembers)
+      .values(member)
+      .returning();
+    return result;
+  }
+
+  async getFamilyInvites(familyOwnerId: string): Promise<FamilyInvite[]> {
+    return await db
+      .select()
+      .from(familyInvites)
+      .where(eq(familyInvites.familyOwnerId, familyOwnerId));
+  }
+
+  async createFamilyInvite(invite: InsertFamilyInvite): Promise<FamilyInvite> {
+    const [result] = await db
+      .insert(familyInvites)
+      .values(invite)
+      .returning();
+    return result;
+  }
+
+  async getFamilyInviteByEmail(email: string): Promise<FamilyInvite | undefined> {
+    const [result] = await db
+      .select()
+      .from(familyInvites)
+      .where(eq(familyInvites.inviteeEmail, email));
+    return result;
+  }
+
+  async acceptFamilyInvite(inviteId: number, memberId: string): Promise<void> {
+    // Update invite status to accepted
+    await db
+      .update(familyInvites)
+      .set({ status: "accepted" })
+      .where(eq(familyInvites.id, inviteId));
+    
+    // Find the invite to get details
+    const [invite] = await db
+      .select()
+      .from(familyInvites)
+      .where(eq(familyInvites.id, inviteId));
+    
+    if (invite) {
+      // Create family member record
+      await db.insert(familyMembers).values({
+        familyOwnerId: invite.familyOwnerId,
+        memberId,
+        memberEmail: invite.inviteeEmail,
+        memberName: invite.inviteeName,
+        memberRole: invite.inviteeRole,
+        status: "active",
+        joinedAt: new Date(),
+      });
+    }
+  }
+
+  async expireFamilyInvite(inviteId: number): Promise<void> {
+    await db
+      .update(familyInvites)
+      .set({ status: "expired" })
+      .where(eq(familyInvites.id, inviteId));
+  }
+
+  async deleteFamilyMember(memberId: string): Promise<void> {
+    await db
+      .delete(familyMembers)
+      .where(eq(familyMembers.memberId, memberId));
   }
 }
 

@@ -78,6 +78,33 @@ export const temporaryPasswords = pgTable("temporary_passwords", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Family members table for family sharing
+export const familyMembers = pgTable("family_members", {
+  id: serial("id").primaryKey(),
+  familyOwnerId: varchar("family_owner_id").references(() => users.id).notNull(), // Gold subscriber who owns the family
+  memberId: varchar("member_id").references(() => users.id).notNull(), // Family member user ID
+  memberEmail: varchar("member_email").notNull(),
+  memberName: varchar("member_name").notNull(),
+  memberRole: varchar("member_role").notNull(), // parent, carer
+  status: varchar("status").default("active"), // active, inactive, pending
+  invitedAt: timestamp("invited_at").defaultNow(),
+  joinedAt: timestamp("joined_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Family invites table for tracking pending invitations
+export const familyInvites = pgTable("family_invites", {
+  id: serial("id").primaryKey(),
+  familyOwnerId: varchar("family_owner_id").references(() => users.id).notNull(),
+  inviteeEmail: varchar("invitee_email").notNull(),
+  inviteeName: varchar("invitee_name").notNull(),
+  inviteeRole: varchar("invitee_role").notNull(), // parent, carer
+  tempPassword: varchar("temp_password").notNull(),
+  status: varchar("status").default("pending"), // pending, accepted, expired
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Feature flags table to manage access control per subscription tier
 export const featureFlags = pgTable("feature_flags", {
   id: serial("id").primaryKey(),
@@ -411,6 +438,24 @@ export const billingHistoryRelations = relations(billingHistory, ({ one }) => ({
   }),
 }));
 
+export const familyMembersRelations = relations(familyMembers, ({ one }) => ({
+  familyOwner: one(users, {
+    fields: [familyMembers.familyOwnerId],
+    references: [users.id],
+  }),
+  member: one(users, {
+    fields: [familyMembers.memberId],
+    references: [users.id],
+  }),
+}));
+
+export const familyInvitesRelations = relations(familyInvites, ({ one }) => ({
+  familyOwner: one(users, {
+    fields: [familyInvites.familyOwnerId],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -503,6 +548,16 @@ export const insertCoursePurchaseSchema = createInsertSchema(coursePurchases).om
   createdAt: true,
 });
 
+export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFamilyInviteSchema = createInsertSchema(familyInvites).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -542,6 +597,10 @@ export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 
 export type CoursePurchase = typeof coursePurchases.$inferSelect;
 export type InsertCoursePurchase = z.infer<typeof insertCoursePurchaseSchema>;
+export type FamilyMember = typeof familyMembers.$inferSelect;
+export type FamilyInvite = typeof familyInvites.$inferSelect;
+export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
+export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
 
 // Admin notifications table
 export const adminNotifications = pgTable("admin_notifications", {
