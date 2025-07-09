@@ -1,8 +1,11 @@
 import {
   users,
   courses,
+  courseChapters,
   courseModules,
   courseSubmodules,
+  userChapterProgress,
+  userModuleProgress,
   userSubmoduleProgress,
   userCourseProgress,
   partnerDiscounts,
@@ -27,8 +30,11 @@ import {
   type FeatureFlag,
   type InsertFeatureFlag,
   type Course,
+  type CourseChapter,
   type CourseModule,
   type CourseSubmodule,
+  type UserChapterProgress,
+  type UserModuleProgress,
   type UserSubmoduleProgress,
   type UserCourseProgress,
   type PartnerDiscount,
@@ -43,8 +49,11 @@ import {
   type BlogPost,
   type CoursePurchase,
   type InsertCourse,
+  type InsertCourseChapter,
   type InsertCourseModule,
   type InsertCourseSubmodule,
+  type InsertUserChapterProgress,
+  type InsertUserModuleProgress,
   type InsertUserSubmoduleProgress,
   type InsertUserCourseProgress,
   type InsertPartnerDiscount,
@@ -97,17 +106,26 @@ export interface IStorage {
   createCourse(course: InsertCourse): Promise<Course>;
   updateCourseStats(courseId: number, likes?: number, views?: number): Promise<void>;
   
+  // Chapter operations
+  getCourseChapters(courseId: number): Promise<CourseChapter[]>;
+  createCourseChapter(chapter: InsertCourseChapter): Promise<CourseChapter>;
+  
   // Module operations
   getCourseModules(courseId: number): Promise<CourseModule[]>;
+  getChapterModules(chapterId: number): Promise<CourseModule[]>;
   createCourseModule(module: InsertCourseModule): Promise<CourseModule>;
   getCourseSubmodules(moduleId: number): Promise<CourseSubmodule[]>;
   createCourseSubmodule(submodule: InsertCourseSubmodule): Promise<CourseSubmodule>;
   
-  // User submodule progress
+  // User progress operations
+  getUserChapterProgress(userId: string, chapterId: number): Promise<UserChapterProgress | undefined>;
+  updateUserChapterProgress(progress: InsertUserChapterProgress): Promise<UserChapterProgress>;
+  getUserModuleProgress(userId: string, moduleId: number): Promise<UserModuleProgress | undefined>;
+  updateUserModuleProgress(progress: InsertUserModuleProgress): Promise<UserModuleProgress>;
   getUserSubmoduleProgress(userId: string, submoduleId: number): Promise<UserSubmoduleProgress | undefined>;
   updateUserSubmoduleProgress(progress: InsertUserSubmoduleProgress): Promise<UserSubmoduleProgress>;
   
-  // User progress operations
+  // User course progress operations
   getUserCourseProgress(userId: string, courseId: number): Promise<UserCourseProgress | undefined>;
   getUserProgress(userId: string): Promise<UserCourseProgress[]>;
   updateUserProgress(progress: InsertUserCourseProgress): Promise<UserCourseProgress>;
@@ -691,9 +709,26 @@ export class DatabaseStorage implements IStorage {
     return newBooking;
   }
 
+  // Chapter operations
+  async getCourseChapters(courseId: number): Promise<CourseChapter[]> {
+    return await db.select().from(courseChapters).where(eq(courseChapters.courseId, courseId)).orderBy(courseChapters.orderIndex);
+  }
+
+  async createCourseChapter(chapter: InsertCourseChapter): Promise<CourseChapter> {
+    const [newChapter] = await db
+      .insert(courseChapters)
+      .values(chapter)
+      .returning();
+    return newChapter;
+  }
+
   // Module operations
   async getCourseModules(courseId: number): Promise<CourseModule[]> {
     return await db.select().from(courseModules).where(eq(courseModules.courseId, courseId)).orderBy(courseModules.orderIndex);
+  }
+
+  async getChapterModules(chapterId: number): Promise<CourseModule[]> {
+    return await db.select().from(courseModules).where(eq(courseModules.chapterId, chapterId)).orderBy(courseModules.orderIndex);
   }
 
   async createCourseModule(module: InsertCourseModule): Promise<CourseModule> {
@@ -702,6 +737,66 @@ export class DatabaseStorage implements IStorage {
       .values(module)
       .returning();
     return newModule;
+  }
+
+  async getCourseChapters(courseId: number): Promise<CourseChapter[]> {
+    return await db.select().from(courseChapters).where(eq(courseChapters.courseId, courseId)).orderBy(courseChapters.orderIndex);
+  }
+
+  async createCourseChapter(chapter: InsertCourseChapter): Promise<CourseChapter> {
+    const [newChapter] = await db
+      .insert(courseChapters)
+      .values(chapter)
+      .returning();
+    return newChapter;
+  }
+
+  // User progress implementations
+  async getUserChapterProgress(userId: string, chapterId: number): Promise<UserChapterProgress | undefined> {
+    const [progress] = await db
+      .select()
+      .from(userChapterProgress)
+      .where(and(eq(userChapterProgress.userId, userId), eq(userChapterProgress.chapterId, chapterId)));
+    return progress;
+  }
+
+  async updateUserChapterProgress(progress: InsertUserChapterProgress): Promise<UserChapterProgress> {
+    const [updatedProgress] = await db
+      .insert(userChapterProgress)
+      .values(progress)
+      .onConflictDoUpdate({
+        target: [userChapterProgress.userId, userChapterProgress.chapterId],
+        set: {
+          completed: progress.completed,
+          completedAt: progress.completedAt || new Date(),
+        },
+      })
+      .returning();
+    return updatedProgress;
+  }
+
+  async getUserModuleProgress(userId: string, moduleId: number): Promise<UserModuleProgress | undefined> {
+    const [progress] = await db
+      .select()
+      .from(userModuleProgress)
+      .where(and(eq(userModuleProgress.userId, userId), eq(userModuleProgress.moduleId, moduleId)));
+    return progress;
+  }
+
+  async updateUserModuleProgress(progress: InsertUserModuleProgress): Promise<UserModuleProgress> {
+    const [updatedProgress] = await db
+      .insert(userModuleProgress)
+      .values(progress)
+      .onConflictDoUpdate({
+        target: [userModuleProgress.userId, userModuleProgress.moduleId],
+        set: {
+          completed: progress.completed,
+          watchTime: progress.watchTime,
+          completedAt: progress.completedAt || new Date(),
+        },
+      })
+      .returning();
+    return updatedProgress;
   }
 
   async getCourseSubmodules(moduleId: number): Promise<CourseSubmodule[]> {

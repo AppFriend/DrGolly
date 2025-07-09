@@ -144,13 +144,28 @@ export const courses = pgTable("courses", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Course modules
-export const courseModules = pgTable("course_modules", {
+// Course chapters (new layer above modules)
+export const courseChapters = pgTable("course_chapters", {
   id: serial("id").primaryKey(),
   courseId: integer("course_id").references(() => courses.id).notNull(),
   title: varchar("title").notNull(),
   description: text("description"),
+  chapterNumber: varchar("chapter_number").notNull(), // e.g., "1", "1.1", "1.2"
   orderIndex: integer("order_index").notNull(),
+  isCompleted: boolean("is_completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Course modules (now under chapters)
+export const courseModules = pgTable("course_modules", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  chapterId: integer("chapter_id").references(() => courseChapters.id),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  orderIndex: integer("order_index").notNull(),
+  contentType: varchar("content_type").default("text"), // text, video
+  duration: integer("duration"), // in minutes for videos
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -164,6 +179,27 @@ export const courseSubmodules = pgTable("course_submodules", {
   content: text("content"),
   duration: integer("duration"), // in minutes
   orderIndex: integer("order_index").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User progress on chapters
+export const userChapterProgress = pgTable("user_chapter_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  chapterId: integer("chapter_id").references(() => courseChapters.id).notNull(),
+  completed: boolean("completed").default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User progress on modules
+export const userModuleProgress = pgTable("user_module_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  moduleId: integer("module_id").references(() => courseModules.id).notNull(),
+  completed: boolean("completed").default(false),
+  watchTime: integer("watch_time").default(0), // in seconds for videos
+  completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -417,7 +453,17 @@ export const consultationBookingsRelations = relations(consultationBookings, ({ 
 
 export const coursesRelations = relations(courses, ({ many }) => ({
   userProgress: many(userCourseProgress),
+  chapters: many(courseChapters),
   modules: many(courseModules),
+}));
+
+export const courseChaptersRelations = relations(courseChapters, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [courseChapters.courseId],
+    references: [courses.id],
+  }),
+  modules: many(courseModules),
+  userProgress: many(userChapterProgress),
 }));
 
 export const courseModulesRelations = relations(courseModules, ({ one, many }) => ({
@@ -425,7 +471,12 @@ export const courseModulesRelations = relations(courseModules, ({ one, many }) =
     fields: [courseModules.courseId],
     references: [courses.id],
   }),
+  chapter: one(courseChapters, {
+    fields: [courseModules.chapterId],
+    references: [courseChapters.id],
+  }),
   submodules: many(courseSubmodules),
+  userProgress: many(userModuleProgress),
 }));
 
 export const courseSubmodulesRelations = relations(courseSubmodules, ({ one, many }) => ({
@@ -434,6 +485,28 @@ export const courseSubmodulesRelations = relations(courseSubmodules, ({ one, man
     references: [courseModules.id],
   }),
   userProgress: many(userSubmoduleProgress),
+}));
+
+export const userChapterProgressRelations = relations(userChapterProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userChapterProgress.userId],
+    references: [users.id],
+  }),
+  chapter: one(courseChapters, {
+    fields: [userChapterProgress.chapterId],
+    references: [courseChapters.id],
+  }),
+}));
+
+export const userModuleProgressRelations = relations(userModuleProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userModuleProgress.userId],
+    references: [users.id],
+  }),
+  module: one(courseModules, {
+    fields: [userModuleProgress.moduleId],
+    references: [courseModules.id],
+  }),
 }));
 
 export const userSubmoduleProgressRelations = relations(userSubmoduleProgress, ({ one }) => ({
@@ -582,6 +655,21 @@ export const insertCourseSubmoduleSchema = createInsertSchema(courseSubmodules).
   createdAt: true,
 });
 
+export const insertCourseChapterSchema = createInsertSchema(courseChapters).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserChapterProgressSchema = createInsertSchema(userChapterProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserModuleProgressSchema = createInsertSchema(userModuleProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertUserSubmoduleProgressSchema = createInsertSchema(userSubmoduleProgress).omit({
   id: true,
   createdAt: true,
@@ -618,15 +706,21 @@ export const insertStripeProductSchema = createInsertSchema(stripeProducts).omit
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Course = typeof courses.$inferSelect;
+export type CourseChapter = typeof courseChapters.$inferSelect;
 export type CourseModule = typeof courseModules.$inferSelect;
 export type CourseSubmodule = typeof courseSubmodules.$inferSelect;
+export type UserChapterProgress = typeof userChapterProgress.$inferSelect;
+export type UserModuleProgress = typeof userModuleProgress.$inferSelect;
 export type UserSubmoduleProgress = typeof userSubmoduleProgress.$inferSelect;
 export type UserCourseProgress = typeof userCourseProgress.$inferSelect;
 export type PartnerDiscount = typeof partnerDiscounts.$inferSelect;
 export type BillingHistory = typeof billingHistory.$inferSelect;
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
+export type InsertCourseChapter = z.infer<typeof insertCourseChapterSchema>;
 export type InsertCourseModule = z.infer<typeof insertCourseModuleSchema>;
 export type InsertCourseSubmodule = z.infer<typeof insertCourseSubmoduleSchema>;
+export type InsertUserChapterProgress = z.infer<typeof insertUserChapterProgressSchema>;
+export type InsertUserModuleProgress = z.infer<typeof insertUserModuleProgressSchema>;
 export type InsertUserSubmoduleProgress = z.infer<typeof insertUserSubmoduleProgressSchema>;
 export type InsertUserCourseProgress = z.infer<typeof insertUserCourseProgressSchema>;
 export type InsertPartnerDiscount = z.infer<typeof insertPartnerDiscountSchema>;
