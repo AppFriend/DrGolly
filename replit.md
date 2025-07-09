@@ -234,6 +234,14 @@ Changelog:
   * Updated course display logic: purchased courses show "Access Course", unpurchased show "$120 purchase option"
   * Connected Gold/Platinum subscribers to unlimited course access
   * Implemented proper course filtering for free users vs subscribers
+- July 09, 2025. Implemented comprehensive Gold plan user experience:
+  * Updated courses system: Gold users get unlimited access to all courses in "All Courses" tab
+  * Preserved purchased courses in "Purchases" tab (renamed from "My Courses") for downgrade protection
+  * Added gold gradient banner (gold to orange) with black text for Gold/Platinum users on home page
+  * Enhanced top bar plan indicator with gold gradient icon and "Gold Plan" text
+  * Integrated feature flags system: all Gold features unlocked (unlimited courses, discounts, family sharing, tracking review)
+  * Updated user database: frazer.adnam@cq-partners.com.au set to Gold plan with active status
+  * Changed tab label from "My Courses" to "Purchases" for clarity
 ```
 
 ## User Preferences
