@@ -33,6 +33,11 @@ export default function Courses() {
     enabled: !!user && activeTab === "my",
   });
 
+  const { data: coursePurchases } = useQuery({
+    queryKey: ["/api/user/course-purchases"],
+    enabled: !!user && activeTab === "my",
+  });
+
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {
       toast({
@@ -47,6 +52,14 @@ export default function Courses() {
   }, [error, toast]);
 
   const filteredCourses = courses?.filter((course: Course) => {
+    // For "My Courses" tab, only show purchased courses
+    if (activeTab === "my") {
+      const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
+      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      return hasPurchased || hasGoldAccess;
+    }
+    
+    // Apply search filter
     if (searchQuery) {
       return course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
              course.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -203,7 +216,27 @@ export default function Courses() {
 
         {filteredCourses?.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No courses found matching your criteria.</p>
+            {activeTab === "my" ? (
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-dr-teal to-blue-600 text-white p-6 rounded-2xl">
+                  <h3 className="text-lg font-semibold mb-2">No Courses Yet</h3>
+                  <p className="text-sm opacity-90 mb-4">
+                    You haven't purchased any courses yet. Browse our extensive library to find the perfect course for your family's needs.
+                  </p>
+                  <Button 
+                    onClick={() => setActiveTab("all")}
+                    className="bg-white text-dr-teal hover:bg-gray-50 font-medium"
+                  >
+                    Browse All Courses
+                  </Button>
+                </div>
+                <div className="text-sm text-gray-500">
+                  <p>💡 Tip: Gold subscribers get unlimited access to all courses!</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500">No courses found matching your criteria.</p>
+            )}
           </div>
         )}
       </div>

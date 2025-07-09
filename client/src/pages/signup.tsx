@@ -55,6 +55,8 @@ export default function Signup() {
 
   const [selectedCountryCode, setSelectedCountryCode] = useState("+61");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string>("");
 
   const totalSteps = 5;
   const progress = (step / totalSteps) * 100;
@@ -67,6 +69,20 @@ export default function Signup() {
 
   const handlePersonalizationUpdate = (field: keyof PersonalizationData, value: any) => {
     setPersonalization(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleProfilePictureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfilePicture(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setProfilePictureUrl(dataUrl);
+        handlePersonalizationUpdate('profilePictureUrl', dataUrl);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const toggleConcern = (concern: string) => {
@@ -225,15 +241,30 @@ export default function Signup() {
               {/* Profile Picture */}
               <div className="flex items-center justify-center">
                 <div className="relative">
-                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User className="h-8 w-8 text-gray-400" />
+                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    {profilePictureUrl ? (
+                      <img 
+                        src={profilePictureUrl} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-8 w-8 text-gray-400" />
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePictureUpload}
+                    className="hidden"
+                    id="profilePictureInput"
+                  />
+                  <label
+                    htmlFor="profilePictureInput"
+                    className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors cursor-pointer"
                   >
                     <Upload className="h-4 w-4" />
-                  </button>
+                  </label>
                 </div>
               </div>
               <div className="text-center">

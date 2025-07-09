@@ -1870,6 +1870,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's purchased courses (User endpoint)
+  app.get('/api/user/course-purchases', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const purchases = await storage.getUserCoursePurchases(userId);
+      
+      // Get course details for each purchase
+      const coursesWithDetails = await Promise.all(
+        purchases.map(async (purchase) => {
+          const course = await storage.getCourse(purchase.courseId);
+          return {
+            ...purchase,
+            course: course
+          };
+        })
+      );
+      
+      res.json(coursesWithDetails);
+    } catch (error) {
+      console.error("Error fetching user courses:", error);
+      res.status(500).json({ message: "Failed to fetch user courses" });
+    }
+  });
+
   // Get user's purchased courses (Admin only)
   app.get('/api/admin/users/:userId/courses', isAdmin, async (req, res) => {
     try {
