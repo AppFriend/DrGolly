@@ -75,6 +75,11 @@ import {
 import { db } from "./db";
 import { eq, desc, and, count, gte, or, ilike, sql, isNotNull } from "drizzle-orm";
 import { AuthUtils } from "./auth-utils";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2023-10-16",
+});
 
 export interface IStorage {
   // User operations - mandatory for Replit Auth
@@ -1115,8 +1120,9 @@ export class DatabaseStorage implements IStorage {
     monthlyActiveUsers: number;
     totalCoursesSold: number;
     totalSubscriptionUpgrades: number;
-    monthlyGoldRevenue: number;
-    annualGoldRevenue: number;
+    dailyRevenue: number;
+    monthlyRevenue: number;
+    annualRevenue: number;
     totalChurn: number;
   }> {
     const thirtyDaysAgo = new Date();
@@ -1140,8 +1146,60 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(users.subscriptionTier, "gold"), eq(users.migrated, false)));
     
     const goldUserCount = goldUsers[0]?.count || 0;
-    const monthlyGoldRevenue = goldUserCount * 199;
-    const annualGoldRevenue = goldUserCount * 199 * 12;
+    
+    // Get real Stripe revenue data
+    let dailyRevenue = 0;
+    let monthlyRevenue = 0;
+    let annualRevenue = 0;
+    
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const startOfYear = new Date(today.getFullYear(), 0, 1);
+      
+      // Get daily revenue from Stripe
+      const dailyCharges = await stripe.charges.list({
+        created: {
+          gte: Math.floor(startOfDay.getTime() / 1000),
+        },
+        limit: 100,
+      });
+      
+      dailyRevenue = dailyCharges.data
+        .filter(charge => charge.status === 'succeeded')
+        .reduce((sum, charge) => sum + charge.amount, 0) / 100; // Convert from cents
+      
+      // Get monthly revenue from Stripe
+      const monthlyCharges = await stripe.charges.list({
+        created: {
+          gte: Math.floor(startOfMonth.getTime() / 1000),
+        },
+        limit: 100,
+      });
+      
+      monthlyRevenue = monthlyCharges.data
+        .filter(charge => charge.status === 'succeeded')
+        .reduce((sum, charge) => sum + charge.amount, 0) / 100; // Convert from cents
+      
+      // Get annual revenue from Stripe
+      const annualCharges = await stripe.charges.list({
+        created: {
+          gte: Math.floor(startOfYear.getTime() / 1000),
+        },
+        limit: 100,
+      });
+      
+      annualRevenue = annualCharges.data
+        .filter(charge => charge.status === 'succeeded')
+        .reduce((sum, charge) => sum + charge.amount, 0) / 100; // Convert from cents
+        
+    } catch (error) {
+      console.error('Error fetching Stripe revenue:', error);
+      // Fallback to calculated revenue if Stripe fails
+      monthlyRevenue = goldUserCount * 199;
+      annualRevenue = goldUserCount * 199 * 12;
+    }
     
     const totalChurn = await db
       .select({ count: count() })
@@ -1155,8 +1213,9 @@ export class DatabaseStorage implements IStorage {
       monthlyActiveUsers: monthlyActiveUsers[0]?.count || 0,
       totalCoursesSold: totalCoursesSold[0]?.count || 0,
       totalSubscriptionUpgrades: totalSubscriptionUpgrades[0]?.count || 0,
-      monthlyGoldRevenue,
-      annualGoldRevenue,
+      dailyRevenue,
+      monthlyRevenue,
+      annualRevenue,
       totalChurn: totalChurn[0]?.count || 0,
     };
   }

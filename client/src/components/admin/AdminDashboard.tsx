@@ -172,6 +172,55 @@ export function AdminDashboard() {
         <MetricCard
           title="Subscription Upgrades"
           value={metrics.totalSubscriptionUpgrades.toLocaleString()}
+          icon={<TrendingUp className="h-4 w-4 text-blue-500" />}
+          description="Free to Gold conversions"
+        />
+        
+        <MetricCard
+          title="Daily Revenue"
+          value={formatCurrency(metrics.dailyRevenue || 0)}
+          icon={<DollarSign className="h-4 w-4 text-green-500" />}
+          description="Today's earnings"
+        />
+        
+        <MetricCard
+          title="Monthly Revenue"
+          value={formatCurrency(metrics.monthlyRevenue || 0)}
+          icon={<DollarSign className="h-4 w-4 text-green-500" />}
+          description="This month's earnings"
+        />
+        
+        <MetricCard
+          title="Annual Revenue"
+          value={formatCurrency(metrics.annualRevenue || 0)}
+          icon={<Calendar className="h-4 w-4 text-blue-500" />}
+          description="This year's earnings"
+        />
+        
+        <MetricCard
+          title="Gold Users"
+          value={metrics.goldUsers.toLocaleString()}
+          icon={<Crown className="h-4 w-4 text-yellow-500" />}
+          description="Premium subscribers"
+        />
+        
+        <MetricCard
+          title="Monthly Active"
+          value={metrics.monthlyActiveUsers.toLocaleString()}
+          icon={<Activity className="h-4 w-4 text-green-500" />}
+          description="Last 30 days"
+        />
+        
+        <MetricCard
+          title="Courses Sold"
+          value={metrics.totalCoursesSold.toLocaleString()}
+          icon={<ShoppingCart className="h-4 w-4 text-purple-500" />}
+          description="Individual course purchases"
+        />
+        
+        <MetricCard
+          title="Subscription Upgrades"
+          value={metrics.totalSubscriptionUpgrades.toLocaleString()}
           icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
           description="Free to Gold conversions"
         />
