@@ -312,11 +312,32 @@ export const blogPosts = pgTable("blog_posts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Stripe products table - sync between app and Stripe
+export const stripeProducts = pgTable("stripe_products", {
+  id: serial("id").primaryKey(),
+  stripeProductId: varchar("stripe_product_id").unique().notNull(),
+  stripePriceId: varchar("stripe_price_id").unique().notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  statementDescriptor: varchar("statement_descriptor"),
+  purchaseCategory: varchar("purchase_category").notNull(), // Gold Plan, Single Purchase - Course, Single Purchase - Service, Gift Card, Free User
+  type: varchar("type").notNull(), // subscription, course, service, gift_card, free
+  amount: integer("amount"), // in cents, null for free products
+  currency: varchar("currency").default("usd"),
+  billingInterval: varchar("billing_interval"), // monthly, yearly (for subscriptions)
+  isActive: boolean("is_active").default(true),
+  // Link to existing courses for course products
+  courseId: integer("course_id").references(() => courses.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Course purchases table
 export const coursePurchases = pgTable("course_purchases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
   courseId: integer("course_id").notNull().references(() => courses.id),
+  stripeProductId: varchar("stripe_product_id").references(() => stripeProducts.stripeProductId),
   stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(),
   stripeCustomerId: varchar("stripe_customer_id"),
   amount: integer("amount").notNull(), // in cents
@@ -456,6 +477,29 @@ export const familyInvitesRelations = relations(familyInvites, ({ one }) => ({
   }),
 }));
 
+export const stripeProductsRelations = relations(stripeProducts, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [stripeProducts.courseId],
+    references: [courses.id],
+  }),
+  purchases: many(coursePurchases),
+}));
+
+export const coursePurchasesRelations = relations(coursePurchases, ({ one }) => ({
+  user: one(users, {
+    fields: [coursePurchases.userId],
+    references: [users.id],
+  }),
+  course: one(courses, {
+    fields: [coursePurchases.courseId],
+    references: [courses.id],
+  }),
+  stripeProduct: one(stripeProducts, {
+    fields: [coursePurchases.stripeProductId],
+    references: [stripeProducts.stripeProductId],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -558,6 +602,12 @@ export const insertFamilyInviteSchema = createInsertSchema(familyInvites).omit({
   createdAt: true,
 });
 
+export const insertStripeProductSchema = createInsertSchema(stripeProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -626,3 +676,7 @@ export type InsertAdminNotification = z.infer<typeof insertAdminNotificationSche
 // Temporary password types
 export type TemporaryPassword = typeof temporaryPasswords.$inferSelect;
 export type InsertTemporaryPassword = typeof temporaryPasswords.$inferInsert;
+
+// Stripe product types
+export type StripeProduct = typeof stripeProducts.$inferSelect;
+export type InsertStripeProduct = z.infer<typeof insertStripeProductSchema>;

@@ -20,6 +20,7 @@ import {
   adminNotifications,
   familyMembers,
   familyInvites,
+  stripeProducts,
   type User,
   type UpsertUser,
   type FeatureFlag,
@@ -65,6 +66,8 @@ import {
   type FamilyInvite,
   type InsertFamilyMember,
   type InsertFamilyInvite,
+  type StripeProduct,
+  type InsertStripeProduct,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, gte, or, ilike } from "drizzle-orm";
@@ -238,6 +241,15 @@ export interface IStorage {
   acceptFamilyInvite(inviteId: number, memberId: string): Promise<void>;
   expireFamilyInvite(inviteId: number): Promise<void>;
   deleteFamilyMember(memberId: string): Promise<void>;
+  
+  // Stripe product operations
+  getStripeProducts(): Promise<StripeProduct[]>;
+  getStripeProductById(productId: string): Promise<StripeProduct | undefined>;
+  getStripeProductByCourseId(courseId: number): Promise<StripeProduct | undefined>;
+  createStripeProduct(product: InsertStripeProduct): Promise<StripeProduct>;
+  updateStripeProduct(productId: string, updates: Partial<StripeProduct>): Promise<StripeProduct>;
+  getCoursePricing(courseId: number): Promise<number | null>;
+  getSubscriptionPricing(): Promise<{ monthly: number | null; yearly: number | null; }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1327,6 +1339,82 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(familyMembers)
       .where(eq(familyMembers.id, memberId));
+  }
+
+  // Stripe product operations
+  async getStripeProducts(): Promise<StripeProduct[]> {
+    return await db
+      .select()
+      .from(stripeProducts)
+      .where(eq(stripeProducts.isActive, true))
+      .orderBy(stripeProducts.name);
+  }
+
+  async getStripeProductById(productId: string): Promise<StripeProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(stripeProducts)
+      .where(eq(stripeProducts.stripeProductId, productId));
+    return product;
+  }
+
+  async getStripeProductByCourseId(courseId: number): Promise<StripeProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(stripeProducts)
+      .where(and(
+        eq(stripeProducts.courseId, courseId),
+        eq(stripeProducts.type, "course"),
+        eq(stripeProducts.isActive, true)
+      ));
+    return product;
+  }
+
+  async createStripeProduct(product: InsertStripeProduct): Promise<StripeProduct> {
+    const [result] = await db
+      .insert(stripeProducts)
+      .values(product)
+      .returning();
+    return result;
+  }
+
+  async updateStripeProduct(productId: string, updates: Partial<StripeProduct>): Promise<StripeProduct> {
+    const [result] = await db
+      .update(stripeProducts)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(stripeProducts.stripeProductId, productId))
+      .returning();
+    return result;
+  }
+
+  async getCoursePricing(courseId: number): Promise<number | null> {
+    const product = await this.getStripeProductByCourseId(courseId);
+    return product ? product.amount : null;
+  }
+
+  async getSubscriptionPricing(): Promise<{ monthly: number | null; yearly: number | null; }> {
+    const subscriptionProducts = await db
+      .select()
+      .from(stripeProducts)
+      .where(and(
+        eq(stripeProducts.type, "subscription"),
+        eq(stripeProducts.isActive, true)
+      ));
+
+    const result = { monthly: null as number | null, yearly: null as number | null };
+    
+    for (const product of subscriptionProducts) {
+      if (product.billingInterval === "month") {
+        result.monthly = product.amount;
+      } else if (product.billingInterval === "year") {
+        result.yearly = product.amount;
+      }
+    }
+    
+    return result;
   }
 }
 
