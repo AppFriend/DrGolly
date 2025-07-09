@@ -1684,18 +1684,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stripe invoice routes
   app.get('/api/profile/invoices', isAuthenticated, async (req: any, res) => {
-    // Disable caching for this endpoint
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    res.set('ETag', ''); // Remove ETag to prevent 304 responses
+    // Force no caching with stronger headers
+    res.removeHeader('ETag');
+    res.removeHeader('Last-Modified');
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Accel-Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+    
     try {
       const userId = req.user.claims.sub;
       console.log('===== INVOICE FETCH START =====');
+      console.log('Request timestamp:', new Date().toISOString());
       console.log('Fetching invoices for user:', userId);
       
       const user = await storage.getUser(userId);
       console.log('User found:', user ? 'Yes' : 'No');
+      if (user) {
+        console.log('User details:', { id: user.id, email: user.email, stripeCustomerId: user.stripeCustomerId });
+      }
       
       const allInvoices = [];
       
@@ -1705,10 +1715,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Raw course purchases:', JSON.stringify(coursePurchases, null, 2));
       
       // Format course purchases as invoices
+      console.log('Processing', coursePurchases.length, 'course purchases into invoices');
       for (const purchase of coursePurchases) {
+        console.log('Processing purchase:', purchase.id, 'courseId:', purchase.courseId, 'status:', purchase.status);
         const course = await storage.getCourse(purchase.courseId);
-        console.log('Processing purchase:', purchase.id, 'for course:', course?.title);
-        allInvoices.push({
+        console.log('Course found:', course ? course.title : 'NOT FOUND');
+        
+        const invoice = {
           id: `course_${purchase.id}`,
           amount: purchase.amount / 100, // Convert from cents
           currency: purchase.currency.toUpperCase(),
@@ -1721,7 +1734,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subtotal: purchase.amount / 100,
           tax: 0,
           total: purchase.amount / 100
-        });
+        };
+        
+        console.log('Created invoice:', JSON.stringify(invoice, null, 2));
+        allInvoices.push(invoice);
       }
       
       // Get Stripe invoices if user has Stripe customer ID
@@ -1762,10 +1778,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       allInvoices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
       console.log('Total invoices to return:', allInvoices.length);
-      console.log('Invoices:', JSON.stringify(allInvoices, null, 2));
+      console.log('Final invoice data:', JSON.stringify(allInvoices, null, 2));
       console.log('===== INVOICE FETCH END =====');
       
-      res.json(allInvoices);
+      // Force fresh response
+      res.status(200).json(allInvoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
