@@ -20,6 +20,7 @@ const categories = [
   { id: "nutrition", label: "Nutrition" },
   { id: "health", label: "Health" },
   { id: "parenting", label: "Parenting" },
+  { id: "freebies", label: "Freebies" },
 ];
 
 export default function Home() {
