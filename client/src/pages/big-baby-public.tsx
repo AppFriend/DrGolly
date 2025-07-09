@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { ArrowLeft, Check, Shield, Star, Users, Clock, Award } from "lucide-react";
+import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
+import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement } from "@stripe/react-stripe-js";
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
@@ -31,14 +31,75 @@ const BIG_BABY_COURSE = {
   tier: "platinum"
 };
 
-// Simple payment form component for BigBaby checkout
+// Enhanced payment form component with Apple Pay support
 function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentRequest, setPaymentRequest] = useState<any>(null);
+  const [showCardPayment, setShowCardPayment] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  // Initialize Apple Pay / Payment Request
+  useEffect(() => {
+    if (!stripe || !elements) return;
+
+    const pr = stripe.paymentRequest({
+      country: 'US',
+      currency: 'usd',
+      total: {
+        label: BIG_BABY_COURSE.title,
+        amount: BIG_BABY_COURSE.price * 100, // Convert to cents
+      },
+      requestPayerName: true,
+      requestPayerEmail: true,
+    });
+
+    // Check if Payment Request is available (Apple Pay, Google Pay, etc.)
+    pr.canMakePayment().then((result) => {
+      if (result) {
+        setPaymentRequest(pr);
+      }
+    });
+
+    pr.on('paymentmethod', async (ev) => {
+      setIsProcessing(true);
+      
+      try {
+        // Confirm payment with the payment method from Apple Pay
+        const { error, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/big-baby-public`,
+          },
+          redirect: 'if_required',
+        });
+
+        if (error) {
+          ev.complete('fail');
+          toast({
+            title: "Payment Failed",
+            description: error.message || "Please try again.",
+            variant: "destructive",
+          });
+        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+          ev.complete('success');
+          onSuccess();
+        }
+      } catch (err) {
+        ev.complete('fail');
+        toast({
+          title: "Payment Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    });
+  }, [stripe, elements, onSuccess, toast]);
+
+  const handleCardSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!stripe || !elements) {
@@ -76,16 +137,58 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
-      <Button
-        type="submit"
-        disabled={!stripe || isProcessing}
-        className="w-full bg-dr-teal hover:bg-dr-teal/90"
-      >
-        {isProcessing ? "Processing..." : `Pay $${BIG_BABY_COURSE.price}`}
-      </Button>
-    </form>
+    <div className="space-y-6">
+      {/* Apple Pay Button */}
+      {paymentRequest && (
+        <div className="space-y-4">
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-4">Complete your payment fast with</p>
+            <div className="bg-black rounded-lg p-4 hover:bg-gray-800 transition-colors">
+              <PaymentRequestButtonElement 
+                options={{ paymentRequest }}
+                className="w-full"
+              />
+            </div>
+          </div>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-500">Or</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Card Payment Toggle */}
+      {paymentRequest && !showCardPayment && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowCardPayment(true)}
+          className="w-full"
+        >
+          <CreditCard className="h-4 w-4 mr-2" />
+          Pay with Card
+        </Button>
+      )}
+
+      {/* Card Payment Form */}
+      {(showCardPayment || !paymentRequest) && (
+        <form onSubmit={handleCardSubmit} className="space-y-4">
+          <PaymentElement />
+          <Button
+            type="submit"
+            disabled={!stripe || isProcessing}
+            className="w-full bg-dr-teal hover:bg-dr-teal/90"
+          >
+            {isProcessing ? "Processing..." : `Pay $${BIG_BABY_COURSE.price}`}
+          </Button>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -140,6 +243,12 @@ export default function BigBabyPublic() {
     }));
   };
 
+  // Email validation
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handlePaymentSuccess = () => {
     setStep('success');
   };
@@ -150,7 +259,7 @@ export default function BigBabyPublic() {
     handleAccountSetup();
   };
 
-  const isDetailsComplete = customerDetails.firstName && customerDetails.email;
+  const isDetailsComplete = customerDetails.firstName && customerDetails.email && isValidEmail(customerDetails.email);
 
   useEffect(() => {
     if (isDetailsComplete) {
@@ -326,7 +435,18 @@ export default function BigBabyPublic() {
                   <CardTitle>Payment Information</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <Elements 
+                    stripe={stripePromise} 
+                    options={{ 
+                      clientSecret,
+                      appearance: {
+                        theme: 'stripe',
+                        variables: {
+                          colorPrimary: '#0891b2', // dr-teal
+                        }
+                      }
+                    }}
+                  >
                     <BigBabyPaymentForm onSuccess={handlePaymentSuccess} />
                   </Elements>
                 </CardContent>

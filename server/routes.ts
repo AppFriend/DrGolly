@@ -1778,6 +1778,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email and first name are required" });
       }
 
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customerDetails.email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
+      }
+
       // Get the Big Baby course (ID: 6)
       const course = await storage.getCourse(6);
       if (!course) {
@@ -1811,11 +1817,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripeCustomerId = customer.id;
       }
 
-      // Create payment intent with detailed metadata
+      // Create payment intent with detailed metadata and Apple Pay support
       const paymentIntent = await stripe.paymentIntents.create({
         amount: 12000, // $120 in cents
         currency: 'usd',
         customer: stripeCustomerId,
+        payment_method_types: ['card', 'apple_pay'],
         metadata: {
           courseId: '6',
           courseName: 'Big Baby Sleep Program',
