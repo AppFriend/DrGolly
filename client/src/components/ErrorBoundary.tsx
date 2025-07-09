@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode, ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
@@ -113,14 +113,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
 // HOC for functional components
 export function withErrorBoundary<T extends object>(
-  Component: React.ComponentType<T>,
+  Component: ComponentType<T>,
   fallback?: ReactNode
 ) {
-  return function ComponentWithErrorBoundary(props: T) {
+  const ComponentWithErrorBoundary = function(props: T) {
     return (
       <ErrorBoundary fallback={fallback}>
         <Component {...props} />
       </ErrorBoundary>
     );
   };
+  
+  ComponentWithErrorBoundary.displayName = `withErrorBoundary(${Component.displayName || Component.name || 'Component'})`;
+  
+  return ComponentWithErrorBoundary;
 }
