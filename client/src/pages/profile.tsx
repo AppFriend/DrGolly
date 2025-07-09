@@ -53,6 +53,8 @@ export default function Profile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Fetch profile data
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -130,6 +132,30 @@ export default function Profile() {
     window.location.href = "/api/logout";
   };
 
+  // Handle image upload
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setImagePreview(result);
+        
+        // Update profile data with the preview URL for immediate display
+        if (profileData) {
+          setProfileData({
+            ...profileData,
+            profileImageUrl: result
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Handle profile save
   const handleSaveProfile = () => {
     if (profileData) {
@@ -198,9 +224,21 @@ export default function Profile() {
                   </AvatarFallback>
                 </Avatar>
                 {isEditing && (
-                  <button className="absolute -bottom-1 -right-1 bg-dr-teal text-white p-1.5 rounded-full hover:bg-dr-teal/90">
-                    <Camera className="h-3 w-3" />
-                  </button>
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="profile-image-upload"
+                    />
+                    <label
+                      htmlFor="profile-image-upload"
+                      className="absolute -bottom-1 -right-1 bg-dr-teal text-white p-1.5 rounded-full hover:bg-dr-teal/90 cursor-pointer"
+                    >
+                      <Camera className="h-3 w-3" />
+                    </label>
+                  </>
                 )}
               </div>
               <div>

@@ -100,11 +100,19 @@ export default function Home() {
             onClick={() => setLocation("/profile")}
             className="transition-transform hover:scale-105"
           >
-            <img
-              src={user?.profileImageUrl || drGollyImage}
-              alt="Profile"
-              className="w-8 h-8 rounded-full object-cover border-2 border-white"
-            />
+            {user?.profileImageUrl ? (
+              <img
+                src={user.profileImageUrl}
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover border-2 border-white"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center">
+                <span className="text-[#095D66] text-xs font-bold">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </span>
+              </div>
+            )}
           </button>
         </div>
       </header>
