@@ -1,136 +1,106 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation, useRoute } from "wouter";
+import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { ArrowLeft, Check, Star, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { CheckoutForm } from "@/components/checkout/checkout-form";
 
-if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
-}
+// Initialize Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-
-function CheckoutForm({ planDetails }: { planDetails: any }) {
-  const stripe = useStripe();
-  const elements = useElements();
+export default function CheckoutSubscription() {
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { toast } = useToast();
+  const [clientSecret, setClientSecret] = useState("");
+  const [subscriptionId, setSubscriptionId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Parse URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const plan = urlParams.get('plan') || 'gold';
+  const period = urlParams.get('period') || 'monthly';
+  const price = parseInt(urlParams.get('price') || '199');
 
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/manage?success=true`,
-        },
-      });
-
-      if (error) {
-        toast({
-          title: "Payment Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsLoading(false);
+  // Plan details
+  const planDetails = {
+    gold: {
+      name: "Gold Plan",
+      icon: <Star className="h-6 w-6 text-yellow-500" />,
+      features: [
+        "Unlimited Courses",
+        "Exclusive Partner Discounts",
+        "Growth Tracking Tools",
+        "Family Sharing (up to 4 members)",
+        "Free Dr. Golly Book"
+      ]
+    },
+    platinum: {
+      name: "Platinum Plan", 
+      icon: <Crown className="h-6 w-6 text-purple-500" />,
+      features: [
+        "Everything in Gold Plan",
+        "1:1 Consultation with Dr. Golly",
+        "Priority Support",
+        "Advanced Analytics"
+      ]
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h3 className="font-medium text-gray-900 mb-2">Payment Method</h3>
-        <PaymentElement />
-      </div>
-      
-      <Button
-        type="submit"
-        disabled={!stripe || isLoading}
-        className="w-full bg-[#095D66] hover:bg-[#095D66]/90"
-        size="lg"
-      >
-        {isLoading ? (
-          "Processing..."
-        ) : (
-          `Subscribe to ${planDetails?.name} - $${planDetails?.price}/${planDetails?.period === 'yearly' ? 'year' : 'month'}`
-        )}
-      </Button>
-      
-      <div className="flex items-center justify-center text-sm text-gray-500">
-        <Lock className="h-4 w-4 mr-2" />
-        Secured by Stripe
-      </div>
-    </form>
-  );
-}
+  const currentPlan = planDetails[plan as keyof typeof planDetails];
 
-export default function CheckoutSubscription() {
-  const { user } = useAuth();
-  const [location] = useLocation();
-  const [clientSecret, setClientSecret] = useState("");
-  const [planDetails, setPlanDetails] = useState<any>(null);
-  const { toast } = useToast();
-
-  // Parse URL parameters
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const plan = urlParams.get('plan');
-  const period = urlParams.get('period');
-  const price = urlParams.get('price');
-
-  useEffect(() => {
-    if (!plan || !period || !price) {
+  // Create subscription
+  const createSubscriptionMutation = useMutation({
+    mutationFn: async ({ plan, period }: { plan: string; period: string }) => {
+      const response = await apiRequest("POST", "/api/create-subscription", {
+        planTier: plan,
+        billingPeriod: period
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setClientSecret(data.clientSecret);
+      setSubscriptionId(data.subscriptionId);
+    },
+    onError: (error) => {
       toast({
-        title: "Invalid Parameters",
-        description: "Missing subscription details",
+        title: "Subscription Setup Failed",
+        description: "Unable to set up subscription. Please try again.",
         variant: "destructive",
       });
-      window.location.href = '/manage';
-      return;
+    },
+  });
+
+  useEffect(() => {
+    if (user && plan && period) {
+      createSubscriptionMutation.mutate({ plan, period });
     }
+  }, [user, plan, period]);
 
-    setPlanDetails({
-      name: plan === 'gold' ? 'Gold Plan' : 'Platinum Plan',
-      tier: plan,
-      period,
-      price: parseFloat(price)
+  const handleBack = () => {
+    setLocation("/manage");
+  };
+
+  const handlePaymentSuccess = () => {
+    toast({
+      title: "Subscription Activated!",
+      description: `Your ${currentPlan.name} subscription is now active.`,
     });
+    // Redirect to home or manage page
+    setTimeout(() => {
+      setLocation("/manage");
+    }, 1500);
+  };
 
-    // Create subscription checkout session
-    apiRequest("POST", "/api/create-subscription-checkout", {
-      planTier: plan,
-      billingPeriod: period,
-      priceAmount: parseFloat(price)
-    })
-      .then((data) => {
-        setClientSecret(data.clientSecret);
-      })
-      .catch((error) => {
-        toast({
-          title: "Setup Failed",
-          description: error.message || "Failed to setup payment",
-          variant: "destructive",
-        });
-      });
-  }, [plan, period, price, toast]);
-
-  if (!clientSecret || !planDetails) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#095D66] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -138,56 +108,68 @@ export default function CheckoutSubscription() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-[#095D66] text-white p-4 flex items-center">
-        <button onClick={() => window.history.back()} className="mr-3">
+      <div className="bg-white border-b px-4 py-3 flex items-center">
+        <button onClick={handleBack} className="mr-3">
           <ArrowLeft className="h-6 w-6" />
         </button>
-        <div>
-          <h1 className="text-xl font-bold">Complete Subscription</h1>
-          <p className="text-sm opacity-90">Secure payment with Stripe</p>
-        </div>
-      </header>
+        <h1 className="text-lg font-semibold">Subscribe to {currentPlan.name}</h1>
+      </div>
 
       <div className="p-4 max-w-md mx-auto">
         {/* Plan Summary */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              {planDetails.name}
-              <span className="text-2xl font-bold">${planDetails.price}</span>
-            </CardTitle>
-            <CardDescription>
-              Billed {planDetails.period === 'yearly' ? 'annually' : 'monthly'}
-              {planDetails.period === 'yearly' && ' (50% savings)'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Plan:</span>
-                <span className="font-medium">{planDetails.name}</span>
+        <div className="bg-white rounded-lg p-4 mb-4">
+          <div className="flex items-center mb-4">
+            {currentPlan.icon}
+            <h2 className="text-lg font-semibold ml-2">{currentPlan.name}</h2>
+          </div>
+          
+          <div className="flex items-baseline mb-4">
+            <span className="text-2xl font-bold">${price}</span>
+            <span className="text-gray-500 ml-1">/{period === 'yearly' ? 'year' : 'month'}</span>
+            {period === 'yearly' && (
+              <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">
+                Save 50%
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {currentPlan.features.map((feature, index) => (
+              <div key={index} className="flex items-center text-sm">
+                <Check className="h-4 w-4 text-green-500 mr-2" />
+                <span>{feature}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Billing:</span>
-                <span className="font-medium capitalize">{planDetails.period}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>User:</span>
-                <span className="font-medium">{user?.email}</span>
-              </div>
-              <hr className="my-2" />
-              <div className="flex justify-between font-bold">
-                <span>Total:</span>
-                <span>${planDetails.price}/{planDetails.period === 'yearly' ? 'year' : 'month'}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        </div>
 
         {/* Payment Form */}
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <CheckoutForm planDetails={planDetails} />
-        </Elements>
+        <div className="bg-white rounded-lg p-4">
+          <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
+          
+          {clientSecret ? (
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <CheckoutForm 
+                onSuccess={handlePaymentSuccess}
+                amount={price}
+                description={`${currentPlan.name} - ${period === 'yearly' ? 'Annual' : 'Monthly'}`}
+              />
+            </Elements>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-4 border-[#095D66] border-t-transparent rounded-full" />
+              <span className="ml-2 text-gray-600">Setting up payment...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Terms */}
+        <div className="mt-4 text-xs text-gray-500 text-center">
+          <p>
+            By subscribing, you agree to our Terms of Service and Privacy Policy.
+            You can cancel your subscription at any time from your account settings.
+          </p>
+        </div>
       </div>
     </div>
   );

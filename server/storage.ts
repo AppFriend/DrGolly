@@ -192,6 +192,7 @@ export interface IStorage {
     currentPage: number;
   }>;
   updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User>;
+  updateUserStripeSubscriptionId(userId: string, stripeSubscriptionId: string): Promise<User>;
   
   // Feature flag operations
   getFeatureFlags(): Promise<FeatureFlag[]>;
@@ -246,6 +247,7 @@ export interface IStorage {
   getStripeProducts(): Promise<StripeProduct[]>;
   getStripeProductById(productId: string): Promise<StripeProduct | undefined>;
   getStripeProductByCourseId(courseId: number): Promise<StripeProduct | undefined>;
+  getStripeProduct(planTier: string, billingPeriod: string): Promise<StripeProduct | undefined>;
   createStripeProduct(product: InsertStripeProduct): Promise<StripeProduct>;
   updateStripeProduct(productId: string, updates: Partial<StripeProduct>): Promise<StripeProduct>;
   getCoursePricing(courseId: number): Promise<number | null>;
@@ -969,6 +971,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUserStripeSubscriptionId(userId: string, stripeSubscriptionId: string): Promise<User> {
+    const [user] = await db.update(users).set({ stripeSubscriptionId }).where(eq(users.id, userId)).returning();
+    return user;
+  }
+
   // Feature flag operations
   async getFeatureFlags(): Promise<FeatureFlag[]> {
     return await db.select().from(featureFlags).where(eq(featureFlags.isActive, true));
@@ -1365,6 +1372,19 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(stripeProducts.courseId, courseId),
         eq(stripeProducts.type, "course"),
+        eq(stripeProducts.isActive, true)
+      ));
+    return product;
+  }
+
+  async getStripeProduct(planTier: string, billingPeriod: string): Promise<StripeProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(stripeProducts)
+      .where(and(
+        eq(stripeProducts.purchaseCategory, `${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan`),
+        eq(stripeProducts.billingInterval, billingPeriod === 'yearly' ? 'yearly' : 'monthly'),
+        eq(stripeProducts.type, "subscription"),
         eq(stripeProducts.isActive, true)
       ));
     return product;

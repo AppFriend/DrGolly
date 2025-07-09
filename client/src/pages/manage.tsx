@@ -146,7 +146,7 @@ export default function Manage() {
           return;
         }
         
-        window.location.href = `/checkout-subscription?plan=${planKey}&period=${billingPeriod}&price=${price}`;
+        setLocation(`/checkout-subscription?plan=${planKey}&period=${billingPeriod}&price=${price}`);
         return;
       }
 

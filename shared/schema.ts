@@ -47,6 +47,7 @@ export const users = pgTable("users", {
   signInCount: integer("sign_in_count").default(0),
   lastSignIn: timestamp("last_sign_in"),
   stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
   isAdmin: boolean("is_admin").default(false),
   // First-time login system
   temporaryPassword: varchar("temporary_password"),

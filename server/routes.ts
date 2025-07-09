@@ -2386,6 +2386,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               nextBillingDate
             );
             
+            // Store subscription ID
+            await storage.updateUserStripeSubscriptionId(user.id, createdSub.id);
+            
             console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
           }
         } catch (error) {
@@ -2517,6 +2520,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json({ received: true });
+  });
+
+  // Create subscription using existing stripe products
+  app.post("/api/create-subscription", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.email) {
+        return res.status(400).json({ message: "User email required" });
+      }
+
+      const { planTier, billingPeriod } = req.body;
+      
+      if (!planTier || !billingPeriod) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Get the stripe product from database
+      const stripeProduct = await storage.getStripeProduct(planTier, billingPeriod);
+      if (!stripeProduct) {
+        return res.status(400).json({ message: "Invalid plan or billing period" });
+      }
+
+      // Create or get customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          metadata: {
+            userId: userId
+          }
+        });
+        customerId = customer.id;
+        await storage.updateUserStripeCustomerId(userId, customerId);
+      }
+
+      // Create subscription using the product price from database
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{
+          price: stripeProduct.stripePriceId,
+        }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+        metadata: {
+          plan_tier: planTier,
+          user_id: userId,
+          billing_period: billingPeriod
+        }
+      });
+
+      const paymentIntent = subscription.latest_invoice?.payment_intent;
+      
+      // Store subscription ID
+      await storage.updateUserStripeSubscriptionId(userId, subscription.id);
+      
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: paymentIntent?.client_secret,
+      });
+    } catch (error: any) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Error creating subscription: " + error.message });
+    }
   });
 
   // Stripe subscription checkout route
