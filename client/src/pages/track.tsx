@@ -98,17 +98,35 @@ export default function Track() {
         {children.length > 1 && (
           <div className="mb-4">
             <Label>Select Child</Label>
-            <select
-              value={activeChild || ""}
-              onChange={(e) => setActiveChild(parseInt(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded-md mt-1"
-            >
-              {children.map((child: Child) => (
-                <option key={child.id} value={child.id}>
-                  {child.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={activeChild || ""}
+                onChange={(e) => setActiveChild(parseInt(e.target.value))}
+                className="w-full p-2 pl-12 border border-gray-300 rounded-md mt-1 appearance-none bg-white"
+              >
+                {children.map((child: Child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                {(() => {
+                  const selectedChild = children.find(c => c.id === activeChild);
+                  return selectedChild?.profilePicture ? (
+                    <img 
+                      src={selectedChild.profilePicture} 
+                      alt={selectedChild.name} 
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-[#83CFCC]/10 rounded-full flex items-center justify-center">
+                      <Baby className="h-4 w-4 text-[#83CFCC]" />
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         )}
 

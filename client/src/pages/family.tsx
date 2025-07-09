@@ -22,7 +22,8 @@ export default function Family() {
   const [formData, setFormData] = useState({
     name: "",
     dateOfBirth: "",
-    gender: "not-specified" as "male" | "female" | "not-specified"
+    gender: "not-specified" as "male" | "female" | "not-specified",
+    profilePicture: ""
   });
   const [inviteData, setInviteData] = useState({
     name: "",
@@ -56,7 +57,7 @@ export default function Family() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
       setShowAddChild(false);
-      setFormData({ name: "", dateOfBirth: "", gender: "not-specified" });
+      setFormData({ name: "", dateOfBirth: "", gender: "not-specified", profilePicture: "" });
       toast({
         title: "Success",
         description: "Child added successfully!",
@@ -91,7 +92,7 @@ export default function Family() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
       setEditingChild(null);
-      setFormData({ name: "", dateOfBirth: "", gender: "not-specified" });
+      setFormData({ name: "", dateOfBirth: "", gender: "not-specified", profilePicture: "" });
       toast({
         title: "Success",
         description: "Child updated successfully!",
@@ -257,7 +258,8 @@ export default function Family() {
     setFormData({
       name: child.name,
       dateOfBirth: child.dateOfBirth,
-      gender: child.gender,
+      gender: child.gender || "not-specified",
+      profilePicture: child.profilePicture || "",
     });
     setShowAddChild(true);
   };
@@ -277,7 +279,7 @@ export default function Family() {
   const handleCancelEdit = () => {
     setEditingChild(null);
     setShowAddChild(false);
-    setFormData({ name: "", dateOfBirth: "", gender: "not-specified" });
+    setFormData({ name: "", dateOfBirth: "", gender: "not-specified", profilePicture: "" });
   };
 
   const handleInviteSubmit = (e: React.FormEvent) => {
@@ -429,6 +431,43 @@ export default function Family() {
                     <option value="male">Male</option>
                     <option value="female">Female</option>
                   </select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="profilePicture">Profile Picture</Label>
+                  <Input
+                    id="profilePicture"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          setFormData(prev => ({ ...prev, profilePicture: e.target?.result as string }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  />
+                  {formData.profilePicture && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img 
+                        src={formData.profilePicture} 
+                        alt="Profile preview" 
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setFormData(prev => ({ ...prev, profilePicture: "" }))}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex gap-2">
@@ -593,9 +632,17 @@ export default function Family() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-[#83CFCC]/10 rounded-full flex items-center justify-center">
-                        <Baby className="h-6 w-6 text-[#83CFCC]" />
-                      </div>
+                      {child.profilePicture ? (
+                        <img 
+                          src={child.profilePicture} 
+                          alt={child.name} 
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-[#83CFCC]/10 rounded-full flex items-center justify-center">
+                          <Baby className="h-6 w-6 text-[#83CFCC]" />
+                        </div>
+                      )}
                       <div>
                         <h3 className="font-semibold font-heading">{child.name}</h3>
                         <p className="text-sm text-gray-600 font-sans">

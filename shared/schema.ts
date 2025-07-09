@@ -221,6 +221,7 @@ export const children = pgTable("children", {
   name: varchar("name").notNull(),
   dateOfBirth: timestamp("date_of_birth").notNull(),
   gender: varchar("gender"), // male, female, other
+  profilePicture: varchar("profile_picture"), // URL or base64 data
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
