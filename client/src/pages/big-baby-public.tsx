@@ -35,6 +35,9 @@ export default function BigBabyPublic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<'checkout' | 'success' | 'signup'>('checkout');
+  
+  // Debug logging
+  console.log('BigBabyPublic component loaded');
   const [clientSecret, setClientSecret] = useState("");
   const [paymentIntentId, setPaymentIntentId] = useState("");
   const [customerDetails, setCustomerDetails] = useState({
