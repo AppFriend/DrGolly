@@ -194,6 +194,12 @@ function GrowthTracking({ childId }: { childId: number | null }) {
     date: new Date().toISOString().split('T')[0]
   });
 
+  // Fetch child data
+  const { data: childData } = useQuery({
+    queryKey: ["/api/children", childId],
+    enabled: !!childId,
+  });
+
   // Fetch growth entries
   const { data: growthEntries = [], isLoading } = useQuery({
     queryKey: ["/api/children", childId, "growth"],
@@ -253,7 +259,9 @@ function GrowthTracking({ childId }: { childId: number | null }) {
       {/* Add New Entry Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-heading">Add Growth Entry</CardTitle>
+          <CardTitle className="text-base font-heading">
+            Add Growth Entry{childData?.name ? ` for ${childData.name}` : ''}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
