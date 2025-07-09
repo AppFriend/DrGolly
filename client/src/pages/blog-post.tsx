@@ -155,12 +155,12 @@ export default function BlogPostPage() {
         </span>
 
         {/* Title */}
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 leading-tight">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
           {post.title}
         </h1>
 
         {/* Meta Information */}
-        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+        <div className="flex items-center space-x-4 text-sm text-gray-500 mb-6">
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-1" />
             <span>{post.readTime} min read</span>
@@ -171,41 +171,50 @@ export default function BlogPostPage() {
           </div>
           <span>
             {new Date(post.publishedAt).toLocaleDateString('en-US', {
-              year: 'numeric',
               month: 'long',
-              day: 'numeric'
+              day: 'numeric',
+              year: 'numeric'
             })}
           </span>
         </div>
 
         {/* Excerpt */}
         {post.excerpt && (
-          <p className="text-lg text-gray-700 mb-8 leading-relaxed">
+          <p className="text-base text-gray-600 mb-8 leading-relaxed">
             {post.excerpt}
           </p>
         )}
 
         {/* Content */}
-        <div className="prose prose-lg max-w-none text-gray-800 leading-relaxed">
-          <div className="space-y-4">
+        <div className="max-w-none">
+          <div className="space-y-6">
             {post.content.split('\n\n').map((paragraph, index) => {
               if (paragraph.startsWith('## ')) {
-                return <h2 key={index} className="text-2xl font-semibold text-gray-900 mt-8 mb-4">{paragraph.replace('## ', '')}</h2>;
+                return <h2 key={index} className="text-xl font-semibold text-gray-900 mt-8 mb-4">{paragraph.replace('## ', '')}</h2>;
               } else if (paragraph.startsWith('### ')) {
-                return <h3 key={index} className="text-xl font-medium text-gray-900 mt-6 mb-3">{paragraph.replace('### ', '')}</h3>;
+                return <h3 key={index} className="text-lg font-medium text-gray-900 mt-6 mb-3">{paragraph.replace('### ', '')}</h3>;
               } else if (paragraph.startsWith('#### ')) {
-                return <h4 key={index} className="text-lg font-medium text-gray-900 mt-4 mb-2">{paragraph.replace('#### ', '')}</h4>;
+                return <h4 key={index} className="text-base font-medium text-gray-900 mt-4 mb-2">{paragraph.replace('#### ', '')}</h4>;
               } else if (paragraph.startsWith('- ')) {
                 const listItems = paragraph.split('\n').filter(line => line.startsWith('- '));
                 return (
-                  <ul key={index} className="list-disc pl-6 space-y-1">
+                  <ul key={index} className="list-disc pl-6 space-y-2 mb-4">
                     {listItems.map((item, itemIndex) => (
-                      <li key={itemIndex} className="text-gray-700">{item.replace('- ', '')}</li>
+                      <li key={itemIndex} className="text-base text-gray-700 leading-relaxed">{item.replace('- ', '')}</li>
                     ))}
                   </ul>
                 );
+              } else if (paragraph.match(/^\d+\./)) {
+                const listItems = paragraph.split('\n').filter(line => line.match(/^\d+\./));
+                return (
+                  <ol key={index} className="list-decimal pl-6 space-y-2 mb-4">
+                    {listItems.map((item, itemIndex) => (
+                      <li key={itemIndex} className="text-base text-gray-700 leading-relaxed">{item.replace(/^\d+\.\s*/, '')}</li>
+                    ))}
+                  </ol>
+                );
               } else if (paragraph.trim()) {
-                return <p key={index} className="text-gray-700 leading-relaxed">{paragraph}</p>;
+                return <p key={index} className="text-base text-gray-700 leading-relaxed mb-4">{paragraph}</p>;
               }
               return null;
             })}

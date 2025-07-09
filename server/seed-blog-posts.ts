@@ -5,7 +5,7 @@ const blogPostsData = [
     title: "How to Get Baby to Sleep Through the Night",
     slug: "how-to-get-baby-to-sleep-through-the-night",
     excerpt: "Learn effective strategies to help your baby sleep through the night with expert guidance from Dr. Golly.",
-    content: `Getting your baby to sleep through the night is one of the most common challenges new parents face. Here's a comprehensive guide to help you establish healthy sleep patterns for your little one.
+    content: `Getting your baby to sleep through the night is one of the biggest challenges new parents face. Here's a comprehensive guide to help you and your little one get the rest you both need.
 
 ## Understanding Baby Sleep Patterns
 
@@ -21,6 +21,7 @@ Newborns have different sleep cycles than adults. They spend more time in light 
 ## Establishing a Bedtime Routine
 
 A consistent bedtime routine signals to your baby that it's time to sleep:
+
 1. Bath time
 2. Feeding
 3. Gentle massage
@@ -50,6 +51,7 @@ Remember, every baby is different, and what works for one may not work for anoth
 ## Understanding TOG Ratings
 
 TOG (Thermal Overall Grade) ratings help you choose the right sleepwear:
+
 - 0.5 TOG: Warm weather (24°C+)
 - 1.0 TOG: Mild weather (20-24°C)
 - 2.5 TOG: Cool weather (16-20°C)
@@ -58,6 +60,7 @@ TOG (Thermal Overall Grade) ratings help you choose the right sleepwear:
 ## Summer Sleep Clothing
 
 For warm nights:
+
 - Light cotton bodysuit or singlet
 - 0.5-1.0 TOG sleep bag
 - Muslin wraps for newborns
@@ -66,6 +69,7 @@ For warm nights:
 ## Winter Sleep Clothing
 
 For cold nights:
+
 - Long-sleeved bodysuit
 - 2.5-3.5 TOG sleep bag
 - Warm pajamas underneath if needed
@@ -82,6 +86,7 @@ For cold nights:
 ## Signs of Correct Temperature
 
 Your baby is dressed appropriately if:
+
 - Chest feels warm but not hot
 - No sweating
 - Comfortable breathing
@@ -107,14 +112,16 @@ TOG stands for Thermal Overall Grade. It's a European standard for measuring the
 ## TOG Rating Scale
 
 The scale typically runs from 0.5 to 3.5:
-- **0.5 TOG**: Very light insulation
-- **1.0 TOG**: Light insulation  
-- **2.5 TOG**: Medium insulation
-- **3.5 TOG**: Heavy insulation
+
+- 0.5 TOG: Very light insulation
+- 1.0 TOG: Light insulation  
+- 2.5 TOG: Medium insulation
+- 3.5 TOG: Heavy insulation
 
 ## Choosing the Right TOG
 
 Consider:
+
 - Room temperature
 - Season
 - Your baby's natural warmth
@@ -122,10 +129,10 @@ Consider:
 
 ## Room Temperature Guide
 
-- **24°C+**: 0.5 TOG + short-sleeved bodysuit
-- **20-24°C**: 1.0 TOG + short-sleeved bodysuit
-- **16-20°C**: 2.5 TOG + long-sleeved bodysuit
-- **Below 16°C**: 3.5 TOG + warm pajamas
+- 24°C+: 0.5 TOG + short-sleeved bodysuit
+- 20-24°C: 1.0 TOG + short-sleeved bodysuit
+- 16-20°C: 2.5 TOG + long-sleeved bodysuit
+- Below 16°C: 3.5 TOG + warm pajamas
 
 ## Benefits of Using TOG-Rated Sleepwear
 
@@ -150,6 +157,7 @@ Understanding TOG ratings takes the guesswork out of dressing your baby for slee
 ## What is Cluster Feeding?
 
 Cluster feeding refers to when babies feed very frequently over a short period, often in the evening hours. This typically involves:
+
 - Multiple feeds within a few hours
 - Baby seeming unsatisfied after feeds
 - Fussiness between feeds
@@ -158,6 +166,7 @@ Cluster feeding refers to when babies feed very frequently over a short period, 
 ## When Does Cluster Feeding Happen?
 
 Common times include:
+
 - First few weeks of life
 - During growth spurts (3 weeks, 6 weeks, 3 months)
 - Evening hours (5-11 PM)
@@ -166,6 +175,7 @@ Common times include:
 ## Why Do Babies Cluster Feed?
 
 Several reasons contribute to cluster feeding:
+
 - Building up milk supply
 - Preparing for longer sleep periods
 - Growth spurts requiring extra nutrition
@@ -175,6 +185,7 @@ Several reasons contribute to cluster feeding:
 ## Management Strategies
 
 ### For Breastfeeding Mothers:
+
 - Stay hydrated and nourished
 - Get comfortable with feeding pillows
 - Accept help with other tasks
@@ -182,6 +193,7 @@ Several reasons contribute to cluster feeding:
 - Trust your milk supply
 
 ### For All Parents:
+
 - Plan for cluster feeding times
 - Create a comfortable feeding environment
 - Have entertainment ready (books, shows)
@@ -191,6 +203,7 @@ Several reasons contribute to cluster feeding:
 ## When to Seek Help
 
 Contact your healthcare provider if:
+
 - Baby isn't gaining weight
 - You're experiencing nipple pain
 - Baby seems inconsolable
