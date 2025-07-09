@@ -10,6 +10,7 @@ import { FcGoogle } from "react-icons/fc";
 import { Link } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
 interface PersonalizationData {
   primaryConcerns: string[];
@@ -600,9 +601,11 @@ export default function Signup() {
               <ArrowLeft className="h-5 w-5 text-gray-600" />
             </Button>
           </Link>
-          <div className="text-xl font-bold text-gray-900">
-            Dr. Golly
-          </div>
+          <img 
+            src={drGollyLogo} 
+            alt="Dr. Golly" 
+            className="h-8 w-auto object-contain"
+          />
           <div className="text-sm text-gray-500">
             {step}/{totalSteps}
           </div>

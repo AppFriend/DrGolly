@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
+import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
@@ -14,9 +15,11 @@ export default function Landing() {
         <div className="flex-1 flex flex-col justify-start">
           {/* Logo */}
           <div className="text-center mb-4">
-            <div className="text-xl font-bold text-gray-800">
-              dr. Golly
-            </div>
+            <img 
+              src={drGollyLogo} 
+              alt="Dr. Golly" 
+              className="h-8 w-auto object-contain"
+            />
           </div>
 
           {/* Hero Image */}

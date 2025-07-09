@@ -279,6 +279,12 @@ Changelog:
   * Updated all payment forms to show correct currency symbols ($ for AUD/USD, € for EUR)
   * Connected regional pricing to Gold/Platinum subscription tiers with proper currency conversion
   * Ensured consistent pricing display across all components: manage page, checkout forms, course displays
+- July 09, 2025. Replaced text headers with Dr. Golly logo for consistent branding:
+  * Updated landing page to use Dr. Golly logo instead of text header
+  * Updated signup page to use Dr. Golly logo in header navigation
+  * Updated admin panel to use Dr. Golly logo in header with "Admin Panel" text
+  * Ensured consistent logo sizing (h-8) and styling across all pages
+  * Home page and Big Baby public page already had logo implementation
 ```
 
 ## User Preferences
