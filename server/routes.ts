@@ -1686,16 +1686,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/profile/invoices', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log('Fetching invoices for user:', userId);
+      
       const user = await storage.getUser(userId);
+      console.log('User found:', user ? 'Yes' : 'No');
       
       const allInvoices = [];
       
       // Get course purchase invoices from database
       const coursePurchases = await storage.getUserCoursePurchases(userId);
+      console.log('Course purchases found:', coursePurchases.length);
       
       // Format course purchases as invoices
       for (const purchase of coursePurchases) {
         const course = await storage.getCourse(purchase.courseId);
+        console.log('Processing purchase:', purchase.id, 'for course:', course?.title);
         allInvoices.push({
           id: `course_${purchase.id}`,
           amount: purchase.amount / 100, // Convert from cents
@@ -1748,6 +1753,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sort all invoices by date (newest first)
       allInvoices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      console.log('Total invoices to return:', allInvoices.length);
+      console.log('Invoices:', JSON.stringify(allInvoices, null, 2));
       
       res.json(allInvoices);
     } catch (error) {
