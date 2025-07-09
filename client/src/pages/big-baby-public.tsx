@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckoutForm } from "@/components/checkout/checkout-form";
+import { useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
@@ -31,13 +31,68 @@ const BIG_BABY_COURSE = {
   tier: "platinum"
 };
 
+// Simple payment form component for BigBaby checkout
+function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/big-baby-public`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Payment Failed",
+          description: error.message || "Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        onSuccess();
+      }
+    } catch (err) {
+      toast({
+        title: "Payment Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      <Button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className="w-full bg-dr-teal hover:bg-dr-teal/90"
+      >
+        {isProcessing ? "Processing..." : `Pay $${BIG_BABY_COURSE.price}`}
+      </Button>
+    </form>
+  );
+}
+
 export default function BigBabyPublic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<'checkout' | 'success' | 'signup'>('checkout');
-  
-  // Debug logging
-  console.log('BigBabyPublic component loaded');
   const [clientSecret, setClientSecret] = useState("");
   const [paymentIntentId, setPaymentIntentId] = useState("");
   const [customerDetails, setCustomerDetails] = useState({
@@ -353,12 +408,7 @@ export default function BigBabyPublic() {
                 </CardHeader>
                 <CardContent>
                   <Elements stripe={stripePromise} options={{ clientSecret }}>
-                    <CheckoutForm 
-                      course={BIG_BABY_COURSE} 
-                      customerDetails={customerDetails}
-                      total={BIG_BABY_COURSE.price}
-                      onSuccess={handlePaymentSuccess}
-                    />
+                    <BigBabyPaymentForm onSuccess={handlePaymentSuccess} />
                   </Elements>
                 </CardContent>
               </Card>
