@@ -19,6 +19,8 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
         return "bg-purple-500";
       case "parenting":
         return "bg-green-500";
+      case "freebies":
+        return "bg-pink-500";
       default:
         return "bg-gray-500";
     }
@@ -40,11 +42,11 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
       )}
       onClick={onClick}
     >
-      <div className="relative">
+      <div className="relative p-3">
         <img
           src={post.imageUrl || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
           alt={post.title}
-          className="w-full h-32 object-cover"
+          className="w-full h-32 object-cover rounded-xl"
         />
         <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
           <button 
