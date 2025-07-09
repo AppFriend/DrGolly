@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CopyProtection } from '@/lib/copyProtection';
 import { apiRequest } from '@/lib/queryClient';
 import confetti from 'canvas-confetti';
+import ModuleDetail from './ModuleDetail';
 
 interface CourseDetailProps {
   courseId: number;
@@ -29,6 +30,7 @@ interface Module {
   id: number;
   title: string;
   description: string;
+  content: string;
   orderIndex: number;
   contentType: 'text' | 'video';
   duration?: number;
@@ -58,6 +60,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
   const [copyProtection, setCopyProtection] = useState<CopyProtection | null>(null);
   const [completedModules, setCompletedModules] = useState<Set<number>>(new Set());
   const [completedChapters, setCompletedChapters] = useState<Set<number>>(new Set());
+  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -210,6 +213,14 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     moduleProgressMutation.mutate({ moduleId, completed });
   };
 
+  const handleModuleClick = (module: Module) => {
+    setSelectedModule(module);
+  };
+
+  const handleBackToChapters = () => {
+    setSelectedModule(null);
+  };
+
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${minutes}min`;
     const hours = Math.floor(minutes / 60);
@@ -241,6 +252,21 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Show module detail if a module is selected
+  if (selectedModule) {
+    return (
+      <ModuleDetail 
+        module={selectedModule} 
+        onBack={handleBackToChapters}
+        isCompleted={completedModules.has(selectedModule.id)}
+        onMarkComplete={() => {
+          setCompletedModules(prev => new Set(prev).add(selectedModule.id));
+          handleModuleComplete(selectedModule.id, true);
+        }}
+      />
     );
   }
 
@@ -341,8 +367,9 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                       {(modulesByChapter[chapter.id] || []).map((module: Module) => (
                         <div 
                           key={module.id} 
-                          className="course-module bg-gray-50 rounded-lg p-4 border border-gray-200"
+                          className="course-module bg-gray-50 rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
                           data-protected="true"
+                          onClick={() => handleModuleClick(module)}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -350,7 +377,9 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                                 {module.contentType === 'video' ? (
                                   <Play className="w-4 h-4 text-blue-500" />
                                 ) : (
-                                  <Lock className="w-4 h-4 text-gray-500" />
+                                  <div className="w-4 h-4 bg-gray-500 rounded-sm flex items-center justify-center">
+                                    <span className="text-white text-xs font-bold">A</span>
+                                  </div>
                                 )}
                                 <CheckCircle className={`w-4 h-4 ${
                                   completedModules.has(module.id) 
@@ -359,7 +388,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                                 }`} />
                               </div>
                               <div>
-                                <h4 className="font-medium">{module.title}</h4>
+                                <h4 className="font-medium cursor-pointer hover:text-blue-600">{module.title}</h4>
                                 <p className="text-sm text-gray-600">{module.description}</p>
                               </div>
                             </div>
@@ -373,10 +402,13 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleModuleComplete(module.id, true)}
-                                disabled={moduleProgressMutation.isPending}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleModuleClick(module);
+                                }}
+                                className="text-blue-600 hover:text-blue-700"
                               >
-                                Mark Complete
+                                Read More
                               </Button>
                             </div>
                           </div>
