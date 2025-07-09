@@ -3652,6 +3652,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update marketing opt-in status in Klaviyo
+  app.post('/api/klaviyo/marketing-opt-in', async (req, res) => {
+    try {
+      const { email, optIn } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+
+      // Update the user's marketing consent in Klaviyo
+      const profileData = {
+        type: "profile",
+        attributes: {
+          email,
+          properties: {
+            marketing_opt_in: optIn
+          },
+          subscriptions: optIn ? {
+            email: {
+              marketing: {
+                consent: "SUBSCRIBED"
+              }
+            }
+          } : undefined
+        }
+      };
+
+      const response = await fetch(`https://a.klaviyo.com/api/profile-import/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Klaviyo-API-Key ${process.env.KLAVIYO_API_KEY}`,
+          'Content-Type': 'application/json',
+          'revision': '2024-10-15'
+        },
+        body: JSON.stringify({
+          data: profileData
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Klaviyo API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      res.json({ success: true, profileId: result.data?.id });
+    } catch (error) {
+      console.error('Error updating marketing opt-in:', error);
+      res.status(500).json({ error: 'Failed to update marketing preferences' });
+    }
+  });
+
   // Klaviyo Testing Endpoints
   app.post('/api/test/klaviyo/signup', async (req, res) => {
     try {

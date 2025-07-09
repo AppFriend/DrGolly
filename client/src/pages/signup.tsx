@@ -70,6 +70,32 @@ export default function Signup() {
 
   const handlePersonalizationUpdate = (field: keyof PersonalizationData, value: any) => {
     setPersonalization(prev => ({ ...prev, [field]: value }));
+    
+    // If marketing opt-in is updated, sync with Klaviyo
+    if (field === 'marketingOptIn' && email) {
+      handleMarketingOptInUpdate(value);
+    }
+  };
+
+  const handleMarketingOptInUpdate = async (optIn: boolean) => {
+    try {
+      const response = await fetch('/api/klaviyo/marketing-opt-in', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          optIn
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update marketing opt-in status');
+      }
+    } catch (error) {
+      console.error('Error updating marketing opt-in:', error);
+    }
   };
 
   const handleProfilePictureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,6 +109,13 @@ export default function Signup() {
         handlePersonalizationUpdate('profilePictureUrl', dataUrl);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProfilePictureClick = () => {
+    const input = document.getElementById('profilePictureInput') as HTMLInputElement;
+    if (input) {
+      input.click();
     }
   };
 
@@ -242,7 +275,10 @@ export default function Signup() {
               {/* Profile Picture */}
               <div className="flex items-center justify-center">
                 <div className="relative">
-                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  <div 
+                    onClick={handleProfilePictureClick}
+                    className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-gray-300 transition-colors"
+                  >
                     {profilePictureUrl ? (
                       <img 
                         src={profilePictureUrl} 
@@ -260,12 +296,13 @@ export default function Signup() {
                     className="hidden"
                     id="profilePictureInput"
                   />
-                  <label
-                    htmlFor="profilePictureInput"
-                    className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={handleProfilePictureClick}
+                    className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#095D66] rounded-full flex items-center justify-center text-white hover:bg-[#0A6B74] transition-colors"
                   >
                     <Upload className="h-4 w-4" />
-                  </label>
+                  </button>
                 </div>
               </div>
               <div className="text-center">
@@ -312,7 +349,7 @@ export default function Signup() {
                       className={cn(
                         "px-4 py-2 rounded-lg border-2 transition-all duration-200",
                         personalization.userRole === role
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          ? "border-[#095D66] bg-[#095D66]/10 text-[#095D66]"
                           : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                       )}
                     >
@@ -330,7 +367,7 @@ export default function Signup() {
                   onCheckedChange={(checked) => handlePersonalizationUpdate('acceptedTerms', checked)}
                 />
                 <Label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
-                  By signing up you agree to the <Link href="/terms" className="text-blue-600 hover:text-blue-800">Dr Golly Terms of Service</Link>
+                  By signing up you agree to the <Link href="/terms" className="text-[#095D66] hover:text-[#0A6B74] underline">Dr Golly Terms of Service</Link>
                 </Label>
               </div>
 
@@ -391,9 +428,9 @@ export default function Signup() {
                   type="button"
                   onClick={() => toggleConcern(id)}
                   className={cn(
-                    "w-full p-6 rounded-2xl border-2 transition-all duration-200 hover:border-blue-300",
+                    "w-full p-6 rounded-2xl border-2 transition-all duration-200 hover:border-[#095D66]/30",
                     personalization.primaryConcerns.includes(id)
-                      ? "border-blue-500 bg-blue-50"
+                      ? "border-[#095D66] bg-[#095D66]/10"
                       : "border-gray-200 bg-white"
                   )}
                 >
