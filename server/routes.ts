@@ -606,10 +606,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Course routes
   app.get('/api/courses', async (req, res) => {
     try {
-      const { category, tier } = req.query;
+      const { category, tier, includeUnpublished } = req.query;
       const courses = await storage.getCourses(
         category as string | undefined,
-        tier as string | undefined
+        tier as string | undefined,
+        includeUnpublished === 'true'
       );
       
       // Enhance courses with dynamic pricing from Stripe products
@@ -1750,8 +1751,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Blog post routes
   app.get('/api/blog-posts', async (req, res) => {
     try {
-      const { category } = req.query;
-      const blogPosts = await storage.getBlogPosts(category as string | undefined);
+      const { category, includeUnpublished } = req.query;
+      const blogPosts = await storage.getBlogPosts(
+        category as string | undefined,
+        includeUnpublished === 'true'
+      );
       res.json(blogPosts);
     } catch (error) {
       console.error("Error fetching blog posts:", error);
@@ -4162,6 +4166,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing support request:", error);
       res.status(500).json({ message: "Failed to process support request" });
+    }
+  });
+
+  // Enhanced course management endpoints
+  app.get('/api/courses/:courseId/chapters', async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const chapters = await storage.getCourseChapters(parseInt(courseId));
+      res.json(chapters);
+    } catch (error) {
+      console.error("Error fetching course chapters:", error);
+      res.status(500).json({ message: "Failed to fetch chapters" });
+    }
+  });
+
+  app.post('/api/courses/:courseId/chapters', async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const chapterData = req.body;
+      const chapter = await storage.createCourseChapter(parseInt(courseId), chapterData);
+      res.json(chapter);
+    } catch (error) {
+      console.error("Error creating course chapter:", error);
+      res.status(500).json({ message: "Failed to create chapter" });
+    }
+  });
+
+  app.put('/api/courses/:courseId/chapters/reorder', async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { chapters } = req.body;
+      await storage.reorderCourseChapters(parseInt(courseId), chapters);
+      res.json({ message: "Chapter order updated successfully" });
+    } catch (error) {
+      console.error("Error reordering chapters:", error);
+      res.status(500).json({ message: "Failed to reorder chapters" });
+    }
+  });
+
+  app.get('/api/chapters/:chapterId/modules', async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      const modules = await storage.getChapterModules(parseInt(chapterId));
+      res.json(modules);
+    } catch (error) {
+      console.error("Error fetching chapter modules:", error);
+      res.status(500).json({ message: "Failed to fetch modules" });
+    }
+  });
+
+  app.post('/api/chapters/:chapterId/modules', async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      const moduleData = req.body;
+      const module = await storage.createCourseModule(parseInt(chapterId), moduleData);
+      res.json(module);
+    } catch (error) {
+      console.error("Error creating course module:", error);
+      res.status(500).json({ message: "Failed to create module" });
+    }
+  });
+
+  app.put('/api/modules/:moduleId', async (req, res) => {
+    try {
+      const { moduleId } = req.params;
+      const moduleData = req.body;
+      const module = await storage.updateCourseModule(parseInt(moduleId), moduleData);
+      res.json(module);
+    } catch (error) {
+      console.error("Error updating course module:", error);
+      res.status(500).json({ message: "Failed to update module" });
+    }
+  });
+
+  app.put('/api/chapters/:chapterId/modules/reorder', async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      const { modules } = req.body;
+      await storage.reorderCourseModules(parseInt(chapterId), modules);
+      res.json({ message: "Module order updated successfully" });
+    } catch (error) {
+      console.error("Error reordering modules:", error);
+      res.status(500).json({ message: "Failed to reorder modules" });
+    }
+  });
+
+  // Enhanced blog management endpoints
+  app.post('/api/blog-posts', async (req, res) => {
+    try {
+      const blogPostData = req.body;
+      const blogPost = await storage.createBlogPost(blogPostData);
+      res.json(blogPost);
+    } catch (error) {
+      console.error("Error creating blog post:", error);
+      res.status(500).json({ message: "Failed to create blog post" });
+    }
+  });
+
+  app.put('/api/blog-posts/:postId', async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const blogPostData = req.body;
+      const blogPost = await storage.updateBlogPost(parseInt(postId), blogPostData);
+      res.json(blogPost);
+    } catch (error) {
+      console.error("Error updating blog post:", error);
+      res.status(500).json({ message: "Failed to update blog post" });
+    }
+  });
+
+  app.put('/api/courses/:courseId', async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const courseData = req.body;
+      const course = await storage.updateCourse(parseInt(courseId), courseData);
+      res.json(course);
+    } catch (error) {
+      console.error("Error updating course:", error);
+      res.status(500).json({ message: "Failed to update course" });
+    }
+  });
+
+  app.post('/api/courses', async (req, res) => {
+    try {
+      const courseData = req.body;
+      const course = await storage.createCourse(courseData);
+      res.json(course);
+    } catch (error) {
+      console.error("Error creating course:", error);
+      res.status(500).json({ message: "Failed to create course" });
     }
   });
 

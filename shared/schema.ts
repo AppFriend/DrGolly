@@ -137,7 +137,8 @@ export const courses = pgTable("courses", {
   skillLevel: varchar("skill_level"),
   stripeProductId: varchar("stripe_product_id"),
   uniqueId: varchar("unique_id"),
-  isPublished: boolean("is_published").default(true),
+  isPublished: boolean("is_published").default(false), // Default to draft
+  status: varchar("status").default("draft").notNull(), // draft, published, archived
   likes: integer("likes").default(0),
   views: integer("views").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -346,10 +347,11 @@ export const blogPosts = pgTable("blog_posts", {
   imageUrl: varchar("image_url"),
   pdfUrl: varchar("pdf_url"), // For freebies downloads
   readTime: integer("read_time"), // in minutes
-  publishedAt: timestamp("published_at").notNull(),
+  publishedAt: timestamp("published_at"),
   views: integer("views").default(0),
   likes: integer("likes").default(0),
-  isPublished: boolean("is_published").default(true),
+  isPublished: boolean("is_published").default(false), // Default to draft
+  status: varchar("status").default("draft").notNull(), // draft, published, archived
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
