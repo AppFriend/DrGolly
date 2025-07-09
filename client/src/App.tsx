@@ -29,6 +29,7 @@ import Manage from "@/pages/manage";
 import CheckoutSubscription from "@/pages/checkout-subscription";
 import Admin from "@/pages/admin";
 import Profile from "@/pages/profile";
+import KlaviyoTest from "@/pages/klaviyo-test";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -81,6 +82,7 @@ function AuthenticatedApp() {
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
         <Route path="/admin" component={Admin} />
         <Route path="/profile" component={Profile} />
+        <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/home">
           <Home />
@@ -134,6 +136,7 @@ function Router() {
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
+          <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route component={Landing} />
         </Switch>
