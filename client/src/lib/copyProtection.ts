@@ -17,16 +17,11 @@ export class CopyProtection {
   }
 
   private initializeCopyProtection() {
-    // Prevent text selection on course content
-    document.addEventListener('selectstart', this.preventSelection);
-    
-    // Prevent copy keyboard shortcut
+    // Only prevent copy keyboard shortcuts and context menu
     document.addEventListener('keydown', this.preventCopyShortcuts);
-    
-    // Prevent right-click context menu
     document.addEventListener('contextmenu', this.preventContextMenu);
     
-    // Prevent drag and drop
+    // Prevent drag and drop of content
     document.addEventListener('dragstart', this.preventDragStart);
     
     // Prevent print screen and developer tools
@@ -36,7 +31,10 @@ export class CopyProtection {
   private preventSelection = (e: Event) => {
     try {
       const target = e.target as HTMLElement;
-      if (this.isEnabled && this.isProtectedContent(target)) {
+      
+      // Only prevent selection on actual content text, not on interactive elements
+      if (this.isEnabled && this.isProtectedContent(target) && 
+          !this.isInteractiveElement(target)) {
         e.preventDefault();
         this.showProtectionMessage();
         return false;
@@ -81,7 +79,10 @@ export class CopyProtection {
   private preventContextMenu = (e: MouseEvent) => {
     try {
       const target = e.target as HTMLElement;
-      if (this.isEnabled && this.isProtectedContent(target)) {
+      
+      // Only prevent context menu on actual content, not interactive elements
+      if (this.isEnabled && this.isProtectedContent(target) && 
+          !this.isInteractiveElement(target)) {
         e.preventDefault();
         this.showProtectionMessage();
         return false;
@@ -128,6 +129,36 @@ export class CopyProtection {
            element.closest('[data-protected="true"]') !== null;
   }
 
+  private isInteractiveElement(element: HTMLElement): boolean {
+    // Check if element is a valid HTML element and has the closest method
+    if (!element || typeof element.closest !== 'function') {
+      return false;
+    }
+    
+    // Allow interaction with buttons, links, inputs, and other interactive elements
+    const interactiveSelectors = [
+      'button', 'a', 'input', 'textarea', 'select', 'option',
+      '[role="button"]', '[role="link"]', '[role="tab"]', '[role="menuitem"]',
+      '.btn', '.button', '.link', '.collapsible-trigger',
+      '[data-collapsible="trigger"]', '[data-collapsible="content"]'
+    ];
+    
+    // Check if element itself is interactive
+    const tagName = element.tagName.toLowerCase();
+    if (interactiveSelectors.includes(tagName)) {
+      return true;
+    }
+    
+    // Check if element is within an interactive parent
+    for (const selector of interactiveSelectors) {
+      if (element.closest(selector)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
   private showProtectionMessage() {
     toast({
       title: "Content Protection",
@@ -153,7 +184,6 @@ export class CopyProtection {
 
   // Clean up event listeners
   public destroy() {
-    document.removeEventListener('selectstart', this.preventSelection);
     document.removeEventListener('keydown', this.preventCopyShortcuts);
     document.removeEventListener('contextmenu', this.preventContextMenu);
     document.removeEventListener('dragstart', this.preventDragStart);
@@ -163,40 +193,57 @@ export class CopyProtection {
 
 // CSS styles for copy protection
 export const copyProtectionStyles = `
-  .course-content,
-  .course-module,
-  .course-chapter,
-  [data-protected="true"] {
+  /* Only prevent selection on actual content paragraphs and text, not interactive elements */
+  .course-content p,
+  .course-content span,
+  .course-content div:not([role]),
+  .course-module p,
+  .course-module span,
+  .course-chapter p,
+  .course-chapter span,
+  [data-protected="true"] p,
+  [data-protected="true"] span {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
   }
 
-  .course-content *,
-  .course-module *,
-  .course-chapter *,
-  [data-protected="true"] * {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+  /* Allow selection on interactive elements */
+  .course-content button,
+  .course-content a,
+  .course-content input,
+  .course-content [role="button"],
+  .course-content [data-collapsible],
+  .course-module button,
+  .course-module a,
+  .course-module input,
+  .course-module [role="button"],
+  .course-chapter button,
+  .course-chapter a,
+  .course-chapter input,
+  .course-chapter [role="button"],
+  .course-chapter [data-collapsible] {
+    -webkit-user-select: auto;
+    -moz-user-select: auto;
+    -ms-user-select: auto;
+    user-select: auto;
+    -webkit-touch-callout: auto;
   }
 
-  /* Prevent highlighting on mobile */
-  .course-content::selection,
-  .course-module::selection,
-  .course-chapter::selection,
-  [data-protected="true"]::selection {
+  /* Prevent highlighting on mobile for text content only */
+  .course-content p::selection,
+  .course-module p::selection,
+  .course-chapter p::selection,
+  [data-protected="true"] p::selection {
     background: transparent;
   }
 
-  .course-content::-moz-selection,
-  .course-module::-moz-selection,
-  .course-chapter::-moz-selection,
-  [data-protected="true"]::-moz-selection {
+  .course-content p::-moz-selection,
+  .course-module p::-moz-selection,
+  .course-chapter p::-moz-selection,
+  [data-protected="true"] p::-moz-selection {
     background: transparent;
   }
 `;
