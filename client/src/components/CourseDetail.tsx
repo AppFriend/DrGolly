@@ -82,32 +82,38 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
 
   // Fetch course details
   const { data: course, isLoading: courseLoading } = useQuery({
-    queryKey: ['/api/courses', courseId],
-    queryFn: () => apiRequest('GET', `/api/courses/${courseId}`),
+    queryKey: [`/api/courses/${courseId}`],
     enabled: !!courseId,
   });
 
   // Fetch chapters
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery({
-    queryKey: ['/api/courses', courseId, 'chapters'],
-    queryFn: () => apiRequest('GET', `/api/courses/${courseId}/chapters`),
+    queryKey: [`/api/courses/${courseId}/chapters`],
     enabled: !!courseId,
   });
 
-  // Debug logging
-  console.log('Chapters data:', chapters);
-  console.log('Chapters loading:', chaptersLoading);
-  console.log('Chapters length:', chapters?.length);
-
   // Fetch modules for expanded chapters
   const { data: modulesByChapter = {} } = useQuery({
-    queryKey: ['/api/chapters', expandedChapters, 'modules'],
+    queryKey: [`/api/chapters/modules`, expandedChapters],
     queryFn: async () => {
       const modulesData: Record<number, Module[]> = {};
       
       for (const chapterId of expandedChapters) {
-        const modules = await apiRequest('GET', `/api/chapters/${chapterId}/modules`);
-        modulesData[chapterId] = modules;
+        try {
+          const response = await fetch(`/api/chapters/${chapterId}/modules`, {
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch modules for chapter ${chapterId}`);
+          }
+          
+          const modules = await response.json();
+          modulesData[chapterId] = modules;
+        } catch (error) {
+          console.error(`Failed to fetch modules for chapter ${chapterId}:`, error);
+          modulesData[chapterId] = [];
+        }
       }
       
       return modulesData;
@@ -118,11 +124,12 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
   // Chapter progress mutation
   const chapterProgressMutation = useMutation({
     mutationFn: async ({ chapterId, completed }: { chapterId: number; completed: boolean }) => {
-      return await apiRequest('POST', '/api/user/chapter-progress', {
+      const response = await apiRequest('POST', '/api/user/chapter-progress', {
         chapterId,
         completed,
         completedAt: completed ? new Date().toISOString() : undefined,
       });
+      return await response.json();
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/chapter-progress'] });
@@ -153,12 +160,13 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
   // Module progress mutation
   const moduleProgressMutation = useMutation({
     mutationFn: async ({ moduleId, completed, watchTime }: { moduleId: number; completed: boolean; watchTime?: number }) => {
-      return await apiRequest('POST', '/api/user/module-progress', {
+      const response = await apiRequest('POST', '/api/user/module-progress', {
         moduleId,
         completed,
         watchTime: watchTime || 0,
         completedAt: completed ? new Date().toISOString() : undefined,
       });
+      return await response.json();
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/module-progress'] });
