@@ -379,6 +379,13 @@ Changelog:
   * Added "Mark Complete" button at bottom of content for better user flow
   * Updated all buttons to use brand colors (Dark Green for completion, Brand Teal for navigation)
   * Documented brand color guidelines: no blue buttons, use brand teal or dark green only
+- July 10, 2025. Implemented visual hierarchy for course modules with tree structure:
+  * Added proper indentation for modules under chapters with left padding
+  * Created connecting grey lines between modules to show progression flow
+  * Added chapter.submodule numbering (1.1, 1.2, etc.) for clear module identification
+  * Replaced HTML temperature chart table with original image and download functionality
+  * Enhanced visual design to match mobile app reference with proper spacing and alignment
+  * Fixed database unique constraints for userModuleProgress and userCourseProgress tables
 ```
 
 ## User Preferences

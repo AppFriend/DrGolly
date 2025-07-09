@@ -390,57 +390,70 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                 
                 <CollapsibleContent>
                   <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      {(modulesByChapter[chapter.id] || []).map((module: Module) => (
-                        <div 
-                          key={module.id} 
-                          className="course-module bg-gray-50 rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                          data-protected="true"
-                          onClick={() => handleModuleClick(module)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                    <div className="relative pl-8">
+                      {/* Connecting line from chapter to first module */}
+                      <div className="absolute left-3 top-0 w-px h-4 bg-gray-300"></div>
+                      
+                      {(modulesByChapter[chapter.id] || []).map((module: Module, index: number) => (
+                        <div key={module.id} className="relative">
+                          {/* Connecting lines */}
+                          <div className="absolute left-[-20px] top-0 flex items-center">
+                            {/* Vertical line */}
+                            <div className={`w-px bg-gray-300 ${index === 0 ? 'h-6' : 'h-12'}`}></div>
+                            {/* Horizontal line */}
+                            <div className="w-4 h-px bg-gray-300"></div>
+                          </div>
+                          
+                          {/* Vertical line to next module (if not last) */}
+                          {index < (modulesByChapter[chapter.id] || []).length - 1 && (
+                            <div className="absolute left-[-20px] top-6 w-px h-8 bg-gray-300"></div>
+                          )}
+                          
+                          <div 
+                            className="course-module bg-white rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors mb-4 ml-2"
+                            data-protected="true"
+                            onClick={() => handleModuleClick(module)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {chapter.chapterNumber}.{index + 1}
+                                  </Badge>
+                                  <CheckCircle className={`w-4 h-4 ${
+                                    completedModules.has(module.id) 
+                                      ? 'text-green-500' 
+                                      : 'text-gray-300'
+                                  }`} />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium cursor-pointer hover:text-teal-600">{module.title}</h4>
+                                  <p className="text-sm text-gray-600">{module.description}</p>
+                                </div>
+                              </div>
                               <div className="flex items-center gap-2">
-                                {module.contentType === 'video' ? (
-                                  <Play className="w-4 h-4 text-blue-500" />
-                                ) : (
-                                  <div className="w-4 h-4 bg-gray-500 rounded-sm flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold">A</span>
-                                  </div>
+                                {module.duration && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    {formatDuration(module.duration)}
+                                  </Badge>
                                 )}
-                                <CheckCircle className={`w-4 h-4 ${
-                                  completedModules.has(module.id) 
-                                    ? 'text-green-500' 
-                                    : 'text-gray-300'
-                                }`} />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleModuleClick(module);
+                                  }}
+                                  className={`${
+                                    completedModules.has(module.id) 
+                                      ? 'text-gray-500 hover:text-gray-700' 
+                                      : 'text-teal-600 hover:text-teal-700'
+                                  }`}
+                                >
+                                  {completedModules.has(module.id) ? 'Read Again' : 'Read More'}
+                                </Button>
                               </div>
-                              <div>
-                                <h4 className="font-medium cursor-pointer hover:text-blue-600">{module.title}</h4>
-                                <p className="text-sm text-gray-600">{module.description}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {module.duration && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {formatDuration(module.duration)}
-                                </Badge>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleModuleClick(module);
-                                }}
-                                className={`${
-                                  completedModules.has(module.id) 
-                                    ? 'text-gray-500 hover:text-gray-700' 
-                                    : 'text-blue-600 hover:text-blue-700'
-                                }`}
-                              >
-                                {completedModules.has(module.id) ? 'Read Again' : 'Read More'}
-                              </Button>
                             </div>
                           </div>
                         </div>
@@ -451,7 +464,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                         <Button
                           onClick={() => handleChapterComplete(chapter.id, true)}
                           disabled={chapterProgressMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-green-700 hover:bg-green-800 text-white"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
                           Mark Chapter Complete
