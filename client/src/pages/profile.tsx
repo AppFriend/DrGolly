@@ -70,13 +70,13 @@ export default function Profile() {
 
   // Fetch invoices
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
-    queryKey: ["/api/profile/invoices"],
+    queryKey: ["/api/profile/invoices", Date.now()], // Add timestamp to prevent caching
     enabled: !!user,
   });
 
   // Fetch payment methods
   const { data: paymentMethods = [], isLoading: paymentMethodsLoading } = useQuery({
-    queryKey: ["/api/profile/payment-methods"],
+    queryKey: ["/api/profile/payment-methods", Date.now()], // Add timestamp to prevent caching
     enabled: !!user,
   });
 
