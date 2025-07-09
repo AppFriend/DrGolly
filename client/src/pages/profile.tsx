@@ -465,7 +465,7 @@ export default function Profile() {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -481,10 +481,6 @@ export default function Profile() {
             <TabsTrigger value="payment" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Payment
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Marketing
             </TabsTrigger>
             <TabsTrigger value="referral" className="flex items-center gap-2">
               <Share2 className="h-4 w-4" />
@@ -559,6 +555,61 @@ export default function Profile() {
                     </Button>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+            
+            {/* Marketing Preferences Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Marketing Preferences</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">Email Marketing</h3>
+                        <p className="text-sm text-gray-600">
+                          Receive updates about new courses, parenting tips, and special offers via email
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={profileData?.marketingOptIn || false}
+                      onCheckedChange={(checked) => handleMarketingPreferenceToggle('email', checked)}
+                      disabled={updateMarketingPreferencesMutation.isPending}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">SMS Marketing</h3>
+                        <p className="text-sm text-gray-600">
+                          Get text messages about urgent updates, course reminders, and exclusive deals
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={profileData?.smsMarketingOptIn || false}
+                      onCheckedChange={(checked) => handleMarketingPreferenceToggle('sms', checked)}
+                      disabled={updateMarketingPreferencesMutation.isPending}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">About Your Marketing Preferences</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• You can change these preferences at any time</li>
+                      <li>• Your preferences sync automatically with our email and SMS systems</li>
+                      <li>• Unsubscribing from marketing won't affect important account notifications</li>
+                    </ul>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -762,62 +813,7 @@ export default function Profile() {
             </Dialog>
           </TabsContent>
 
-          {/* Marketing Preferences Tab */}
-          <TabsContent value="marketing">
-            <Card>
-              <CardHeader>
-                <CardTitle>Marketing Preferences</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-gray-500" />
-                      <div>
-                        <h3 className="font-medium">Email Marketing</h3>
-                        <p className="text-sm text-gray-600">
-                          Receive updates about new courses, parenting tips, and special offers via email
-                        </p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={profileData?.marketingOptIn || false}
-                      onCheckedChange={(checked) => handleMarketingPreferenceToggle('email', checked)}
-                      disabled={updateMarketingPreferencesMutation.isPending}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <MessageCircle className="h-5 w-5 text-gray-500" />
-                      <div>
-                        <h3 className="font-medium">SMS Marketing</h3>
-                        <p className="text-sm text-gray-600">
-                          Get text messages about urgent updates, course reminders, and exclusive deals
-                        </p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={profileData?.smsMarketingOptIn || false}
-                      onCheckedChange={(checked) => handleMarketingPreferenceToggle('sms', checked)}
-                      disabled={updateMarketingPreferencesMutation.isPending}
-                    />
-                  </div>
-                </div>
 
-                <div className="pt-4 border-t">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2">About Your Marketing Preferences</h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• You can change these preferences at any time</li>
-                      <li>• Your preferences sync automatically with our email and SMS systems</li>
-                      <li>• Unsubscribing from marketing won't affect important account notifications</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Referral Tab */}
           <TabsContent value="referral">
@@ -865,7 +861,7 @@ export default function Profile() {
         </Tabs>
 
         {/* Logout Button */}
-        <div className="mt-8 pt-6 border-t">
+        <div className="mt-6 pt-4 border-t">
           <Button
             variant="outline"
             onClick={handleLogout}
