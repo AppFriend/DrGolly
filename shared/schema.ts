@@ -154,7 +154,9 @@ export const courseChapters = pgTable("course_chapters", {
   chapterNumber: varchar("chapter_number").notNull(), // e.g., "1", "1.1", "1.2"
   orderIndex: integer("order_index").notNull(),
   isCompleted: boolean("is_completed").default(false),
+  status: varchar("status").default("draft").notNull(), // draft, published, archived
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Course modules (now under chapters)
@@ -164,10 +166,15 @@ export const courseModules = pgTable("course_modules", {
   chapterId: integer("chapter_id").references(() => courseChapters.id),
   title: varchar("title").notNull(),
   description: text("description"),
+  content: text("content"), // Rich text content
+  videoUrl: varchar("video_url"), // Video URL
+  thumbnailUrl: varchar("thumbnail_url"), // Thumbnail URL
   orderIndex: integer("order_index").notNull(),
   contentType: varchar("content_type").default("text"), // text, video
   duration: integer("duration"), // in minutes for videos
+  status: varchar("status").default("draft").notNull(), // draft, published, archived
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Course submodules (lessons)
