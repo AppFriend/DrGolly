@@ -289,10 +289,15 @@ export default function BigBabyPublic() {
 
   useEffect(() => {
     if (isDetailsComplete) {
-      createPaymentMutation.mutate({ 
-        courseId: BIG_BABY_COURSE.id, 
-        customerDetails 
-      });
+      // Add a small delay to ensure user has finished typing
+      const timer = setTimeout(() => {
+        createPaymentMutation.mutate({ 
+          courseId: BIG_BABY_COURSE.id, 
+          customerDetails 
+        });
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
   }, [isDetailsComplete]);
 

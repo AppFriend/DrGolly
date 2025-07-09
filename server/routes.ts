@@ -1822,7 +1822,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: 12000, // $120 in cents
         currency: 'usd',
         customer: stripeCustomerId,
-        payment_method_types: ['card', 'link'],
         automatic_payment_methods: {
           enabled: true,
           allow_redirects: 'never'
