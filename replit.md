@@ -260,6 +260,14 @@ Changelog:
   * Integrated invoice amounts, tax calculations, and transaction status tracking
   * Added proper currency formatting and invoice number display for all $120 course purchases
   * Built mobile-optimized 5-tab profile interface (Profile, Plan, Invoices, Payment, Referral)
+- July 09, 2025. Enhanced Big Baby public checkout with mobile-optimized payment methods:
+  * Added intelligent device detection for mobile vs desktop payment options
+  * Implemented Stripe Payment Request API for Apple Pay (iOS) and Google Pay (Android)
+  * Mobile users see express payment button (Apple Pay/Google Pay) followed by Link and Card tabs
+  * Desktop users see only Link and Card payment tabs (no express payment buttons)
+  * Fixed duplicate Link payment method issue by removing redundant buttons
+  * Added proper email validation to prevent Stripe payment errors
+  * Configured PaymentElement with Link-first ordering for optimal user experience
 ```
 
 ## User Preferences
