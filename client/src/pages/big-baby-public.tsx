@@ -138,56 +138,66 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* Apple Pay Button */}
-      {paymentRequest && (
-        <div className="space-y-4">
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-4">Complete your payment fast with</p>
-            <div className="bg-black rounded-lg p-4 hover:bg-gray-800 transition-colors">
-              <PaymentRequestButtonElement 
-                options={{ paymentRequest }}
-                className="w-full"
-              />
+      {/* Express Payment Methods Row */}
+      <div className="space-y-4">
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-4">Complete your payment fast with</p>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          {/* Link Payment */}
+          <div className="bg-[#00D924] rounded-lg p-3 hover:bg-[#00C220] transition-colors cursor-pointer">
+            <div className="flex items-center justify-center h-8">
+              <span className="text-white font-semibold text-sm">Link</span>
             </div>
           </div>
           
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-300" />
+          {/* Apple Pay - only show if available */}
+          {paymentRequest && (
+            <div className="bg-black rounded-lg p-3 hover:bg-gray-800 transition-colors">
+              <PaymentRequestButtonElement 
+                options={{ paymentRequest }}
+                className="w-full h-8"
+              />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Or</span>
+          )}
+          
+          {/* Fallback for when Apple Pay is not available */}
+          {!paymentRequest && (
+            <div className="bg-gray-100 rounded-lg p-3 cursor-not-allowed">
+              <div className="flex items-center justify-center h-8">
+                <span className="text-gray-400 font-semibold text-sm">Apple Pay</span>
+              </div>
             </div>
+          )}
+        </div>
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-gray-500">Or</span>
           </div>
         </div>
-      )}
-
-      {/* Card Payment Toggle */}
-      {paymentRequest && !showCardPayment && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setShowCardPayment(true)}
-          className="w-full"
-        >
-          <CreditCard className="h-4 w-4 mr-2" />
-          Pay with Card
-        </Button>
-      )}
+      </div>
 
       {/* Card Payment Form */}
-      {(showCardPayment || !paymentRequest) && (
-        <form onSubmit={handleCardSubmit} className="space-y-4">
-          <PaymentElement />
-          <Button
-            type="submit"
-            disabled={!stripe || isProcessing}
-            className="w-full bg-dr-teal hover:bg-dr-teal/90"
-          >
-            {isProcessing ? "Processing..." : `Pay $${BIG_BABY_COURSE.price}`}
-          </Button>
-        </form>
-      )}
+      <form onSubmit={handleCardSubmit} className="space-y-4">
+        <PaymentElement 
+          options={{
+            layout: "tabs",
+            paymentMethodOrder: ["link", "card"]
+          }}
+        />
+        <Button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="w-full bg-dr-teal hover:bg-dr-teal/90"
+        >
+          {isProcessing ? "Processing..." : `Pay $${BIG_BABY_COURSE.price}`}
+        </Button>
+      </form>
     </div>
   );
 }

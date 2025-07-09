@@ -1817,12 +1817,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripeCustomerId = customer.id;
       }
 
-      // Create payment intent with detailed metadata and Apple Pay support
+      // Create payment intent with detailed metadata
       const paymentIntent = await stripe.paymentIntents.create({
         amount: 12000, // $120 in cents
         currency: 'usd',
         customer: stripeCustomerId,
-        payment_method_types: ['card', 'apple_pay'],
+        payment_method_types: ['card', 'link'],
         metadata: {
           courseId: '6',
           courseName: 'Big Baby Sleep Program',
