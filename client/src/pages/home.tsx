@@ -159,40 +159,61 @@ export default function Home() {
           ? "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black" 
           : "bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] text-white"
       )}>
-        <div>
-          <h1 className={cn(
-            "text-xl font-bold mb-2",
-            user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
-              ? "text-black" 
-              : "text-white"
-          )}>
-            Welcome {user?.firstName || "there"}!
-          </h1>
-          <p className={cn(
-            "text-sm mb-4",
-            user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
-              ? "text-black/80" 
-              : "text-white/95"
-          )}>
-            I'm here to help you navigate sleep, parenthood & beyond
-          </p>
-          {user?.subscriptionTier === "free" && (
-            <Button
-              variant="secondary"
-              className="bg-white text-[#095D66] hover:bg-gray-100 font-medium rounded-xl"
-              onClick={() => window.location.href = "/subscription"}
-            >
-              Try Gold 50% off for 1 month
-            </Button>
-          )}
-          {(user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum") && (
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-black rounded-full"></div>
-              <span className="text-sm font-medium text-black">
-                {user?.subscriptionTier === "gold" ? "Gold" : "Platinum"} Member - Unlimited Access
-              </span>
+        <div className="flex items-center space-x-4">
+          <div className="flex-1">
+            <h1 className={cn(
+              "text-xl font-bold mb-2",
+              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                ? "text-black" 
+                : "text-white"
+            )}>
+              Welcome {user?.firstName || "there"}!
+            </h1>
+            <p className={cn(
+              "text-sm mb-4",
+              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                ? "text-black/80" 
+                : "text-white/95"
+            )}>
+              I'm here to help you navigate sleep, parenthood & beyond
+            </p>
+            {user?.subscriptionTier === "free" && (
+              <Button
+                variant="secondary"
+                className="bg-white text-[#095D66] hover:bg-gray-100 font-medium rounded-xl"
+                onClick={() => window.location.href = "/subscription"}
+              >
+                Try Gold 50% off for 1 month
+              </Button>
+            )}
+            {(user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum") && (
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-black rounded-full"></div>
+                <span className="text-sm font-medium text-black">
+                  {user?.subscriptionTier === "gold" ? "Gold" : "Platinum"} Member - Unlimited Access
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-center items-center">
+            <div className={cn(
+              "w-24 h-24 bg-gradient-to-br rounded-full flex items-center justify-center",
+              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                ? "from-black/10 to-black/20" 
+                : "from-white/10 to-white/20"
+            )}>
+              <img
+                src={drGollyImage}
+                alt="Dr. Golly - Professional headshot"
+                className={cn(
+                  "w-20 h-20 rounded-full object-cover border-2 shadow-lg",
+                  user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                    ? "border-black/20" 
+                    : "border-white/30"
+                )}
+              />
             </div>
-          )}
+          </div>
         </div>
       </section>
 

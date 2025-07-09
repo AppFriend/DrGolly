@@ -256,7 +256,8 @@ export const developmentTracking = pgTable("development_tracking", {
   id: serial("id").primaryKey(),
   childId: integer("child_id").references(() => children.id).notNull(),
   milestoneId: integer("milestone_id").references(() => developmentMilestones.id).notNull(),
-  status: varchar("status").notNull(), // yes, sometimes, maybe, never
+  status: varchar("status").notNull(), // yes, sometimes, not_yet
+  achievedDate: timestamp("achieved_date"), // Date when status was set to 'yes'
   logDate: timestamp("log_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

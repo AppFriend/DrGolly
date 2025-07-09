@@ -379,11 +379,11 @@ function DevelopmentTracking({ childId }: { childId: number | null }) {
 
   // Update milestone tracking
   const updateTrackingMutation = useMutation({
-    mutationFn: async ({ milestoneId, achieved }: { milestoneId: number; achieved: boolean }) => {
+    mutationFn: async ({ milestoneId, status }: { milestoneId: number; status: 'yes' | 'sometimes' | 'not_yet' }) => {
       return await apiRequest('POST', `/api/children/${childId}/development`, { 
         milestoneId, 
-        achieved, 
-        achievedDate: achieved ? new Date().toISOString() : null 
+        status,
+        achievedDate: status === 'yes' ? new Date().toISOString() : null 
       });
     },
     onSuccess: () => {
@@ -432,7 +432,7 @@ function DevelopmentTracking({ childId }: { childId: number | null }) {
       ) : milestones.length > 0 ? (
         milestones.map((milestone: DevelopmentMilestone) => {
           const status = getMilestoneStatus(milestone.id);
-          const isAchieved = status?.achieved || false;
+          const currentStatus = status?.status || null;
           
           return (
             <Card key={milestone.id}>
@@ -454,18 +454,51 @@ function DevelopmentTracking({ childId }: { childId: number | null }) {
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Button
-                      size="sm"
-                      variant={isAchieved ? "default" : "outline"}
-                      onClick={() => updateTrackingMutation.mutate({ 
-                        milestoneId: milestone.id, 
-                        achieved: !isAchieved 
-                      })}
-                      disabled={updateTrackingMutation.isPending}
-                      className={isAchieved ? "bg-green-600 hover:bg-green-700" : ""}
-                    >
-                      {isAchieved ? "✓ Done" : "Mark Done"}
-                    </Button>
+                    {/* Three pill options */}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => updateTrackingMutation.mutate({ 
+                          milestoneId: milestone.id, 
+                          status: 'yes' 
+                        })}
+                        disabled={updateTrackingMutation.isPending}
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          currentStatus === 'yes' 
+                            ? 'bg-green-600 text-white border-green-600' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => updateTrackingMutation.mutate({ 
+                          milestoneId: milestone.id, 
+                          status: 'sometimes' 
+                        })}
+                        disabled={updateTrackingMutation.isPending}
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          currentStatus === 'sometimes' 
+                            ? 'bg-yellow-500 text-white border-yellow-500' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Sometimes
+                      </button>
+                      <button
+                        onClick={() => updateTrackingMutation.mutate({ 
+                          milestoneId: milestone.id, 
+                          status: 'not_yet' 
+                        })}
+                        disabled={updateTrackingMutation.isPending}
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          currentStatus === 'not_yet' 
+                            ? 'bg-gray-500 text-white border-gray-500' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Not Yet
+                      </button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
