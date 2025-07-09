@@ -122,6 +122,7 @@ export interface IStorage {
   createChild(child: InsertChild): Promise<Child>;
   updateChild(id: number, child: Partial<InsertChild>): Promise<Child>;
   deleteChild(id: number): Promise<void>;
+  getUserWithChildren(userId: string): Promise<{ user: User; children: Child[] } | undefined>;
   
   // Growth tracking operations
   getChildGrowthEntries(childId: number): Promise<GrowthEntry[]>;
@@ -501,6 +502,19 @@ export class DatabaseStorage implements IStorage {
     
     // Now delete the child
     await db.delete(children).where(eq(children.id, childId));
+  }
+
+  async getUserWithChildren(userId: string): Promise<{ user: User; children: Child[] } | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      return undefined;
+    }
+    
+    const userChildren = await this.getUserChildren(userId);
+    return {
+      user,
+      children: userChildren
+    };
   }
 
 

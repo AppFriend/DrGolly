@@ -47,24 +47,93 @@ export class KlaviyoService {
     "revision": "2024-10-15"
   };
 
-  async createOrUpdateProfile(user: User): Promise<string | null> {
+  async createOrUpdateProfile(user: User, children?: any[]): Promise<string | null> {
     if (!KLAVIYO_API_KEY) {
       console.error("Klaviyo API key not configured");
       return null;
     }
 
     try {
+      // Build comprehensive custom properties
+      const customProperties: any = {
+        // Core user info
+        user_id: user.id,
+        signup_source: user.signupSource || "App",
+        signup_date: user.createdAt?.toISOString() || new Date().toISOString(),
+        last_sign_in: user.lastSignIn?.toISOString(),
+        sign_in_count: user.signInCount || 0,
+        
+        // Subscription info
+        subscription_tier: user.subscriptionTier || "free",
+        subscription_status: user.subscriptionStatus || "active",
+        plan_tier: user.subscriptionTier || "free", // Alternative naming
+        
+        // Contact info
+        phone_number: user.phoneNumber || user.phone,
+        phone_number_region: user.country,
+        
+        // Profile and preferences
+        user_role: user.userRole,
+        primary_concerns: user.primaryConcerns,
+        marketing_opt_in: user.marketingOptIn || false,
+        accepted_terms: user.acceptedTerms || false,
+        
+        // Course and engagement data
+        courses_purchased_previously: user.coursesPurchasedPreviously,
+        count_courses: user.countCourses || 0,
+        
+        // Migration and admin status
+        migrated: user.migrated || false,
+        is_admin: user.isAdmin || false,
+        
+        // Onboarding status
+        onboarding_completed: user.onboardingCompleted || false,
+        new_member_offer_shown: user.newMemberOfferShown || false,
+        new_member_offer_accepted: user.newMemberOfferAccepted || false,
+        
+        // Billing info
+        billing_period: user.billingPeriod,
+        next_billing_date: user.nextBillingDate?.toISOString(),
+        stripe_customer_id: user.stripeCustomerId,
+        stripe_subscription_id: user.stripeSubscriptionId,
+        
+        // Children info (if provided)
+        ...(children && children.length > 0 && {
+          children_count: children.length,
+          child_1_birthdate: children[0]?.dateOfBirth?.toISOString().split('T')[0],
+          child_1_name: children[0]?.name,
+          child_1_gender: children[0]?.gender,
+          ...(children[1] && {
+            child_2_birthdate: children[1]?.dateOfBirth?.toISOString().split('T')[0],
+            child_2_name: children[1]?.name,
+            child_2_gender: children[1]?.gender,
+          }),
+          ...(children[2] && {
+            child_3_birthdate: children[2]?.dateOfBirth?.toISOString().split('T')[0],
+            child_3_name: children[2]?.name,
+            child_3_gender: children[2]?.gender,
+          })
+        }),
+        
+        // Profile update timestamp
+        profile_updated_at: new Date().toISOString()
+      };
+
+      // Remove undefined values
+      Object.keys(customProperties).forEach(key => {
+        if (customProperties[key] === undefined) {
+          delete customProperties[key];
+        }
+      });
+
       const profile: KlaviyoProfile = {
         type: "profile",
         attributes: {
           email: user.email || undefined,
           first_name: user.firstName || undefined,
           last_name: user.lastName || undefined,
-          properties: {
-            signup_source: "Dr Golly App",
-            user_id: user.id,
-            signup_date: new Date().toISOString(),
-          }
+          phone_number: user.phoneNumber || user.phone,
+          properties: customProperties
         }
       };
 
@@ -75,11 +144,37 @@ export class KlaviyoService {
       });
 
       if (response.status === 409) {
-        // Profile already exists, let's get the existing profile ID
+        // Profile already exists, let's get the existing profile ID and update it
         const errorResponse = await response.json();
         const existingProfileId = errorResponse.errors?.[0]?.meta?.duplicate_profile_id;
         if (existingProfileId) {
-          console.log("Klaviyo profile already exists, using existing ID:", existingProfileId);
+          console.log("Klaviyo profile already exists, updating existing profile:", existingProfileId);
+          
+          // Update existing profile with latest data
+          const updateResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/${existingProfileId}/`, {
+            method: "PATCH",
+            headers: this.headers,
+            body: JSON.stringify({
+              data: {
+                type: "profile",
+                id: existingProfileId,
+                attributes: {
+                  first_name: user.firstName || undefined,
+                  last_name: user.lastName || undefined,
+                  phone_number: user.phoneNumber || user.phone,
+                  properties: customProperties
+                }
+              }
+            })
+          });
+
+          if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            console.error("Failed to update existing Klaviyo profile:", updateResponse.status, errorText);
+          } else {
+            console.log("Klaviyo profile updated successfully");
+          }
+          
           return existingProfileId;
         }
       }
@@ -179,10 +274,10 @@ export class KlaviyoService {
     }
   }
 
-  async syncUserToKlaviyo(user: User): Promise<boolean> {
+  async syncUserToKlaviyo(user: User, children?: any[]): Promise<boolean> {
     try {
-      // First create or update the profile
-      const profileId = await this.createOrUpdateProfile(user);
+      // First create or update the profile with comprehensive data
+      const profileId = await this.createOrUpdateProfile(user, children);
       
       // Then add to superapp list if profile was created successfully
       if (profileId && user.email) {
@@ -515,6 +610,98 @@ export class KlaviyoService {
       return addedToList;
     } catch (error) {
       console.error("Error syncing Big Baby signup to Klaviyo:", error);
+      return false;
+    }
+  }
+
+  async updateSubscriptionStatus(user: User, subscriptionData: any): Promise<boolean> {
+    try {
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to get profile ID for subscription update");
+        return false;
+      }
+
+      // Update profile with subscription changes
+      const updateResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/${profileId}/`, {
+        method: "PATCH",
+        headers: this.headers,
+        body: JSON.stringify({
+          data: {
+            type: "profile",
+            id: profileId,
+            attributes: {
+              properties: {
+                subscription_tier: subscriptionData.tier,
+                subscription_status: subscriptionData.status,
+                plan_tier: subscriptionData.tier,
+                billing_period: subscriptionData.billingPeriod,
+                next_billing_date: subscriptionData.nextBillingDate?.toISOString(),
+                subscription_updated_at: new Date().toISOString()
+              }
+            }
+          }
+        })
+      });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error("Failed to update Klaviyo profile with subscription data:", updateResponse.status, errorText);
+        return false;
+      }
+
+      console.log("Klaviyo profile updated with subscription changes");
+      return true;
+    } catch (error) {
+      console.error("Error updating subscription status in Klaviyo:", error);
+      return false;
+    }
+  }
+
+  async syncLoginToKlaviyo(user: User, children?: any[]): Promise<boolean> {
+    try {
+      // Update profile with latest login info and all user data
+      const profileId = await this.createOrUpdateProfile(user, children);
+      
+      if (!profileId) {
+        console.error("Failed to sync login to Klaviyo");
+        return false;
+      }
+
+      // Send login event for tracking
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: user.email
+          },
+          metric: {
+            name: "User Login"
+          },
+          properties: {
+            login_time: new Date().toISOString(),
+            user_id: user.id,
+            subscription_tier: user.subscriptionTier || "free",
+            sign_in_count: user.signInCount || 0
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to send login event to Klaviyo:", response.status, errorText);
+        // Don't return false here as profile update was successful
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error syncing login to Klaviyo:", error);
       return false;
     }
   }

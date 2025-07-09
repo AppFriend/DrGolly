@@ -66,6 +66,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      
+      // Sync user login to Klaviyo with all custom properties
+      if (user) {
+        const children = await storage.getUserChildren(userId);
+        
+        // Update sign-in count
+        await storage.updateUserProfile(userId, {
+          signInCount: (user.signInCount || 0) + 1,
+          lastSignIn: new Date()
+        });
+
+        // Get updated user data
+        const updatedUser = await storage.getUser(userId);
+        if (updatedUser) {
+          // Sync to Klaviyo with comprehensive data including children
+          klaviyoService.syncLoginToKlaviyo(updatedUser, children).catch(error => {
+            console.error("Failed to sync login to Klaviyo:", error);
+          });
+        }
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -91,6 +112,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newMemberOfferAccepted: personalizationData.newMemberOfferAccepted,
         onboardingCompleted: true
       });
+      
+      // Get updated user data and children for comprehensive Klaviyo sync
+      const updatedUser = await storage.getUser(userId);
+      if (updatedUser) {
+        const children = await storage.getUserChildren(userId);
+        // Sync comprehensive profile data to Klaviyo including all custom properties
+        klaviyoService.syncUserToKlaviyo(updatedUser, children).catch(error => {
+          console.error("Failed to sync user personalization to Klaviyo:", error);
+        });
+      }
       
       res.json({ success: true });
     } catch (error) {
@@ -1249,6 +1280,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateOfBirth: new Date(req.body.dateOfBirth)
       };
       const child = await storage.createChild(childData);
+      
+      // Update Klaviyo with new child information including birth dates
+      const user = await storage.getUser(userId);
+      if (user) {
+        const children = await storage.getUserChildren(userId);
+        klaviyoService.syncUserToKlaviyo(user, children).catch(error => {
+          console.error("Failed to sync child data to Klaviyo:", error);
+        });
+      }
+      
       res.json(child);
     } catch (error) {
       console.error("Error creating child:", error);
@@ -2614,6 +2655,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Store subscription ID
       await storage.updateUserStripeSubscriptionId(userId, subscription.id);
+      
+      // Sync subscription creation to Klaviyo
+      const updatedUser = await storage.getUser(userId);
+      if (updatedUser) {
+        klaviyoService.updateSubscriptionStatus(updatedUser, {
+          tier: planTier,
+          status: 'active',
+          billingPeriod: billingPeriod,
+          nextBillingDate: new Date(subscription.current_period_end * 1000)
+        }).catch(error => {
+          console.error("Failed to sync subscription to Klaviyo:", error);
+        });
+      }
       
       res.json({
         subscriptionId: subscription.id,
