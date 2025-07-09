@@ -17,6 +17,7 @@ import Signup from "@/pages/signup";
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
 import Checkout from "@/pages/checkout";
+import BigBabyPublic from "@/pages/big-baby-public";
 import PaymentSuccess from "@/pages/payment-success";
 import BlogPost from "@/pages/blog-post";
 import Discounts from "@/pages/discounts";
@@ -132,6 +133,7 @@ function Router() {
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
+          <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route component={Landing} />
         </Switch>
       </div>

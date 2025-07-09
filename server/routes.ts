@@ -16,6 +16,7 @@ import {
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeSync } from "./stripe-sync";
+import { klaviyoService } from "./klaviyo";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -404,6 +405,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing payment method:", error);
       res.status(500).json({ message: "Failed to remove payment method" });
+    }
+  });
+
+  // Public checkout endpoints for anonymous users
+  app.post('/api/create-public-course-payment', async (req, res) => {
+    try {
+      const { courseId, customerDetails } = req.body;
+      
+      // Get course details
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Create payment intent for anonymous user
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: course.price || 12000, // Default to $120
+        currency: 'usd',
+        metadata: {
+          courseId: courseId.toString(),
+          courseName: course.title,
+          customerEmail: customerDetails.email,
+          customerFirstName: customerDetails.firstName,
+          customerLastName: customerDetails.lastName || '',
+          dueDate: customerDetails.dueDate || '',
+          purchaseType: 'public_course',
+        },
+        receipt_email: customerDetails.email,
+      });
+      
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id 
+      });
+    } catch (error) {
+      console.error("Error creating public payment intent:", error);
+      res.status(500).json({ message: "Failed to create payment intent" });
+    }
+  });
+
+  app.post('/api/create-account-with-purchase', async (req, res) => {
+    try {
+      const { customerDetails, paymentIntentId, interests } = req.body;
+      
+      // Verify payment intent was successful
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+      
+      // Generate temporary user ID and password
+      const tempUserId = AuthUtils.generateUserId();
+      const tempPassword = AuthUtils.generateTemporaryPassword();
+      const hashedPassword = await AuthUtils.hashPassword(tempPassword);
+      
+      // Create user account
+      const user = await storage.upsertUser({
+        id: tempUserId,
+        email: customerDetails.email,
+        firstName: customerDetails.firstName,
+        lastName: customerDetails.lastName || '',
+        phone: customerDetails.phone || '',
+        subscriptionTier: 'free',
+        subscriptionStatus: 'active',
+        interests: interests.join(','),
+        role: customerDetails.role || 'Parent',
+        dueDate: customerDetails.dueDate || null,
+        hasSetPassword: false,
+        isFirstLogin: true,
+        passwordHash: hashedPassword,
+        signupSource: 'public_checkout',
+        country: 'US',
+        profileImageUrl: '',
+      });
+      
+      // Create temporary password record
+      await storage.createTemporaryPassword({
+        userId: tempUserId,
+        temporaryPassword: tempPassword,
+        expiresAt: AuthUtils.createTempPasswordExpiry(),
+        isUsed: false,
+      });
+      
+      // Create Stripe customer
+      const stripeCustomer = await stripe.customers.create({
+        email: customerDetails.email,
+        name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+        metadata: {
+          userId: tempUserId,
+          signupSource: 'public_checkout',
+        },
+      });
+      
+      // Update user with Stripe customer ID
+      await storage.updateUserStripeCustomerId(tempUserId, stripeCustomer.id);
+      
+      // Create course purchase record
+      const courseId = parseInt(paymentIntent.metadata.courseId);
+      await storage.createCoursePurchase({
+        userId: tempUserId,
+        courseId: courseId,
+        paymentIntentId: paymentIntentId,
+        status: 'completed',
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        purchaseDate: new Date(),
+        courseName: paymentIntent.metadata.courseName,
+        customerEmail: customerDetails.email,
+        customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+      });
+      
+      // Send welcome email with temporary login credentials
+      await klaviyoService.sendPublicCheckoutWelcome(user, tempPassword);
+      
+      res.json({ 
+        message: "Account created successfully",
+        userId: tempUserId,
+        temporaryPassword: tempPassword,
+        loginUrl: "/login",
+      });
+    } catch (error) {
+      console.error("Error creating account with purchase:", error);
+      res.status(500).json({ message: "Failed to create account" });
     }
   });
 
@@ -1644,6 +1768,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Big Baby public checkout payment creation (for anonymous users)
+  app.post('/api/create-big-baby-payment', async (req, res) => {
+    try {
+      const { customerDetails } = req.body;
+      
+      // Validate required fields
+      if (!customerDetails?.email || !customerDetails?.firstName) {
+        return res.status(400).json({ message: "Email and first name are required" });
+      }
+
+      // Get the Big Baby course (ID: 6)
+      const course = await storage.getCourse(6);
+      if (!course) {
+        return res.status(404).json({ message: "Big Baby course not found" });
+      }
+
+      // Check for existing user to avoid duplicates
+      let existingUser = await storage.getUserByEmail(customerDetails.email);
+      
+      // Check for existing Stripe customer by email first
+      let stripeCustomerId;
+      const existingCustomers = await stripe.customers.list({
+        email: customerDetails.email,
+        limit: 1,
+      });
+
+      if (existingCustomers.data.length > 0) {
+        // Use existing customer
+        stripeCustomerId = existingCustomers.data[0].id;
+      } else {
+        // Create new customer
+        const customer = await stripe.customers.create({
+          email: customerDetails.email,
+          name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+          metadata: {
+            signupSource: 'public_checkout',
+            courseId: '6',
+            courseName: 'Big Baby Sleep Program',
+          },
+        });
+        stripeCustomerId = customer.id;
+      }
+
+      // Create payment intent with detailed metadata
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: 12000, // $120 in cents
+        currency: 'usd',
+        customer: stripeCustomerId,
+        metadata: {
+          courseId: '6',
+          courseName: 'Big Baby Sleep Program',
+          customerEmail: customerDetails.email,
+          customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+          productType: 'course',
+          checkoutType: 'public_checkout',
+          tier: 'free',
+        },
+        description: 'Course Purchase: Big Baby Sleep Program',
+        receipt_email: customerDetails.email,
+      });
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id 
+      });
+    } catch (error) {
+      console.error("Error creating Big Baby payment:", error);
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
   // Stripe webhook endpoint for payment completion
   app.post('/api/stripe-webhook', async (req, res) => {
     try {
@@ -1654,13 +1849,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'payment_intent.succeeded':
           const paymentIntent = event.data.object;
           
-          // Update course purchase status
-          const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
-          if (purchase) {
-            await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+          // Check if this is a public checkout payment
+          if (paymentIntent.metadata.checkoutType === 'public_checkout') {
+            // Handle Big Baby public checkout payment
+            const customerEmail = paymentIntent.metadata.customerEmail;
+            const customerName = paymentIntent.metadata.customerName;
             
-            // Update course purchase with full payment details
-            console.log(`Course purchase completed: ${paymentIntent.id} for user ${purchase.userId}`);
+            // Check if user already exists
+            let existingUser = await storage.getUserByEmail(customerEmail);
+            
+            if (!existingUser) {
+              // Create temporary user account
+              const tempPassword = AuthUtils.generateTemporaryPassword();
+              const userId = AuthUtils.generateUserId();
+              
+              // Create user
+              const newUser = await storage.upsertUser({
+                id: userId,
+                email: customerEmail,
+                firstName: customerName.split(' ')[0],
+                lastName: customerName.split(' ').slice(1).join(' ') || '',
+                signupSource: 'public_checkout',
+                subscriptionTier: 'free',
+                subscriptionStatus: 'inactive',
+                temporaryPassword: tempPassword,
+                isFirstLogin: true,
+                hasSetPassword: false,
+                stripeCustomerId: paymentIntent.customer,
+              });
+              
+              // Create temporary password record
+              await storage.createTemporaryPassword(userId, tempPassword);
+              
+              // Create course purchase record
+              await storage.createCoursePurchase({
+                userId: userId,
+                courseId: 6, // Big Baby course
+                stripePaymentIntentId: paymentIntent.id,
+                stripeCustomerId: paymentIntent.customer,
+                amount: 12000, // $120 in cents
+                currency: 'usd',
+                status: 'completed',
+              });
+              
+              // Send welcome email via Klaviyo
+              await klaviyoService.sendPublicCheckoutWelcome(newUser, tempPassword);
+              
+              console.log(`Public checkout completed: Created user ${userId} for ${customerEmail}`);
+            } else {
+              // User exists, just create the course purchase
+              await storage.createCoursePurchase({
+                userId: existingUser.id,
+                courseId: 6, // Big Baby course
+                stripePaymentIntentId: paymentIntent.id,
+                stripeCustomerId: paymentIntent.customer,
+                amount: 12000, // $120 in cents
+                currency: 'usd',
+                status: 'completed',
+              });
+              
+              console.log(`Public checkout completed: Added course to existing user ${existingUser.id}`);
+            }
+          } else {
+            // Handle regular course purchase
+            const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
+            if (purchase) {
+              await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+              console.log(`Course purchase completed: ${paymentIntent.id} for user ${purchase.userId}`);
+            }
           }
           break;
           

@@ -251,6 +251,56 @@ export class KlaviyoService {
       return false;
     }
   }
+
+  async sendPublicCheckoutWelcome(user: User, tempPassword: string): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !user.email) {
+      console.error("Klaviyo API key not configured or user email missing");
+      return false;
+    }
+
+    try {
+      // Create profile first
+      await this.createOrUpdateProfile(user);
+
+      // Send public checkout welcome email via Klaviyo
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: user.email
+          },
+          metric: {
+            name: "Public Checkout Welcome"
+          },
+          properties: {
+            customer_name: user.firstName,
+            temp_password: tempPassword,
+            login_url: `${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}/login`,
+            course_purchased: "Big Baby Sleep Program",
+            signup_source: "public_checkout"
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to send public checkout welcome via Klaviyo:", response.status, errorText);
+        return false;
+      }
+
+      console.log("Public checkout welcome sent successfully via Klaviyo");
+      return true;
+    } catch (error) {
+      console.error("Error sending public checkout welcome via Klaviyo:", error);
+      return false;
+    }
+  }
 }
 
 export const klaviyoService = new KlaviyoService();
