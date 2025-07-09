@@ -340,50 +340,37 @@ export default function Family() {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Action Buttons */}
-        {!showAddChild && !showInviteAdult && (
-          <div className="space-y-2">
-            <Button 
-              onClick={() => setShowAddChild(true)}
-              className="w-full bg-[#83CFCC] hover:bg-[#095D66] text-white font-heading"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Child
-            </Button>
-            
-            {/* Invite Adult Button for Gold subscribers */}
-            {user?.subscriptionTier === 'gold' && (
+        {/* Invite Adult Button for Gold subscribers */}
+        {!showInviteAdult && user?.subscriptionTier === 'gold' && (
+          <Button 
+            onClick={() => setShowInviteAdult(true)}
+            className="w-full bg-[#095D66] hover:bg-[#83CFCC] text-white font-heading"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite Adult
+          </Button>
+        )}
+        
+        {/* Upgrade prompt for non-Gold users */}
+        {user?.subscriptionTier !== 'gold' && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Crown className="h-5 w-5 text-amber-600" />
+                <h3 className="font-semibold text-amber-800">Gold Feature</h3>
+              </div>
+              <p className="text-sm text-amber-700 mb-3">
+                Invite family members to share your Dr. Golly experience. Available with Gold subscription.
+              </p>
               <Button 
-                onClick={() => setShowInviteAdult(true)}
-                className="w-full bg-[#095D66] hover:bg-[#83CFCC] text-white font-heading"
+                size="sm" 
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => window.location.href = '/checkout'}
               >
-                <UserPlus className="mr-2 h-4 w-4" />
-                Invite Adult
+                Upgrade to Gold
               </Button>
-            )}
-            
-            {/* Upgrade prompt for non-Gold users */}
-            {user?.subscriptionTier !== 'gold' && (
-              <Card className="border-amber-200 bg-amber-50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Crown className="h-5 w-5 text-amber-600" />
-                    <h3 className="font-semibold text-amber-800">Gold Feature</h3>
-                  </div>
-                  <p className="text-sm text-amber-700 mb-3">
-                    Invite family members to share your Dr. Golly experience. Available with Gold subscription.
-                  </p>
-                  <Button 
-                    size="sm" 
-                    className="bg-amber-600 hover:bg-amber-700 text-white"
-                    onClick={() => window.location.href = '/checkout'}
-                  >
-                    Upgrade to Gold
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Add/Edit Child Form */}
@@ -626,7 +613,19 @@ export default function Family() {
         {/* Children List */}
         {children.length > 0 ? (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold font-heading">Your Children</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold font-heading">Your Children</h2>
+              {!showAddChild && (
+                <Button 
+                  onClick={() => setShowAddChild(true)}
+                  size="sm"
+                  className="bg-[#83CFCC] hover:bg-[#095D66] text-white font-heading"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Child
+                </Button>
+              )}
+            </div>
             {children.map((child: Child) => (
               <Card key={child.id}>
                 <CardContent className="p-4">
@@ -678,14 +677,33 @@ export default function Family() {
             ))}
           </div>
         ) : !showAddChild ? (
-          <div className="text-center py-12">
-            <Baby className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-            <h2 className="text-xl font-semibold mb-2 font-heading">No Children Added</h2>
-            <p className="text-gray-600 mb-6 font-sans">
-              Add your children to start tracking their growth, development, and milestones.
-            </p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold font-heading">Your Children</h2>
+              <Button 
+                onClick={() => setShowAddChild(true)}
+                size="sm"
+                className="bg-[#83CFCC] hover:bg-[#095D66] text-white font-heading"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Child
+              </Button>
+            </div>
+            <div className="text-center py-12">
+              <Baby className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+              <h2 className="text-xl font-semibold mb-2 font-heading">No Children Added</h2>
+              <p className="text-gray-600 mb-6 font-sans">
+                Add your children to start tracking their growth, development, and milestones.
+              </p>
+            </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold font-heading">Your Children</h2>
+            </div>
+          </div>
+        )}
 
         {/* Family Members List (Gold subscribers only) */}
         {user?.subscriptionTier === 'gold' && familyMembers.length > 0 && (

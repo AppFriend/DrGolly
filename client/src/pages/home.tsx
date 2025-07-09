@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, HelpCircle } from "lucide-react";
 import { BlogCard } from "@/components/ui/blog-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { cn } from "@/lib/utils";
 import { WelcomePopup } from "@/components/WelcomePopup";
+import { SupportModal } from "@/components/SupportModal";
 import type { BlogPost } from "@shared/schema";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 import drGollyLogo from "../assets/dr-golly-logo.png";
@@ -29,6 +30,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [activeCategory, setActiveCategory] = useState("all");
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
   
   // Initialize personalization hook to save signup data after auth
   const { personalization } = usePersonalization();
@@ -121,6 +123,13 @@ export default function Home() {
           </button>
           <button className="text-white hover:text-gray-200 transition-colors">
             <Bell className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => setShowSupportModal(true)}
+            className="text-white hover:text-gray-200 transition-colors"
+            title="Get Support"
+          >
+            <HelpCircle className="h-5 w-5" />
           </button>
           <button
             onClick={() => setLocation("/profile")}
@@ -266,6 +275,12 @@ export default function Home() {
         isOpen={showWelcomePopup}
         onClose={() => setShowWelcomePopup(false)}
         userName={user?.firstName}
+      />
+      
+      {/* Support Modal */}
+      <SupportModal
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
       />
     </div>
   );

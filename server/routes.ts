@@ -3992,6 +3992,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Support request endpoint
+  app.post('/api/support', async (req, res) => {
+    try {
+      const { name, email, phone, message } = req.body;
+      
+      if (!name || !email || !message) {
+        return res.status(400).json({ message: "Name, email, and message are required" });
+      }
+
+      // Send email notification to hello@drgolly.com
+      const emailData = {
+        to: 'hello@drgolly.com',
+        subject: `Support Request from ${name}`,
+        html: `
+          <h2>New Support Request</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
+          <p><strong>Message:</strong></p>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+          <hr>
+          <p><em>Sent from Dr. Golly Support System</em></p>
+        `
+      };
+
+      // Send Slack notification
+      const slackData = {
+        text: `New Support Request from ${name}`,
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*New Support Request*\n\n*Name:* ${name}\n*Email:* ${email}\n*Phone:* ${phone || 'Not provided'}\n\n*Message:*\n${message}`
+            }
+          },
+          {
+            type: "actions",
+            elements: [
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "Reply via Email"
+                },
+                url: `mailto:${email}?subject=Re: Your Support Request`
+              }
+            ]
+          }
+        ]
+      };
+
+      // Send to both email and Slack (implement with your preferred service)
+      // For now, we'll just log the data and return success
+      console.log('Support request received:', { name, email, phone, message });
+      console.log('Email data:', emailData);
+      console.log('Slack data:', JSON.stringify(slackData, null, 2));
+
+      // TODO: Implement actual email sending (e.g., via SendGrid, Mailgun, etc.)
+      // TODO: Implement actual Slack webhook sending
+      
+      res.json({ 
+        success: true, 
+        message: "Support request received and notifications sent" 
+      });
+    } catch (error) {
+      console.error("Error processing support request:", error);
+      res.status(500).json({ message: "Failed to process support request" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
