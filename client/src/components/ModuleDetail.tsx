@@ -77,10 +77,28 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Button onClick={onBack} variant="ghost" className="mb-4 flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Course
-          </Button>
+          <div className="flex items-center justify-between mb-4">
+            <Button 
+              onClick={onBack} 
+              variant="outline" 
+              className="flex items-center gap-2 bg-white hover:bg-gray-50"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Course
+            </Button>
+            <Button
+              onClick={handleMarkComplete}
+              disabled={moduleProgressMutation.isPending || isCompleted}
+              className={`${
+                isCompleted 
+                  ? 'bg-green-600 hover:bg-green-700' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {isCompleted ? 'Completed' : 'Mark Complete'}
+            </Button>
+          </div>
           
           <div className="course-content" data-protected="true">
             <div className="flex items-center gap-3 mb-4">
@@ -129,21 +147,7 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
         {/* Module Content */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Module Content</span>
-              <Button
-                onClick={handleMarkComplete}
-                disabled={moduleProgressMutation.isPending || isCompleted}
-                className={`${
-                  isCompleted 
-                    ? 'bg-green-600 hover:bg-green-700' 
-                    : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {isCompleted ? 'Completed' : 'Mark Complete'}
-              </Button>
-            </CardTitle>
+            <CardTitle>{module.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div 
@@ -171,6 +175,20 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
             </div>
           </CardContent>
         </Card>
+
+        {/* Bottom Navigation for Mobile */}
+        <div className="fixed bottom-4 left-4 right-4 md:hidden">
+          <div className="flex items-center justify-center">
+            <Button 
+              onClick={onBack} 
+              variant="outline" 
+              className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-lg border-2 px-6 py-3"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Course
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
