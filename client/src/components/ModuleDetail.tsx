@@ -186,7 +186,19 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
           </CardContent>
         </Card>
 
-
+        {/* Bottom Mark Complete Button */}
+        {!isCompleted && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 max-w-md mx-auto">
+            <Button
+              onClick={handleMarkComplete}
+              disabled={moduleProgressMutation.isPending}
+              className="w-full bg-green-700 hover:bg-green-800 text-white py-3 text-lg font-medium"
+            >
+              <CheckCircle className="w-5 h-5 mr-2" />
+              {moduleProgressMutation.isPending ? 'Marking Complete...' : 'Mark Complete'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
