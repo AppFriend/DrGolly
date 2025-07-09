@@ -34,57 +34,73 @@ export class CopyProtection {
   }
 
   private preventSelection = (e: Event) => {
-    const target = e.target as HTMLElement;
-    if (this.isEnabled && this.isProtectedContent(target)) {
-      e.preventDefault();
-      this.showProtectionMessage();
-      return false;
+    try {
+      const target = e.target as HTMLElement;
+      if (this.isEnabled && this.isProtectedContent(target)) {
+        e.preventDefault();
+        this.showProtectionMessage();
+        return false;
+      }
+    } catch (error) {
+      console.warn('Copy protection selection error:', error);
     }
   };
 
   private preventCopyShortcuts = (e: KeyboardEvent) => {
-    if (!this.isEnabled) return;
+    try {
+      if (!this.isEnabled) return;
 
-    const target = e.target as HTMLElement;
-    if (this.isProtectedContent(target)) {
-      // Prevent Ctrl+C, Ctrl+A, Ctrl+V, Ctrl+X
-      if (e.ctrlKey && ['c', 'a', 'v', 'x'].includes(e.key.toLowerCase())) {
-        e.preventDefault();
-        this.showProtectionMessage();
-        return false;
+      const target = e.target as HTMLElement;
+      if (this.isProtectedContent(target)) {
+        // Prevent Ctrl+C, Ctrl+A, Ctrl+V, Ctrl+X
+        if (e.ctrlKey && ['c', 'a', 'v', 'x'].includes(e.key.toLowerCase())) {
+          e.preventDefault();
+          this.showProtectionMessage();
+          return false;
+        }
+        
+        // Prevent F12 (Developer Tools)
+        if (e.key === 'F12') {
+          e.preventDefault();
+          this.showProtectionMessage();
+          return false;
+        }
+        
+        // Prevent Ctrl+Shift+I (Developer Tools)
+        if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+          e.preventDefault();
+          this.showProtectionMessage();
+          return false;
+        }
       }
-      
-      // Prevent F12 (Developer Tools)
-      if (e.key === 'F12') {
-        e.preventDefault();
-        this.showProtectionMessage();
-        return false;
-      }
-      
-      // Prevent Ctrl+Shift+I (Developer Tools)
-      if (e.ctrlKey && e.shiftKey && e.key === 'I') {
-        e.preventDefault();
-        this.showProtectionMessage();
-        return false;
-      }
+    } catch (error) {
+      console.warn('Copy protection keyboard error:', error);
     }
   };
 
   private preventContextMenu = (e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (this.isEnabled && this.isProtectedContent(target)) {
-      e.preventDefault();
-      this.showProtectionMessage();
-      return false;
+    try {
+      const target = e.target as HTMLElement;
+      if (this.isEnabled && this.isProtectedContent(target)) {
+        e.preventDefault();
+        this.showProtectionMessage();
+        return false;
+      }
+    } catch (error) {
+      console.warn('Copy protection context menu error:', error);
     }
   };
 
   private preventDragStart = (e: DragEvent) => {
-    const target = e.target as HTMLElement;
-    if (this.isEnabled && this.isProtectedContent(target)) {
-      e.preventDefault();
-      this.showProtectionMessage();
-      return false;
+    try {
+      const target = e.target as HTMLElement;
+      if (this.isEnabled && this.isProtectedContent(target)) {
+        e.preventDefault();
+        this.showProtectionMessage();
+        return false;
+      }
+    } catch (error) {
+      console.warn('Copy protection drag error:', error);
     }
   };
 
@@ -100,6 +116,11 @@ export class CopyProtection {
   };
 
   private isProtectedContent(element: HTMLElement): boolean {
+    // Check if element is a valid HTML element and has the closest method
+    if (!element || typeof element.closest !== 'function') {
+      return false;
+    }
+    
     // Check if element is within course content area
     return element.closest('.course-content') !== null ||
            element.closest('.course-module') !== null ||
