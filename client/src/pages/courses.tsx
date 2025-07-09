@@ -8,6 +8,7 @@ import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Course } from "@shared/schema";
+import CourseDetail from "@/components/CourseDetail";
 
 const courseTabs = [
   { id: "my", label: "Purchases", icon: Bookmark },
@@ -22,6 +23,7 @@ export default function Courses() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
 
   const { data: courses, isLoading, error } = useQuery({
     queryKey: ["/api/courses", activeTab === "all" ? undefined : activeTab],
@@ -30,7 +32,7 @@ export default function Courses() {
 
   const { data: userProgress } = useQuery({
     queryKey: ["/api/user/progress"],
-    enabled: !!user && activeTab === "my",
+    enabled: !!user,
   });
 
   const { data: coursePurchases, refetch: refetchPurchases } = useQuery({
@@ -98,8 +100,19 @@ export default function Courses() {
       });
       return;
     }
-    // Handle course access
-    console.log("Accessing course:", course.title);
+    
+    // Navigate to course detail view
+    setSelectedCourse(course.id);
+  };
+
+  const getCourseButtonText = (course: Course) => {
+    const courseProgress = userProgress?.find((p: any) => p.courseId === course.id);
+    
+    if (courseProgress && courseProgress.progress > 0) {
+      return "Continue Course";
+    } else {
+      return "Start Course";
+    }
   };
 
   const handlePurchase = (course: Course) => {
@@ -119,6 +132,16 @@ export default function Courses() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  // Show CourseDetail if a course is selected
+  if (selectedCourse) {
+    return (
+      <CourseDetail 
+        courseId={selectedCourse} 
+        onClose={() => setSelectedCourse(null)} 
+      />
     );
   }
 
@@ -221,7 +244,7 @@ export default function Courses() {
                         onClick={() => handleCourseClick(course)}
                         className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white"
                       >
-                        Access Course
+                        {getCourseButtonText(course)}
                       </Button>
                     );
                   }
