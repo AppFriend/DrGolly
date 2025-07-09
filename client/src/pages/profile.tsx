@@ -81,7 +81,10 @@ export default function Profile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setIsEditing(false);
+      setImageFile(null);
+      setImagePreview(null);
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
@@ -155,30 +158,35 @@ export default function Profile() {
         setImagePreview(result);
         
         // Update profile data with the preview URL for immediate display
-        if (profileData) {
-          setProfileData({
-            ...profileData,
-            profileImageUrl: result
-          });
-        }
+        setProfileData(prev => prev ? {
+          ...prev,
+          profileImageUrl: result
+        } : null);
       };
       reader.readAsDataURL(file);
     }
+    // Reset the input to allow re-selecting the same file
+    event.target.value = '';
   };
 
   // Handle profile save
   const handleSaveProfile = () => {
     if (profileData) {
-      updateProfileMutation.mutate(profileData);
+      // If there's a new image, use the preview URL; otherwise keep existing
+      const dataToSave = {
+        ...profileData,
+        profileImageUrl: imagePreview || profileData.profileImageUrl
+      };
+      updateProfileMutation.mutate(dataToSave);
     }
   };
 
   // Initialize profile data when loaded
   useEffect(() => {
-    if (profile) {
+    if (profile && !profileData) {
       setProfileData(profile);
     }
-  }, [profile]);
+  }, [profile, profileData]);
 
   if (authLoading || profileLoading) {
     return (
@@ -239,7 +247,7 @@ export default function Profile() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={profileData?.profileImageUrl} />
+                  <AvatarImage src={imagePreview || profileData?.profileImageUrl} />
                   <AvatarFallback className="bg-dr-teal text-white text-xl">
                     {profileData?.firstName?.[0]}{profileData?.lastName?.[0]}
                   </AvatarFallback>
@@ -274,7 +282,15 @@ export default function Profile() {
             </div>
             <Button
               variant="outline"
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => {
+                if (isEditing) {
+                  // Reset form when canceling
+                  setProfileData(profile);
+                  setImageFile(null);
+                  setImagePreview(null);
+                }
+                setIsEditing(!isEditing);
+              }}
               className="flex items-center gap-2"
             >
               <Edit2 className="h-4 w-4" />
@@ -366,7 +382,12 @@ export default function Profile() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => {
+                        setIsEditing(false);
+                        setProfileData(profile);
+                        setImageFile(null);
+                        setImagePreview(null);
+                      }}
                     >
                       Cancel
                     </Button>
