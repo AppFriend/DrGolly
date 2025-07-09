@@ -262,8 +262,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'card',
       });
       
-      const customer = await stripe.customers.retrieve(user.stripeCustomerId);
-      const defaultPaymentMethodId = (customer as any).invoice_settings?.default_payment_method;
+      let defaultPaymentMethodId = null;
+      try {
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        defaultPaymentMethodId = (customer as any).invoice_settings?.default_payment_method;
+      } catch (customerError) {
+        console.error('Error fetching customer default payment method:', customerError);
+      }
       
       const formattedPaymentMethods = paymentMethods.data.map(pm => ({
         id: pm.id,
@@ -1683,36 +1688,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user?.stripeCustomerId) {
-        return res.json([]);
+      const allInvoices = [];
+      
+      // Get course purchase invoices from database
+      const coursePurchases = await storage.getUserCoursePurchases(userId);
+      
+      // Format course purchases as invoices
+      for (const purchase of coursePurchases) {
+        const course = await storage.getCourse(purchase.courseId);
+        allInvoices.push({
+          id: `course_${purchase.id}`,
+          amount: purchase.amount / 100, // Convert from cents
+          currency: purchase.currency.toUpperCase(),
+          date: purchase.purchasedAt.toISOString(),
+          status: purchase.status === 'completed' ? 'paid' : purchase.status,
+          downloadUrl: null, // Course purchases don't have downloadable invoices
+          description: `${course?.title || 'Course'} Purchase`,
+          invoiceNumber: `CP-${purchase.id}`,
+          dueDate: null,
+          subtotal: purchase.amount / 100,
+          tax: 0,
+          total: purchase.amount / 100
+        });
       }
       
-      // Get all invoices for this customer
-      const invoices = await stripe.invoices.list({
-        customer: user.stripeCustomerId,
-        limit: 100,
-        expand: ['data.payment_intent']
-      });
+      // Get Stripe invoices if user has Stripe customer ID
+      if (user?.stripeCustomerId) {
+        try {
+          const invoices = await stripe.invoices.list({
+            customer: user.stripeCustomerId,
+            limit: 100,
+            expand: ['data.payment_intent']
+          });
+          
+          // Format Stripe invoices for frontend
+          const stripeInvoices = invoices.data.map(invoice => ({
+            id: invoice.id,
+            amount: invoice.amount_paid / 100, // Convert from cents
+            currency: invoice.currency.toUpperCase(),
+            date: new Date(invoice.created * 1000).toISOString(),
+            status: invoice.status,
+            downloadUrl: invoice.hosted_invoice_url,
+            description: invoice.description || 
+                        invoice.lines.data[0]?.description || 
+                        `Invoice #${invoice.number}`,
+            invoiceNumber: invoice.number,
+            dueDate: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : null,
+            subtotal: invoice.subtotal / 100,
+            tax: invoice.tax / 100,
+            total: invoice.total / 100
+          }));
+          
+          allInvoices.push(...stripeInvoices);
+        } catch (stripeError) {
+          console.error('Error fetching Stripe invoices:', stripeError);
+          // Continue with course invoices only
+        }
+      }
       
-      // Format invoices for frontend
-      const formattedInvoices = invoices.data.map(invoice => ({
-        id: invoice.id,
-        amount: invoice.amount_paid / 100, // Convert from cents
-        currency: invoice.currency.toUpperCase(),
-        date: new Date(invoice.created * 1000).toISOString(),
-        status: invoice.status,
-        downloadUrl: invoice.hosted_invoice_url,
-        description: invoice.description || 
-                    invoice.lines.data[0]?.description || 
-                    `Invoice #${invoice.number}`,
-        invoiceNumber: invoice.number,
-        dueDate: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : null,
-        subtotal: invoice.subtotal / 100,
-        tax: invoice.tax / 100,
-        total: invoice.total / 100
-      }));
+      // Sort all invoices by date (newest first)
+      allInvoices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
-      res.json(formattedInvoices);
+      res.json(allInvoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
