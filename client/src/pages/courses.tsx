@@ -185,30 +185,41 @@ export default function Courses() {
                 <p className="text-sm text-gray-600 mb-1">{course.ageRange}</p>
                 <p className="text-sm text-gray-500 mb-4 capitalize">{course.category}</p>
                 
-                {user?.subscriptionTier === "free" && course.tier === "gold" ? (
-                  <>
-                    <Button
-                      onClick={() => handleCourseClick(course)}
-                      className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
-                    >
-                      Unlimited Course with Platinum
-                    </Button>
-                    <Button
-                      onClick={() => window.location.href = `/checkout/${course.id}`}
-                      variant="outline"
-                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
-                    >
-                      Buy for ${course.price || 120}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={() => handleCourseClick(course)}
-                    className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white"
-                  >
-                    Access Course
-                  </Button>
-                )}
+                {(() => {
+                  const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
+                  const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+                  
+                  // If user has purchased this course or has Gold/Platinum access, show access button
+                  if (hasPurchased || hasGoldAccess) {
+                    return (
+                      <Button
+                        onClick={() => handleCourseClick(course)}
+                        className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white"
+                      >
+                        Access Course
+                      </Button>
+                    );
+                  }
+                  
+                  // Free users without this course purchased - show purchase options
+                  return (
+                    <>
+                      <Button
+                        onClick={() => handleCourseClick(course)}
+                        className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
+                      >
+                        Unlimited Access with Gold
+                      </Button>
+                      <Button
+                        onClick={() => window.location.href = `/checkout/${course.id}`}
+                        variant="outline"
+                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        Buy for $120
+                      </Button>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))}

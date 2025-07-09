@@ -220,6 +220,20 @@ Changelog:
   * Integrated Stripe API for real invoice and payment method data
   * Added profile picture upload functionality with camera icon
   * Built comprehensive API routes for profile management and Stripe integration
+- July 09, 2025. Updated blog post formatting for consistent, clean display:
+  * Standardized heading sizes (H1: 2xl, H2: xl, H3: lg) matching app design
+  * Unified body text to base size (16px) with consistent gray-700 color
+  * Improved list formatting with proper spacing and consistent styling
+  * Applied clean content structure with proper section spacing
+  * Updated all blog post content in database with new formatting
+- July 09, 2025. Enhanced course purchase and display system:
+  * Fixed profile picture upload functionality in signup flow
+  * Implemented "My Courses" tab showing user's purchased courses
+  * Created course purchase tracking with proper user data isolation
+  * Added empty state banner for users with no purchased courses
+  * Updated course display logic: purchased courses show "Access Course", unpurchased show "$120 purchase option"
+  * Connected Gold/Platinum subscribers to unlimited course access
+  * Implemented proper course filtering for free users vs subscribers
 ```
 
 ## User Preferences
