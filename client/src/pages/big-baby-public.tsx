@@ -39,6 +39,17 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [showCardPayment, setShowCardPayment] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Initialize Apple Pay / Payment Request
   useEffect(() => {
@@ -138,51 +149,35 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* Express Payment Methods Row */}
-      <div className="space-y-4">
-        <div className="text-center">
-          <p className="text-sm text-gray-600 mb-4">Complete your payment fast with</p>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-3">
-          {/* Link Payment */}
-          <div className="bg-[#00D924] rounded-lg p-3 hover:bg-[#00C220] transition-colors cursor-pointer">
-            <div className="flex items-center justify-center h-8">
-              <span className="text-white font-semibold text-sm">Link</span>
-            </div>
+      {/* Express Payment Methods Row - Only show if mobile for Apple Pay */}
+      {isMobile && paymentRequest && (
+        <div className="space-y-4">
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-4">Complete your payment fast with</p>
           </div>
           
-          {/* Apple Pay - only show if available */}
-          {paymentRequest && (
+          <div className="w-full">
+            {/* Apple Pay - only show on mobile */}
             <div className="bg-black rounded-lg p-3 hover:bg-gray-800 transition-colors">
               <PaymentRequestButtonElement 
                 options={{ paymentRequest }}
                 className="w-full h-8"
               />
             </div>
-          )}
+          </div>
           
-          {/* Fallback for when Apple Pay is not available */}
-          {!paymentRequest && (
-            <div className="bg-gray-100 rounded-lg p-3 cursor-not-allowed">
-              <div className="flex items-center justify-center h-8">
-                <span className="text-gray-400 font-semibold text-sm">Apple Pay</span>
-              </div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
             </div>
-          )}
-        </div>
-        
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-gray-300" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-gray-500">Or</span>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-500">Or</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Card Payment Form */}
+      {/* Payment Form with Link and Card */}
       <form onSubmit={handleCardSubmit} className="space-y-4">
         <PaymentElement 
           options={{
