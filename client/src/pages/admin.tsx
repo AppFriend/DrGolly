@@ -16,6 +16,7 @@ import {
   Database,
   UserPlus
 } from "lucide-react";
+import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
 // Import admin components
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -85,8 +86,12 @@ export default function AdminPanel() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <Shield className="h-8 w-8 text-[#6B9CA3] mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">Dr. Golly Admin Panel</h1>
+              <img 
+                src={drGollyLogo} 
+                alt="Dr. Golly" 
+                className="h-8 w-auto object-contain mr-3"
+              />
+              <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant="secondary" className="bg-[#6B9CA3] text-white">
