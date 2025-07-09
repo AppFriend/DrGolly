@@ -20,7 +20,9 @@ import {
   Mail,
   Phone,
   MapPin,
-  BookOpen
+  BookOpen,
+  UserPlus,
+  Shield
 } from "lucide-react";
 import UserCourseManagement from "./UserCourseManagement";
 
@@ -46,6 +48,12 @@ export function AdminUserManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUserForCourses, setSelectedUserForCourses] = useState<User | null>(null);
   const [isCourseManagementOpen, setIsCourseManagementOpen] = useState(false);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteData, setInviteData] = useState({
+    name: "",
+    email: "",
+    role: "admin" as "admin" | "moderator"
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -87,9 +95,46 @@ export function AdminUserManagement() {
     },
   });
 
+  // Admin invite mutation
+  const inviteAdminMutation = useMutation({
+    mutationFn: async (inviteData: typeof inviteData) => {
+      return await apiRequest('POST', '/api/admin/invite', inviteData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setShowInviteForm(false);
+      setInviteData({ name: "", email: "", role: "admin" });
+      toast({
+        title: "Success",
+        description: "Admin invitation sent successfully!",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send invite. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleUpdateUser = (updates: Partial<User>) => {
     if (!selectedUser) return;
     updateUserMutation.mutate({ userId: selectedUser.id, updates });
+  };
+
+  const handleInviteSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteData.name || !inviteData.email || !inviteData.role) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    inviteAdminMutation.mutate(inviteData);
   };
 
   const handleManageCourses = (user: User) => {
@@ -133,12 +178,99 @@ export function AdminUserManagement() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">User Management</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage users, subscriptions, and view user activity
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">User Management</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage users, subscriptions, and view user activity
+          </p>
+        </div>
+        {!showInviteForm && (
+          <Button
+            onClick={() => setShowInviteForm(true)}
+            className="bg-[#095D66] hover:bg-[#83CFCC] text-white"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite Admin
+          </Button>
+        )}
       </div>
+
+      {/* Admin Invite Form */}
+      {showInviteForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center">
+              <Shield className="mr-2 h-5 w-5 text-[#095D66]" />
+              Invite New Admin
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleInviteSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="adminName">Full Name *</Label>
+                  <Input
+                    id="adminName"
+                    type="text"
+                    placeholder="Enter admin's full name"
+                    value={inviteData.name}
+                    onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="adminEmail">Email Address *</Label>
+                  <Input
+                    id="adminEmail"
+                    type="email"
+                    placeholder="Enter admin's email"
+                    value={inviteData.email}
+                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="adminRole">Role *</Label>
+                <Select
+                  value={inviteData.role}
+                  onValueChange={(value) => setInviteData({ ...inviteData, role: value as "admin" | "moderator" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  disabled={inviteAdminMutation.isPending}
+                  className="bg-[#095D66] hover:bg-[#83CFCC] text-white"
+                >
+                  {inviteAdminMutation.isPending ? (
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Send Invite
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowInviteForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search */}
       <Card className="py-2">

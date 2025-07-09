@@ -132,7 +132,7 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
       </div>
 
       {/* Performance Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {/* Total Revenue */}
         <Card>
           <CardContent className="p-4">
@@ -141,7 +141,7 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
                 <div className="text-2xl font-bold text-center">
                   {formatCurrency(analytics?.totalRevenue || 0)}
                 </div>
-                <div className="text-sm text-gray-600 text-center mt-1">Revenue</div>
+                <div className="text-sm text-gray-600 text-center mt-1">Total Revenue</div>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
@@ -172,6 +172,51 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
                 <div className="text-sm text-gray-600 text-center mt-1">Conversion</div>
               </div>
               <TrendingUp className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Daily Revenue */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-center">
+                  {formatCurrency(analytics?.todayRevenue || 0)}
+                </div>
+                <div className="text-sm text-gray-600 text-center mt-1">Daily Revenue</div>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Monthly Revenue */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-center">
+                  {formatCurrency(analytics?.lastMonthRevenue || 0)}
+                </div>
+                <div className="text-sm text-gray-600 text-center mt-1">Monthly Revenue</div>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Annual Revenue */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-center">
+                  {formatCurrency((analytics?.lastMonthRevenue || 0) * 12)}
+                </div>
+                <div className="text-sm text-gray-600 text-center mt-1">Annual Revenue</div>
+              </div>
+              <Calendar className="h-8 w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
