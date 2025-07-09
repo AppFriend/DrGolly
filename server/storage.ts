@@ -600,11 +600,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDevelopmentTracking(tracking: InsertDevelopmentTracking): Promise<DevelopmentTracking> {
-    const [newTracking] = await db
-      .insert(developmentTracking)
-      .values(tracking)
-      .returning();
-    return newTracking;
+    // Check if tracking already exists for this child and milestone
+    const existingTracking = await db
+      .select()
+      .from(developmentTracking)
+      .where(
+        and(
+          eq(developmentTracking.childId, tracking.childId),
+          eq(developmentTracking.milestoneId, tracking.milestoneId)
+        )
+      )
+      .limit(1);
+
+    if (existingTracking.length > 0) {
+      // Update existing tracking
+      const [updatedTracking] = await db
+        .update(developmentTracking)
+        .set({
+          status: tracking.status,
+          achievedDate: tracking.achievedDate,
+          logDate: new Date(),
+        })
+        .where(eq(developmentTracking.id, existingTracking[0].id))
+        .returning();
+      return updatedTracking;
+    } else {
+      // Create new tracking
+      const [newTracking] = await db
+        .insert(developmentTracking)
+        .values(tracking)
+        .returning();
+      return newTracking;
+    }
   }
 
   async updateDevelopmentTracking(id: number, tracking: Partial<InsertDevelopmentTracking>): Promise<DevelopmentTracking> {
