@@ -127,7 +127,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
       const response = await apiRequest('POST', '/api/user/chapter-progress', {
         chapterId,
         completed,
-        completedAt: completed ? new Date().toISOString() : undefined,
+        completedAt: completed ? new Date() : undefined,
       });
       return await response.json();
     },
@@ -164,7 +164,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
         moduleId,
         completed,
         watchTime: watchTime || 0,
-        completedAt: completed ? new Date().toISOString() : undefined,
+        completedAt: completed ? new Date() : undefined,
       });
       return await response.json();
     },
