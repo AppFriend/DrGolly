@@ -175,48 +175,6 @@ export function AdminDashboard() {
           icon={<TrendingUp className="h-4 w-4 text-blue-500" />}
           description="Free to Gold conversions"
         />
-        
-        <MetricCard
-          title="Gold Users"
-          value={metrics.goldUsers.toLocaleString()}
-          icon={<Crown className="h-4 w-4 text-yellow-500" />}
-          description="Premium subscribers"
-        />
-        
-        <MetricCard
-          title="Monthly Active"
-          value={metrics.monthlyActiveUsers.toLocaleString()}
-          icon={<Activity className="h-4 w-4 text-green-500" />}
-          description="Last 30 days"
-        />
-        
-        <MetricCard
-          title="Courses Sold"
-          value={metrics.totalCoursesSold.toLocaleString()}
-          icon={<ShoppingCart className="h-4 w-4 text-purple-500" />}
-          description="Individual course purchases"
-        />
-        
-        <MetricCard
-          title="Subscription Upgrades"
-          value={metrics.totalSubscriptionUpgrades.toLocaleString()}
-          icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
-          description="Free to Gold conversions"
-        />
-        
-        <MetricCard
-          title="Monthly Revenue"
-          value={formatCurrency(metrics.monthlyGoldRevenue)}
-          icon={<DollarSign className="h-4 w-4 text-green-600" />}
-          description="Gold subscriptions ($199/month)"
-        />
-        
-        <MetricCard
-          title="Annual Revenue"
-          value={formatCurrency(metrics.annualGoldRevenue)}
-          icon={<Calendar className="h-4 w-4 text-blue-600" />}
-          description="Projected yearly revenue"
-        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
