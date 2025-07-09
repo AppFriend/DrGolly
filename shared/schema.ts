@@ -235,7 +235,10 @@ export const userCourseProgress = pgTable("user_course_progress", {
   progress: integer("progress").default(0), // percentage 0-100
   lastWatched: timestamp("last_watched").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint on userId and courseId for upsert operations
+  uniqueUserCourse: unique().on(table.userId, table.courseId),
+}));
 
 // Partner discounts
 export const partnerDiscounts = pgTable("partner_discounts", {
