@@ -75,29 +75,14 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+        {/* Breadcrumb */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <Button 
-              onClick={onBack} 
-              variant="outline" 
-              className="flex items-center gap-2 bg-white hover:bg-gray-50"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Course
-            </Button>
-            <Button
-              onClick={handleMarkComplete}
-              disabled={moduleProgressMutation.isPending || isCompleted}
-              className={`${
-                isCompleted 
-                  ? 'bg-green-700 hover:bg-green-800' 
-                  : 'bg-green-700 hover:bg-green-800'
-              } text-white`}
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              {isCompleted ? 'Completed' : 'Mark Complete'}
-            </Button>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+            <span>Course</span>
+            <span>/</span>
+            <span>Chapter</span>
+            <span>/</span>
+            <span className="text-gray-900">{module.title}</span>
           </div>
           
           <div className="course-content" data-protected="true">
@@ -144,6 +129,30 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
           </div>
         </div>
 
+        {/* Navigation Buttons */}
+        <div className="flex items-center gap-3 mb-6">
+          <Button 
+            onClick={onBack} 
+            variant="outline" 
+            className="flex items-center gap-2 bg-white hover:bg-gray-50"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Course
+          </Button>
+          <Button
+            onClick={handleMarkComplete}
+            disabled={moduleProgressMutation.isPending || isCompleted}
+            className={`${
+              isCompleted 
+                ? 'bg-green-700 hover:bg-green-800' 
+                : 'bg-green-700 hover:bg-green-800'
+            } text-white`}
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            {isCompleted ? 'Completed' : 'Mark Complete'}
+          </Button>
+        </div>
+
         {/* Module Content */}
         <Card className="mb-6">
           <CardHeader>
@@ -151,26 +160,10 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
           </CardHeader>
           <CardContent>
             <div 
-              className="course-content prose prose-lg max-w-none mb-6"
+              className="course-content prose prose-lg max-w-none"
               data-protected="true"
               dangerouslySetInnerHTML={{ __html: module.content || 'No content available for this module.' }}
             />
-            
-            {/* Mark Complete Button at Bottom */}
-            <div className="flex justify-center pt-6 border-t border-gray-200">
-              <Button
-                onClick={handleMarkComplete}
-                disabled={moduleProgressMutation.isPending || isCompleted}
-                className={`${
-                  isCompleted 
-                    ? 'bg-green-700 hover:bg-green-800' 
-                    : 'bg-green-700 hover:bg-green-800'
-                } text-white px-8 py-2`}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {isCompleted ? 'Completed' : 'Mark Complete'}
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -192,19 +185,7 @@ export default function ModuleDetail({ module, onBack, isCompleted = false, onMa
           </CardContent>
         </Card>
 
-        {/* Bottom Navigation for Mobile */}
-        <div className="fixed bottom-4 left-4 right-4 md:hidden">
-          <div className="flex items-center justify-center">
-            <Button 
-              onClick={onBack} 
-              variant="outline" 
-              className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-lg border-2 px-6 py-3"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Course
-            </Button>
-          </div>
-        </div>
+
       </div>
     </div>
   );
