@@ -73,7 +73,7 @@ import {
   type InsertRegionalPricing,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, gte, or, ilike } from "drizzle-orm";
+import { eq, desc, and, count, gte, or, ilike, sql, isNotNull } from "drizzle-orm";
 import { AuthUtils } from "./auth-utils";
 
 export interface IStorage {
@@ -340,6 +340,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async getMonthlyActiveUsers(): Promise<number> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(and(
+        isNotNull(users.lastLoginAt),
+        gte(users.lastLoginAt, thirtyDaysAgo)
+      ));
+    
+    return result[0]?.count || 0;
   }
 
   async updateUserSubscription(userId: string, tier: string, billingPeriod: string, nextBillingDate: Date): Promise<User> {
@@ -1113,7 +1128,10 @@ export class DatabaseStorage implements IStorage {
     const monthlyActiveUsers = await db
       .select({ count: count() })
       .from(users)
-      .where(gte(users.lastSignIn, thirtyDaysAgo));
+      .where(and(
+        isNotNull(users.lastLoginAt),
+        gte(users.lastLoginAt, thirtyDaysAgo)
+      ));
     
     const totalCoursesSold = await db.select({ count: count() }).from(coursePurchases);
     const totalSubscriptionUpgrades = await db

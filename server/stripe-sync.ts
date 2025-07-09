@@ -25,6 +25,8 @@ export interface StripeUserData {
 
 export class StripeDataSyncService {
   private static instance: StripeDataSyncService;
+  private cache: Map<string, { data: StripeUserData; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
   static getInstance(): StripeDataSyncService {
     if (!StripeDataSyncService.instance) {
@@ -37,6 +39,12 @@ export class StripeDataSyncService {
     try {
       if (!user.stripeCustomerId) {
         return null;
+      }
+
+      // Check cache first
+      const cached = this.cache.get(user.stripeCustomerId);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        return cached.data;
       }
 
       // Get customer data
@@ -113,6 +121,12 @@ export class StripeDataSyncService {
         billingPeriod: billingPeriod
       };
 
+      // Cache the result
+      this.cache.set(user.stripeCustomerId, {
+        data: stripeData,
+        timestamp: Date.now()
+      });
+
       return stripeData;
     } catch (error) {
       console.error("Error fetching Stripe data for user:", error);
@@ -137,6 +151,14 @@ export class StripeDataSyncService {
       console.error("Error syncing Stripe data to database:", error);
       return false;
     }
+  }
+
+  clearUserCache(customerId: string): void {
+    this.cache.delete(customerId);
+  }
+
+  clearAllCache(): void {
+    this.cache.clear();
   }
 
   async getStripeHealthStatus(): Promise<{ healthy: boolean; message: string }> {
