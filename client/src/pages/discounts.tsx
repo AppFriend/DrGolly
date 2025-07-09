@@ -78,8 +78,8 @@ export default function Discounts() {
       <div className="bg-white border-b border-gray-100 p-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-semibold flex items-center">
+            <Sparkles className="h-5 w-5 mr-2 text-[#83CFCC]" />
             Our Partners, Your Perks!
-            <Sparkles className="h-5 w-5 ml-2 text-dr-teal" />
           </h1>
           <span className="text-sm text-dr-teal font-medium">Shopping</span>
         </div>
