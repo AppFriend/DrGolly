@@ -1,0 +1,505 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { User, CreditCard, Receipt, Share2, LogOut, Camera, Edit2 } from "lucide-react";
+import { useLocation } from "wouter";
+
+interface ProfileData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  profileImageUrl?: string;
+  subscriptionTier: string;
+  subscriptionStatus: string;
+  subscriptionEndDate?: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+}
+
+interface InvoiceData {
+  id: string;
+  amount: number;
+  currency: string;
+  date: string;
+  status: string;
+  downloadUrl?: string;
+  description: string;
+}
+
+interface PaymentMethod {
+  id: string;
+  type: string;
+  last4: string;
+  brand: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
+
+export default function Profile() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+
+  // Fetch profile data
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ["/api/profile"],
+    enabled: !!user,
+  });
+
+  // Fetch invoices
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ["/api/profile/invoices"],
+    enabled: !!user,
+  });
+
+  // Fetch payment methods
+  const { data: paymentMethods = [], isLoading: paymentMethodsLoading } = useQuery({
+    queryKey: ["/api/profile/payment-methods"],
+    enabled: !!user,
+  });
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: Partial<ProfileData>) => {
+      return apiRequest("PATCH", "/api/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      setIsEditing(false);
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update payment method mutation
+  const updatePaymentMethodMutation = useMutation({
+    mutationFn: async (paymentMethodId: string) => {
+      return apiRequest("PATCH", "/api/profile/payment-methods", { paymentMethodId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/payment-methods"] });
+      toast({
+        title: "Payment Method Updated",
+        description: "Your default payment method has been updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update payment method. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Copy referral code
+  const copyReferralCode = () => {
+    const referralCode = "DRG-015";
+    navigator.clipboard.writeText(referralCode);
+    toast({
+      title: "Referral Code Copied",
+      description: "Your referral code has been copied to clipboard.",
+    });
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    window.location.href = "/api/logout";
+  };
+
+  // Handle profile save
+  const handleSaveProfile = () => {
+    if (profileData) {
+      updateProfileMutation.mutate(profileData);
+    }
+  };
+
+  // Initialize profile data when loaded
+  useEffect(() => {
+    if (profile) {
+      setProfileData(profile);
+    }
+  }, [profile]);
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-dr-teal border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    setLocation("/login");
+    return null;
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount / 100);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const getTierColor = (tier: string) => {
+    switch (tier.toLowerCase()) {
+      case 'gold':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'platinum':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={profileData?.profileImageUrl} />
+                  <AvatarFallback className="bg-dr-teal text-white text-xl">
+                    {profileData?.firstName?.[0]}{profileData?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                {isEditing && (
+                  <button className="absolute -bottom-1 -right-1 bg-dr-teal text-white p-1.5 rounded-full hover:bg-dr-teal/90">
+                    <Camera className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {profileData?.firstName} {profileData?.lastName}
+                </h1>
+                <p className="text-gray-600">{profileData?.email}</p>
+                <Badge className={getTierColor(profileData?.subscriptionTier || 'free')}>
+                  {profileData?.subscriptionTier || 'Free'} Plan
+                </Badge>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditing(!isEditing)}
+              className="flex items-center gap-2"
+            >
+              <Edit2 className="h-4 w-4" />
+              {isEditing ? "Cancel" : "Edit Profile"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Plan
+            </TabsTrigger>
+            <TabsTrigger value="invoices" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
+              Invoices
+            </TabsTrigger>
+            <TabsTrigger value="payment" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Payment
+            </TabsTrigger>
+            <TabsTrigger value="referral" className="flex items-center gap-2">
+              <Share2 className="h-4 w-4" />
+              Referral
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={profileData?.firstName || ""}
+                      onChange={(e) => setProfileData(prev => prev ? { ...prev, firstName: e.target.value } : null)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={profileData?.lastName || ""}
+                      onChange={(e) => setProfileData(prev => prev ? { ...prev, lastName: e.target.value } : null)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      value={profileData?.email || ""}
+                      onChange={(e) => setProfileData(prev => prev ? { ...prev, email: e.target.value } : null)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={profileData?.phone || ""}
+                      onChange={(e) => setProfileData(prev => prev ? { ...prev, phone: e.target.value } : null)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                {isEditing && (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={updateProfileMutation.isPending}
+                      className="bg-dr-teal hover:bg-dr-teal/90"
+                    >
+                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsEditing(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Plan Tab */}
+          <TabsContent value="plan">
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Plan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">{profileData?.subscriptionTier || 'Free'} Plan</h3>
+                      <p className="text-gray-600">
+                        {profileData?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
+                      </p>
+                    </div>
+                    <Badge className={getTierColor(profileData?.subscriptionTier || 'free')}>
+                      {profileData?.subscriptionTier || 'Free'}
+                    </Badge>
+                  </div>
+                  {profileData?.subscriptionEndDate && (
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        Next billing date: {formatDate(profileData.subscriptionEndDate)}
+                      </p>
+                    </div>
+                  )}
+                  <div className="pt-4 border-t">
+                    <Button className="bg-dr-teal hover:bg-dr-teal/90">
+                      Upgrade Plan
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Invoices Tab */}
+          <TabsContent value="invoices">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {invoicesLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin w-6 h-6 border-2 border-dr-teal border-t-transparent rounded-full mx-auto" />
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No invoices found
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {invoices.map((invoice: InvoiceData) => (
+                      <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{invoice.description}</p>
+                          <p className="text-sm text-gray-600">{formatDate(invoice.date)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency(invoice.amount)}</p>
+                          <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
+                            {invoice.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Payment Tab */}
+          <TabsContent value="payment">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Methods</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {paymentMethodsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin w-6 h-6 border-2 border-dr-teal border-t-transparent rounded-full mx-auto" />
+                  </div>
+                ) : paymentMethods.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No payment methods found
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {paymentMethods.map((method: PaymentMethod) => (
+                      <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-6 bg-gray-200 rounded flex items-center justify-center text-xs font-medium">
+                            {method.brand.toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium">**** **** **** {method.last4}</p>
+                            <p className="text-sm text-gray-600">
+                              Expires {method.expMonth}/{method.expYear}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {method.isDefault && (
+                            <Badge variant="secondary">Default</Badge>
+                          )}
+                          {!method.isDefault && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updatePaymentMethodMutation.mutate(method.id)}
+                              disabled={updatePaymentMethodMutation.isPending}
+                            >
+                              Set as Default
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Referral Tab */}
+          <TabsContent value="referral">
+            <Card>
+              <CardHeader>
+                <CardTitle>Referral Program</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-gray-600 mb-4">
+                      Share your referral code with friends and family to earn rewards when they sign up.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value="DRG-015"
+                        readOnly
+                        className="font-mono"
+                      />
+                      <Button
+                        onClick={copyReferralCode}
+                        className="bg-dr-teal hover:bg-dr-teal/90"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t">
+                    <h4 className="font-semibold mb-2">Referral Stats</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <p className="text-2xl font-bold text-dr-teal">0</p>
+                        <p className="text-sm text-gray-600">Total Referrals</p>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <p className="text-2xl font-bold text-dr-teal">$0</p>
+                        <p className="text-sm text-gray-600">Rewards Earned</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Logout Button */}
+        <div className="mt-8 pt-6 border-t">
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4" />
+            Log Out
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

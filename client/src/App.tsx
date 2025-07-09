@@ -27,6 +27,7 @@ import FeatureDemo from "@/pages/feature-demo";
 import Manage from "@/pages/manage";
 import CheckoutSubscription from "@/pages/checkout-subscription";
 import Admin from "@/pages/admin";
+import Profile from "@/pages/profile";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -78,6 +79,7 @@ function AuthenticatedApp() {
         <Route path="/feature-demo" component={FeatureDemo} />
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
         <Route path="/admin" component={Admin} />
+        <Route path="/profile" component={Profile} />
         <Route path="/home">
           <Home />
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
