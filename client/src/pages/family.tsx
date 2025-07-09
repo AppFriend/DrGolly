@@ -18,6 +18,7 @@ export default function Family() {
   const queryClient = useQueryClient();
   const [showAddChild, setShowAddChild] = useState(false);
   const [showInviteAdult, setShowInviteAdult] = useState(false);
+  const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     dateOfBirth: "",
@@ -77,6 +78,107 @@ export default function Family() {
       toast({
         title: "Error",
         description: "Failed to add child. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Edit child mutation
+  const editChildMutation = useMutation({
+    mutationFn: async (childData: typeof formData & { id: number }) => {
+      return await apiRequest('PUT', `/api/children/${childData.id}`, childData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      setEditingChild(null);
+      setFormData({ name: "", dateOfBirth: "", gender: "not-specified" });
+      toast({
+        title: "Success",
+        description: "Child updated successfully!",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update child. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete child mutation
+  const deleteChildMutation = useMutation({
+    mutationFn: async (childId: number) => {
+      return await apiRequest('DELETE', `/api/children/${childId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      toast({
+        title: "Success",
+        description: "Child deleted successfully!",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete child. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete family member mutation
+  const deleteFamilyMemberMutation = useMutation({
+    mutationFn: async (memberId: number) => {
+      return await apiRequest('DELETE', `/api/family/members/${memberId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family/members"] });
+      toast({
+        title: "Success",
+        description: "Family member removed successfully!",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to remove family member. Please try again.",
         variant: "destructive",
       });
     },
@@ -143,7 +245,39 @@ export default function Family() {
       });
       return;
     }
-    addChildMutation.mutate(formData);
+    if (editingChild) {
+      editChildMutation.mutate({ ...formData, id: editingChild.id });
+    } else {
+      addChildMutation.mutate(formData);
+    }
+  };
+
+  const handleEditChild = (child: Child) => {
+    setEditingChild(child);
+    setFormData({
+      name: child.name,
+      dateOfBirth: child.dateOfBirth,
+      gender: child.gender,
+    });
+    setShowAddChild(true);
+  };
+
+  const handleDeleteChild = (childId: number) => {
+    if (window.confirm("Are you sure you want to delete this child? This action cannot be undone.")) {
+      deleteChildMutation.mutate(childId);
+    }
+  };
+
+  const handleDeleteFamilyMember = (memberId: number) => {
+    if (window.confirm("Are you sure you want to remove this family member? This action cannot be undone.")) {
+      deleteFamilyMemberMutation.mutate(memberId);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingChild(null);
+    setShowAddChild(false);
+    setFormData({ name: "", dateOfBirth: "", gender: "not-specified" });
   };
 
   const handleInviteSubmit = (e: React.FormEvent) => {
@@ -250,11 +384,13 @@ export default function Family() {
           </div>
         )}
 
-        {/* Add Child Form */}
+        {/* Add/Edit Child Form */}
         {showAddChild && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-heading">Add New Child</CardTitle>
+              <CardTitle className="text-base font-heading">
+                {editingChild ? "Edit Child" : "Add New Child"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -298,15 +434,18 @@ export default function Family() {
                 <div className="flex gap-2">
                   <Button 
                     type="submit" 
-                    disabled={addChildMutation.isPending}
+                    disabled={addChildMutation.isPending || editChildMutation.isPending}
                     className="flex-1 bg-[#83CFCC] hover:bg-[#095D66]"
                   >
-                    {addChildMutation.isPending ? "Adding..." : "Add Child"}
+                    {editingChild 
+                      ? (editChildMutation.isPending ? "Updating..." : "Update Child")
+                      : (addChildMutation.isPending ? "Adding..." : "Add Child")
+                    }
                   </Button>
                   <Button 
                     type="button" 
                     variant="outline" 
-                    onClick={() => setShowAddChild(false)}
+                    onClick={handleCancelEdit}
                     className="flex-1"
                   >
                     Cancel
@@ -470,8 +609,20 @@ export default function Family() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEditChild(child)}
+                      >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleDeleteChild(child.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -525,8 +676,13 @@ export default function Family() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleDeleteFamilyMember(member.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
