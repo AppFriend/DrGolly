@@ -658,7 +658,7 @@ export class KlaviyoService {
     }
   }
 
-  async syncLoginToKlaviyo(user: User, children?: any[]): Promise<boolean> {
+  async syncLoginToKlaviyo(user: User, children?: any[], stripeData?: any): Promise<boolean> {
     try {
       // Update profile with latest login info and all user data
       const profileId = await this.createOrUpdateProfile(user, children);
@@ -666,6 +666,37 @@ export class KlaviyoService {
       if (!profileId) {
         console.error("Failed to sync login to Klaviyo");
         return false;
+      }
+
+      // If Stripe data is provided, update profile with latest Stripe info
+      if (stripeData && profileId) {
+        const stripeUpdateResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/${profileId}/`, {
+          method: "PATCH",
+          headers: this.headers,
+          body: JSON.stringify({
+            data: {
+              type: "profile",
+              id: profileId,
+              attributes: {
+                properties: {
+                  stripe_customer_id: stripeData.customerId,
+                  stripe_subscription_id: stripeData.subscriptionId,
+                  stripe_subscription_status: stripeData.subscriptionStatus,
+                  stripe_next_billing_date: stripeData.nextBillingDate,
+                  stripe_payment_method_type: stripeData.paymentMethodType,
+                  stripe_last_payment_date: stripeData.lastPaymentDate,
+                  stripe_total_spent: stripeData.totalSpent,
+                  stripe_updated_at: new Date().toISOString()
+                }
+              }
+            }
+          })
+        });
+
+        if (!stripeUpdateResponse.ok) {
+          const errorText = await stripeUpdateResponse.text();
+          console.error("Failed to update Stripe data in Klaviyo:", stripeUpdateResponse.status, errorText);
+        }
       }
 
       // Send login event for tracking
@@ -682,7 +713,11 @@ export class KlaviyoService {
             login_time: new Date().toISOString(),
             user_id: user.id,
             subscription_tier: user.subscriptionTier || "free",
-            sign_in_count: user.signInCount || 0
+            sign_in_count: user.signInCount || 0,
+            ...(stripeData && {
+              stripe_customer_id: stripeData.customerId,
+              stripe_subscription_status: stripeData.subscriptionStatus
+            })
           }
         }
       };

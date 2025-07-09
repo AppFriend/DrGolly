@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { CheckCircle, XCircle, CreditCard, DollarSign } from "lucide-react";
 
 export default function KlaviyoTest() {
+  const { isAuthenticated } = useAuth();
   const [testData, setTestData] = useState({
     firstName: "John",
     lastName: "Test",
@@ -75,12 +78,70 @@ export default function KlaviyoTest() {
     }
   };
 
+  const checkStripeStatus = async () => {
+    setLoading(true);
+    try {
+      const response = await apiRequest('GET', '/api/test/stripe/status');
+      const result = await response.json();
+      
+      setResults(prev => [...prev, {
+        type: "Stripe Status",
+        timestamp: new Date().toISOString(),
+        success: result.healthy,
+        result: result
+      }]);
+
+      toast({
+        title: result.healthy ? "Stripe Connected" : "Stripe Not Connected",
+        description: result.message,
+        variant: result.healthy ? "default" : "destructive"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Stripe Status Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runStripeSync = async () => {
+    setLoading(true);
+    try {
+      const response = await apiRequest('POST', '/api/test/stripe/sync', {});
+      const result = await response.json();
+      
+      setResults(prev => [...prev, {
+        type: "Stripe Sync",
+        timestamp: new Date().toISOString(),
+        success: result.success,
+        result: result
+      }]);
+
+      toast({
+        title: result.success ? "Stripe Sync Successful" : "Stripe Sync Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Stripe Sync Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">Klaviyo Integration Test</CardTitle>
+            <CardTitle className="text-2xl font-bold">Integration Testing Dashboard</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -120,9 +181,9 @@ export default function KlaviyoTest() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <Button onClick={checkStatus} disabled={loading}>
-                Check Status
+                Check Klaviyo Status
               </Button>
               <Button 
                 onClick={() => runTest('/api/test/klaviyo/signup', 'Regular Signup')}
@@ -154,6 +215,36 @@ export default function KlaviyoTest() {
               >
                 Test OTP Email
               </Button>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Stripe Sync Tests
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <Button 
+                  onClick={checkStripeStatus} 
+                  disabled={loading}
+                  variant="outline"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Check Stripe Status
+                </Button>
+                <Button 
+                  onClick={runStripeSync} 
+                  disabled={loading || !isAuthenticated}
+                  variant="outline"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Test Stripe Sync
+                </Button>
+                {!isAuthenticated && (
+                  <div className="text-sm text-gray-500 px-3 py-2 bg-gray-100 rounded">
+                    Login required for Stripe sync test
+                  </div>
+                )}
+              </div>
             </div>
 
             <Button 
