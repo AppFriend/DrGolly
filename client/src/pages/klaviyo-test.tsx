@@ -142,6 +142,18 @@ export default function KlaviyoTest() {
               >
                 Test Welcome Email
               </Button>
+              <Button 
+                onClick={() => runTest('/api/test/klaviyo/password-reset', 'Password Reset')}
+                disabled={loading}
+              >
+                Test Password Reset
+              </Button>
+              <Button 
+                onClick={() => runTest('/api/test/klaviyo/otp', 'OTP Email')}
+                disabled={loading}
+              >
+                Test OTP Email
+              </Button>
             </div>
 
             <Button 

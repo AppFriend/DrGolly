@@ -314,6 +314,16 @@ Changelog:
   * Created /klaviyo-test page with interactive testing interface for both authenticated and unauthenticated users
   * Implemented comprehensive test result display with success/failure indicators and JSON response details
   * Added real-time testing of both signup flows to verify users are properly added to Klaviyo lists
+- July 09, 2025. Fixed comprehensive Klaviyo integration bugs and added new email flows:
+  * Fixed duplicate profile error - now handles existing profiles gracefully by returning profile ID
+  * Fixed missing 'id' field error in list subscriptions - now uses correct relationship format
+  * Updated all list subscription methods to use profile ID-based relationships
+  * Added password reset email flow with "Password Reset" metric and reset token properties
+  * Added OTP email flow with "OTP Verification" metric and configurable purpose
+  * Enhanced test interface with password reset and OTP test buttons
+  * All Klaviyo metrics now auto-create in dashboard when events are sent from code
+  * Metrics available for Flow creation: "Public Checkout Welcome", "Admin Invite", "Family Invite", "Password Reset", "OTP Verification"
+  * Email properties: customer_name, temp_password, login_url, reset_token, otp_code, purpose, expires_in
 ```
 
 ## User Preferences

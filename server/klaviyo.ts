@@ -358,6 +358,114 @@ export class KlaviyoService {
     }
   }
 
+  async sendPasswordResetEmail(user: User, resetToken: string): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !user.email) {
+      console.error("Klaviyo API key not configured or user email missing");
+      return false;
+    }
+
+    try {
+      // Create profile first
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to create or update Klaviyo profile for password reset");
+        return false;
+      }
+
+      // Send password reset email via Klaviyo
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: user.email
+          },
+          metric: {
+            name: "Password Reset"
+          },
+          properties: {
+            customer_name: user.firstName,
+            reset_token: resetToken,
+            reset_url: `${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}/reset-password?token=${resetToken}`,
+            request_time: new Date().toISOString(),
+            expires_in: "1 hour"
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to send password reset email via Klaviyo:", response.status, errorText);
+        return false;
+      }
+
+      console.log("Password reset email sent successfully via Klaviyo");
+      return true;
+    } catch (error) {
+      console.error("Error sending password reset email via Klaviyo:", error);
+      return false;
+    }
+  }
+
+  async sendOTPEmail(user: User, otpCode: string, purpose: string): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !user.email) {
+      console.error("Klaviyo API key not configured or user email missing");
+      return false;
+    }
+
+    try {
+      // Create profile first
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to create or update Klaviyo profile for OTP");
+        return false;
+      }
+
+      // Send OTP email via Klaviyo
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: user.email
+          },
+          metric: {
+            name: "OTP Verification"
+          },
+          properties: {
+            customer_name: user.firstName,
+            otp_code: otpCode,
+            purpose: purpose, // e.g., "email_verification", "login_verification", "account_security"
+            request_time: new Date().toISOString(),
+            expires_in: "10 minutes"
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to send OTP email via Klaviyo:", response.status, errorText);
+        return false;
+      }
+
+      console.log("OTP email sent successfully via Klaviyo");
+      return true;
+    } catch (error) {
+      console.error("Error sending OTP email via Klaviyo:", error);
+      return false;
+    }
+  }
+
   async syncBigBabySignupToKlaviyo(user: User, customerDetails: any): Promise<boolean> {
     try {
       // Update user with Big Baby signup details temporarily for profile creation
