@@ -324,6 +324,15 @@ Changelog:
   * All Klaviyo metrics now auto-create in dashboard when events are sent from code
   * Metrics available for Flow creation: "Public Checkout Welcome", "Admin Invite", "Family Invite", "Password Reset", "OTP Verification"
   * Email properties: customer_name, temp_password, login_url, reset_token, otp_code, purpose, expires_in
+- July 09, 2025. Implemented comprehensive Klaviyo custom properties tracking for all user interactions:
+  * Enhanced createOrUpdateProfile method to include 25+ custom properties: subscription_tier, plan_tier, phone_number, signup_source, marketing_opt_in, child_1_birthdate, child_2_birthdate, child_3_birthdate, billing_period, user_role, sign_in_count, stripe_customer_id, phone_number_region, primary_concerns, accepted_terms, courses_purchased_previously, count_courses, migrated, is_admin, onboarding_completed, new_member_offer_shown, new_member_offer_accepted, next_billing_date, stripe_subscription_id, children_count, profile_updated_at
+  * Integrated comprehensive sync into auth flow: every user login updates Klaviyo with latest data including children birth dates
+  * Enhanced signup flow: personalization data automatically syncs to Klaviyo with comprehensive custom properties
+  * Subscription changes: all subscription tier changes, billing period updates, and payment method changes sync to Klaviyo
+  * Family management: adding/updating children automatically syncs baby birth dates and family data to Klaviyo
+  * Added getUserWithChildren method to storage for efficient data retrieval
+  * Enhanced all sync methods to include children data for baby birth date tracking
+  * All user interactions now maintain comprehensive Klaviyo profile data for advanced segmentation and automation
 ```
 
 ## User Preferences
