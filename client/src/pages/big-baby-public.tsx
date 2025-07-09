@@ -218,93 +218,11 @@ export default function BigBabyPublic() {
                 </div>
               </div>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-dr-teal" />
-                  What You'll Learn
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span className="text-sm">Sleep training techniques for 4-8 month olds</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span className="text-sm">Establishing healthy sleep patterns</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span className="text-sm">Managing sleep regressions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span className="text-sm">Creating the perfect sleep environment</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                    <span className="text-sm">Gentle sleep training methods</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Reviews</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <img
-                      src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=50&h=50"
-                      alt="Sarah M"
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm">Sarah M</span>
-                        <div className="flex text-yellow-400">
-                          {[1, 2, 3, 4, 5].map((i) => (
-                            <Star key={i} className="h-3 w-3 fill-current" />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        "This program transformed our nights! My 5-month-old went from waking every 2 hours to sleeping through the night in just one week."
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <img
-                      src="https://images.unsplash.com/photo-1494790108755-2616b9c42d68?ixlib=rb-4.0.3&auto=format&fit=crop&w=50&h=50"
-                      alt="Emma R"
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm">Emma R</span>
-                        <div className="flex text-yellow-400">
-                          {[1, 2, 3, 4, 5].map((i) => (
-                            <Star key={i} className="h-3 w-3 fill-current" />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        "Dr. Golly's approach is so gentle yet effective. Finally, a sleep program that actually works!"
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Right Column - Checkout */}
           <div className="space-y-6">
+            {/* 1. Complete Your Purchase */}
             <Card>
               <CardHeader>
                 <CardTitle>Complete Your Purchase</CardTitle>
@@ -359,6 +277,7 @@ export default function BigBabyPublic() {
               </CardContent>
             </Card>
 
+            {/* 2. Order Summary */}
             <Card>
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
@@ -422,7 +341,7 @@ export default function BigBabyPublic() {
               </Card>
             )}
 
-            {/* Guarantee */}
+            {/* 3. 30-Day Money Back Guarantee */}
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3 text-center">
@@ -435,6 +354,95 @@ export default function BigBabyPublic() {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* 4. Customer Reviews */}
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Customer Reviews</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <img
+                    src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=50&h=50"
+                    alt="Sarah M"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-sm">Sarah M</span>
+                      <div className="flex text-yellow-400">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Star key={i} className="h-3 w-3 fill-current" />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      "This program transformed our nights! My 5-month-old went from waking every 2 hours to sleeping through the night in just one week."
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <img
+                    src="https://images.unsplash.com/photo-1494790108755-2616b9c42d68?ixlib=rb-4.0.3&auto=format&fit=crop&w=50&h=50"
+                    alt="Emma R"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-sm">Emma R</span>
+                      <div className="flex text-yellow-400">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Star key={i} className="h-3 w-3 fill-current" />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      "Dr. Golly's approach is so gentle yet effective. Finally, a sleep program that actually works!"
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 5. What You'll Learn */}
+        <div className="max-w-4xl mx-auto px-4 pb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-dr-teal" />
+                What You'll Learn
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                  <span className="text-sm">Sleep training techniques for 4-8 month olds</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                  <span className="text-sm">Establishing healthy sleep patterns</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                  <span className="text-sm">Managing sleep regressions</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                  <span className="text-sm">Creating the perfect sleep environment</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                  <span className="text-sm">Gentle sleep training methods</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
