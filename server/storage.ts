@@ -397,8 +397,12 @@ export class DatabaseStorage implements IStorage {
 
 
   // Course operations
-  async getCourses(category?: string, tier?: string): Promise<Course[]> {
-    let conditions = [eq(courses.isPublished, true)];
+  async getCourses(category?: string, tier?: string, includeUnpublished?: boolean): Promise<Course[]> {
+    let conditions = [];
+    
+    if (!includeUnpublished) {
+      conditions.push(eq(courses.isPublished, true));
+    }
     
     if (category) {
       conditions.push(eq(courses.category, category));
@@ -409,7 +413,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await db.select().from(courses)
-      .where(and(...conditions))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(courses.createdAt);
   }
 
@@ -421,6 +425,15 @@ export class DatabaseStorage implements IStorage {
   async createCourse(course: InsertCourse): Promise<Course> {
     const [newCourse] = await db.insert(courses).values(course).returning();
     return newCourse;
+  }
+
+  async updateCourse(id: number, courseData: Partial<Course>): Promise<Course> {
+    const [updatedCourse] = await db
+      .update(courses)
+      .set({ ...courseData, updatedAt: new Date() })
+      .where(eq(courses.id, id))
+      .returning();
+    return updatedCourse;
   }
 
   async updateCourseStats(courseId: number, likes?: number, views?: number): Promise<void> {
@@ -835,14 +848,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Blog post operations
-  async getBlogPosts(category?: string): Promise<BlogPost[]> {
-    let query = db.select().from(blogPosts).where(eq(blogPosts.isPublished, true));
+  async getBlogPosts(category?: string, includeUnpublished?: boolean): Promise<BlogPost[]> {
+    let conditions = [];
     
-    if (category && category !== 'all') {
-      query = query.where(and(eq(blogPosts.isPublished, true), eq(blogPosts.category, category)));
+    if (!includeUnpublished) {
+      conditions.push(eq(blogPosts.isPublished, true));
     }
     
-    return await query.orderBy(desc(blogPosts.publishedAt));
+    if (category && category !== 'all') {
+      conditions.push(eq(blogPosts.category, category));
+    }
+    
+    return await db.select().from(blogPosts)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(blogPosts.publishedAt));
   }
 
   async getBlogPost(id: number): Promise<BlogPost | undefined> {
@@ -858,6 +877,73 @@ export class DatabaseStorage implements IStorage {
   async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
     const [blogPost] = await db.insert(blogPosts).values(post).returning();
     return blogPost;
+  }
+
+  async updateBlogPost(id: number, postData: Partial<BlogPost>): Promise<BlogPost> {
+    const [updatedPost] = await db
+      .update(blogPosts)
+      .set({ ...postData, updatedAt: new Date() })
+      .where(eq(blogPosts.id, id))
+      .returning();
+    return updatedPost;
+  }
+
+  // Course chapter operations
+  async getCourseChapters(courseId: number): Promise<CourseChapter[]> {
+    return await db.select().from(courseChapters)
+      .where(eq(courseChapters.courseId, courseId))
+      .orderBy(courseChapters.orderIndex);
+  }
+
+  async createCourseChapter(courseId: number, chapterData: any): Promise<CourseChapter> {
+    const [chapter] = await db.insert(courseChapters).values({
+      ...chapterData,
+      courseId,
+      orderIndex: 0 // Will be updated in reorder
+    }).returning();
+    return chapter;
+  }
+
+  async reorderCourseChapters(courseId: number, chapters: CourseChapter[]): Promise<void> {
+    for (const chapter of chapters) {
+      await db.update(courseChapters)
+        .set({ orderIndex: chapter.orderIndex })
+        .where(eq(courseChapters.id, chapter.id));
+    }
+  }
+
+  // Course module operations
+  async getChapterModules(chapterId: number): Promise<CourseModule[]> {
+    return await db.select().from(courseModules)
+      .where(eq(courseModules.chapterId, chapterId))
+      .orderBy(courseModules.orderIndex);
+  }
+
+  async createCourseModule(chapterId: number, moduleData: any): Promise<CourseModule> {
+    const [module] = await db.insert(courseModules).values({
+      ...moduleData,
+      chapterId,
+      courseId: 0, // Will be set properly
+      orderIndex: 0 // Will be updated in reorder
+    }).returning();
+    return module;
+  }
+
+  async updateCourseModule(id: number, moduleData: Partial<CourseModule>): Promise<CourseModule> {
+    const [updatedModule] = await db
+      .update(courseModules)
+      .set({ ...moduleData, updatedAt: new Date() })
+      .where(eq(courseModules.id, id))
+      .returning();
+    return updatedModule;
+  }
+
+  async reorderCourseModules(chapterId: number, modules: CourseModule[]): Promise<void> {
+    for (const module of modules) {
+      await db.update(courseModules)
+        .set({ orderIndex: module.orderIndex })
+        .where(eq(courseModules.id, module.id));
+    }
   }
 
   async updateBlogPostStats(postId: number, views?: number, likes?: number): Promise<void> {
