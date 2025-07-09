@@ -113,6 +113,11 @@ function Router() {
 
   // Handle redirects based on authentication state
   useEffect(() => {
+    // Skip redirect for big-baby-public page
+    if (location === '/big-baby-public') {
+      return;
+    }
+    
     const redirectPath = getRedirectPath(location, { isAuthenticated, isLoading, user });
     if (redirectPath && redirectPath !== location) {
       setLocation(redirectPath);
