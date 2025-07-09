@@ -121,6 +121,7 @@ export interface IStorage {
   getUserChapterProgress(userId: string, chapterId: number): Promise<UserChapterProgress | undefined>;
   updateUserChapterProgress(progress: InsertUserChapterProgress): Promise<UserChapterProgress>;
   getUserModuleProgress(userId: string, moduleId: number): Promise<UserModuleProgress | undefined>;
+  getAllUserModuleProgress(userId: string): Promise<UserModuleProgress[]>;
   updateUserModuleProgress(progress: InsertUserModuleProgress): Promise<UserModuleProgress>;
   getUserSubmoduleProgress(userId: string, submoduleId: number): Promise<UserSubmoduleProgress | undefined>;
   updateUserSubmoduleProgress(progress: InsertUserSubmoduleProgress): Promise<UserSubmoduleProgress>;
@@ -794,6 +795,13 @@ export class DatabaseStorage implements IStorage {
       .from(userModuleProgress)
       .where(and(eq(userModuleProgress.userId, userId), eq(userModuleProgress.moduleId, moduleId)));
     return progress;
+  }
+
+  async getAllUserModuleProgress(userId: string): Promise<UserModuleProgress[]> {
+    return await db
+      .select()
+      .from(userModuleProgress)
+      .where(eq(userModuleProgress.userId, userId));
   }
 
   async updateUserModuleProgress(progress: InsertUserModuleProgress): Promise<UserModuleProgress> {
