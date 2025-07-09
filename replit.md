@@ -347,6 +347,13 @@ Changelog:
   * Enhanced admin metrics to include rolling 30-day Monthly Active Users count
   * Implemented cache invalidation methods for Stripe data to ensure freshness when needed
   * Optimized database queries for MAU calculation using proper indexes on lastLoginAt field
+- July 09, 2025. Completed comprehensive signup flow fixes and UI improvements:
+  * Fixed profile picture upload functionality - clicking picture or upload button now triggers file selection properly
+  * Created public /terms page with comprehensive terms of service content accessible to all users
+  * Added marketing opt-in Klaviyo integration - checkbox updates email subscription status in real-time
+  * Updated all blue highlight colors to brand green (#095D66) for preference buttons, role selection, and terms link
+  * Enhanced homepage "get 50% off gold" button with rounded corners (rounded-xl) for design consistency
+  * All signup flow components now use consistent Dr. Golly brand colors and styling
 ```
 
 ## User Preferences
