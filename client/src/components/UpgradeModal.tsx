@@ -43,25 +43,25 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
       />
       
       {/* Modal */}
-      <div className="relative max-w-md w-full bg-white rounded-2xl overflow-hidden shadow-lg">
+      <div className="relative max-w-sm w-full bg-white rounded-2xl overflow-hidden shadow-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="bg-gradient-to-br from-[#6B9CA3] to-[#095D66] p-6 text-white relative">
+        <div className="bg-gradient-to-br from-[#6B9CA3] to-[#095D66] p-4 text-white relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="absolute top-3 right-3 p-1.5 hover:bg-white/10 rounded-full transition-colors"
           >
-            <X className="h-5 w-5 text-white" />
+            <X className="h-4 w-4 text-white" />
           </button>
           
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-gradient-to-br from-[#6B9CA3] to-[#095D66] rounded-full"></div>
+          <div className="flex items-center justify-center mb-3">
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 bg-gradient-to-br from-[#6B9CA3] to-[#095D66] rounded-full"></div>
               </div>
             </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-center mb-2">
+          <h2 className="text-xl font-bold text-center mb-2">
             Unlock Gold Features
           </h2>
           
@@ -70,9 +70,9 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
           </p>
         </div>
 
-        <div className="p-6">
+        <div className="p-4">
           {/* Pricing Section */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-4">
             <div className="flex items-center justify-center space-x-2 mb-2">
               {billingPeriod === "yearly" && (
                 <span className="text-sm text-gray-500 line-through">${monthlyPrice}/month</span>
@@ -88,10 +88,10 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
           </div>
 
           {/* Billing Toggle */}
-          <div className="flex items-center justify-center mb-6 bg-gray-100 rounded-full p-1">
+          <div className="flex items-center justify-center mb-4 bg-gray-100 rounded-full p-1">
             <button
               onClick={() => setBillingPeriod("monthly")}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex-1 ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-1 ${
                 billingPeriod === "monthly"
                   ? "bg-[#6B9CA3] text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -101,7 +101,7 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
             </button>
             <button
               onClick={() => setBillingPeriod("yearly")}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex-1 relative ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-1 relative ${
                 billingPeriod === "yearly"
                   ? "bg-[#6B9CA3] text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -112,16 +112,14 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
             </button>
           </div>
 
-
-
           {/* Features */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">What&apos;s Included</h3>
-            <div className="space-y-3">
+          <div className="mb-4">
+            <h3 className="font-semibold text-gray-900 mb-2">What&apos;s Included</h3>
+            <div className="space-y-2">
               {features.map((feature, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-5 h-5 bg-[#6B9CA3] rounded-full flex items-center justify-center mt-0.5">
-                    <Check className="h-3 w-3 text-white" />
+                <div key={index} className="flex items-start gap-2">
+                  <div className="flex-shrink-0 w-4 h-4 bg-[#6B9CA3] rounded-full flex items-center justify-center mt-0.5">
+                    <Check className="h-2.5 w-2.5 text-white" />
                   </div>
                   <span className="text-sm text-gray-700 leading-relaxed">{feature}</span>
                 </div>
@@ -132,12 +130,12 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
           {/* Upgrade Button */}
           <Button
             onClick={handleUpgrade}
-            className="w-full bg-gradient-to-r from-[#6B9CA3] to-[#095D66] hover:from-[#095D66] hover:to-[#6B9CA3] text-white font-semibold py-4 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full bg-gradient-to-r from-[#6B9CA3] to-[#095D66] hover:from-[#095D66] hover:to-[#6B9CA3] text-white font-semibold py-3 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Upgrade to Gold - ${currentPrice}/month
           </Button>
           
-          <p className="text-xs text-gray-500 text-center mt-3">
+          <p className="text-xs text-gray-500 text-center mt-2">
             Cancel anytime • 30-day money-back guarantee
           </p>
         </div>
