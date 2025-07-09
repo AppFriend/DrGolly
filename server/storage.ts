@@ -1242,6 +1242,21 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updateFamilyInviteStatus(inviteId: number, status: string): Promise<void> {
+    await db
+      .update(familyInvites)
+      .set({ status })
+      .where(eq(familyInvites.id, inviteId));
+  }
+
+  async createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember> {
+    const [result] = await db
+      .insert(familyMembers)
+      .values(member)
+      .returning();
+    return result;
+  }
+
   async acceptFamilyInvite(inviteId: number, memberId: string): Promise<void> {
     // Update invite status to accepted
     await db

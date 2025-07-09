@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Baby, Edit, Trash, Users, Mail, UserPlus, Crown } from "lucide-react";
+import { Plus, Baby, Edit, Trash, Users, Mail, UserPlus, Crown, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import type { Child, FamilyMember } from "@shared/schema";
+import type { Child, FamilyMember, FamilyInvite } from "@shared/schema";
 
 export default function Family() {
   const { toast } = useToast();
@@ -38,6 +38,12 @@ export default function Family() {
   // Fetch family members (Gold subscribers only)
   const { data: familyMembers = [], isLoading: isFamilyMembersLoading } = useQuery({
     queryKey: ["/api/family/members"],
+    enabled: isAuthenticated && user?.subscriptionTier === 'gold',
+  });
+
+  // Fetch pending invites (Gold subscribers only)
+  const { data: pendingInvites = [], isLoading: isPendingInvitesLoading } = useQuery({
+    queryKey: ["/api/family/invites"],
     enabled: isAuthenticated && user?.subscriptionTier === 'gold',
   });
 
@@ -83,6 +89,7 @@ export default function Family() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/family/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/family/invites"] });
       setShowInviteAdult(false);
       setInviteData({ name: "", email: "", role: "parent" });
       toast({
@@ -389,6 +396,53 @@ export default function Family() {
               </form>
             </CardContent>
           </Card>
+        )}
+
+        {/* Pending Invites Section (Gold subscribers only) */}
+        {user?.subscriptionTier === 'gold' && pendingInvites.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold font-heading">Pending Invites</h2>
+              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                {pendingInvites.length} Pending
+              </Badge>
+            </div>
+            {pendingInvites.map((invite: FamilyInvite) => (
+              <Card key={invite.id} className="border-orange-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                        <Clock className="h-6 w-6 text-orange-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold font-heading">{invite.inviteeName}</h3>
+                        <p className="text-sm text-gray-600 font-sans">
+                          {invite.inviteeEmail}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {invite.inviteeRole}
+                          </Badge>
+                          <Badge className="text-xs bg-orange-100 text-orange-800">
+                            Pending
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Invited {new Date(invite.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="text-xs">
+                        Resend
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
 
         {/* Children List */}

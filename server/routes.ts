@@ -2374,6 +2374,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/family/accept-invite', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Find the invite for this user's email
+      const invite = await storage.getFamilyInviteByEmail(user.email);
+      
+      if (!invite) {
+        return res.status(404).json({ message: 'No pending invite found for this user' });
+      }
+      
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ message: 'Invite has already been processed' });
+      }
+      
+      // Check if invite has expired
+      if (new Date() > new Date(invite.expiresAt)) {
+        return res.status(400).json({ message: 'Invite has expired' });
+      }
+      
+      // Update invite status to accepted
+      await storage.updateFamilyInviteStatus(invite.id, 'accepted');
+      
+      // Create family member record
+      await storage.createFamilyMember({
+        familyOwnerId: invite.familyOwnerId,
+        memberId: userId,
+        memberEmail: user.email,
+        memberName: `${user.firstName} ${user.lastName}`.trim(),
+        memberRole: invite.inviteeRole,
+        status: 'active',
+        joinedAt: new Date(),
+      });
+      
+      res.json({ message: 'Invite accepted successfully' });
+    } catch (error) {
+      console.error("Error accepting family invite:", error);
+      res.status(500).json({ message: "Failed to accept family invite" });
+    }
+  });
+
   // Admin invite routes
   app.post('/api/admin/invite', isAdmin, async (req, res) => {
     try {
