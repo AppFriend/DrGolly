@@ -720,7 +720,10 @@ export class DatabaseStorage implements IStorage {
 
   // Course purchase operations
   async getUserCoursePurchases(userId: string): Promise<CoursePurchase[]> {
-    return await db.select().from(coursePurchases).where(eq(coursePurchases.userId, userId)).orderBy(desc(coursePurchases.purchasedAt));
+    // Only return completed purchases to show in "Purchases" tab
+    return await db.select().from(coursePurchases)
+      .where(and(eq(coursePurchases.userId, userId), eq(coursePurchases.status, 'completed')))
+      .orderBy(desc(coursePurchases.purchasedAt));
   }
 
   async getCoursePurchase(id: number): Promise<CoursePurchase | undefined> {

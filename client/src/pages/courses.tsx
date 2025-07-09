@@ -33,9 +33,26 @@ export default function Courses() {
     enabled: !!user && activeTab === "my",
   });
 
-  const { data: coursePurchases } = useQuery({
+  const { data: coursePurchases, refetch: refetchPurchases } = useQuery({
     queryKey: ["/api/user/course-purchases"],
-    enabled: !!user && activeTab === "my",
+    enabled: !!user,
+    refetchInterval: activeTab === "my" ? 5000 : false, // Refresh every 5 seconds when on Purchases tab
+    onSuccess: (data) => {
+      // Show success notification when new purchases are detected
+      if (data && data.length > 0) {
+        const latestPurchase = data[0];
+        const timeSinceLatest = Date.now() - new Date(latestPurchase.purchasedAt).getTime();
+        
+        // If purchase is less than 30 seconds old, show success notification
+        if (timeSinceLatest < 30000 && activeTab === "my") {
+          toast({
+            title: "Course Purchase Complete!",
+            description: `${latestPurchase.course?.title || 'Your course'} has been added to your library.`,
+            variant: "default",
+          });
+        }
+      }
+    }
   });
 
   useEffect(() => {
@@ -52,10 +69,12 @@ export default function Courses() {
   }, [error, toast]);
 
   const filteredCourses = courses?.filter((course: Course) => {
-    // For "Purchases" tab, show purchased courses + all courses if Gold/Platinum
+    // For "Purchases" tab, show purchased courses only
     if (activeTab === "my") {
-      const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
-      return hasPurchased; // Only show actually purchased courses in "Purchases"
+      const hasPurchased = coursePurchases?.some((purchase: any) => 
+        purchase.courseId === course.id && purchase.status === 'completed'
+      );
+      return hasPurchased; // Only show completed purchases in "Purchases"
     }
     
     // Apply search filter
