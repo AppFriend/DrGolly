@@ -4299,11 +4299,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve temperature chart image
-  app.get('/assets/temperature-chart.png', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/src/assets/temperature-chart.png'));
-  });
-
   const httpServer = createServer(app);
   return httpServer;
 }
