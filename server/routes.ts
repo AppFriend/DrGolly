@@ -1684,8 +1684,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stripe invoice routes
   app.get('/api/profile/invoices', isAuthenticated, async (req: any, res) => {
+    // Disable caching for this endpoint
+    res.set('Cache-Control', 'no-store');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     try {
       const userId = req.user.claims.sub;
+      console.log('===== INVOICE FETCH START =====');
       console.log('Fetching invoices for user:', userId);
       
       const user = await storage.getUser(userId);
@@ -1696,6 +1701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get course purchase invoices from database
       const coursePurchases = await storage.getUserCoursePurchases(userId);
       console.log('Course purchases found:', coursePurchases.length);
+      console.log('Raw course purchases:', JSON.stringify(coursePurchases, null, 2));
       
       // Format course purchases as invoices
       for (const purchase of coursePurchases) {
@@ -1756,6 +1762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Total invoices to return:', allInvoices.length);
       console.log('Invoices:', JSON.stringify(allInvoices, null, 2));
+      console.log('===== INVOICE FETCH END =====');
       
       res.json(allInvoices);
     } catch (error) {
@@ -1764,11 +1771,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to test invoice data
+  app.get('/api/debug/invoices/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      console.log('Debug: Fetching invoices for user:', userId);
+      
+      const user = await storage.getUser(userId);
+      console.log('Debug: User found:', user ? 'Yes' : 'No');
+      
+      const coursePurchases = await storage.getUserCoursePurchases(userId);
+      console.log('Debug: Course purchases found:', coursePurchases.length);
+      console.log('Debug: Course purchases:', JSON.stringify(coursePurchases, null, 2));
+      
+      res.json({
+        user: user ? { id: user.id, email: user.email } : null,
+        coursePurchases: coursePurchases
+      });
+    } catch (error) {
+      console.error('Debug: Error fetching invoices:', error);
+      res.status(500).json({ message: 'Failed to fetch invoices', error: error.message });
+    }
+  });
+
   // Stripe payment methods routes
   app.get('/api/profile/payment-methods', isAuthenticated, async (req: any, res) => {
+    // Disable caching for this endpoint
+    res.set('Cache-Control', 'no-store');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     try {
       const userId = req.user.claims.sub;
+      console.log('===== PAYMENT METHODS FETCH START =====');
+      console.log('Fetching payment methods for user:', userId);
+      
       const user = await storage.getUser(userId);
+      console.log('User found:', user ? 'Yes' : 'No');
+      console.log('Stripe customer ID:', user?.stripeCustomerId);
       
       if (!user?.stripeCustomerId) {
         return res.json([]);
@@ -1795,6 +1834,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isDefault: pm.id === defaultPaymentMethod,
         created: new Date(pm.created * 1000).toISOString()
       }));
+      
+      console.log('Payment methods found:', formattedPaymentMethods.length);
+      console.log('Payment methods:', JSON.stringify(formattedPaymentMethods, null, 2));
+      console.log('===== PAYMENT METHODS FETCH END =====');
       
       res.json(formattedPaymentMethods);
     } catch (error) {
