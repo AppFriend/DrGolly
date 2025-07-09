@@ -367,6 +367,9 @@ Changelog:
   * Updated courses title to use family lastname instead of firstname ("Courses for the [lastname] family")
   * Optimized feed timers layout to display left and right breast timers side-by-side to save mobile space
   * Reduced timer component sizes and spacing for more compact mobile display
+  * Fixed discounts page header to have consistent icon-left, text-right formatting
+  * Enhanced growth tracking with personalized titles showing child's name ("Add Growth Entry for Parker")
+  * Improved mobile feed timer layout with consistent spacing, smaller text, and compact button sizes
 ```
 
 ## User Preferences
