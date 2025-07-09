@@ -1,16 +1,30 @@
-import { useState } from "react";
-import { useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
+import { useState, useEffect } from "react";
+import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement } from "@stripe/react-stripe-js";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { Course } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CheckoutFormProps {
   course: Course;
   customerDetails: any;
   total: number;
+}
+
+// Add regional pricing hook
+function useRegionalPricing() {
+  const { data: regionalPricing } = useQuery({
+    queryKey: ["/api/regional-pricing"],
+    retry: false,
+  });
+  
+  const currency = regionalPricing?.currency || 'USD';
+  const currencyCode = currency === 'AUD' ? 'aud' : currency === 'USD' ? 'usd' : 'eur';
+  
+  return { currency, currencyCode };
 }
 
 export function CheckoutForm({ course, customerDetails, total }: CheckoutFormProps) {
@@ -20,6 +34,67 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
   const [, setLocation] = useLocation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paymentRequest, setPaymentRequest] = useState<any>(null);
+  const [canMakePayment, setCanMakePayment] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState("link");
+  const { currency, currencyCode } = useRegionalPricing();
+
+  // Device detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const mobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+      setIsMobile(mobile);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Payment Request setup
+  useEffect(() => {
+    if (!stripe || !total || !currencyCode) return;
+
+    const pr = stripe.paymentRequest({
+      country: currencyCode === 'aud' ? 'AU' : currencyCode === 'usd' ? 'US' : 'DE',
+      currency: currencyCode,
+      total: {
+        label: course.title,
+        amount: total * 100,
+      },
+      requestPayerName: true,
+      requestPayerEmail: true,
+    });
+
+    pr.canMakePayment().then(result => {
+      if (result) {
+        setCanMakePayment(true);
+        setPaymentRequest(pr);
+      }
+    });
+
+    pr.on('paymentmethod', async (ev) => {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/payment-success?courseId=${course.id}`,
+        },
+      });
+
+      if (error) {
+        ev.complete('fail');
+        toast({
+          title: "Payment Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        ev.complete('success');
+      }
+    });
+  }, [stripe, total, course.id, course.title, elements, toast, currencyCode]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -61,47 +136,79 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
       <h2 className="text-lg font-semibold mb-4">Payment</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Payment Method Selection */}
-        <div className="space-y-3">
-          <div className="flex items-center space-x-3">
-            <input
-              type="radio"
-              id="credit-card"
-              name="payment-method"
-              value="card"
-              checked={paymentMethod === "card"}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="text-dr-teal"
-            />
-            <label htmlFor="credit-card" className="flex items-center space-x-2">
-              <span>💳</span>
-              <span>Credit Card</span>
-              <span className="text-xs text-gray-500">****1234</span>
-            </label>
+        {/* Express Payment (Mobile Only) */}
+        {isMobile && canMakePayment && (
+          <div className="space-y-3">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Express checkout</span>
+              </div>
+            </div>
+            
+            <div className="rounded-lg border p-3">
+              <PaymentRequestButtonElement 
+                options={{
+                  paymentRequest,
+                  style: {
+                    paymentRequestButton: {
+                      type: 'default',
+                      theme: 'light',
+                      height: '48px',
+                    },
+                  },
+                }}
+              />
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or pay with</span>
+              </div>
+            </div>
           </div>
+        )}
 
-          <div className="flex items-center space-x-3">
-            <input
-              type="radio"
-              id="afterpay"
-              name="payment-method"
-              value="afterpay"
-              checked={paymentMethod === "afterpay"}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="text-dr-teal"
-            />
-            <label htmlFor="afterpay" className="flex items-center space-x-2">
-              <span>◯</span>
-              <span>Afterpay</span>
-              <img src="https://static.afterpay.com/button/afterpay-logo-colour.svg" alt="Afterpay" className="h-4" />
-            </label>
-          </div>
-        </div>
-
-        {/* Stripe Payment Element */}
-        <div className="border rounded-lg p-3">
-          <PaymentElement />
-        </div>
+        {/* Payment Method Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-2'}`}>
+            <TabsTrigger value="link">Link</TabsTrigger>
+            <TabsTrigger value="card">Card</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="link" className="space-y-4">
+            <div className="border rounded-lg p-3">
+              <PaymentElement 
+                options={{
+                  layout: {
+                    type: 'tabs',
+                    defaultCollapsed: false,
+                  },
+                  paymentMethodOrder: ['link', 'card'],
+                }}
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="card" className="space-y-4">
+            <div className="border rounded-lg p-3">
+              <PaymentElement 
+                options={{
+                  layout: {
+                    type: 'tabs',
+                    defaultCollapsed: false,
+                  },
+                  paymentMethodOrder: ['card'],
+                }}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Terms and Privacy */}
         <p className="text-xs text-gray-500">
