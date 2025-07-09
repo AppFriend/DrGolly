@@ -419,25 +419,17 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                                 <Badge variant="outline" className="text-xs">
                                   {chapter.chapterNumber}.{index + 1}
                                 </Badge>
-                                <div className="flex items-center gap-3">
-                                  <div>
-                                    <h4 className="font-medium cursor-pointer hover:text-teal-600">{module.title}</h4>
-                                    <p className="text-sm text-gray-600">{module.description}</p>
-                                  </div>
-                                  <CheckCircle className={`w-5 h-5 ${
-                                    completedModules.has(module.id) 
-                                      ? 'text-green-500' 
-                                      : 'text-gray-300'
-                                  }`} />
+                                <div>
+                                  <h4 className="font-medium cursor-pointer hover:text-teal-600">{module.title}</h4>
+                                  <p className="text-sm text-gray-600">{module.description}</p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {module.duration && (
-                                  <Badge variant="outline" className="text-xs">
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    {formatDuration(module.duration)}
-                                  </Badge>
-                                )}
+                              <div className="flex flex-col items-center gap-1">
+                                <CheckCircle className={`w-5 h-5 ${
+                                  completedModules.has(module.id) 
+                                    ? 'text-green-500' 
+                                    : 'text-gray-300'
+                                }`} />
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -445,7 +437,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                                     e.stopPropagation();
                                     handleModuleClick(module);
                                   }}
-                                  className={`${
+                                  className={`text-xs px-2 py-1 h-auto ${
                                     completedModules.has(module.id) 
                                       ? 'text-gray-500 hover:text-gray-700' 
                                       : 'text-teal-600 hover:text-teal-700'
