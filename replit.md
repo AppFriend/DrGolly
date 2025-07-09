@@ -354,6 +354,13 @@ Changelog:
   * Updated all blue highlight colors to brand green (#095D66) for preference buttons, role selection, and terms link
   * Enhanced homepage "get 50% off gold" button with rounded corners (rounded-xl) for design consistency
   * All signup flow components now use consistent Dr. Golly brand colors and styling
+- July 09, 2025. Updated profile interface and mobile layout optimization:
+  * Updated toggle switches to use brand green color (#095D66) for consistent styling
+  * Moved marketing preferences section from separate tab to Profile tab to optimize mobile navigation
+  * Reduced profile navigation from 6 tabs to 5 tabs (Profile, Plan, Invoices, Payment, Referral)
+  * Moved logout button higher up the page for better mobile accessibility
+  * Repositioned "Add Child" button in family page to be next to "Your Children" heading below gold banner
+  * Integrated support system with header button, modal form, and dual notifications to email/Slack
 ```
 
 ## User Preferences
