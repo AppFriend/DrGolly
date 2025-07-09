@@ -47,7 +47,7 @@ export default function BigBabyPublic() {
   // Create payment intent for anonymous users
   const createPaymentMutation = useMutation({
     mutationFn: async (data: { courseId: number; customerDetails: any }) => {
-      const response = await apiRequest("POST", "/api/create-public-course-payment", data);
+      const response = await apiRequest("POST", "/api/create-big-baby-payment", data);
       return response.json();
     },
     onSuccess: (data) => {
@@ -63,30 +63,17 @@ export default function BigBabyPublic() {
     },
   });
 
-  // Create account and link purchase
-  const createAccountMutation = useMutation({
-    mutationFn: async (data: { customerDetails: any; paymentIntentId: string; interests: string[] }) => {
-      const response = await apiRequest("POST", "/api/create-account-with-purchase", data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Account Created Successfully",
-        description: "Welcome to Dr. Golly! Your course is now available.",
-      });
-      // Redirect to login with temporary credentials or auto-login
-      setTimeout(() => {
-        setLocation("/login");
-      }, 2000);
-    },
-    onError: (error) => {
-      toast({
-        title: "Account Creation Failed",
-        description: "Please contact support for assistance.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Handle post-payment account setup
+  const handleAccountSetup = () => {
+    toast({
+      title: "Payment Successful!",
+      description: "Check your email for login instructions. Your course is ready!",
+    });
+    // Redirect to login page after short delay
+    setTimeout(() => {
+      setLocation("/login");
+    }, 3000);
+  };
 
   const handleDetailsChange = (field: string, value: string) => {
     setCustomerDetails(prev => ({
@@ -100,11 +87,9 @@ export default function BigBabyPublic() {
   };
 
   const handleCreateAccount = (interests: string[]) => {
-    createAccountMutation.mutate({
-      customerDetails,
-      paymentIntentId,
-      interests
-    });
+    // Account creation is handled automatically by webhook
+    // Just redirect to login
+    handleAccountSetup();
   };
 
   const isDetailsComplete = customerDetails.firstName && customerDetails.email;
