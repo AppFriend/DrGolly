@@ -188,7 +188,7 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
         <Button
           type="submit"
           disabled={!stripe || isProcessing}
-          className="w-full bg-dr-teal hover:bg-dr-teal/90"
+          className="w-full bg-dr-teal hover:bg-dr-teal/90 h-12 text-base font-semibold"
         >
           {isProcessing ? "Processing..." : `Pay $${BIG_BABY_COURSE.price}`}
         </Button>
