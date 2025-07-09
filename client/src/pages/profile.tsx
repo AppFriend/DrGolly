@@ -433,7 +433,8 @@ export default function Profile() {
                 )}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <User className="mr-2 h-6 w-6 text-[#83CFCC]" />
                   {profileData?.firstName} {profileData?.lastName}
                 </h1>
                 <p className="text-gray-600">{profileData?.email}</p>

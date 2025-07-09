@@ -361,6 +361,12 @@ Changelog:
   * Moved logout button higher up the page for better mobile accessibility
   * Repositioned "Add Child" button in family page to be next to "Your Children" heading below gold banner
   * Integrated support system with header button, modal form, and dual notifications to email/Slack
+- July 09, 2025. Improved banner image and page title consistency:
+  * Made Dr. Golly banner image larger (96px) and centered properly on mobile with wrapper div
+  * Added consistent page title formatting with icons to the left and text to the right across all pages
+  * Updated courses title to use family lastname instead of firstname ("Courses for the [lastname] family")
+  * Optimized feed timers layout to display left and right breast timers side-by-side to save mobile space
+  * Reduced timer component sizes and spacing for more compact mobile display
 ```
 
 ## User Preferences

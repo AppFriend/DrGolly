@@ -127,7 +127,10 @@ export default function Courses() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 p-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-semibold">Courses for the {user?.firstName || "Adnam"} family 👨‍👩‍👧‍👦</h1>
+          <h1 className="text-lg font-semibold flex items-center">
+            <Grid className="mr-2 h-5 w-5 text-[#83CFCC]" />
+            Courses for the {user?.lastName || "Adnam"} family 👨‍👩‍👧‍👦
+          </h1>
         </div>
         <p className="text-sm text-gray-600 mb-4">
           Supporting your parenting journey with courses on sleep, nutrition, and everything in between 💛
