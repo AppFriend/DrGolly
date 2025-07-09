@@ -740,9 +740,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
       };
       
-      // If marking as completed, ensure completedAt is set
+      // If marking as completed, ensure completedAt is set as a proper Date
       if (requestData.completed && !requestData.completedAt) {
         requestData.completedAt = new Date();
+      } else if (requestData.completedAt && typeof requestData.completedAt === 'string') {
+        requestData.completedAt = new Date(requestData.completedAt);
       }
       
       const progressData = insertUserChapterProgressSchema.parse(requestData);
@@ -762,9 +764,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
       };
       
-      // If marking as completed, ensure completedAt is set
+      // If marking as completed, ensure completedAt is set as a proper Date
       if (requestData.completed && !requestData.completedAt) {
         requestData.completedAt = new Date();
+      } else if (requestData.completedAt && typeof requestData.completedAt === 'string') {
+        requestData.completedAt = new Date(requestData.completedAt);
       }
       
       const progressData = insertUserModuleProgressSchema.parse(requestData);
