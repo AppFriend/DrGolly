@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement } from "@stripe/react-stripe-js";
+import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
@@ -289,13 +290,12 @@ export default function BigBabyPublic() {
       <div className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center">
               <img 
-                src="/api/placeholder/120/40" 
+                src={drGollyLogo} 
                 alt="Dr. Golly" 
-                className="h-8"
+                className="h-10 w-auto object-contain"
               />
-              <span className="text-lg font-semibold text-dr-teal">Dr. Golly</span>
             </div>
             <Badge variant="secondary" className="bg-green-100 text-green-800">
               <Shield className="h-3 w-3 mr-1" />
