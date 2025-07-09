@@ -78,7 +78,7 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
       setIsProcessing(true);
       
       try {
-        // Confirm payment with the payment method from Apple Pay
+        // Confirm payment with the payment method from Apple Pay/Google Pay
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
           confirmParams: {
@@ -88,6 +88,7 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
         });
 
         if (error) {
+          console.error('Payment Request API error:', error);
           ev.complete('fail');
           toast({
             title: "Payment Failed",
@@ -99,6 +100,7 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
           onSuccess();
         }
       } catch (err) {
+        console.error('Payment Request API exception:', err);
         ev.complete('fail');
         toast({
           title: "Payment Error",
@@ -115,29 +117,47 @@ function BigBabyPaymentForm({ onSuccess }: { onSuccess: () => void }) {
     event.preventDefault();
 
     if (!stripe || !elements) {
+      console.error('Stripe or Elements not available');
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      const { error } = await stripe.confirmPayment({
+      // First, submit the payment element to collect payment method
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        console.error('Elements submit error:', submitError);
+        toast({
+          title: "Payment Failed",
+          description: submitError.message || "Please check your payment details.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Then confirm the payment
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/big-baby-public`,
         },
+        redirect: 'if_required',
       });
 
       if (error) {
+        console.error('Payment confirmation error:', error);
         toast({
           title: "Payment Failed",
           description: error.message || "Please try again.",
           variant: "destructive",
         });
-      } else {
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('Payment succeeded:', paymentIntent.id);
         onSuccess();
       }
     } catch (err) {
+      console.error('Payment exception:', err);
       toast({
         title: "Payment Error",
         description: "An unexpected error occurred. Please try again.",

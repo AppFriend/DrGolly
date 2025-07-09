@@ -1823,6 +1823,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: 'usd',
         customer: stripeCustomerId,
         payment_method_types: ['card', 'link'],
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never'
+        },
         metadata: {
           courseId: '6',
           courseName: 'Big Baby Sleep Program',
@@ -1831,6 +1835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           productType: 'course',
           checkoutType: 'public_checkout',
           tier: 'free',
+          dueDate: customerDetails.dueDate || '',
         },
         description: 'Course Purchase: Big Baby Sleep Program',
         receipt_email: customerDetails.email,
@@ -1842,7 +1847,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating Big Baby payment:", error);
-      res.status(500).json({ message: "Failed to create payment" });
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        customerDetails: req.body.customerDetails
+      });
+      res.status(500).json({ 
+        message: "Failed to create payment",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
