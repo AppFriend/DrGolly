@@ -195,16 +195,18 @@ export default function Home() {
               </div>
             )}
           </div>
-          <img
-            src={drGollyImage}
-            alt="Dr. Golly"
-            className={cn(
-              "w-20 h-20 rounded-2xl object-cover border-2",
-              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
-                ? "border-black/20" 
-                : "border-white/20"
-            )}
-          />
+          <div className="flex justify-center items-center w-28">
+            <img
+              src={drGollyImage}
+              alt="Dr. Golly"
+              className={cn(
+                "w-24 h-24 rounded-2xl object-cover border-2 shadow-lg",
+                user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                  ? "border-black/20" 
+                  : "border-white/20"
+              )}
+            />
+          </div>
         </div>
       </section>
 
