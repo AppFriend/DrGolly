@@ -170,7 +170,7 @@ export default function Home() {
             {user?.subscriptionTier === "free" && (
               <Button
                 variant="secondary"
-                className="bg-white text-[#095D66] hover:bg-gray-100 font-medium"
+                className="bg-white text-[#095D66] hover:bg-gray-100 font-medium rounded-xl"
                 onClick={() => window.location.href = "/subscription"}
               >
                 Try Gold 50% off for 1 month
