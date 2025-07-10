@@ -109,6 +109,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if user exists by email (for public checkout)
+  app.post('/api/auth/check-existing-user', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      if (user) {
+        res.json({ 
+          exists: true, 
+          userId: user.id,
+          firstName: user.firstName,
+          hasPassword: user.hasSetPassword 
+        });
+      } else {
+        res.json({ exists: false });
+      }
+    } catch (error) {
+      console.error("Error checking existing user:", error);
+      res.status(500).json({ message: "Failed to check user" });
+    }
+  });
+
+  // Public login for existing users from checkout
+  app.post('/api/auth/public-login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Check if user has a permanent password set
+      if (!user.hasSetPassword || !user.passwordHash) {
+        return res.status(400).json({ message: "Account not fully set up. Please use password reset." });
+      }
+
+      // Verify password
+      const isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
+      
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Update last login
+      await storage.updateUserLastLogin(user.id);
+
+      // Return user data for session creation
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error("Error in public login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Password reset request
+  app.post('/api/auth/request-password-reset', async (req, res) => {
+    try {
+      const { email, fromCheckout } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        return res.status(404).json({ message: "No account found with this email address" });
+      }
+
+      // Generate a reset token (you can use a more secure method in production)
+      const resetToken = AuthUtils.generateUserId();
+      
+      // Send password reset email via Klaviyo
+      await klaviyoService.sendPasswordResetEmail(user, resetToken);
+      
+      res.json({ 
+        message: "Password reset email sent successfully",
+        fromCheckout 
+      });
+    } catch (error) {
+      console.error("Error in password reset request:", error);
+      res.status(500).json({ message: "Failed to send reset email" });
+    }
+  });
+
   // Personalization routes
   app.post('/api/personalization', isAuthenticated, async (req: any, res) => {
     try {
