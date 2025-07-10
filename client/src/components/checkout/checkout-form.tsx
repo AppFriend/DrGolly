@@ -77,22 +77,45 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
     });
 
     pr.on('paymentmethod', async (ev) => {
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/payment-success?courseId=${course?.id || ''}`,
-        },
-      });
+      setIsProcessing(true);
+      
+      try {
+        const { error, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/payment-success?courseId=${course?.id || ''}`,
+          },
+          redirect: 'if_required',
+        });
 
-      if (error) {
+        if (error) {
+          console.error('Express payment error:', error);
+          ev.complete('fail');
+          toast({
+            title: "Payment Failed",
+            description: error.message || "Payment could not be processed.",
+            variant: "destructive",
+          });
+        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+          console.log('Express payment succeeded:', paymentIntent.id);
+          ev.complete('success');
+          toast({
+            title: "Payment Successful",
+            description: "Your course purchase is complete!",
+          });
+          // Redirect to success page
+          window.location.href = `/payment-success?courseId=${course?.id}`;
+        }
+      } catch (err) {
+        console.error('Express payment exception:', err);
         ev.complete('fail');
         toast({
-          title: "Payment Failed",
-          description: error.message,
+          title: "Payment Error",
+          description: `An unexpected error occurred: ${err instanceof Error ? err.message : 'Please try again.'}`,
           variant: "destructive",
         });
-      } else {
-        ev.complete('success');
+      } finally {
+        setIsProcessing(false);
       }
     });
   }, [stripe, total, course?.id, course?.title, elements, toast, currencyCode]);
@@ -107,24 +130,48 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
     setIsProcessing(true);
 
     try {
-      const { error } = await stripe.confirmPayment({
+      // First, submit the payment form to validate all fields
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        console.error('Elements submit error:', submitError);
+        toast({
+          title: "Payment Failed",
+          description: submitError.message || "Please check your payment details.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Then confirm the payment
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/payment-success?courseId=${course.id}`,
+          return_url: `${window.location.origin}/payment-success?courseId=${course?.id}`,
         },
+        redirect: 'if_required',
       });
 
       if (error) {
+        console.error('Payment confirmation error:', error);
         toast({
           title: "Payment Failed",
-          description: error.message,
+          description: error.message || "Payment could not be processed.",
           variant: "destructive",
         });
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('Payment succeeded:', paymentIntent.id);
+        toast({
+          title: "Payment Successful",
+          description: "Your course purchase is complete!",
+        });
+        // Redirect to success page
+        window.location.href = `/payment-success?courseId=${course?.id}`;
       }
     } catch (err) {
+      console.error('Payment exception:', err);
       toast({
         title: "Payment Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: `An unexpected error occurred: ${err instanceof Error ? err.message : 'Please try again.'}`,
         variant: "destructive",
       });
     } finally {
