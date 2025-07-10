@@ -77,7 +77,7 @@ export default function Landing() {
       </main>
 
       {/* Bottom Section with Curved Design */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10">
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-0 pointer-events-none">
         {/* Curved Background */}
         <div className="relative">
           <svg
