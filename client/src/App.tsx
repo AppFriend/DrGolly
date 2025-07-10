@@ -33,6 +33,7 @@ import Profile from "@/pages/profile";
 import KlaviyoTest from "@/pages/klaviyo-test";
 import Terms from "@/pages/terms";
 import ResetPassword from "@/pages/reset-password";
+import Share from "@/pages/share";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -71,6 +72,7 @@ function AuthenticatedApp() {
         <Route path="/terms" component={Terms} />
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
+        <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
         <Route path="/blog/:slug">
@@ -184,6 +186,7 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
+          <Route path="/share/:slug" component={Share} />
           <Route component={Landing} />
         </Switch>
       </div>
