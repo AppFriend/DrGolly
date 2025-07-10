@@ -449,10 +449,20 @@ export class KlaviyoService {
         type: "event",
         attributes: {
           profile: {
-            email: user.email
+            data: {
+              type: "profile",
+              attributes: {
+                email: user.email
+              }
+            }
           },
           metric: {
-            name: "Public Checkout Welcome"
+            data: {
+              type: "metric",
+              attributes: {
+                name: "Public Checkout Welcome"
+              }
+            }
           },
           properties: {
             customer_name: user.firstName,
