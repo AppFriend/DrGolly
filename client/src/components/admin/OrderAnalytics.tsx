@@ -132,18 +132,16 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
       </div>
 
       {/* Performance Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {/* Total Revenue */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-center">
-                  {formatCurrency(analytics?.totalRevenue || 0)}
-                </div>
-                <div className="text-sm text-gray-600 text-center mt-1">Total Revenue</div>
+            <div className="flex flex-col items-center space-y-2">
+              <DollarSign className="h-6 w-6 text-green-600" />
+              <div className="text-lg font-bold text-center break-all">
+                {formatCurrency(analytics?.totalRevenue || 0)}
               </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
+              <div className="text-xs text-gray-600 text-center">Total Revenue</div>
             </div>
           </CardContent>
         </Card>
@@ -151,14 +149,12 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
         {/* Total Orders */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-center">
-                  {analytics?.totalOrders || 0}
-                </div>
-                <div className="text-sm text-gray-600 text-center mt-1">Orders</div>
+            <div className="flex flex-col items-center space-y-2">
+              <ShoppingCart className="h-6 w-6 text-blue-600" />
+              <div className="text-lg font-bold text-center">
+                {analytics?.totalOrders || 0}
               </div>
-              <ShoppingCart className="h-8 w-8 text-blue-600" />
+              <div className="text-xs text-gray-600 text-center">Orders</div>
             </div>
           </CardContent>
         </Card>
@@ -166,12 +162,10 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
         {/* Conversion Rate (Mock) */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-center">2.2%</div>
-                <div className="text-sm text-gray-600 text-center mt-1">Conversion</div>
-              </div>
-              <TrendingUp className="h-8 w-8 text-purple-600" />
+            <div className="flex flex-col items-center space-y-2">
+              <TrendingUp className="h-6 w-6 text-purple-600" />
+              <div className="text-lg font-bold text-center">2.2%</div>
+              <div className="text-xs text-gray-600 text-center">Conversion</div>
             </div>
           </CardContent>
         </Card>
@@ -179,14 +173,12 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
         {/* Daily Revenue */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-center">
-                  {formatCurrency(analytics?.todayRevenue || 0)}
-                </div>
-                <div className="text-sm text-gray-600 text-center mt-1">Daily Revenue</div>
+            <div className="flex flex-col items-center space-y-2">
+              <DollarSign className="h-6 w-6 text-green-500" />
+              <div className="text-lg font-bold text-center break-all">
+                {formatCurrency(analytics?.todayRevenue || 0)}
               </div>
-              <DollarSign className="h-8 w-8 text-green-500" />
+              <div className="text-xs text-gray-600 text-center">Daily Revenue</div>
             </div>
           </CardContent>
         </Card>
@@ -194,14 +186,12 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
         {/* Monthly Revenue */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-center">
-                  {formatCurrency(analytics?.lastMonthRevenue || 0)}
-                </div>
-                <div className="text-sm text-gray-600 text-center mt-1">Monthly Revenue</div>
+            <div className="flex flex-col items-center space-y-2">
+              <DollarSign className="h-6 w-6 text-green-500" />
+              <div className="text-lg font-bold text-center break-all">
+                {formatCurrency(analytics?.lastMonthRevenue || 0)}
               </div>
-              <DollarSign className="h-8 w-8 text-green-500" />
+              <div className="text-xs text-gray-600 text-center">Monthly Revenue</div>
             </div>
           </CardContent>
         </Card>
@@ -209,14 +199,12 @@ export default function OrderAnalytics({ className }: OrderAnalyticsProps) {
         {/* Annual Revenue */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-center">
-                  {formatCurrency((analytics?.lastMonthRevenue || 0) * 12)}
-                </div>
-                <div className="text-sm text-gray-600 text-center mt-1">Annual Revenue</div>
+            <div className="flex flex-col items-center space-y-2">
+              <Calendar className="h-6 w-6 text-blue-500" />
+              <div className="text-lg font-bold text-center break-all">
+                {formatCurrency((analytics?.lastMonthRevenue || 0) * 12)}
               </div>
-              <Calendar className="h-8 w-8 text-blue-500" />
+              <div className="text-xs text-gray-600 text-center">Annual Revenue</div>
             </div>
           </CardContent>
         </Card>
