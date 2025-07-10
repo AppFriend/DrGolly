@@ -1984,8 +1984,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: Math.round(coursePrice * 100), // Convert to cents
         currency: regionalPricing.currency.toLowerCase(),
         customer: stripeCustomerId,
-        discounts: promotionCode ? [{ promotion_code: promotionCode.id }] : 
-                  couponData ? [{ coupon: couponData.id }] : undefined,
         metadata: {
           courseId: courseId.toString(),
           courseName: course.title,
@@ -2124,8 +2122,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           enabled: true,
           allow_redirects: 'never'
         },
-        discounts: promotionCode ? [{ promotion_code: promotionCode.id }] : 
-                  appliedCoupon ? [{ coupon: appliedCoupon.id }] : undefined,
         metadata: {
           courseId: '6',
           courseName: 'Big Baby Sleep Program',
@@ -2141,6 +2137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           couponName: appliedCoupon?.name || '',
           discountPercent: appliedCoupon?.percent_off?.toString() || '',
           discountAmount: appliedCoupon?.amount_off?.toString() || '',
+          promotionCodeId: promotionCode?.id || '',
+          promotionCodeCode: promotionCode?.code || '',
         },
         description: 'Course Purchase: Big Baby Sleep Program',
         receipt_email: customerDetails.email,
@@ -3032,8 +3030,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { couponCode } = req.body;
       
-      console.log("Validating coupon code:", couponCode);
-      
       if (!couponCode) {
         return res.status(400).json({ message: "Coupon code is required" });
       }
@@ -3044,22 +3040,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Search for promotion code first
-        console.log("Searching for promotion codes with code:", couponCode);
         const promotionCodes = await stripe.promotionCodes.list({
           code: couponCode,
           limit: 1,
         });
         
-        console.log("Found promotion codes:", promotionCodes.data.length);
-        
         if (promotionCodes.data.length > 0) {
           promotionCode = promotionCodes.data[0];
-          console.log("Found promotion code:", {
-            id: promotionCode.id,
-            code: promotionCode.code,
-            active: promotionCode.active,
-            coupon_id: promotionCode.coupon.id
-          });
           
           // Check if promotion code is active
           if (!promotionCode.active) {
@@ -3078,20 +3065,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Get the underlying coupon
           coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
-          console.log("Retrieved underlying coupon:", coupon.id);
         }
       } catch (error) {
-        console.log("Promotion code lookup failed:", error.message);
+        console.log("Promotion code lookup failed");
       }
       
       // If no promotion code found, try direct coupon lookup
       if (!coupon) {
         try {
-          console.log("Trying direct coupon lookup for:", couponCode);
           coupon = await stripe.coupons.retrieve(couponCode);
-          console.log("Found direct coupon:", coupon.id);
         } catch (error: any) {
-          console.log("Direct coupon lookup failed:", error.message);
           if (error.code === 'resource_missing') {
             return res.status(400).json({ message: "Invalid coupon code" });
           }
