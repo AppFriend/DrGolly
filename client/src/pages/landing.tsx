@@ -49,7 +49,7 @@ export default function Landing() {
         </div>
 
         {/* Buttons Container - Moved higher into white space */}
-        <div className="px-6 pb-20 space-y-3 z-10">
+        <div className="px-6 pb-20 space-y-3 relative z-[60]">
           <Button
             onClick={(e) => {
               e.preventDefault();
@@ -77,7 +77,7 @@ export default function Landing() {
       </main>
 
       {/* Bottom Section with Curved Design */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50">
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10">
         {/* Curved Background */}
         <div className="relative">
           <svg
