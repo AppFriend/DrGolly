@@ -34,11 +34,13 @@ const BIG_BABY_COURSE = {
 };
 
 // Enhanced payment form component with Apple Pay support
-function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }: { 
+function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, customerDetails, appliedCoupon }: { 
   onSuccess: () => void,
   coursePrice: number,
   currencySymbol: string,
-  currency: string
+  currency: string,
+  customerDetails: any,
+  appliedCoupon: any
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -84,9 +86,36 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
       setIsProcessing(true);
       
       try {
+        // Get customer details from payment request
+        const customerDetails = {
+          email: ev.payerEmail,
+          firstName: ev.payerName?.split(' ')[0] || '',
+          lastName: ev.payerName?.split(' ').slice(1).join(' ') || '',
+          dueDate: ''
+        };
+
+        // Create payment intent first
+        const paymentResponse = await fetch('/api/create-big-baby-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customerDetails,
+            couponId: appliedCoupon?.id
+          }),
+        });
+
+        const paymentData = await paymentResponse.json();
+        
+        if (!paymentResponse.ok) {
+          throw new Error(paymentData.message || 'Failed to create payment');
+        }
+
         // Confirm payment with the payment method from Apple Pay/Google Pay
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
+          clientSecret: paymentData.clientSecret,
           confirmParams: {
             return_url: `${window.location.origin}/big-baby-public`,
           },
@@ -117,7 +146,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
         setIsProcessing(false);
       }
     });
-  }, [stripe, elements, onSuccess, toast, coursePrice, currency]);
+  }, [stripe, elements, onSuccess, toast, coursePrice, currency, appliedCoupon]);
 
   // Update payment request when price changes
   useEffect(() => {
@@ -131,7 +160,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
     }
   }, [paymentRequest, coursePrice]);
 
-  const handleCardSubmit = async (event: React.FormEvent) => {
+  const handleCardSubmit = async (event: React.FormEvent, customerDetails: any) => {
     event.preventDefault();
 
     if (!stripe || !elements) {
@@ -142,7 +171,25 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
     setIsProcessing(true);
 
     try {
-      // First, submit the payment element to collect payment method
+      // First, create the payment intent with current customer details and coupon
+      const paymentResponse = await fetch('/api/create-big-baby-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerDetails,
+          couponId: appliedCoupon?.id
+        }),
+      });
+
+      const paymentData = await paymentResponse.json();
+      
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData.message || 'Failed to create payment');
+      }
+
+      // Submit the payment element to collect payment method
       const { error: submitError } = await elements.submit();
       if (submitError) {
         console.error('Elements submit error:', submitError);
@@ -157,6 +204,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
       // Then confirm the payment
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
+        clientSecret: paymentData.clientSecret,
         confirmParams: {
           return_url: `${window.location.origin}/big-baby-public`,
         },
@@ -232,7 +280,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
       )}
 
       {/* Payment Form with Link and Card */}
-      <form onSubmit={handleCardSubmit} className="space-y-4">
+      <form onSubmit={(e) => handleCardSubmit(e, customerDetails)} className="space-y-4">
         <PaymentElement 
           options={{
             layout: "tabs",
@@ -624,6 +672,8 @@ export default function BigBabyPublic() {
                       coursePrice={finalPrice || originalPrice}
                       currencySymbol={currencySymbol}
                       currency={currency}
+                      customerDetails={customerDetails}
+                      appliedCoupon={appliedCoupon}
                     />
                   </Elements>
                 </CardContent>

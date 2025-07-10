@@ -22,7 +22,7 @@ export default function Checkout() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [clientSecret, setClientSecret] = useState("");
+  // No longer need to pre-create client secret - payment intent created on submit
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [customerDetails, setCustomerDetails] = useState({
     firstName: user?.firstName || "",
@@ -53,43 +53,8 @@ export default function Checkout() {
     enabled: !!courseId,
   });
 
-  // Create payment intent
-  const createPaymentMutation = useMutation({
-    mutationFn: async (data: { courseId: number; customerDetails: any; couponId?: string }) => {
-      const response = await apiRequest("POST", "/api/create-course-payment", data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
-      // Update final price from server response if coupon was applied
-      if (data.finalAmount && appliedCoupon) {
-        // finalAmount is in cents, convert to dollars
-        const serverFinalPrice = data.finalAmount / 100;
-        // Only update if it's different from our calculation
-        if (Math.abs(serverFinalPrice - finalPrice) > 0.01) {
-          // Use server-calculated price for accuracy
-          setCustomerDetails(prev => ({ ...prev, serverFinalPrice }));
-        }
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "Payment Setup Failed",
-        description: "Unable to set up payment. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  useEffect(() => {
-    if (courseId && user && customerDetails.firstName && customerDetails.email) {
-      createPaymentMutation.mutate({ 
-        courseId, 
-        customerDetails,
-        couponId: appliedCoupon?.id
-      });
-    }
-  }, [courseId, user, customerDetails.firstName, customerDetails.email, appliedCoupon]);
+  // Payment intent is now created only when user clicks "Place order"
+  // This prevents incomplete transactions from cluttering Stripe dashboard
 
   const handleBack = () => {
     setLocation("/courses");
@@ -187,7 +152,7 @@ export default function Checkout() {
                 onCouponApplied={setAppliedCoupon}
                 onCouponRemoved={() => setAppliedCoupon(null)}
                 appliedCoupon={appliedCoupon}
-                disabled={createPaymentMutation.isPending}
+                disabled={false}
               />
             </div>
             
@@ -211,24 +176,18 @@ export default function Checkout() {
         </div>
 
         {/* Payment Section */}
-        {clientSecret ? (
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <div className="bg-white rounded-lg p-4">
+          <Elements stripe={stripePromise} options={{ mode: 'payment', currency: currency.toLowerCase() }}>
             <CheckoutForm 
               course={course} 
               customerDetails={customerDetails}
-              total={finalPrice}
+              total={Math.round(finalPrice * 100)}
+              appliedCoupon={appliedCoupon}
+              currencySymbol={currencySymbol}
+              currency={currency}
             />
           </Elements>
-        ) : (
-          <div className="bg-white rounded-lg p-4">
-            <h2 className="text-lg font-semibold mb-4">Payment</h2>
-            <div className="animate-pulse space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-10 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* Guarantee Section */}
         <div className="bg-white rounded-lg p-4 mt-4">
