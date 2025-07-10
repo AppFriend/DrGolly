@@ -75,7 +75,7 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
           <div className="flex items-center gap-2">
             <Button
               onClick={handleDownload}
-              className="bg-brand-teal hover:bg-brand-teal/90 text-white flex items-center gap-2"
+              className="bg-green-700 hover:bg-green-800 text-white flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
               Download PDF
@@ -102,7 +102,7 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
               </p>
               <Button
                 onClick={handleDownload}
-                className="bg-brand-teal hover:bg-brand-teal/90 text-white px-8 py-3 text-lg font-semibold"
+                className="bg-green-700 hover:bg-green-800 text-white px-8 py-3 text-lg font-semibold"
               >
                 <Download className="w-5 h-5 mr-2" />
                 Download PDF Now
@@ -115,7 +115,7 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
         <div className="p-4 border-t bg-gray-50 md:hidden">
           <Button
             onClick={handleDownload}
-            className="w-full bg-brand-teal hover:bg-brand-teal/90 text-white flex items-center justify-center gap-2"
+            className="w-full bg-green-700 hover:bg-green-800 text-white flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
             Download PDF
