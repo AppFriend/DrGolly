@@ -17,6 +17,7 @@ import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
+import CourseOverview from "@/pages/course-overview";
 import Checkout from "@/pages/checkout";
 import BigBabyPublic from "@/pages/big-baby-public";
 import PaymentSuccess from "@/pages/payment-success";
@@ -83,6 +84,14 @@ function AuthenticatedApp() {
               <BlogPost />
             </div>
           </DesktopLayout>
+        </Route>
+        <Route path="/courses/:courseId/overview">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <CourseOverview />
+            </div>
+          </DesktopLayout>
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/courses">
           <DesktopLayout>
