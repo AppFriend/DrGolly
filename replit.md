@@ -521,6 +521,11 @@ Changelog:
   * Fixed runtime errors in blogs and courses tabs with proper array validation
   * Updated tab layout from 8 tabs to 6 tabs with improved grid layout (3 mobile, 6 desktop)
   * Admin panel now focuses on core management: Dashboard, Blog Posts, Courses, Users, Notifications, Admin Users
+- July 10, 2025. Reorganized admin panel for better functionality separation:
+  * Moved invite admin functionality from User Management tab to Admin Users tab
+  * User Management tab now focuses only on regular user management (edit subscriptions, view activity)
+  * Admin Users tab includes both viewing existing admins and inviting new admins
+  * Improved admin interface organization with clearer separation of concerns
 ```
 
 ## User Preferences
