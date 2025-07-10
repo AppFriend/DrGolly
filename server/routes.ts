@@ -1965,14 +1965,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Apply discount if coupon is valid
           if (couponData && couponData.valid) {
+            console.log('Applying coupon:', couponData.id, 'Original price:', coursePrice);
             // Calculate discounted price
             if (couponData.amount_off) {
-              coursePrice = coursePrice - (couponData.amount_off / 100);
+              // amount_off is already in cents, so convert to dollars
+              const discountAmount = couponData.amount_off / 100;
+              coursePrice = coursePrice - discountAmount;
+              console.log('Amount off discount:', discountAmount, 'New price:', coursePrice);
             } else if (couponData.percent_off) {
-              coursePrice = coursePrice * (1 - couponData.percent_off / 100);
+              const discountPercent = couponData.percent_off / 100;
+              coursePrice = coursePrice * (1 - discountPercent);
+              console.log('Percent off discount:', couponData.percent_off + '%', 'New price:', coursePrice);
             }
             // Ensure price doesn't go below 0
             coursePrice = Math.max(0, coursePrice);
+            console.log('Final discounted price:', coursePrice);
           }
         } catch (error) {
           console.error("Error retrieving coupon:", error);
@@ -2075,10 +2082,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Apply discount if coupon is valid
           if (appliedCoupon && appliedCoupon.valid) {
+            console.log('Applying coupon to Big Baby:', appliedCoupon.id, 'Original amount (cents):', finalAmount);
             if (appliedCoupon.percent_off) {
-              finalAmount = Math.round(finalAmount * (1 - appliedCoupon.percent_off / 100));
+              const discountPercent = appliedCoupon.percent_off / 100;
+              finalAmount = Math.round(finalAmount * (1 - discountPercent));
+              console.log('Percent off discount:', appliedCoupon.percent_off + '%', 'New amount (cents):', finalAmount);
             } else if (appliedCoupon.amount_off) {
+              // amount_off is already in cents for Stripe
               finalAmount = Math.max(0, finalAmount - appliedCoupon.amount_off);
+              console.log('Amount off discount (cents):', appliedCoupon.amount_off, 'New amount (cents):', finalAmount);
             }
           }
         } catch (error) {

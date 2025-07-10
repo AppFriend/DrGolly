@@ -130,7 +130,32 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
     setIsProcessing(true);
 
     try {
-      // First, submit the payment form to validate all fields
+      // First, create the payment intent with current coupon data
+      const paymentResponse = await fetch('/api/create-course-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseId: course.id,
+          customerDetails,
+          couponId: appliedCoupon?.id
+        }),
+      });
+
+      const paymentData = await paymentResponse.json();
+      
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData.message || 'Failed to create payment');
+      }
+
+      // Update the payment intent with the new client secret
+      const { error: updateError } = await stripe.retrievePaymentIntent(paymentData.clientSecret);
+      if (updateError) {
+        throw new Error('Failed to retrieve payment intent');
+      }
+
+      // Submit the payment form to validate all fields
       const { error: submitError } = await elements.submit();
       if (submitError) {
         console.error('Elements submit error:', submitError);
@@ -145,6 +170,7 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
       // Then confirm the payment
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
+        clientSecret: paymentData.clientSecret,
         confirmParams: {
           return_url: `${window.location.origin}/payment-success?courseId=${course?.id}`,
         },
