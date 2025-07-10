@@ -59,14 +59,14 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
 
   // Initialize Apple Pay / Payment Request
   useEffect(() => {
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || coursePrice <= 0) return;
 
     const pr = stripe.paymentRequest({
       country: 'US',
       currency: currency.toLowerCase(),
       total: {
         label: BIG_BABY_COURSE.title,
-        amount: coursePrice * 100, // Convert to cents
+        amount: Math.round(coursePrice * 100), // Convert to cents with proper rounding
       },
       requestPayerName: true,
       requestPayerEmail: true,
@@ -116,7 +116,19 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency }
         setIsProcessing(false);
       }
     });
-  }, [stripe, elements, onSuccess, toast]);
+  }, [stripe, elements, onSuccess, toast, coursePrice, currency]);
+
+  // Update payment request when price changes
+  useEffect(() => {
+    if (paymentRequest && coursePrice > 0) {
+      paymentRequest.update({
+        total: {
+          label: BIG_BABY_COURSE.title,
+          amount: Math.round(coursePrice * 100), // Convert to cents with proper rounding
+        },
+      });
+    }
+  }, [paymentRequest, coursePrice]);
 
   const handleCardSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -267,7 +279,8 @@ export default function BigBabyPublic() {
       }
     }
     
-    setFinalPrice(calculatedPrice);
+    // Round to 2 decimal places to avoid floating point precision issues
+    setFinalPrice(Math.round(calculatedPrice * 100) / 100);
   }, [originalPrice, appliedCoupon]);
 
   // Create payment intent for anonymous users
