@@ -483,6 +483,10 @@ export default function BigBabyPublic() {
   };
 
   const isDetailsComplete = customerDetails.firstName && customerDetails.email && isValidEmail(customerDetails.email);
+  
+  // Check individual validation states for better user feedback
+  const hasValidFirstName = customerDetails.firstName.trim().length > 0;
+  const hasValidEmail = customerDetails.email.trim().length > 0 && isValidEmail(customerDetails.email);
 
   // Only create payment intent when user is ready to pay, not when details are complete
   const createPaymentIntentForPayment = async () => {
@@ -709,9 +713,6 @@ export default function BigBabyPublic() {
                   <Elements 
                     stripe={stripePromise} 
                     options={{ 
-                      mode: 'payment',
-                      amount: Math.round((finalPrice || originalPrice) * 100),
-                      currency: currency.toLowerCase(),
                       appearance: {
                         theme: 'stripe',
                         variables: {
@@ -735,7 +736,15 @@ export default function BigBabyPublic() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center text-gray-500">
-                    <p className="text-sm">Complete your details above to continue to payment</p>
+                    <p className="text-sm font-medium mb-2">Complete your details above to continue to payment</p>
+                    <div className="text-xs space-y-1">
+                      <div className={`flex items-center justify-center gap-1 ${hasValidFirstName ? 'text-green-600' : 'text-gray-400'}`}>
+                        {hasValidFirstName ? '✓' : '○'} First name required
+                      </div>
+                      <div className={`flex items-center justify-center gap-1 ${hasValidEmail ? 'text-green-600' : 'text-gray-400'}`}>
+                        {hasValidEmail ? '✓' : '○'} Valid email address required
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

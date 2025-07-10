@@ -465,6 +465,9 @@ Changelog:
   * Removed automatic payment intent creation on form completion to prevent abandoned transactions cluttering Stripe dashboard
   * Payment intents now created only when user clicks payment buttons (Apple Pay, Google Pay, or card payment forms)
   * Enhanced payment flow efficiency by creating payment intents just-in-time rather than pre-emptively
+  * Fixed Stripe Elements integration error by switching from clientSecret-based to mode-based configuration
+  * Enhanced payment form validation with visual feedback showing required fields completion status
+  * Payment section now properly displays when user completes first name and valid email address requirements
 ```
 
 ## User Preferences
