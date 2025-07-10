@@ -77,6 +77,9 @@ export function EnhancedBlogManagement() {
     queryFn: () => apiRequest("GET", "/api/blog-posts"),
   });
 
+  // Ensure posts is always an array
+  const blogPosts = Array.isArray(posts) ? posts : [];
+
   // Blog post mutations
   const createPostMutation = useMutation({
     mutationFn: (post: any) => apiRequest("POST", "/api/blog-posts", post),
@@ -363,7 +366,7 @@ export function EnhancedBlogManagement() {
 
       {/* Posts Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {posts?.map((post: BlogPost) => (
+        {blogPosts.map((post: BlogPost) => (
           <Card key={post.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
