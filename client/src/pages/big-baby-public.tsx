@@ -24,7 +24,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 // Big Baby course details (hardcoded for marketing page)
 const BIG_BABY_COURSE = {
   id: 6,
-  title: "Big Baby Sleep Program",
+  title: "Big baby sleep program",
   description: "4-8 Months",
   duration: 60,
   ageRange: "4-8 Months",

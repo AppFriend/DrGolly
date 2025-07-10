@@ -484,6 +484,19 @@ Changelog:
   * Enhanced user experience: users can immediately access their purchased course without manual login
   * Invalidated React Query auth cache to ensure immediate user state refresh
   * Updated success messaging to reflect automatic login experience
+- July 10, 2025. Completed comprehensive blog post author attribution system:
+  * Added author field to blog posts database schema with "Daniel Golshevsky" as default value
+  * Updated admin panel to include author field input for new blog posts
+  * Added "Article by Daniel Golshevsky" attribution display on all blog posts
+  * Enhanced admin interface to show author information in blog post management cards
+  * Removed read time display from freebies category articles for cleaner presentation
+  * Updated blog post content formatting with consistent heading hierarchy (H1: 2xl, H2: xl, H3: lg)
+  * Simplified PDF download interface by removing top call-to-action, keeping only bottom center download button
+- July 10, 2025. Updated course naming convention to sentence case:
+  * Changed all course titles to only capitalize the first letter (e.g., "Little baby sleep program")
+  * Updated database course titles from title case to sentence case
+  * Fixed hardcoded course name in Big Baby public checkout page
+  * All courses now display consistent sentence case formatting throughout the application
 ```
 
 ## User Preferences
