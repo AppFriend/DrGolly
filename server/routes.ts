@@ -1944,16 +1944,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle coupon if provided
       let couponData = null;
+      let promotionCode = null;
       if (couponId) {
         try {
-          const coupon = await stripe.coupons.retrieve(couponId);
-          if (coupon.valid) {
-            couponData = coupon;
+          // First try to find promotion code
+          const promotionCodes = await stripe.promotionCodes.list({
+            code: couponId,
+            limit: 1,
+          });
+          
+          if (promotionCodes.data.length > 0) {
+            promotionCode = promotionCodes.data[0];
+            if (promotionCode.active) {
+              couponData = await stripe.coupons.retrieve(promotionCode.coupon.id);
+            }
+          } else {
+            // If no promotion code found, try direct coupon lookup
+            couponData = await stripe.coupons.retrieve(couponId);
+          }
+          
+          // Apply discount if coupon is valid
+          if (couponData && couponData.valid) {
             // Calculate discounted price
-            if (coupon.amount_off) {
-              coursePrice = coursePrice - (coupon.amount_off / 100);
-            } else if (coupon.percent_off) {
-              coursePrice = coursePrice * (1 - coupon.percent_off / 100);
+            if (couponData.amount_off) {
+              coursePrice = coursePrice - (couponData.amount_off / 100);
+            } else if (couponData.percent_off) {
+              coursePrice = coursePrice * (1 - couponData.percent_off / 100);
             }
             // Ensure price doesn't go below 0
             coursePrice = Math.max(0, coursePrice);
@@ -1968,7 +1984,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: Math.round(coursePrice * 100), // Convert to cents
         currency: regionalPricing.currency.toLowerCase(),
         customer: stripeCustomerId,
-        discounts: couponData ? [{ coupon: couponData.id }] : undefined,
+        discounts: promotionCode ? [{ promotion_code: promotionCode.id }] : 
+                  couponData ? [{ coupon: couponData.id }] : undefined,
         metadata: {
           courseId: courseId.toString(),
           courseName: course.title,
@@ -2039,16 +2056,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Apply coupon discount if provided
       let appliedCoupon = null;
+      let promotionCode = null;
       if (couponId) {
         try {
-          const coupon = await stripe.coupons.retrieve(couponId);
-          if (coupon.valid) {
-            if (coupon.percent_off) {
-              finalAmount = Math.round(finalAmount * (1 - coupon.percent_off / 100));
-            } else if (coupon.amount_off) {
-              finalAmount = Math.max(0, finalAmount - coupon.amount_off);
+          // First try to find promotion code
+          const promotionCodes = await stripe.promotionCodes.list({
+            code: couponId,
+            limit: 1,
+          });
+          
+          if (promotionCodes.data.length > 0) {
+            promotionCode = promotionCodes.data[0];
+            if (promotionCode.active) {
+              appliedCoupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
             }
-            appliedCoupon = coupon;
+          } else {
+            // If no promotion code found, try direct coupon lookup
+            appliedCoupon = await stripe.coupons.retrieve(couponId);
+          }
+          
+          // Apply discount if coupon is valid
+          if (appliedCoupon && appliedCoupon.valid) {
+            if (appliedCoupon.percent_off) {
+              finalAmount = Math.round(finalAmount * (1 - appliedCoupon.percent_off / 100));
+            } else if (appliedCoupon.amount_off) {
+              finalAmount = Math.max(0, finalAmount - appliedCoupon.amount_off);
+            }
           }
         } catch (error) {
           console.error("Error applying coupon:", error);
@@ -2091,6 +2124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           enabled: true,
           allow_redirects: 'never'
         },
+        discounts: promotionCode ? [{ promotion_code: promotionCode.id }] : 
+                  appliedCoupon ? [{ coupon: appliedCoupon.id }] : undefined,
         metadata: {
           courseId: '6',
           courseName: 'Big Baby Sleep Program',
@@ -3001,21 +3036,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Coupon code is required" });
       }
 
-      // Retrieve coupon from Stripe
-      const coupon = await stripe.coupons.retrieve(couponCode);
+      // First try to retrieve as a promotion code
+      let coupon = null;
+      let promotionCode = null;
       
+      try {
+        // Search for promotion code first
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: couponCode,
+          limit: 1,
+        });
+        
+        if (promotionCodes.data.length > 0) {
+          promotionCode = promotionCodes.data[0];
+          
+          // Check if promotion code is active
+          if (!promotionCode.active) {
+            return res.status(400).json({ message: "This coupon is not active" });
+          }
+          
+          // Check if promotion code has expired
+          if (promotionCode.expires_at && promotionCode.expires_at < Math.floor(Date.now() / 1000)) {
+            return res.status(400).json({ message: "This coupon has expired" });
+          }
+          
+          // Check if promotion code has reached max redemptions
+          if (promotionCode.max_redemptions && promotionCode.times_redeemed >= promotionCode.max_redemptions) {
+            return res.status(400).json({ message: "This coupon has reached its maximum usage limit" });
+          }
+          
+          // Get the underlying coupon
+          coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
+        }
+      } catch (error) {
+        console.log("Promotion code lookup failed, trying direct coupon lookup");
+      }
+      
+      // If no promotion code found, try direct coupon lookup
+      if (!coupon) {
+        try {
+          coupon = await stripe.coupons.retrieve(couponCode);
+        } catch (error: any) {
+          if (error.code === 'resource_missing') {
+            return res.status(400).json({ message: "Invalid coupon code" });
+          }
+          throw error;
+        }
+      }
+
+      // Validate coupon
       if (!coupon.valid) {
         return res.status(400).json({ message: "This coupon is not valid" });
-      }
-
-      // Check if coupon has expired
-      if (coupon.redeem_by && coupon.redeem_by < Math.floor(Date.now() / 1000)) {
-        return res.status(400).json({ message: "This coupon has expired" });
-      }
-
-      // Check if coupon has reached max redemptions
-      if (coupon.max_redemptions && coupon.times_redeemed >= coupon.max_redemptions) {
-        return res.status(400).json({ message: "This coupon has reached its maximum usage limit" });
       }
 
       // Return coupon details
@@ -3032,12 +3103,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           redeem_by: coupon.redeem_by,
           max_redemptions: coupon.max_redemptions,
           times_redeemed: coupon.times_redeemed,
+          // Include promotion code info if available
+          promotionCode: promotionCode ? {
+            id: promotionCode.id,
+            code: promotionCode.code,
+            active: promotionCode.active,
+            expires_at: promotionCode.expires_at,
+            max_redemptions: promotionCode.max_redemptions,
+            times_redeemed: promotionCode.times_redeemed,
+          } : null,
         }
       });
     } catch (error: any) {
-      if (error.code === 'resource_missing') {
-        return res.status(400).json({ message: "Invalid coupon code" });
-      }
+      console.error("Error validating coupon:", error);
       res.status(500).json({ message: "Error validating coupon: " + error.message });
     }
   });
