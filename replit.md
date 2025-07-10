@@ -497,6 +497,18 @@ Changelog:
   * Updated database course titles from title case to sentence case
   * Fixed hardcoded course name in Big Baby public checkout page
   * All courses now display consistent sentence case formatting throughout the application
+- July 10, 2025. Fixed critical login page z-index issue:
+  * Resolved teal background covering "Sign In" button with pointer-events-none and z-index adjustments
+  * Login page buttons now fully clickable and accessible
+- July 10, 2025. Enhanced courses page with improved filters and search functionality:
+  * Changed "All Courses" filter to "All" for better single-line mobile display
+  * Implemented keyword-based search with relevance scoring for more accurate results
+  * Added specific keyword matching for baby/toddler/sleep content categories
+  * Search now prioritizes exact matches and relevant content over basic text matching
+- July 10, 2025. Fixed support form submission error:
+  * Resolved FormData vs JSON mismatch causing 400 errors in support form
+  * Changed client to send JSON data matching server expectations
+  * Support form now successfully submits and logs to console for email/Slack integration
 ```
 
 ## User Preferences
