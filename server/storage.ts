@@ -1382,8 +1382,14 @@ export class DatabaseStorage implements IStorage {
     return user?.isAdmin || false;
   }
 
-  async getAllUsers(): Promise<User[]> {
-    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+  async getAllUsers(page: number = 1, limit: number = 50): Promise<User[]> {
+    const offset = (page - 1) * limit;
+    const allUsers = await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt))
+      .limit(limit)
+      .offset(offset);
     return allUsers;
   }
 
