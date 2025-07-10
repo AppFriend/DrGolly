@@ -31,14 +31,36 @@ import {
 interface Course {
   id: number;
   title: string;
-  description: string;
-  category: string;
-  tier: string;
+  
+  // Course Description Page Fields (for marketing/purchase page)
+  description: string; // Short description for course cards
+  detailedDescription?: string; // Detailed description for course description page
+  websiteContent?: string; // Full marketing content
+  keyFeatures?: string[]; // Array of key features for marketing
+  whatsCovered?: string[]; // Array of what's covered points
   price: number;
+  discountedPrice?: number;
+  rating?: number; // Course rating for description page
+  reviewCount?: number; // Number of reviews for description page
+  thumbnailUrl?: string; // Thumbnail for course cards and description page
+  
+  // Course Overview Page Fields (for purchased course experience)
+  overviewDescription?: string; // Welcome message for purchased course
+  learningObjectives?: string[]; // What students will learn
+  completionCriteria?: string; // How course completion is determined
+  courseStructureNotes?: string; // Notes about course organization
+  
+  // Shared Fields (used by both description and overview pages)
+  category: string;
+  videoUrl?: string; // Course introduction video
+  duration: number; // Total course duration in minutes
+  ageRange?: string;
+  tier: string;
   skillLevel: string;
-  thumbnailUrl?: string;
-  videoUrl?: string;
-  duration: number;
+  stripeProductId?: string;
+  uniqueId?: string;
+  isPublished?: boolean;
+  status?: string; // draft, published, archived
   views: number;
   likes: number;
   createdAt: string;
@@ -298,16 +320,39 @@ interface CourseFormProps {
 }
 
 function CourseForm({ course, onSubmit, isLoading }: CourseFormProps) {
+  const [activeTab, setActiveTab] = useState<"description" | "overview" | "shared">("description");
   const [formData, setFormData] = useState({
     title: course?.title || "",
+    
+    // Course Description Page Fields
     description: course?.description || "",
-    category: course?.category || "sleep",
-    tier: course?.tier || "free",
+    detailedDescription: course?.detailedDescription || "",
+    websiteContent: course?.websiteContent || "",
+    keyFeatures: course?.keyFeatures || [],
+    whatsCovered: course?.whatsCovered || [],
     price: course?.price || 120,
-    skillLevel: course?.skillLevel || "beginner",
+    discountedPrice: course?.discountedPrice || 0,
+    rating: course?.rating || 4.8,
+    reviewCount: course?.reviewCount || 0,
     thumbnailUrl: course?.thumbnailUrl || "",
+    
+    // Course Overview Page Fields
+    overviewDescription: course?.overviewDescription || "",
+    learningObjectives: course?.learningObjectives || [],
+    completionCriteria: course?.completionCriteria || "",
+    courseStructureNotes: course?.courseStructureNotes || "",
+    
+    // Shared Fields
+    category: course?.category || "sleep",
     videoUrl: course?.videoUrl || "",
     duration: course?.duration || 0,
+    ageRange: course?.ageRange || "",
+    tier: course?.tier || "free",
+    skillLevel: course?.skillLevel || "beginner",
+    stripeProductId: course?.stripeProductId || "",
+    uniqueId: course?.uniqueId || "",
+    isPublished: course?.isPublished || false,
+    status: course?.status || "draft",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -316,7 +361,8 @@ function CourseForm({ course, onSubmit, isLoading }: CourseFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Course Title - Always visible */}
       <div>
         <Label htmlFor="title">Course Title</Label>
         <Input
@@ -328,116 +374,301 @@ function CourseForm({ course, onSubmit, isLoading }: CourseFormProps) {
         />
       </div>
 
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Enter course description..."
-          rows={3}
-          required
-        />
-      </div>
+      {/* Tabbed Interface for Course Content Management */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="description">Description Page</TabsTrigger>
+          <TabsTrigger value="overview">Overview Page</TabsTrigger>
+          <TabsTrigger value="shared">Shared Settings</TabsTrigger>
+        </TabsList>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="category">Category</Label>
-          <Select
-            value={formData.category}
-            onValueChange={(value) => setFormData({ ...formData, category: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="sleep">Sleep</SelectItem>
-              <SelectItem value="nutrition">Nutrition</SelectItem>
-              <SelectItem value="health">Health</SelectItem>
-              <SelectItem value="freebies">Freebies</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="tier">Tier</Label>
-          <Select
-            value={formData.tier}
-            onValueChange={(value) => setFormData({ ...formData, tier: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="free">Free</SelectItem>
-              <SelectItem value="gold">Gold</SelectItem>
-              <SelectItem value="platinum">Platinum</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="skillLevel">Skill Level</Label>
-          <Select
-            value={formData.skillLevel}
-            onValueChange={(value) => setFormData({ ...formData, skillLevel: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+        {/* Course Description Page Fields */}
+        <TabsContent value="description" className="space-y-4 mt-6">
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <h4 className="font-semibold text-blue-900 mb-2">Course Description Page</h4>
+            <p className="text-sm text-blue-700">These fields are used for the marketing/purchase page when users haven't bought the course.</p>
+          </div>
+          
+          <div>
+            <Label htmlFor="description">Short Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Brief description for course cards..."
+              rows={2}
+              required
+            />
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="price">Price ($)</Label>
-          <Input
-            id="price"
-            type="number"
-            value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-            min="0"
-            step="0.01"
-          />
-        </div>
-        <div>
-          <Label htmlFor="duration">Duration (minutes)</Label>
-          <Input
-            id="duration"
-            type="number"
-            value={formData.duration}
-            onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
-            min="0"
-          />
-        </div>
-      </div>
+          <div>
+            <Label htmlFor="detailedDescription">Detailed Description</Label>
+            <Textarea
+              id="detailedDescription"
+              value={formData.detailedDescription}
+              onChange={(e) => setFormData({ ...formData, detailedDescription: e.target.value })}
+              placeholder="Detailed marketing description for course description page..."
+              rows={4}
+            />
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
-          <Input
-            id="thumbnailUrl"
-            value={formData.thumbnailUrl}
-            onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
-            placeholder="https://example.com/thumbnail.jpg"
-          />
-        </div>
-        <div>
-          <Label htmlFor="videoUrl">Video URL</Label>
-          <Input
-            id="videoUrl"
-            value={formData.videoUrl}
-            onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-            placeholder="https://example.com/video.mp4"
-          />
-        </div>
-      </div>
+          <div>
+            <Label htmlFor="websiteContent">Website Marketing Content</Label>
+            <Textarea
+              id="websiteContent"
+              value={formData.websiteContent}
+              onChange={(e) => setFormData({ ...formData, websiteContent: e.target.value })}
+              placeholder="Full marketing content for course detail page..."
+              rows={6}
+            />
+          </div>
 
-      <div className="flex justify-end">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="price">Price ($)</Label>
+              <Input
+                id="price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div>
+              <Label htmlFor="discountedPrice">Discounted Price ($)</Label>
+              <Input
+                id="discountedPrice"
+                type="number"
+                value={formData.discountedPrice}
+                onChange={(e) => setFormData({ ...formData, discountedPrice: Number(e.target.value) })}
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="rating">Course Rating</Label>
+              <Input
+                id="rating"
+                type="number"
+                value={formData.rating}
+                onChange={(e) => setFormData({ ...formData, rating: Number(e.target.value) })}
+                min="0"
+                max="5"
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="reviewCount">Number of Reviews</Label>
+              <Input
+                id="reviewCount"
+                type="number"
+                value={formData.reviewCount}
+                onChange={(e) => setFormData({ ...formData, reviewCount: Number(e.target.value) })}
+                min="0"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
+            <Input
+              id="thumbnailUrl"
+              value={formData.thumbnailUrl}
+              onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
+              placeholder="https://example.com/thumbnail.jpg"
+            />
+          </div>
+        </TabsContent>
+
+        {/* Course Overview Page Fields */}
+        <TabsContent value="overview" className="space-y-4 mt-6">
+          <div className="bg-green-50 p-4 rounded-lg mb-4">
+            <h4 className="font-semibold text-green-900 mb-2">Course Overview Page</h4>
+            <p className="text-sm text-green-700">These fields are used for the purchased course learning experience.</p>
+          </div>
+
+          <div>
+            <Label htmlFor="overviewDescription">Welcome Message</Label>
+            <Textarea
+              id="overviewDescription"
+              value={formData.overviewDescription}
+              onChange={(e) => setFormData({ ...formData, overviewDescription: e.target.value })}
+              placeholder="Welcome message for purchased course users..."
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="completionCriteria">Completion Criteria</Label>
+            <Textarea
+              id="completionCriteria"
+              value={formData.completionCriteria}
+              onChange={(e) => setFormData({ ...formData, completionCriteria: e.target.value })}
+              placeholder="How course completion is determined..."
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="courseStructureNotes">Course Structure Notes</Label>
+            <Textarea
+              id="courseStructureNotes"
+              value={formData.courseStructureNotes}
+              onChange={(e) => setFormData({ ...formData, courseStructureNotes: e.target.value })}
+              placeholder="Notes about course organization and structure..."
+              rows={3}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Shared Settings */}
+        <TabsContent value="shared" className="space-y-4 mt-6">
+          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+            <h4 className="font-semibold text-gray-900 mb-2">Shared Settings</h4>
+            <p className="text-sm text-gray-700">These fields are used by both description and overview pages.</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sleep">Sleep</SelectItem>
+                  <SelectItem value="nutrition">Nutrition</SelectItem>
+                  <SelectItem value="health">Health</SelectItem>
+                  <SelectItem value="freebies">Freebies</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="tier">Tier</Label>
+              <Select
+                value={formData.tier}
+                onValueChange={(value) => setFormData({ ...formData, tier: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                  <SelectItem value="platinum">Platinum</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="skillLevel">Skill Level</Label>
+              <Select
+                value={formData.skillLevel}
+                onValueChange={(value) => setFormData({ ...formData, skillLevel: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beginner">Beginner</SelectItem>
+                  <SelectItem value="intermediate">Intermediate</SelectItem>
+                  <SelectItem value="advanced">Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                id="duration"
+                type="number"
+                value={formData.duration}
+                onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
+                min="0"
+              />
+            </div>
+            <div>
+              <Label htmlFor="ageRange">Age Range</Label>
+              <Input
+                id="ageRange"
+                value={formData.ageRange}
+                onChange={(e) => setFormData({ ...formData, ageRange: e.target.value })}
+                placeholder="e.g., 4-16 Weeks"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="videoUrl">Course Introduction Video URL</Label>
+            <Input
+              id="videoUrl"
+              value={formData.videoUrl}
+              onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+              placeholder="https://example.com/intro-video.mp4"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="stripeProductId">Stripe Product ID</Label>
+              <Input
+                id="stripeProductId"
+                value={formData.stripeProductId}
+                onChange={(e) => setFormData({ ...formData, stripeProductId: e.target.value })}
+                placeholder="prod_xxxxx"
+              />
+            </div>
+            <div>
+              <Label htmlFor="uniqueId">Unique ID</Label>
+              <Input
+                id="uniqueId"
+                value={formData.uniqueId}
+                onChange={(e) => setFormData({ ...formData, uniqueId: e.target.value })}
+                placeholder="unique-course-identifier"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isPublished"
+                checked={formData.isPublished}
+                onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
+                className="rounded"
+              />
+              <Label htmlFor="isPublished">Published</Label>
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <div className="flex justify-end pt-4 border-t">
         <Button type="submit" disabled={isLoading}>
           {isLoading ? "Creating..." : "Create Course"}
         </Button>
