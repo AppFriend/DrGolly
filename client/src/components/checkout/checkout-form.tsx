@@ -55,14 +55,14 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
 
   // Payment Request setup
   useEffect(() => {
-    if (!stripe || !total || !currencyCode) return;
+    if (!stripe || !total || !currencyCode || !course?.title) return;
 
     const pr = stripe.paymentRequest({
       country: currencyCode === 'aud' ? 'AU' : currencyCode === 'usd' ? 'US' : 'DE',
       currency: currencyCode,
       total: {
-        label: course.title,
-        amount: total * 100,
+        label: course.title || 'Course Purchase',
+        amount: Math.round(total * 100),
       },
       requestPayerName: true,
       requestPayerEmail: true,
@@ -79,7 +79,7 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/payment-success?courseId=${course.id}`,
+          return_url: `${window.location.origin}/payment-success?courseId=${course?.id || ''}`,
         },
       });
 
@@ -94,7 +94,7 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
         ev.complete('success');
       }
     });
-  }, [stripe, total, course.id, course.title, elements, toast, currencyCode]);
+  }, [stripe, total, course?.id, course?.title, elements, toast, currencyCode]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
