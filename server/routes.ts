@@ -1892,7 +1892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Course purchase routes
   app.post('/api/create-course-payment', isAuthenticated, async (req: any, res) => {
     try {
-      const { courseId, customerDetails } = req.body;
+      const { courseId, customerDetails, couponId } = req.body;
       const userId = req.user.claims.sub;
       
       // Get course details
@@ -1940,13 +1940,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get regional pricing based on user's IP
       const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
       const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
-      const coursePrice = regionalPricing.coursePrice;
+      let coursePrice = regionalPricing.coursePrice;
+
+      // Handle coupon if provided
+      let couponData = null;
+      if (couponId) {
+        try {
+          const coupon = await stripe.coupons.retrieve(couponId);
+          if (coupon.valid) {
+            couponData = coupon;
+            // Calculate discounted price
+            if (coupon.amount_off) {
+              coursePrice = coursePrice - (coupon.amount_off / 100);
+            } else if (coupon.percent_off) {
+              coursePrice = coursePrice * (1 - coupon.percent_off / 100);
+            }
+            // Ensure price doesn't go below 0
+            coursePrice = Math.max(0, coursePrice);
+          }
+        } catch (error) {
+          console.error("Error retrieving coupon:", error);
+        }
+      }
 
       // Create payment intent with detailed metadata and regional pricing
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(coursePrice * 100), // Convert to cents
         currency: regionalPricing.currency.toLowerCase(),
         customer: stripeCustomerId,
+        discounts: couponData ? [{ coupon: couponData.id }] : undefined,
         metadata: {
           courseId: courseId.toString(),
           courseName: course.title,
@@ -1957,6 +1979,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tier: user.subscriptionTier || 'free',
           region: regionalPricing.region,
           currency: regionalPricing.currency,
+          couponId: couponData?.id || '',
+          couponName: couponData?.name || '',
+          originalPrice: regionalPricing.coursePrice.toString(),
+          discountedPrice: coursePrice.toString(),
         },
         description: `Course Purchase: ${course.title}`,
         receipt_email: user.email,
@@ -1975,7 +2001,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id 
+        paymentIntentId: paymentIntent.id,
+        finalAmount: Math.round(coursePrice * 100) // Send final amount in cents
       });
     } catch (error) {
       console.error("Error creating course payment:", error);
@@ -1986,7 +2013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Big Baby public checkout payment creation (for anonymous users)
   app.post('/api/create-big-baby-payment', async (req, res) => {
     try {
-      const { customerDetails } = req.body;
+      const { customerDetails, couponId } = req.body;
       
       // Validate required fields
       if (!customerDetails?.email || !customerDetails?.firstName) {
@@ -2003,6 +2030,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const course = await storage.getCourse(6);
       if (!course) {
         return res.status(404).json({ message: "Big Baby course not found" });
+      }
+
+      // Get regional pricing
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      let finalAmount = Math.round(regionalPricing.coursePrice * 100); // Convert to cents
+      
+      // Apply coupon discount if provided
+      let appliedCoupon = null;
+      if (couponId) {
+        try {
+          const coupon = await stripe.coupons.retrieve(couponId);
+          if (coupon.valid) {
+            if (coupon.percent_off) {
+              finalAmount = Math.round(finalAmount * (1 - coupon.percent_off / 100));
+            } else if (coupon.amount_off) {
+              finalAmount = Math.max(0, finalAmount - coupon.amount_off);
+            }
+            appliedCoupon = coupon;
+          }
+        } catch (error) {
+          console.error("Error applying coupon:", error);
+        }
       }
 
       // Check for existing user to avoid duplicates
@@ -2034,8 +2084,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create payment intent with detailed metadata
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: 12000, // $120 in cents
-        currency: 'usd',
+        amount: finalAmount,
+        currency: regionalPricing.currency.toLowerCase(),
         customer: stripeCustomerId,
         automatic_payment_methods: {
           enabled: true,
@@ -2050,6 +2100,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           checkoutType: 'public_checkout',
           tier: 'free',
           dueDate: customerDetails.dueDate || '',
+          originalAmount: Math.round(regionalPricing.coursePrice * 100).toString(),
+          finalAmount: finalAmount.toString(),
+          couponId: couponId || '',
+          couponName: appliedCoupon?.name || '',
+          discountPercent: appliedCoupon?.percent_off?.toString() || '',
+          discountAmount: appliedCoupon?.amount_off?.toString() || '',
         },
         description: 'Course Purchase: Big Baby Sleep Program',
         receipt_email: customerDetails.email,
@@ -2057,7 +2113,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id 
+        paymentIntentId: paymentIntent.id,
+        finalAmount: finalAmount,
+        originalAmount: Math.round(regionalPricing.coursePrice * 100),
+        appliedCoupon: appliedCoupon ? {
+          id: appliedCoupon.id,
+          name: appliedCoupon.name,
+          percent_off: appliedCoupon.percent_off,
+          amount_off: appliedCoupon.amount_off,
+        } : null
       });
     } catch (error) {
       console.error("Error creating Big Baby payment:", error);
@@ -2925,6 +2989,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating subscription:", error);
       res.status(500).json({ message: "Error creating subscription: " + error.message });
+    }
+  });
+
+  // Stripe coupon validation endpoint
+  app.post("/api/validate-coupon", async (req, res) => {
+    try {
+      const { couponCode } = req.body;
+      
+      if (!couponCode) {
+        return res.status(400).json({ message: "Coupon code is required" });
+      }
+
+      // Retrieve coupon from Stripe
+      const coupon = await stripe.coupons.retrieve(couponCode);
+      
+      if (!coupon.valid) {
+        return res.status(400).json({ message: "This coupon is not valid" });
+      }
+
+      // Check if coupon has expired
+      if (coupon.redeem_by && coupon.redeem_by < Math.floor(Date.now() / 1000)) {
+        return res.status(400).json({ message: "This coupon has expired" });
+      }
+
+      // Check if coupon has reached max redemptions
+      if (coupon.max_redemptions && coupon.times_redeemed >= coupon.max_redemptions) {
+        return res.status(400).json({ message: "This coupon has reached its maximum usage limit" });
+      }
+
+      // Return coupon details
+      res.json({
+        valid: true,
+        coupon: {
+          id: coupon.id,
+          name: coupon.name,
+          percent_off: coupon.percent_off,
+          amount_off: coupon.amount_off,
+          currency: coupon.currency,
+          duration: coupon.duration,
+          duration_in_months: coupon.duration_in_months,
+          redeem_by: coupon.redeem_by,
+          max_redemptions: coupon.max_redemptions,
+          times_redeemed: coupon.times_redeemed,
+        }
+      });
+    } catch (error: any) {
+      if (error.code === 'resource_missing') {
+        return res.status(400).json({ message: "Invalid coupon code" });
+      }
+      res.status(500).json({ message: "Error validating coupon: " + error.message });
     }
   });
 

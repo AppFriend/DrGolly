@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement } from "@stripe/react-stripe-js";
+import { CouponInput } from "@/components/CouponInput";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
 // Initialize Stripe
@@ -235,6 +236,8 @@ export default function BigBabyPublic() {
     dueDate: "",
   });
   const [regionalPricing, setRegionalPricing] = useState<any>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [finalPrice, setFinalPrice] = useState<number>(0);
 
   // Fetch regional pricing
   const { data: pricingData } = useQuery({
@@ -248,19 +251,38 @@ export default function BigBabyPublic() {
   }, [pricingData]);
 
   // Get pricing details
-  const coursePrice = regionalPricing?.coursePrice || 120;
+  const originalPrice = regionalPricing?.coursePrice || 120;
   const currency = regionalPricing?.currency || 'USD';
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
+  
+  // Calculate final price with coupon discount
+  useEffect(() => {
+    let calculatedPrice = originalPrice;
+    
+    if (appliedCoupon) {
+      if (appliedCoupon.percent_off) {
+        calculatedPrice = originalPrice * (1 - appliedCoupon.percent_off / 100);
+      } else if (appliedCoupon.amount_off) {
+        calculatedPrice = Math.max(0, originalPrice - (appliedCoupon.amount_off / 100));
+      }
+    }
+    
+    setFinalPrice(calculatedPrice);
+  }, [originalPrice, appliedCoupon]);
 
   // Create payment intent for anonymous users
   const createPaymentMutation = useMutation({
-    mutationFn: async (data: { courseId: number; customerDetails: any }) => {
+    mutationFn: async (data: { courseId: number; customerDetails: any; couponId?: string }) => {
       const response = await apiRequest("POST", "/api/create-big-baby-payment", data);
       return response.json();
     },
     onSuccess: (data) => {
       setClientSecret(data.clientSecret);
       setPaymentIntentId(data.paymentIntentId);
+      // Update final price from server response
+      if (data.finalAmount) {
+        setFinalPrice(data.finalAmount / 100);
+      }
     },
     onError: (error) => {
       toast({
@@ -353,13 +375,14 @@ export default function BigBabyPublic() {
       const timer = setTimeout(() => {
         createPaymentMutation.mutate({ 
           courseId: BIG_BABY_COURSE.id, 
-          customerDetails 
+          customerDetails,
+          couponId: appliedCoupon?.id
         });
       }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [isDetailsComplete]);
+  }, [isDetailsComplete, appliedCoupon]);
 
   if (step === 'success') {
     return <SuccessPage onContinue={() => setStep('signup')} />;
@@ -476,7 +499,22 @@ export default function BigBabyPublic() {
               </CardContent>
             </Card>
 
-            {/* 2. Order Summary */}
+            {/* 2. Coupon Code */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Coupon Code</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CouponInput
+                  onCouponApplied={setAppliedCoupon}
+                  onCouponRemoved={() => setAppliedCoupon(null)}
+                  appliedCoupon={appliedCoupon}
+                  disabled={createPaymentMutation.isPending}
+                />
+              </CardContent>
+            </Card>
+
+            {/* 3. Order Summary */}
             <Card>
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
@@ -497,22 +535,37 @@ export default function BigBabyPublic() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-lg font-semibold">{currencySymbol}{coursePrice}</span>
+                    {appliedCoupon && (
+                      <div className="text-sm text-gray-500 line-through">
+                        {currencySymbol}{originalPrice}
+                      </div>
+                    )}
+                    <span className="text-lg font-semibold">{currencySymbol}{finalPrice || originalPrice}</span>
                   </div>
                 </div>
 
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm">Subtotal</span>
-                    <span className="text-sm">${BIG_BABY_COURSE.price}</span>
+                    <span className="text-sm">{currencySymbol}{originalPrice}</span>
                   </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-green-600">
+                        Discount ({appliedCoupon.name})
+                      </span>
+                      <span className="text-sm text-green-600">
+                        -{currencySymbol}{(originalPrice - (finalPrice || originalPrice)).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-sm">Tax</span>
                     <span className="text-sm">$0</span>
                   </div>
                   <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
                     <span>Total</span>
-                    <span>${BIG_BABY_COURSE.price}</span>
+                    <span>{currencySymbol}{finalPrice || originalPrice}</span>
                   </div>
                 </div>
               </CardContent>
@@ -539,7 +592,7 @@ export default function BigBabyPublic() {
                   >
                     <BigBabyPaymentForm 
                       onSuccess={handlePaymentSuccess} 
-                      coursePrice={coursePrice}
+                      coursePrice={finalPrice || originalPrice}
                       currencySymbol={currencySymbol}
                       currency={currency}
                     />

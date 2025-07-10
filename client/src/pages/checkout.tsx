@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
+import { CouponInput } from "@/components/CouponInput";
 import type { Course } from "@shared/schema";
 
 // Initialize Stripe
@@ -22,6 +23,7 @@ export default function Checkout() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [clientSecret, setClientSecret] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [customerDetails, setCustomerDetails] = useState({
     firstName: user?.firstName || "",
     email: user?.email || "",
@@ -35,9 +37,15 @@ export default function Checkout() {
   });
 
   const courseId = params?.courseId ? parseInt(params.courseId) : null;
-  const coursePrice = regionalPricing?.coursePrice || 120;
+  const originalPrice = regionalPricing?.coursePrice || 120;
   const currency = regionalPricing?.currency || 'USD';
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
+  
+  // Calculate final price with coupon
+  const finalPrice = appliedCoupon ? 
+    appliedCoupon.amountOff ? originalPrice - (appliedCoupon.amountOff / 100) :
+    appliedCoupon.percentOff ? originalPrice * (1 - appliedCoupon.percentOff / 100) :
+    originalPrice : originalPrice;
 
   // Fetch course details
   const { data: course, isLoading: courseLoading } = useQuery({
@@ -47,12 +55,22 @@ export default function Checkout() {
 
   // Create payment intent
   const createPaymentMutation = useMutation({
-    mutationFn: async (data: { courseId: number; customerDetails: any }) => {
+    mutationFn: async (data: { courseId: number; customerDetails: any; couponId?: string }) => {
       const response = await apiRequest("POST", "/api/create-course-payment", data);
       return response.json();
     },
     onSuccess: (data) => {
       setClientSecret(data.clientSecret);
+      // Update final price from server response if coupon was applied
+      if (data.finalAmount && appliedCoupon) {
+        // finalAmount is in cents, convert to dollars
+        const serverFinalPrice = data.finalAmount / 100;
+        // Only update if it's different from our calculation
+        if (Math.abs(serverFinalPrice - finalPrice) > 0.01) {
+          // Use server-calculated price for accuracy
+          setCustomerDetails(prev => ({ ...prev, serverFinalPrice }));
+        }
+      }
     },
     onError: (error) => {
       toast({
@@ -65,9 +83,13 @@ export default function Checkout() {
 
   useEffect(() => {
     if (courseId && user && customerDetails.firstName && customerDetails.email) {
-      createPaymentMutation.mutate({ courseId, customerDetails });
+      createPaymentMutation.mutate({ 
+        courseId, 
+        customerDetails,
+        couponId: appliedCoupon?.id
+      });
     }
-  }, [courseId, user, customerDetails.firstName, customerDetails.email]);
+  }, [courseId, user, customerDetails.firstName, customerDetails.email, appliedCoupon]);
 
   const handleBack = () => {
     setLocation("/courses");
@@ -145,7 +167,14 @@ export default function Checkout() {
             <div className="flex-1">
               <h3 className="font-semibold">{course.title}</h3>
               <p className="text-sm text-gray-600">Course</p>
-              <p className="text-sm text-gray-600">{currencySymbol}{coursePrice}.00</p>
+              <div className="text-right">
+                {appliedCoupon && (
+                  <div className="text-sm text-gray-500 line-through">
+                    {currencySymbol}{originalPrice}.00
+                  </div>
+                )}
+                <p className="text-sm text-gray-600">{currencySymbol}{finalPrice.toFixed(2)}</p>
+              </div>
             </div>
             <div className="text-right">
               <span className="text-sm text-gray-500">4.5 ⭐</span>
@@ -153,13 +182,30 @@ export default function Checkout() {
           </div>
 
           <div className="border-t pt-3">
-            <button className="text-dr-teal text-sm flex items-center mb-3">
-              🏷️ Have a coupon or gift card?
-            </button>
+            <div className="mb-3">
+              <CouponInput
+                onCouponApplied={setAppliedCoupon}
+                onCouponRemoved={() => setAppliedCoupon(null)}
+                appliedCoupon={appliedCoupon}
+                disabled={createPaymentMutation.isPending}
+              />
+            </div>
             
-            <div className="flex justify-between items-center text-lg font-semibold">
-              <span>Total</span>
-              <span>{currencySymbol}{coursePrice}.00</span>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span>Subtotal</span>
+                <span>{currencySymbol}{originalPrice}.00</span>
+              </div>
+              {appliedCoupon && (
+                <div className="flex justify-between items-center text-sm text-green-600">
+                  <span>Discount ({appliedCoupon.name})</span>
+                  <span>-{currencySymbol}{(originalPrice - finalPrice).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
+                <span>Total</span>
+                <span>{currencySymbol}{finalPrice.toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -170,7 +216,7 @@ export default function Checkout() {
             <CheckoutForm 
               course={course} 
               customerDetails={customerDetails}
-              total={coursePrice}
+              total={finalPrice}
             />
           </Elements>
         ) : (
