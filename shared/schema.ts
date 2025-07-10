@@ -129,24 +129,37 @@ export const featureFlags = pgTable("feature_flags", {
 export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  detailedDescription: text("detailed_description"), // Website-style detailed description
-  websiteContent: text("website_content"), // Full website content for course detail page
-  keyFeatures: text("key_features").array(), // Array of key features from website
-  whatsCovered: text("whats_covered").array(), // Array of what's covered points
-  category: varchar("category", { length: 100 }).notNull(), // sleep, nutrition, health, freebies
-  thumbnailUrl: varchar("thumbnail_url"),
-  videoUrl: varchar("video_url"),
-  duration: integer("duration"), // in minutes
-  ageRange: varchar("age_range"), // e.g., "4-16 Weeks", "4-8 Months"
-  tier: varchar("tier").default("free").notNull(), // free, gold, platinum
+  
+  // ==== COURSE DESCRIPTION PAGE FIELDS ====
+  // These fields are used for the purchase/marketing page when users haven't bought the course
+  description: text("description"), // Short description for course cards
+  detailedDescription: text("detailed_description"), // Detailed description for course description page
+  websiteContent: text("website_content"), // Full marketing content for course detail page
+  keyFeatures: text("key_features").array(), // Array of key features for marketing
+  whatsCovered: text("whats_covered").array(), // Array of what's covered points for marketing
   price: decimal("price", { precision: 10, scale: 2 }),
   discountedPrice: decimal("discounted_price", { precision: 10, scale: 2 }),
-  skillLevel: varchar("skill_level"),
+  rating: decimal("rating", { precision: 2, scale: 1 }).default("4.8"), // Course rating for description page
+  reviewCount: integer("review_count").default(0), // Number of reviews for description page
+  thumbnailUrl: varchar("thumbnail_url"), // Thumbnail for course cards and description page
+  
+  // ==== COURSE OVERVIEW PAGE FIELDS ====
+  // These fields are used for the purchased course learning experience
+  overviewDescription: text("overview_description"), // Welcome message for purchased course
+  learningObjectives: text("learning_objectives").array(), // What students will learn
+  completionCriteria: text("completion_criteria"), // How course completion is determined
+  courseStructureNotes: text("course_structure_notes"), // Notes about course organization
+  
+  // ==== SHARED FIELDS ====
+  // These fields are used by both description and overview pages
+  category: varchar("category", { length: 100 }).notNull(), // sleep, nutrition, health, freebies
+  videoUrl: varchar("video_url"), // Course introduction video
+  duration: integer("duration"), // Total course duration in minutes
+  ageRange: varchar("age_range"), // e.g., "4-16 Weeks", "4-8 Months"
+  tier: varchar("tier").default("free").notNull(), // free, gold, platinum
+  skillLevel: varchar("skill_level"), // beginner, intermediate, advanced
   stripeProductId: varchar("stripe_product_id"),
   uniqueId: varchar("unique_id"),
-  rating: decimal("rating", { precision: 2, scale: 1 }).default("4.8"), // Course rating (e.g., 4.8)
-  reviewCount: integer("review_count").default(0), // Number of reviews
   isPublished: boolean("is_published").default(false), // Default to draft
   status: varchar("status").default("draft").notNull(), // draft, published, archived
   likes: integer("likes").default(0),

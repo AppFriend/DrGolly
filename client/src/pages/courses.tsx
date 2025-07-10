@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Bookmark, Grid, Moon, Baby, Lock } from "lucide-react";
+import { Search, Bookmark, Grid, Moon, Baby, Lock, ArrowLeft } from "lucide-react";
 import { VideoCard } from "@/components/ui/video-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Course } from "@shared/schema";
 import CourseDetail from "@/components/CourseDetail";
+import { Link } from "wouter";
 
 const courseTabs = [
   { id: "my", label: "Purchases", icon: Bookmark },
@@ -176,12 +177,20 @@ export default function Courses() {
 
   return (
     <div className="min-h-screen bg-white pb-20">
+      {/* Back Navigation */}
+      <div className="bg-white p-4 pb-2">
+        <Link href="/" className="inline-flex items-center text-gray-500 hover:text-gray-700 text-sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Home
+        </Link>
+      </div>
+
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 p-4">
+      <div className="bg-white border-b border-gray-100 p-4 pt-2">
         <div className="mb-4">
           <h1 className="text-lg font-semibold flex items-center">
             <Grid className="mr-2 h-5 w-5 text-[#83CFCC]" />
-            Courses for the {user?.lastName || "Adnam"} family 👨‍👩‍👧‍👦
+            Courses for the {user?.lastName || "Adnam"} family
           </h1>
         </div>
         <p className="text-sm text-gray-600 mb-4">
