@@ -425,7 +425,10 @@ Changelog:
   * Updated admin panel with PDF dropdown selection for freebie posts
   * Excluded Colic Video from PDF downloads as it's video-only content
   * All PDF downloads feature proper asset mapping for easy future replacement through admin panel
-  * Updated all PDF download buttons to use official Dark Green brand color (green-700 #166534) for consistency with app design
+  * Updated all PDF download buttons to use Brand Teal (#095D66) to match header menu styling exactly
+  * Replaced document icons with high-resolution PDF preview images in the PDF viewer modal
+  * Added preview image mapping system with professional branded PNG previews for 4 PDFs (Sleep Tips, Fussy Eaters, Bedtime Routine, Breastmilk Storage)
+  * Enhanced PDF viewer with rounded corners, shadows, and proper fallback to document icon when preview unavailable
 ```
 
 ## User Preferences

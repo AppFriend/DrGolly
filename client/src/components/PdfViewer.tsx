@@ -9,6 +9,12 @@ import bedtimeRoutinePdf from '@assets/DrG-TT-TOF-toddler bedtime routine-Long (
 import startingSolidsPdf from '@assets/DrGolly-Starting Solids Checklist-A4-2024 (6)_1752112715445.pdf';
 import breastmilkStoragePdf from '@assets/DrGolly-Breast milk storage guide_1752112715446.pdf';
 
+// Import preview images
+import sleepTipsPreview from '@assets/App Freebies-Sleeping Tips_1752112448277.png';
+import fussyEatersPreview from '@assets/App Freebies-Fussy eating_1752112448277.png';
+import bedtimeRoutinePreview from '@assets/App Freebies-Toddler bedtime chart_1752112448276.png';
+import breastmilkStoragePreview from '@assets/App Freebies-Breast milk storage_1752112448278.png';
+
 // Asset mapping for PDF files
 const PDF_ASSETS = {
   '@assets/DrGolly-Sleep Tips-Dowload (2)_1752112715446.pdf': sleepTipsPdf,
@@ -16,6 +22,15 @@ const PDF_ASSETS = {
   '@assets/DrG-TT-TOF-toddler bedtime routine-Long (1) (1)_1752112715446.pdf': bedtimeRoutinePdf,
   '@assets/DrGolly-Starting Solids Checklist-A4-2024 (6)_1752112715445.pdf': startingSolidsPdf,
   '@assets/DrGolly-Breast milk storage guide_1752112715446.pdf': breastmilkStoragePdf,
+};
+
+// Asset mapping for preview images
+const PDF_PREVIEW_IMAGES = {
+  '@assets/DrGolly-Sleep Tips-Dowload (2)_1752112715446.pdf': sleepTipsPreview,
+  '@assets/ToddlerToolkit-Top Tips for Fussy Eaters (1)_1752112715444.pdf': fussyEatersPreview,
+  '@assets/DrG-TT-TOF-toddler bedtime routine-Long (1) (1)_1752112715446.pdf': bedtimeRoutinePreview,
+  '@assets/DrGolly-Starting Solids Checklist-A4-2024 (6)_1752112715445.pdf': null, // No preview available
+  '@assets/DrGolly-Breast milk storage guide_1752112715446.pdf': breastmilkStoragePreview,
 };
 
 interface PdfViewerProps {
@@ -38,6 +53,11 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
     }
     setIsLoading(false);
   }, [pdfUrl]);
+
+  // Get the preview image for this PDF
+  const getPreviewImage = () => {
+    return PDF_PREVIEW_IMAGES[pdfUrl as keyof typeof PDF_PREVIEW_IMAGES];
+  };
 
   const handleDownload = () => {
     if (pdfSrc) {
@@ -75,7 +95,7 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
           <div className="flex items-center gap-2">
             <Button
               onClick={handleDownload}
-              className="bg-green-700 hover:bg-green-800 text-white flex items-center gap-2"
+              className="bg-[#095D66] hover:bg-[#074A52] text-white flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
               Download PDF
@@ -95,14 +115,22 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
         <div className="flex-1 overflow-hidden bg-gray-50">
           <div className="flex items-center justify-center h-full min-h-[500px]">
             <div className="text-center max-w-md mx-auto p-8">
-              <FileText className="w-24 h-24 text-brand-teal mx-auto mb-6" />
+              {getPreviewImage() ? (
+                <img
+                  src={getPreviewImage()}
+                  alt={`${title} Preview`}
+                  className="w-48 h-auto mx-auto mb-6 rounded-lg shadow-lg border"
+                />
+              ) : (
+                <FileText className="w-24 h-24 text-brand-teal mx-auto mb-6" />
+              )}
               <h3 className="text-2xl font-semibold text-gray-900 mb-4">{title}</h3>
               <p className="text-gray-600 mb-8 leading-relaxed">
                 Your PDF is ready to download. Click the download button to save it to your device.
               </p>
               <Button
                 onClick={handleDownload}
-                className="bg-green-700 hover:bg-green-800 text-white px-8 py-3 text-lg font-semibold"
+                className="bg-[#095D66] hover:bg-[#074A52] text-white px-8 py-3 text-lg font-semibold"
               >
                 <Download className="w-5 h-5 mr-2" />
                 Download PDF Now
@@ -115,7 +143,7 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
         <div className="p-4 border-t bg-gray-50 md:hidden">
           <Button
             onClick={handleDownload}
-            className="w-full bg-green-700 hover:bg-green-800 text-white flex items-center justify-center gap-2"
+            className="w-full bg-[#095D66] hover:bg-[#074A52] text-white flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
             Download PDF
