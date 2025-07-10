@@ -151,6 +151,12 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     enabled: expandedChapters.length > 0,
   });
 
+  // Fetch chapter progress
+  const { data: chapterProgress = [] } = useQuery({
+    queryKey: ['/api/user/chapter-progress'],
+    retry: false,
+  });
+
   // Chapter progress mutation
   const chapterProgressMutation = useMutation({
     mutationFn: async ({ chapterId, completed }: { chapterId: number; completed: boolean }) => {
@@ -208,6 +214,9 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
           title: "Module Complete! 🎉",
           description: "Great job! You've completed this module.",
         });
+        
+        // Check if all modules in the chapter are now completed
+        checkAndCompleteChapter(variables.moduleId);
       } else {
         toast({
           title: "Progress Updated",
@@ -259,8 +268,53 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     const modules = modulesByChapter[chapterId] || [];
     if (modules.length === 0) return 0;
     
-    // For demo purposes, return 0 - in real app, fetch from API
-    return 0;
+    // Calculate percentage based on completed modules
+    const completedCount = modules.filter(module => completedModules.has(module.id)).length;
+    return Math.round((completedCount / modules.length) * 100);
+  };
+
+  // Calculate overall course progress
+  const getCourseProgress = () => {
+    if (!chapters || chapters.length === 0) return { completed: 0, total: 0, percentage: 0 };
+    
+    const completedChapters = chapterProgress.filter(cp => cp.completed).length;
+    const totalChapters = chapters.length;
+    const percentage = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
+    
+    return {
+      completed: completedChapters,
+      total: totalChapters,
+      percentage
+    };
+  };
+
+  // Check if all modules in a chapter are completed and auto-complete chapter
+  const checkAndCompleteChapter = async (moduleId: number) => {
+    // Find which chapter this module belongs to
+    const chapterWithModule = chapters.find(chapter => {
+      const modules = modulesByChapter[chapter.id] || [];
+      return modules.some(module => module.id === moduleId);
+    });
+
+    if (!chapterWithModule) return;
+
+    // Check if all modules in this chapter are completed
+    const chapterModules = modulesByChapter[chapterWithModule.id] || [];
+    const allModulesCompleted = chapterModules.every(module => 
+      completedModules.has(module.id) || module.id === moduleId
+    );
+
+    // If all modules are completed and chapter isn't already marked complete
+    if (allModulesCompleted && !chapterProgress.some(cp => cp.chapterId === chapterWithModule.id && cp.completed)) {
+      try {
+        await chapterProgressMutation.mutateAsync({
+          chapterId: chapterWithModule.id,
+          completed: true
+        });
+      } catch (error) {
+        console.error('Failed to auto-complete chapter:', error);
+      }
+    }
   };
 
   if (courseLoading || chaptersLoading) {
@@ -332,10 +386,12 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
               <div className="flex-1 bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: '0%' }}
+                  style={{ width: `${getCourseProgress().percentage}%` }}
                 />
               </div>
-              <span className="text-sm text-gray-600">0 / {chapters?.length || 0} chapters</span>
+              <span className="text-sm text-gray-600">
+                {getCourseProgress().completed} / {getCourseProgress().total} chapters
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -363,7 +419,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
                           </Badge>
                           <CheckCircle 
                             className={`w-5 h-5 ${
-                              getChapterProgress(chapter.id) === 100 
+                              chapterProgress.some(cp => cp.chapterId === chapter.id && cp.completed) 
                                 ? 'text-green-500' 
                                 : 'text-gray-300'
                             }`}

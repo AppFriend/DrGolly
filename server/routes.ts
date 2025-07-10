@@ -805,6 +805,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all chapter progress for a user
+  app.get('/api/user/chapter-progress', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const progress = await storage.getAllUserChapterProgress(userId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching chapter progress:", error);
+      res.status(500).json({ message: "Failed to fetch chapter progress" });
+    }
+  });
+
   // Get all module progress for a user
   app.get('/api/user/module-progress', isAuthenticated, async (req: any, res) => {
     try {
