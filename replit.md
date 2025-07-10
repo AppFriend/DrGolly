@@ -411,7 +411,13 @@ Changelog:
   * Updated text colors to brand colors (Brand Teal #095D66, Dark Green #166534) for better visibility
   * Removed circular profile image overlay to showcase banner image fully
   * Adjusted background positioning to show Dr. Golly's complete professional headshot
-  * Updated button styling to use Dark Green background with white text
+  * Updated button styling to use Brand Teal (#095D66) matching header menu
+  * Aligned subheading text with button's right edge for better layout consistency
+- July 10, 2025. Replaced freebie header images with high-resolution professional versions:
+  * Updated all 6 freebie blog posts with high-resolution PNG images featuring Dr. Golly branding
+  * Enhanced FreebieImageLoader component to support new PNG asset paths
+  * Maintained backward compatibility with legacy SVG assets
+  * All freebie images now display consistent professional branding with teal color scheme and download icons
 ```
 
 ## User Preferences
