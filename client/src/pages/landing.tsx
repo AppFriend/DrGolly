@@ -47,6 +47,33 @@ export default function Landing() {
             </div>
           </div>
         </div>
+
+        {/* Buttons Container - Moved higher into white space */}
+        <div className="px-6 pb-20 space-y-3 z-10">
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Get Started button clicked');
+              setLocation('/signup');
+            }}
+            className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-3 text-base font-semibold rounded-full shadow-lg border-2 border-gray-300 font-heading cursor-pointer"
+          >
+            Get Started
+          </Button>
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Sign In button clicked');
+              setLocation('/login');
+            }}
+            variant="outline"
+            className="w-full bg-transparent border-2 border-gray-400 text-gray-700 hover:bg-gray-100 hover:text-[#83CFCC] py-3 text-base font-semibold rounded-full font-heading cursor-pointer"
+          >
+            Sign In
+          </Button>
+        </div>
       </main>
 
       {/* Bottom Section with Curved Design */}
@@ -64,33 +91,6 @@ export default function Landing() {
               className="opacity-90"
             />
           </svg>
-          
-          {/* Buttons Container */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 space-y-3 z-10">
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Get Started button clicked');
-                setLocation('/signup');
-              }}
-              className="w-full bg-white hover:bg-gray-100 text-[#83CFCC] py-3 text-base font-semibold rounded-full shadow-lg border-0 font-heading cursor-pointer relative z-20"
-            >
-              Get Started
-            </Button>
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Sign In button clicked');
-                setLocation('/login');
-              }}
-              variant="outline"
-              className="w-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#83CFCC] py-3 text-base font-semibold rounded-full font-heading cursor-pointer relative z-20"
-            >
-              Sign In
-            </Button>
-          </div>
         </div>
       </div>
 
