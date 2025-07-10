@@ -406,6 +406,12 @@ Changelog:
   * Implemented robust checking for both fixed amount and percentage-based discounts
   * Updated both authenticated checkout and Big Baby public checkout flows
   * Fixed Stripe Elements configuration with proper amount parameter
+- July 10, 2025. Updated home page banner with professional welcome image:
+  * Replaced teal gradient banner with Dr. Golly professional medical banner image
+  * Updated text colors to brand colors (Brand Teal #095D66, Dark Green #166534) for better visibility
+  * Removed circular profile image overlay to showcase banner image fully
+  * Adjusted background positioning to show Dr. Golly's complete professional headshot
+  * Updated button styling to use Dark Green background with white text
 ```
 
 ## User Preferences

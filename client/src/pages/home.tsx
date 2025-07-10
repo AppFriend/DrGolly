@@ -164,23 +164,23 @@ export default function Home() {
         {/* Background Image for non-Gold/Platinum users */}
         {!(user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum") && (
           <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            className="absolute inset-0 bg-cover bg-no-repeat"
             style={{
               backgroundImage: `url(${welcomeBanner})`,
               backgroundSize: 'cover',
-              backgroundPosition: 'center'
+              backgroundPosition: 'center top'
             }}
           />
         )}
         
         {/* Content overlay */}
-        <div className="relative z-10 flex items-center space-x-4">
+        <div className="relative z-10 flex items-center justify-start">
           <div className="flex-1">
             <h1 className={cn(
               "text-xl font-bold mb-2",
               user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
                 ? "text-black" 
-                : "text-white drop-shadow-lg"
+                : "text-[#095D66]"
             )}>
               Welcome {user?.firstName || "there"}!
             </h1>
@@ -188,14 +188,14 @@ export default function Home() {
               "text-sm mb-4",
               user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
                 ? "text-black/80" 
-                : "text-white drop-shadow-md"
+                : "text-[#166534]"
             )}>
               I'm here to help you navigate sleep, parenthood & beyond
             </p>
             {user?.subscriptionTier === "free" && (
               <Button
                 variant="secondary"
-                className="bg-white text-[#095D66] hover:bg-gray-100 font-medium rounded-xl shadow-lg"
+                className="bg-[#166534] text-white hover:bg-[#095D66] font-medium rounded-xl shadow-lg"
                 onClick={() => window.location.href = "/subscription"}
               >
                 Try Gold 50% off for 1 month
@@ -209,25 +209,6 @@ export default function Home() {
                 </span>
               </div>
             )}
-          </div>
-          <div className="flex justify-center items-center">
-            <div className={cn(
-              "w-24 h-24 bg-gradient-to-br rounded-full flex items-center justify-center",
-              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
-                ? "from-black/10 to-black/20" 
-                : "from-white/10 to-white/20"
-            )}>
-              <img
-                src={drGollyImage}
-                alt="Dr. Golly - Professional headshot"
-                className={cn(
-                  "w-20 h-20 rounded-full object-cover border-2 shadow-lg",
-                  user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
-                    ? "border-black/20" 
-                    : "border-white/30"
-                )}
-              />
-            </div>
           </div>
         </div>
       </section>
