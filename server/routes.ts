@@ -3822,6 +3822,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Thinkific migration endpoint (Admin only)
+  app.post('/api/admin/migrate-thinkific-chapter', isAdmin, async (req, res) => {
+    try {
+      const { title, description, chapterNumber, orderIndex, modules } = req.body;
+      
+      if (!title || !description || !chapterNumber) {
+        return res.status(400).json({ message: 'Title, description, and chapter number are required' });
+      }
+
+      // For now, we'll save the extracted content to a temporary table or file
+      // In a real implementation, you would:
+      // 1. Find the corresponding course module in the database
+      // 2. Update the module content with the extracted content
+      // 3. Process any images and upload them to your CDN
+      // 4. Convert video URLs to your hosting format
+      
+      const courseId = 10; // "Preparation for Newborns" course ID
+      const migrationData = {
+        courseId,
+        title,
+        description,
+        chapterNumber,
+        orderIndex: orderIndex || 1,
+        modules: modules || [],
+        migratedAt: new Date().toISOString()
+      };
+      
+      // For now, just log the data and return success
+      console.log('Migration data received:', JSON.stringify(migrationData, null, 2));
+      
+      res.json({ 
+        message: 'Chapter migration data received successfully',
+        data: migrationData
+      });
+    } catch (error) {
+      console.error('Error processing migration:', error);
+      res.status(500).json({ message: 'Failed to process migration' });
+    }
+  });
+
+  // Populate course content with predefined data (Admin only)
+  app.post('/api/admin/populate-course-content', isAdmin, async (req, res) => {
+    try {
+      const { courseModules } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      // Sample content for the first 3 modules of "Preparation for Newborns"
+      const contentUpdates = [
+        {
+          moduleId: 80,
+          title: "1.1 Sleep Environment",
+          content: `<h2>Creating the Perfect Sleep Environment for Your Baby</h2>
+          
+          <h3>Room Setup</h3>
+          <p>Your baby's sleep environment is crucial for quality rest. Here are the key elements:</p>
+          
+          <ul>
+            <li><strong>Room Temperature:</strong> Maintain 16-20°C (61-68°F)</li>
+            <li><strong>Lighting:</strong> Keep the room dark during sleep times</li>
+            <li><strong>Noise Level:</strong> Use white noise or keep ambient noise low</li>
+            <li><strong>Air Quality:</strong> Ensure good ventilation and avoid strong scents</li>
+          </ul>
+          
+          <h3>Safe Sleep Guidelines</h3>
+          <p>Follow these essential safety guidelines:</p>
+          
+          <ul>
+            <li>Always place baby on their back to sleep</li>
+            <li>Use a firm sleep surface</li>
+            <li>Keep the crib bare - no blankets, pillows, or toys</li>
+            <li>Ensure proper crib mattress fit</li>
+            <li>Use a sleep sack or swaddle for warmth</li>
+          </ul>`,
+          videoUrl: "https://example.com/sleep-environment-video.mp4",
+          duration: 8
+        },
+        {
+          moduleId: 81,
+          title: "1.2 Safe Sleep Practices",
+          content: `<h2>Safe Sleep Practices for Newborns</h2>
+          
+          <h3>The ABCs of Safe Sleep</h3>
+          <p>Remember these three critical elements:</p>
+          
+          <ul>
+            <li><strong>A</strong>lone - Baby sleeps alone in their crib</li>
+            <li><strong>B</strong>ack - Always place baby on their back</li>
+            <li><strong>C</strong>rib - Use a safe sleep surface</li>
+          </ul>
+          
+          <h3>Sleep Position</h3>
+          <p>Proper sleep positioning is essential:</p>
+          
+          <ul>
+            <li>Back sleeping reduces SIDS risk by 50%</li>
+            <li>Side sleeping is not safe</li>
+            <li>Once baby can roll both ways, they can choose their position</li>
+            <li>Never place baby on their stomach to sleep</li>
+          </ul>`,
+          videoUrl: "https://example.com/safe-sleep-video.mp4",
+          duration: 12
+        },
+        {
+          moduleId: 82,
+          title: "1.3 Swaddling Techniques",
+          content: `<h2>Master Swaddling Techniques</h2>
+          
+          <h3>Benefits of Swaddling</h3>
+          <p>Swaddling can help your newborn by:</p>
+          
+          <ul>
+            <li>Mimicking the womb environment</li>
+            <li>Preventing startling reflexes</li>
+            <li>Promoting longer sleep periods</li>
+            <li>Providing comfort and security</li>
+            <li>Reducing crying and fussiness</li>
+          </ul>
+          
+          <h3>Step-by-Step Swaddling</h3>
+          <p>Follow these steps for proper swaddling:</p>
+          
+          <ol>
+            <li>Lay out a square blanket in diamond shape</li>
+            <li>Fold the top corner to create a straight edge</li>
+            <li>Place baby with shoulders just below the fold</li>
+            <li>Wrap one side across baby's body</li>
+            <li>Fold up the bottom corner</li>
+            <li>Wrap the remaining side and secure</li>
+          </ol>`,
+          videoUrl: "https://example.com/swaddling-video.mp4",
+          duration: 15
+        }
+      ];
+      
+      let updatedCount = 0;
+      
+      for (const content of contentUpdates) {
+        try {
+          await db
+            .update(courseModules)
+            .set({
+              content: content.content,
+              videoUrl: content.videoUrl,
+              duration: content.duration,
+              updatedAt: new Date()
+            })
+            .where(eq(courseModules.id, content.moduleId));
+          
+          updatedCount++;
+          console.log(`✅ Updated module ${content.moduleId}: ${content.title}`);
+        } catch (error) {
+          console.error(`❌ Error updating module ${content.moduleId}:`, error);
+        }
+      }
+      
+      res.json({ 
+        message: `Successfully populated ${updatedCount} course modules with content`,
+        updatedModules: updatedCount
+      });
+    } catch (error) {
+      console.error('Error populating course content:', error);
+      res.status(500).json({ message: 'Failed to populate course content' });
+    }
+  });
+
   // Seed sample orders for testing (Admin only)
   app.post('/api/admin/seed-orders', isAdmin, async (req, res) => {
     try {
