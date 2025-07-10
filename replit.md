@@ -477,6 +477,13 @@ Changelog:
   * Payment flow now completely clean: no Stripe transactions until user clicks payment buttons
   * Resolved "duplicate key value violates unique constraint" error for existing email addresses
   * Stripe dashboard now shows only completed payments or failed attempts - no incomplete transactions
+- July 10, 2025. Implemented automatic login after successful Big Baby checkout:
+  * Users are automatically logged in after payment completion and account creation/update
+  * Added authentication session creation in backend after successful course purchase
+  * Updated frontend to redirect to home page (/) instead of login page after successful payment
+  * Enhanced user experience: users can immediately access their purchased course without manual login
+  * Invalidated React Query auth cache to ensure immediate user state refresh
+  * Updated success messaging to reflect automatic login experience
 ```
 
 ## User Preferences

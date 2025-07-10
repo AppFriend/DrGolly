@@ -745,12 +745,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       console.log("Course purchase record created successfully");
       
+      // Get the user for login session
+      const user = await storage.getUser(userId);
+      if (!user) {
+        throw new Error("User not found after creation/update");
+      }
+      
+      // Create authentication session
+      const authSession = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+          profile_image_url: user.profileImageUrl,
+          exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
+        },
+        expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+      };
+      
+      // Set session in request
+      req.login(authSession, (err) => {
+        if (err) {
+          console.error("Error setting login session:", err);
+          // Continue without failing the request
+        }
+      });
+      
       console.log("Account creation/update completed successfully for user:", userId);
       res.json({ 
         message: existingUser ? "Course added to existing account" : "Account created successfully",
         userId: userId,
-        loginUrl: "/login",
         isExistingUser: !!existingUser,
+        autoLogin: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          subscriptionTier: user.subscriptionTier,
+        },
       });
     } catch (error) {
       console.error("Error creating account with purchase - Full error:", error);

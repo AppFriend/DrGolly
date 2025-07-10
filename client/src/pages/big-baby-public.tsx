@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
@@ -326,6 +326,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
 export default function BigBabyPublic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<'checkout' | 'success' | 'signup'>('checkout');
   const [clientSecret, setClientSecret] = useState("");
   const [paymentIntentId, setPaymentIntentId] = useState("");
@@ -405,16 +406,20 @@ export default function BigBabyPublic() {
       console.log('Account processed successfully:', data);
       const toastTitle = data.isExistingUser ? "Course Added Successfully!" : "Account Created Successfully!";
       const toastDescription = data.isExistingUser ? 
-        "The course has been added to your existing account. You can log in to access it." : 
-        "You can now log in with your email and password.";
+        "The course has been added to your existing account. Welcome back!" : 
+        "Welcome to Dr. Golly! Your course is ready to access.";
       
       toast({
         title: toastTitle,
         description: toastDescription,
       });
-      // Redirect to login page after short delay
+      
+      // Invalidate auth cache to refresh user state
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      
+      // Redirect to home page since user is now logged in
       setTimeout(() => {
-        setLocation("/login");
+        setLocation("/");
       }, 2000);
     },
     onError: (error) => {
