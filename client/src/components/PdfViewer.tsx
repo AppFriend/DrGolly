@@ -91,23 +91,24 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
           </div>
         </div>
 
-        {/* PDF Viewer */}
-        <div className="flex-1 overflow-hidden">
-          {pdfSrc ? (
-            <iframe
-              src={pdfSrc}
-              className="w-full h-full min-h-[500px]"
-              title={title}
-              style={{ border: 'none' }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">PDF not available</p>
-              </div>
+        {/* PDF Preview */}
+        <div className="flex-1 overflow-hidden bg-gray-50">
+          <div className="flex items-center justify-center h-full min-h-[500px]">
+            <div className="text-center max-w-md mx-auto p-8">
+              <FileText className="w-24 h-24 text-brand-teal mx-auto mb-6" />
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">{title}</h3>
+              <p className="text-gray-600 mb-8 leading-relaxed">
+                Your PDF is ready to download. Click the download button to save it to your device.
+              </p>
+              <Button
+                onClick={handleDownload}
+                className="bg-brand-teal hover:bg-brand-teal/90 text-white px-8 py-3 text-lg font-semibold"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Download PDF Now
+              </Button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Footer with download button for mobile */}
