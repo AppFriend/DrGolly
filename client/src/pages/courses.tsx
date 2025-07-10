@@ -12,7 +12,7 @@ import CourseDetail from "@/components/CourseDetail";
 
 const courseTabs = [
   { id: "my", label: "Purchases", icon: Bookmark },
-  { id: "all", label: "All Courses", icon: Grid },
+  { id: "all", label: "All", icon: Grid },
   { id: "sleep", label: "Sleep", icon: Moon },
   { id: "toddler", label: "Toddler", icon: Baby },
 ];
@@ -81,8 +81,37 @@ export default function Courses() {
     
     // Apply search filter - search across all courses when search query is present
     if (searchQuery) {
-      return course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             course.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      const query = searchQuery.toLowerCase();
+      const title = course.title.toLowerCase();
+      const description = course.description?.toLowerCase() || "";
+      
+      // Create keyword-based search with relevant tags
+      const searchTerms = [
+        title,
+        description,
+        // Add relevant keywords for better matching
+        course.category?.toLowerCase() || "",
+        // Extract key terms from title for better matching
+        ...title.split(/[\s-]+/),
+        // Add specific keywords for common searches
+        title.includes("baby") || title.includes("newborn") ? "baby newborn infant" : "",
+        title.includes("toddler") || title.includes("child") ? "toddler child preschooler" : "",
+        title.includes("sleep") ? "sleep bedtime night rest" : "",
+        title.includes("feeding") || title.includes("nutrition") ? "feeding nutrition eating food" : "",
+        title.includes("development") || title.includes("milestone") ? "development milestone growth" : "",
+        title.includes("behavior") || title.includes("behaviour") ? "behavior behaviour discipline" : "",
+      ].join(" ");
+      
+      // Score-based relevance matching
+      const titleMatch = title.includes(query) ? 100 : 0;
+      const exactWordMatch = title.split(/[\s-]+/).some(word => word === query) ? 80 : 0;
+      const keywordMatch = searchTerms.includes(query) ? 60 : 0;
+      const partialMatch = searchTerms.includes(query) ? 40 : 0;
+      
+      const relevanceScore = titleMatch + exactWordMatch + keywordMatch + partialMatch;
+      
+      // Return true if there's any meaningful match
+      return relevanceScore > 0;
     }
     return true;
   });
