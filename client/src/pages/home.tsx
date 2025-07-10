@@ -184,30 +184,42 @@ export default function Home() {
             )}>
               Welcome {user?.firstName || "there"}!
             </h1>
-            <p className={cn(
-              "text-sm mb-4",
-              user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
-                ? "text-black/80" 
-                : "text-[#166534]"
-            )}>
-              I'm here to help you navigate sleep, parenthood & beyond
-            </p>
             {user?.subscriptionTier === "free" && (
-              <Button
-                variant="secondary"
-                className="bg-[#166534] text-white hover:bg-[#095D66] font-medium rounded-xl shadow-lg"
-                onClick={() => window.location.href = "/subscription"}
-              >
-                Try Gold 50% off for 1 month
-              </Button>
+              <div className="flex flex-col items-start">
+                <p className={cn(
+                  "text-sm mb-4 max-w-[240px]",
+                  user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                    ? "text-black/80" 
+                    : "text-[#166534]"
+                )}>
+                  I'm here to help you navigate sleep, parenthood & beyond
+                </p>
+                <Button
+                  variant="secondary"
+                  className="bg-[#166534] text-white hover:bg-[#095D66] font-medium rounded-xl shadow-lg"
+                  onClick={() => window.location.href = "/subscription"}
+                >
+                  Try Gold 50% off for 1 month
+                </Button>
+              </div>
             )}
             {(user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum") && (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-                <span className="text-sm font-medium text-black">
-                  {user?.subscriptionTier === "gold" ? "Gold" : "Platinum"} Member - Unlimited Access
-                </span>
-              </div>
+              <>
+                <p className={cn(
+                  "text-sm mb-4",
+                  user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
+                    ? "text-black/80" 
+                    : "text-[#166534]"
+                )}>
+                  I'm here to help you navigate sleep, parenthood & beyond
+                </p>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-black rounded-full"></div>
+                  <span className="text-sm font-medium text-black">
+                    {user?.subscriptionTier === "gold" ? "Gold" : "Platinum"} Member - Unlimited Access
+                  </span>
+                </div>
+              </>
             )}
           </div>
         </div>
