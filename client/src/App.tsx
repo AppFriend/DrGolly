@@ -31,6 +31,7 @@ import Admin from "@/pages/admin";
 import Profile from "@/pages/profile";
 import KlaviyoTest from "@/pages/klaviyo-test";
 import Terms from "@/pages/terms";
+import ResetPassword from "@/pages/reset-password";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -138,6 +139,7 @@ function Router() {
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
+          <Route path="/reset-password" component={ResetPassword} />
           <Route path="/terms" component={Terms} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />

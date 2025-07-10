@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
+import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
 
@@ -314,6 +315,8 @@ export default function BigBabyPublic() {
   const [regionalPricing, setRegionalPricing] = useState<any>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [finalPrice, setFinalPrice] = useState<number>(0);
+  const [showWelcomeBackPopup, setShowWelcomeBackPopup] = useState(false);
+  const [existingUserEmail, setExistingUserEmail] = useState("");
 
   // Fetch regional pricing
   const { data: pricingData } = useQuery({
@@ -422,6 +425,39 @@ export default function BigBabyPublic() {
       ...prev,
       [field]: value
     }));
+    
+    // Check if email exists when user types email
+    if (field === 'email' && value.includes('@')) {
+      checkEmailExists(value);
+    }
+  };
+
+  const checkEmailExists = async (email: string) => {
+    try {
+      const response = await apiRequest('POST', '/api/auth/check-existing-account', { email });
+      const data = await response.json();
+      
+      if (data.exists) {
+        setExistingUserEmail(email);
+        setShowWelcomeBackPopup(true);
+      }
+    } catch (error) {
+      // Email doesn't exist, continue with signup
+    }
+  };
+
+  const handleWelcomeBackLogin = () => {
+    setShowWelcomeBackPopup(false);
+    setLocation("/checkout");
+  };
+
+  const handleWelcomeBackReset = () => {
+    setShowWelcomeBackPopup(false);
+    setLocation("/reset-password?from=checkout");
+  };
+
+  const handleWelcomeBackClose = () => {
+    setShowWelcomeBackPopup(false);
   };
 
   // Email validation
@@ -434,10 +470,16 @@ export default function BigBabyPublic() {
     setStep('success');
   };
 
-  const handleCreateAccount = (interests: string[], password: string) => {
-    // Complete signup by creating account
+  const handleCreateAccount = (interests: string[], password: string, phoneNumber: string, role: string) => {
+    // Complete signup by creating account with phone number and role
+    const updatedCustomerDetails = {
+      ...customerDetails,
+      phone: phoneNumber,
+      role: role
+    };
+    
     completeSignupMutation.mutate({ 
-      customerDetails, 
+      customerDetails: updatedCustomerDetails, 
       interests,
       password,
       paymentIntentId: paymentIntentId 
@@ -792,6 +834,16 @@ export default function BigBabyPublic() {
           </Card>
         </div>
       </div>
+      
+      {/* Welcome Back Popup */}
+      <WelcomeBackPopup
+        isOpen={showWelcomeBackPopup}
+        onClose={handleWelcomeBackClose}
+        userEmail={existingUserEmail}
+        firstName={customerDetails.firstName}
+        onLoginSuccess={handleWelcomeBackLogin}
+        onPasswordReset={handleWelcomeBackReset}
+      />
     </div>
   );
 }
@@ -829,12 +881,12 @@ function SuccessPage({ onContinue }: { onContinue: () => void }) {
 
 // Signup Flow Component
 function SignupFlow({ onComplete, customerDetails }: { 
-  onComplete: (interests: string[], password: string) => void; 
+  onComplete: (interests: string[], password: string, phoneNumber: string, role: string) => void; 
   customerDetails: any;
 }) {
   const [interests, setInterests] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
-  const [countryCode, setCountryCode] = useState("+1");
+  const [countryCode, setCountryCode] = useState("+61");
   const [role, setRole] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -858,7 +910,9 @@ function SignupFlow({ onComplete, customerDetails }: {
 
   const handleComplete = () => {
     if (interests.length > 0 && role && agreedToTerms && password && password === confirmPassword) {
-      onComplete(interests, password);
+      // Pass phone number in proper format
+      const phoneNumber = countryCode + phone;
+      onComplete(interests, password, phoneNumber, role);
     }
   };
 
@@ -899,7 +953,7 @@ function SignupFlow({ onComplete, customerDetails }: {
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
                   className="w-20"
-                  placeholder="+1"
+                  placeholder="+61"
                 />
                 <Input
                   value={phone}
@@ -960,7 +1014,7 @@ function SignupFlow({ onComplete, customerDetails }: {
                   className="mt-1"
                 />
                 <span className="text-sm text-gray-600">
-                  I agree to the Terms of Service and Privacy Policy *
+                  I agree to the <a href="/terms" target="_blank" className="text-[#095D66] hover:underline">Terms of Service</a> and Privacy Policy *
                 </span>
               </label>
               
