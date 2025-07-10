@@ -96,7 +96,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
           dueDate: ''
         };
 
-        // Create payment intent first
+        // Create payment intent only when user is ready to pay (Apple Pay/Google Pay button clicked)
         const paymentResponse = await fetch('/api/create-big-baby-payment', {
           method: 'POST',
           headers: {
@@ -138,7 +138,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
           FacebookPixel.trackPurchase(6, BIG_BABY_COURSE.title, finalAmount, currency);
           
           ev.complete('success');
-          onSuccess();
+          onSuccess(paymentIntent.id);
         }
       } catch (err) {
         console.error('Payment Request API exception:', err);
@@ -180,7 +180,19 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
       // Track initiate checkout
       FacebookPixel.trackInitiatePurchase(6, BIG_BABY_COURSE.title, coursePrice, currency);
       
-      // First, create the payment intent with current customer details and coupon
+      // Submit the payment element to collect payment method first
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        console.error('Elements submit error:', submitError);
+        toast({
+          title: "Payment Failed",
+          description: submitError.message || "Please check your payment details.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Only create payment intent when user is ready to pay
       const paymentResponse = await fetch('/api/create-big-baby-payment', {
         method: 'POST',
         headers: {
@@ -198,19 +210,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
         throw new Error(paymentData.message || 'Failed to create payment');
       }
 
-      // Submit the payment element to collect payment method
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        console.error('Elements submit error:', submitError);
-        toast({
-          title: "Payment Failed",
-          description: submitError.message || "Please check your payment details.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Then confirm the payment
+      // Then confirm the payment with the new payment intent
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret: paymentData.clientSecret,
@@ -234,7 +234,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
         const finalAmount = paymentData.finalAmount ? paymentData.finalAmount / 100 : coursePrice;
         FacebookPixel.trackPurchase(6, BIG_BABY_COURSE.title, finalAmount, currency);
         
-        onSuccess();
+        onSuccess(paymentIntent.id);
       }
     } catch (err) {
       console.error('Payment exception:', err);
@@ -363,28 +363,7 @@ export default function BigBabyPublic() {
     setFinalPrice(Math.round(calculatedPrice * 100) / 100);
   }, [originalPrice, appliedCoupon]);
 
-  // Create payment intent for anonymous users
-  const createPaymentMutation = useMutation({
-    mutationFn: async (data: { courseId: number; customerDetails: any; couponId?: string }) => {
-      const response = await apiRequest("POST", "/api/create-big-baby-payment", data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
-      setPaymentIntentId(data.paymentIntentId);
-      // Update final price from server response
-      if (data.finalAmount) {
-        setFinalPrice(data.finalAmount / 100);
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "Payment Setup Failed",
-        description: "Unable to set up payment. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Removed automatic payment intent creation to prevent incomplete transactions in Stripe
 
   const completeSignupMutation = useMutation({
     mutationFn: async ({ customerDetails, interests, password, paymentIntentId }: { 
@@ -393,15 +372,27 @@ export default function BigBabyPublic() {
       password: string,
       paymentIntentId: string 
     }) => {
+      console.log('Starting account creation with payment intent:', paymentIntentId);
+      console.log('Customer details:', customerDetails);
+      console.log('Selected interests:', interests);
+      
       const response = await apiRequest('POST', '/api/create-account-with-purchase', {
         customerDetails,
         interests,
         password,
         paymentIntentId
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Account creation failed:', errorData);
+        throw new Error(errorData.message || 'Account creation failed');
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {
+      console.log('Account created successfully:', data);
       toast({
         title: "Account Created Successfully!",
         description: "You can now log in with your email and password.",
@@ -415,7 +406,7 @@ export default function BigBabyPublic() {
       console.error('Account creation error:', error);
       toast({
         title: "Account Creation Failed",
-        description: "Please try again or contact support.",
+        description: error.message || "Please try again or contact support.",
         variant: "destructive",
       });
     }
@@ -479,7 +470,11 @@ export default function BigBabyPublic() {
     return emailRegex.test(email);
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (successfulPaymentIntentId?: string) => {
+    // Update payment intent ID with the successful one
+    if (successfulPaymentIntentId) {
+      setPaymentIntentId(successfulPaymentIntentId);
+    }
     setStep('success');
   };
 
@@ -501,20 +496,31 @@ export default function BigBabyPublic() {
 
   const isDetailsComplete = customerDetails.firstName && customerDetails.email && isValidEmail(customerDetails.email);
 
-  useEffect(() => {
-    if (isDetailsComplete) {
-      // Add a small delay to ensure user has finished typing
-      const timer = setTimeout(() => {
-        createPaymentMutation.mutate({ 
-          courseId: BIG_BABY_COURSE.id, 
-          customerDetails,
-          couponId: appliedCoupon?.id
-        });
-      }, 500);
+  // Only create payment intent when user is ready to pay, not when details are complete
+  const createPaymentIntentForPayment = async () => {
+    if (!isDetailsComplete) return null;
+    
+    try {
+      const response = await apiRequest("POST", "/api/create-big-baby-payment", {
+        courseId: BIG_BABY_COURSE.id,
+        customerDetails,
+        couponId: appliedCoupon?.id
+      });
+      const data = await response.json();
       
-      return () => clearTimeout(timer);
+      setClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId);
+      
+      if (data.finalAmount) {
+        setFinalPrice(data.finalAmount / 100);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Failed to create payment intent:', error);
+      return null;
     }
-  }, [isDetailsComplete, appliedCoupon]);
+  };
 
   if (step === 'success') {
     return <SuccessPage onContinue={() => setStep('signup')} />;
@@ -700,13 +706,13 @@ export default function BigBabyPublic() {
                   onCouponApplied={setAppliedCoupon}
                   onCouponRemoved={() => setAppliedCoupon(null)}
                   appliedCoupon={appliedCoupon}
-                  disabled={createPaymentMutation.isPending}
+                  disabled={false}
                 />
               </CardContent>
             </Card>
 
             {/* Payment Section */}
-            {clientSecret && isDetailsComplete ? (
+            {isDetailsComplete ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Payment Information</CardTitle>
@@ -715,7 +721,6 @@ export default function BigBabyPublic() {
                   <Elements 
                     stripe={stripePromise} 
                     options={{ 
-                      clientSecret,
                       appearance: {
                         theme: 'stripe',
                         variables: {
