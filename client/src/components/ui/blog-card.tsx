@@ -2,6 +2,7 @@ import { Eye, Heart, Clock, ArrowRight, Download, Share } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FreebieImage } from "@/components/FreebieImageLoader";
 import { PdfViewer } from "@/components/PdfViewer";
+import { useToast } from "@/hooks/use-toast";
 import type { BlogPost } from "@shared/schema";
 import { useState } from "react";
 
@@ -13,6 +14,7 @@ interface BlogCardProps {
 
 export function BlogCard({ post, onClick, className }: BlogCardProps) {
   const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const { toast } = useToast();
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -38,20 +40,23 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
     }
   };
 
-  const handleShare = (e: React.MouseEvent) => {
+  const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/share/${post.slug}`;
     
-    if (navigator.share) {
-      navigator.share({
-        title: post.title,
-        text: post.excerpt,
-        url: shareUrl
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link Copied!",
+        description: "The share link has been copied to your clipboard.",
       });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(shareUrl);
-      // TODO: Add toast notification
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy link. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -126,7 +131,7 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
             </button>
             <button 
               onClick={handleShare}
-              className="bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center transition-colors"
+              className="bg-[#095D66] hover:bg-[#074A52] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center transition-colors"
             >
               <Share className="h-5 w-5" />
             </button>
