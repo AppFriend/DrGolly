@@ -402,10 +402,15 @@ export default function BigBabyPublic() {
       return response.json();
     },
     onSuccess: (data) => {
-      console.log('Account created successfully:', data);
+      console.log('Account processed successfully:', data);
+      const toastTitle = data.isExistingUser ? "Course Added Successfully!" : "Account Created Successfully!";
+      const toastDescription = data.isExistingUser ? 
+        "The course has been added to your existing account. You can log in to access it." : 
+        "You can now log in with your email and password.";
+      
       toast({
-        title: "Account Created Successfully!",
-        description: "You can now log in with your email and password.",
+        title: toastTitle,
+        description: toastDescription,
       });
       // Redirect to login page after short delay
       setTimeout(() => {
