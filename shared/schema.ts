@@ -130,6 +130,10 @@ export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  detailedDescription: text("detailed_description"), // Website-style detailed description
+  websiteContent: text("website_content"), // Full website content for course detail page
+  keyFeatures: text("key_features").array(), // Array of key features from website
+  whatsCovered: text("whats_covered").array(), // Array of what's covered points
   category: varchar("category", { length: 100 }).notNull(), // sleep, nutrition, health, freebies
   thumbnailUrl: varchar("thumbnail_url"),
   videoUrl: varchar("video_url"),
@@ -141,6 +145,8 @@ export const courses = pgTable("courses", {
   skillLevel: varchar("skill_level"),
   stripeProductId: varchar("stripe_product_id"),
   uniqueId: varchar("unique_id"),
+  rating: decimal("rating", { precision: 2, scale: 1 }).default("4.8"), // Course rating (e.g., 4.8)
+  reviewCount: integer("review_count").default(0), // Number of reviews
   isPublished: boolean("is_published").default(false), // Default to draft
   status: varchar("status").default("draft").notNull(), // draft, published, archived
   likes: integer("likes").default(0),
