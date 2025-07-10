@@ -7,6 +7,7 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { Course } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
 
 interface CheckoutFormProps {
   course: Course;
@@ -132,8 +133,23 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
   };
 
   return (
-    <div className="bg-white rounded-lg p-4">
+    <div className="bg-white rounded-lg p-4 relative">
       <h2 className="text-lg font-semibold mb-4">Payment</h2>
+      
+      {/* Payment Processing Overlay */}
+      {isProcessing && (
+        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-lg">
+          <div className="text-center">
+            <img
+              src={paymentLoaderGif}
+              alt="Processing payment..."
+              className="w-24 h-24 mx-auto mb-4"
+            />
+            <p className="text-lg font-semibold text-gray-700">Processing Payment...</p>
+            <p className="text-sm text-gray-500 mt-1">Please wait while we process your payment</p>
+          </div>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Express Payment (Mobile Only) */}
