@@ -258,6 +258,7 @@ export interface IStorage {
   verifyTemporaryPassword(userId: string, tempPassword: string): Promise<boolean>;
   markTemporaryPasswordAsUsed(userId: string): Promise<void>;
   createBulkUsers(users: UpsertUser[]): Promise<User[]>;
+  createBulkCoursePurchases(purchases: InsertCoursePurchase[]): Promise<CoursePurchase[]>;
   setUserPassword(userId: string, passwordHash: string): Promise<void>;
   authenticateWithTemporaryPassword(email: string, tempPassword: string): Promise<User | null>;
 
@@ -1595,6 +1596,8 @@ export class DatabaseStorage implements IStorage {
               phone: sql`EXCLUDED.phone`,
               subscriptionTier: sql`EXCLUDED.subscription_tier`,
               migrated: sql`EXCLUDED.migrated`,
+              firstChildDob: sql`EXCLUDED.first_child_dob`,
+              accountActivated: sql`EXCLUDED.account_activated`,
               updatedAt: new Date(),
             },
           })
@@ -1616,6 +1619,41 @@ export class DatabaseStorage implements IStorage {
     }
     
     console.log(`Successfully processed ${results.length} users`);
+    return results;
+  }
+
+  async createBulkCoursePurchases(purchases: InsertCoursePurchase[]): Promise<CoursePurchase[]> {
+    const results: CoursePurchase[] = [];
+    
+    // Process in batches to prevent memory issues
+    const batchSize = 200;
+    console.log(`Processing ${purchases.length} course purchases in batches of ${batchSize}...`);
+    
+    for (let i = 0; i < purchases.length; i += batchSize) {
+      const batch = purchases.slice(i, i + batchSize);
+      const startTime = Date.now();
+      
+      try {
+        const batchResults = await db.insert(coursePurchases)
+          .values(batch)
+          .returning();
+        
+        results.push(...batchResults);
+        
+        const processingTime = Date.now() - startTime;
+        console.log(`Processed course purchase batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(purchases.length/batchSize)} (${batch.length} purchases) in ${processingTime}ms`);
+        
+        // Small delay between batches
+        if (i + batchSize < purchases.length) {
+          await new Promise(resolve => setTimeout(resolve, 25));
+        }
+      } catch (error) {
+        console.error(`Error processing course purchase batch ${Math.floor(i/batchSize) + 1}:`, error);
+        throw error;
+      }
+    }
+    
+    console.log(`Successfully processed ${results.length} course purchases`);
     return results;
   }
 

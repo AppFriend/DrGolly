@@ -3491,6 +3491,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Course name mapping for CSV migration
+  const COURSE_NAME_MAPPING: { [key: string]: number } = {
+    "Preparation for Newborns": 10,
+    "Little Baby Sleep Program": 5,
+    "Big Baby Sleep Program": 6,
+    "Pre-Toddler Sleep Program": 7,
+    "Toddler Sleep Program": 8,
+    "Pre-School Sleep Program": 9,
+    "New Sibling Supplement": 11,
+    "Twins Supplement": 12,
+    "Toddler Toolkit": 13,
+  };
+
+  // Parse course names from CSV and create course purchases
+  const parseCourseNames = (courseString: string): number[] => {
+    if (!courseString || courseString.trim() === '') return [];
+    
+    const courseNames = courseString.split(',').map(name => name.trim());
+    const courseIds: number[] = [];
+    
+    courseNames.forEach(courseName => {
+      const courseId = COURSE_NAME_MAPPING[courseName];
+      if (courseId) {
+        courseIds.push(courseId);
+      } else {
+        console.warn(`Unknown course name: ${courseName}`);
+      }
+    });
+    
+    return courseIds;
+  };
+
+  // Parse date string to Date object
+  const parseDate = (dateString: string): Date | null => {
+    if (!dateString || dateString.trim() === '') return null;
+    
+    // Handle different date formats
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
   // Bulk user import system for 20,000 users
   app.post('/api/admin/bulk-import', isAdmin, async (req, res) => {
     try {
@@ -3508,21 +3549,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Starting bulk import of ${users.length} users...`);
       const importStartTime = Date.now();
 
-      // Generate temporary passwords for all users with better ID generation
-      const usersWithTempPasswords = users.map(user => ({
-        ...user,
-        id: user.id || AuthUtils.generateUserId(),
-        temporaryPassword: AuthUtils.generateTemporaryPassword(),
-        isFirstLogin: true,
-        hasSetPassword: false,
-        migrated: true, // Mark as migrated from other app
-        signInCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
+      // Process CSV data with precise mapping
+      const processedUsers = users.map(user => {
+        // Parse course names and create course ID array
+        const courseIds = parseCourseNames(user.coursesPurchased || user['COURSES PURCHASED'] || '');
+        
+        return {
+          id: user.id || AuthUtils.generateUserId(),
+          email: user.email || user.Email,
+          firstName: user.firstName || user['First Name'],
+          lastName: user.lastName || user['Last Name'],
+          country: user.country || user.Country,
+          phone: user.phone || user['User Phone Number'],
+          signupSource: user.signupSource || user.Source,
+          subscriptionTier: (user.subscriptionTier || user['Choose Plan'] || 'free').toLowerCase(),
+          countCourses: parseInt(user.countCourses || user['Count Courses'] || '0'),
+          coursesPurchasedPreviously: user.coursesPurchased || user['COURSES PURCHASED'] || '',
+          signInCount: parseInt(user.signInCount || user['Sign in count'] || '0'),
+          lastSignIn: parseDate(user.lastSignIn || user['Last sign in']),
+          // New fields from CSV
+          firstChildDob: parseDate(user.firstChildDob || user['First Child DOB']),
+          accountActivated: false, // Always set to false initially
+          // Generated fields
+          temporaryPassword: AuthUtils.generateTemporaryPassword(),
+          isFirstLogin: true,
+          hasSetPassword: false,
+          migrated: true, // Mark as migrated from other app
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          // Store course IDs for later processing
+          _courseIds: courseIds,
+        };
+      });
 
       // Create users in bulk (optimized for 20,000 users)
-      const createdUsers = await storage.createBulkUsers(usersWithTempPasswords);
+      const createdUsers = await storage.createBulkUsers(processedUsers);
       
       // Create temporary password records in smaller batches for better performance
       const tempPasswordBatchSize = 100;
@@ -3535,14 +3596,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
+      // Create course purchases for users with purchased courses
+      const coursePurchaseBatchSize = 100;
+      const coursePurchases: any[] = [];
+      
+      processedUsers.forEach(user => {
+        if (user._courseIds && user._courseIds.length > 0) {
+          user._courseIds.forEach(courseId => {
+            coursePurchases.push({
+              userId: user.id,
+              courseId: courseId,
+              purchaseDate: user.createdAt,
+              status: 'completed',
+              migrated: true,
+            });
+          });
+        }
+      });
+
+      // Create course purchases in batches
+      if (coursePurchases.length > 0) {
+        for (let i = 0; i < coursePurchases.length; i += coursePurchaseBatchSize) {
+          const batch = coursePurchases.slice(i, i + coursePurchaseBatchSize);
+          await storage.createBulkCoursePurchases(batch);
+        }
+      }
+
       const importEndTime = Date.now();
       const totalProcessingTime = importEndTime - importStartTime;
       
-      console.log(`Bulk import completed: ${createdUsers.length} users in ${totalProcessingTime}ms (${Math.round(totalProcessingTime/1000)}s)`);
+      console.log(`Bulk import completed: ${createdUsers.length} users and ${coursePurchases.length} course purchases in ${totalProcessingTime}ms (${Math.round(totalProcessingTime/1000)}s)`);
 
       res.json({ 
-        message: `Successfully imported ${createdUsers.length} users in ${Math.round(totalProcessingTime/1000)} seconds`,
+        message: `Successfully imported ${createdUsers.length} users and ${coursePurchases.length} course purchases in ${Math.round(totalProcessingTime/1000)} seconds`,
         usersCreated: createdUsers.length,
+        coursePurchasesCreated: coursePurchases.length,
         processingTimeMs: totalProcessingTime,
         sampleCredentials: createdUsers.slice(0, 5).map(u => ({
           email: u.email,
