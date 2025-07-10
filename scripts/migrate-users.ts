@@ -261,7 +261,7 @@ async function runMigration() {
     const startTime = Date.now();
     
     // Read CSV file
-    const csvContent = readFileSync('attached_assets/Replit Database Migration - Sheet1 (1)_1752114292603.csv', 'utf8');
+    const csvContent = readFileSync('../attached_assets/Replit Database Migration - Sheet1 (1)_1752114292603.csv', 'utf8');
     
     // Parse CSV data with comprehensive validation
     console.log('📊 Parsing CSV data...');
