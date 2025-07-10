@@ -80,6 +80,9 @@ import {
   type InsertStripeProduct,
   type RegionalPricing,
   type InsertRegionalPricing,
+  leadCaptures,
+  type LeadCapture,
+  type InsertLeadCapture,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, gte, or, ilike, sql, isNotNull } from "drizzle-orm";
@@ -1929,6 +1932,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(regionalPricing.id, id))
       .returning();
     return result;
+  }
+
+  // Lead capture operations
+  async createLeadCapture(leadData: InsertLeadCapture): Promise<LeadCapture> {
+    const [leadCapture] = await db.insert(leadCaptures)
+      .values(leadData)
+      .returning();
+    return leadCapture;
+  }
+
+  async getLeadCaptureByEmail(email: string): Promise<LeadCapture | undefined> {
+    const [leadCapture] = await db.select().from(leadCaptures).where(eq(leadCaptures.email, email));
+    return leadCapture;
+  }
+
+  async getLeadCapturesByFreebieId(freebieId: number): Promise<LeadCapture[]> {
+    return await db.select().from(leadCaptures).where(eq(leadCaptures.freebieId, freebieId));
+  }
+
+  async getAllLeadCaptures(): Promise<LeadCapture[]> {
+    return await db.select().from(leadCaptures).orderBy(desc(leadCaptures.createdAt));
   }
 }
 

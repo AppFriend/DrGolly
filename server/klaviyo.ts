@@ -782,6 +782,154 @@ export class KlaviyoService {
     }
   }
 
+  async syncLeadToKlaviyo(leadCapture: any, freebieTitle: string): Promise<boolean> {
+    if (!KLAVIYO_API_KEY) {
+      console.error("Klaviyo API key not configured");
+      return false;
+    }
+
+    try {
+      // Create or update profile with lead capture data
+      const profileData = {
+        type: "profile",
+        attributes: {
+          email: leadCapture.email,
+          first_name: leadCapture.firstName,
+          properties: {
+            signup_source: "Freebie Download",
+            freebie_downloaded: freebieTitle,
+            download_date: new Date().toISOString(),
+            top_of_funnel_nurture: true,
+            freebie_id: leadCapture.freebieId,
+            ip_address: leadCapture.ipAddress,
+            user_agent: leadCapture.userAgent,
+            referrer_url: leadCapture.referrerUrl,
+            lead_capture_id: leadCapture.id,
+          }
+        }
+      };
+
+      // Create or update profile
+      const profileResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: profileData })
+      });
+
+      let profileId;
+      if (!profileResponse.ok) {
+        if (profileResponse.status === 409) {
+          // Profile already exists, get existing profile ID
+          const profileSearchResponse = await fetch(`${KLAVIYO_BASE_URL}/profiles/?filter=equals(email,"${leadCapture.email}")`, {
+            method: "GET",
+            headers: this.headers
+          });
+
+          if (profileSearchResponse.ok) {
+            const searchResult = await profileSearchResponse.json();
+            if (searchResult.data && searchResult.data.length > 0) {
+              profileId = searchResult.data[0].id;
+              console.log("Using existing Klaviyo profile for lead capture:", profileId);
+            }
+          }
+        } else {
+          const errorText = await profileResponse.text();
+          console.error("Failed to create lead capture profile:", profileResponse.status, errorText);
+          return false;
+        }
+      } else {
+        const profileResult = await profileResponse.json();
+        profileId = profileResult.data.id;
+      }
+
+      if (!profileId) {
+        console.error("Failed to get profile ID for lead capture");
+        return false;
+      }
+
+      // Send freebie download event
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            data: {
+              type: "profile",
+              id: profileId
+            }
+          },
+          metric: {
+            data: {
+              type: "metric",
+              attributes: {
+                name: "Freebie Download"
+              }
+            }
+          },
+          properties: {
+            freebie_title: freebieTitle,
+            freebie_id: leadCapture.freebieId,
+            download_date: new Date().toISOString(),
+            top_of_funnel_nurture: true,
+            lead_capture_id: leadCapture.id,
+            ip_address: leadCapture.ipAddress,
+            user_agent: leadCapture.userAgent,
+            referrer_url: leadCapture.referrerUrl,
+          }
+        }
+      };
+
+      const eventResponse = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!eventResponse.ok) {
+        const errorText = await eventResponse.text();
+        console.error("Failed to send freebie download event:", eventResponse.status, errorText);
+        // Continue anyway since profile was created/updated
+      }
+
+      // Add to nurture list (App Signups list)
+      const addToListResponse = await fetch(`${KLAVIYO_BASE_URL}/profile-subscription-bulk-create-jobs/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({
+          data: {
+            type: "profile-subscription-bulk-create-job",
+            attributes: {
+              list_id: KLAVIYO_APP_SIGNUPS_LIST_ID,
+              subscriptions: [
+                {
+                  email: leadCapture.email,
+                  subscriptions: {
+                    email: {
+                      marketing: {
+                        consent: "SUBSCRIBED"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        })
+      });
+
+      if (!addToListResponse.ok) {
+        const errorText = await addToListResponse.text();
+        console.error("Failed to add lead to nurture list:", addToListResponse.status, errorText);
+        // Continue anyway since profile was created/updated
+      }
+
+      console.log("Lead capture successfully synced to Klaviyo");
+      return true;
+    } catch (error) {
+      console.error("Error syncing lead capture to Klaviyo:", error);
+      return false;
+    }
+  }
+
   async updateMarketingPreferences(email: string, preferences: { emailMarketing: boolean; smsMarketing: boolean }): Promise<boolean> {
     if (!KLAVIYO_API_KEY || !email) {
       console.error("Klaviyo API key not configured or email missing");

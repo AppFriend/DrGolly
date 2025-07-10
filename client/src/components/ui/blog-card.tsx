@@ -1,4 +1,4 @@
-import { Eye, Heart, Clock, ArrowRight, Download } from "lucide-react";
+import { Eye, Heart, Clock, ArrowRight, Download, Share } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FreebieImage } from "@/components/FreebieImageLoader";
 import { PdfViewer } from "@/components/PdfViewer";
@@ -35,6 +35,23 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
     e.stopPropagation();
     if (post.pdfUrl) {
       setShowPdfViewer(true);
+    }
+  };
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/share/${post.slug}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: post.title,
+        text: post.excerpt,
+        url: shareUrl
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareUrl);
+      // TODO: Add toast notification
     }
   };
 
@@ -99,13 +116,21 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
           )}
         </div>
         {post.category === "freebies" && post.pdfUrl ? (
-          <button 
-            onClick={handleDownload}
-            className="w-full bg-[#095D66] hover:bg-[#074A52] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-colors"
-          >
-            <Download className="h-5 w-5" />
-            <span>Download Now</span>
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleDownload}
+              className="flex-1 bg-[#095D66] hover:bg-[#074A52] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-colors"
+            >
+              <Download className="h-5 w-5" />
+              <span>Download Now</span>
+            </button>
+            <button 
+              onClick={handleShare}
+              className="bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center transition-colors"
+            >
+              <Share className="h-5 w-5" />
+            </button>
+          </div>
         ) : (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 text-sm text-gray-500">

@@ -5063,6 +5063,227 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public freebie sharing routes
+  app.get('/api/freebie/:id/share', async (req, res) => {
+    try {
+      const freebieId = parseInt(req.params.id);
+      const freebie = await storage.getBlogPost(freebieId);
+      
+      if (!freebie || freebie.category !== 'freebies') {
+        return res.status(404).json({ message: 'Freebie not found' });
+      }
+      
+      res.json({
+        id: freebie.id,
+        title: freebie.title,
+        description: freebie.description,
+        thumbnailUrl: freebie.thumbnailUrl,
+        pdfAsset: freebie.pdfAsset,
+        readTime: freebie.readTime,
+      });
+    } catch (error) {
+      console.error('Error fetching freebie for sharing:', error);
+      res.status(500).json({ message: 'Failed to fetch freebie' });
+    }
+  });
+
+  app.post('/api/freebie/:id/capture', async (req, res) => {
+    try {
+      const freebieId = parseInt(req.params.id);
+      const { firstName, email } = req.body;
+      
+      if (!firstName || !email) {
+        return res.status(400).json({ message: 'First name and email are required' });
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: 'Invalid email format' });
+      }
+      
+      // Check if freebie exists
+      const freebie = await storage.getBlogPost(freebieId);
+      if (!freebie || freebie.category !== 'freebies') {
+        return res.status(404).json({ message: 'Freebie not found' });
+      }
+      
+      // Capture lead data
+      const leadData = {
+        firstName,
+        email,
+        freebieId,
+        topOfFunnelNurture: true,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent') || '',
+        referrerUrl: req.get('Referer') || '',
+      };
+      
+      let leadCapture;
+      try {
+        leadCapture = await storage.createLeadCapture(leadData);
+      } catch (error: any) {
+        // Check if user already exists
+        if (error.message?.includes('unique constraint') || error.code === '23505') {
+          leadCapture = await storage.getLeadCaptureByEmail(email);
+        } else {
+          throw error;
+        }
+      }
+      
+      // Add to Klaviyo nurture list
+      try {
+        await klaviyoService.syncLeadToKlaviyo(leadCapture, freebie.title);
+      } catch (error) {
+        console.error('Klaviyo sync failed for lead capture:', error);
+        // Continue even if Klaviyo fails
+      }
+      
+      res.json({
+        message: 'Lead captured successfully',
+        leadId: leadCapture.id,
+        downloadUrl: freebie.pdfAsset,
+        title: freebie.title,
+      });
+    } catch (error) {
+      console.error('Error capturing lead:', error);
+      res.status(500).json({ message: 'Failed to capture lead' });
+    }
+  });
+
+  app.get('/api/share/:freebieId', async (req, res) => {
+    try {
+      const freebieId = parseInt(req.params.freebieId);
+      const freebie = await storage.getBlogPost(freebieId);
+      
+      if (!freebie || freebie.category !== 'freebies') {
+        return res.status(404).send('Freebie not found');
+      }
+      
+      // Return basic HTML page for public sharing
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${freebie.title} - Dr. Golly</title>
+          <meta name="description" content="${freebie.description}">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { max-width: 200px; margin-bottom: 20px; }
+            .freebie-image { width: 100%; max-width: 400px; border-radius: 8px; margin-bottom: 20px; }
+            .form-group { margin-bottom: 20px; }
+            .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+            .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+            .btn { background: #095D66; color: white; padding: 12px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; width: 100%; }
+            .btn:hover { background: #0a6b75; }
+            .btn:disabled { background: #ccc; cursor: not-allowed; }
+            .thank-you { display: none; text-align: center; }
+            .thank-you h2 { color: #095D66; }
+            .signup-cta { background: #f0f9ff; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; }
+            .signup-btn { background: #166534; color: white; padding: 10px 25px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <img src="/api/assets/dr-golly-logo.png" alt="Dr. Golly" class="logo">
+              <h1>${freebie.title}</h1>
+              <p>${freebie.description}</p>
+            </div>
+            
+            <div id="capture-form">
+              <img src="${freebie.thumbnailUrl}" alt="${freebie.title}" class="freebie-image">
+              <p><strong>Please provide your details to access this free download:</strong></p>
+              
+              <form id="leadForm">
+                <div class="form-group">
+                  <label for="firstName">First Name</label>
+                  <input type="text" id="firstName" name="firstName" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="email">Email Address</label>
+                  <input type="email" id="email" name="email" required>
+                </div>
+                
+                <button type="submit" class="btn" id="downloadBtn">Download Now</button>
+              </form>
+            </div>
+            
+            <div id="thank-you" class="thank-you">
+              <h2>Thank you!</h2>
+              <p>Your download will begin shortly.</p>
+              <p><strong>There's plenty more where this came from!</strong></p>
+              <div class="signup-cta">
+                <p>Get access to our complete library of parenting resources with a free Dr. Golly account.</p>
+                <a href="/signup" class="signup-btn">Create Free Account</a>
+              </div>
+            </div>
+          </div>
+          
+          <script>
+            document.getElementById('leadForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+              
+              const firstName = document.getElementById('firstName').value;
+              const email = document.getElementById('email').value;
+              const btn = document.getElementById('downloadBtn');
+              
+              btn.disabled = true;
+              btn.textContent = 'Processing...';
+              
+              try {
+                const response = await fetch('/api/freebie/${freebieId}/capture', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ firstName, email }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                  // Show thank you message
+                  document.getElementById('capture-form').style.display = 'none';
+                  document.getElementById('thank-you').style.display = 'block';
+                  
+                  // Start download
+                  if (data.downloadUrl) {
+                    const link = document.createElement('a');
+                    link.href = data.downloadUrl;
+                    link.download = data.title + '.pdf';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                } else {
+                  alert(data.message || 'An error occurred');
+                  btn.disabled = false;
+                  btn.textContent = 'Download Now';
+                }
+              } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Download Now';
+              }
+            });
+          </script>
+        </body>
+        </html>
+      `;
+      
+      res.send(html);
+    } catch (error) {
+      console.error('Error serving shared freebie:', error);
+      res.status(500).send('Internal server error');
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
