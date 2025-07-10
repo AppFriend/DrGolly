@@ -499,22 +499,7 @@ export default function BigBabyPublic() {
               </CardContent>
             </Card>
 
-            {/* 2. Coupon Code */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Coupon Code</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CouponInput
-                  onCouponApplied={setAppliedCoupon}
-                  onCouponRemoved={() => setAppliedCoupon(null)}
-                  appliedCoupon={appliedCoupon}
-                  disabled={createPaymentMutation.isPending}
-                />
-              </CardContent>
-            </Card>
-
-            {/* 3. Order Summary */}
+            {/* 2. Order Summary */}
             <Card>
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
@@ -568,6 +553,21 @@ export default function BigBabyPublic() {
                     <span>{currencySymbol}{finalPrice || originalPrice}</span>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. Coupon Code */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Coupon Code</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CouponInput
+                  onCouponApplied={setAppliedCoupon}
+                  onCouponRemoved={() => setAppliedCoupon(null)}
+                  appliedCoupon={appliedCoupon}
+                  disabled={createPaymentMutation.isPending}
+                />
               </CardContent>
             </Card>
 
