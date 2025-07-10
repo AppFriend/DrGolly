@@ -15,6 +15,7 @@ import { FreebieImage } from "@/components/FreebieImageLoader";
 import type { BlogPost } from "@shared/schema";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 import drGollyLogo from "../assets/dr-golly-logo.png";
+import welcomeBanner from "@assets/Golly-Welcome Banner-App-02_1752111946858.png";
 
 const categories = [
   { id: "all", label: "All" },
@@ -155,18 +156,31 @@ export default function Home() {
 
       {/* Welcome Hero */}
       <section className={cn(
-        "p-6 rounded-b-3xl",
+        "p-6 rounded-b-3xl relative overflow-hidden",
         user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
           ? "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black" 
-          : "bg-gradient-to-r from-[#83CFCC] to-[#CBEFE8] text-white"
+          : "text-white"
       )}>
-        <div className="flex items-center space-x-4">
+        {/* Background Image for non-Gold/Platinum users */}
+        {!(user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum") && (
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: `url(${welcomeBanner})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          />
+        )}
+        
+        {/* Content overlay */}
+        <div className="relative z-10 flex items-center space-x-4">
           <div className="flex-1">
             <h1 className={cn(
               "text-xl font-bold mb-2",
               user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
                 ? "text-black" 
-                : "text-white"
+                : "text-white drop-shadow-lg"
             )}>
               Welcome {user?.firstName || "there"}!
             </h1>
@@ -174,14 +188,14 @@ export default function Home() {
               "text-sm mb-4",
               user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
                 ? "text-black/80" 
-                : "text-white/95"
+                : "text-white drop-shadow-md"
             )}>
               I'm here to help you navigate sleep, parenthood & beyond
             </p>
             {user?.subscriptionTier === "free" && (
               <Button
                 variant="secondary"
-                className="bg-white text-[#095D66] hover:bg-gray-100 font-medium rounded-xl"
+                className="bg-white text-[#095D66] hover:bg-gray-100 font-medium rounded-xl shadow-lg"
                 onClick={() => window.location.href = "/subscription"}
               >
                 Try Gold 50% off for 1 month
