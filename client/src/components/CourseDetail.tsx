@@ -64,14 +64,20 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
       return;
     }
     
-    toast({
-      title: "Opening Course",
-      description: "Loading course content...",
-    });
-    
-    // Close the detail view to return to course list where user can access the course
-    onClose();
+    // Navigate directly to course overview page
+    window.location.href = `/courses/${course.id}/overview`;
   };
+
+  // Redirect users who have access directly to course overview
+  useEffect(() => {
+    if (course && hasAccess()) {
+      // Redirect immediately if user has access
+      const timer = setTimeout(() => {
+        window.location.href = `/courses/${course.id}/overview`;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [course, coursePurchases, user]);
 
   // Get course description based on course title
   const getCourseDescription = () => {
@@ -218,6 +224,21 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
 
   const courseInfo = getCourseDescription();
   const userHasAccess = hasAccess();
+
+  // Show loading state if user has access (being redirected)
+  if (userHasAccess) {
+    return (
+      <div className="min-h-screen bg-white p-4">
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <div className="animate-pulse mb-4">
+            <div className="h-8 bg-gray-200 rounded-md mb-4 mx-auto w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded-md mb-2 mx-auto w-3/4"></div>
+          </div>
+          <p className="text-gray-600">Redirecting to course content...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-8">
