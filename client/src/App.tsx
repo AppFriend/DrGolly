@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BottomNavigation } from "@/components/ui/bottom-navigation";
+import { DesktopLayout } from "@/components/DesktopLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -56,43 +57,83 @@ function AuthenticatedApp() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen relative">
+    <div className="min-h-screen bg-white">
       <Switch>
+        {/* Special routes that don't use the desktop layout */}
         <Route path="/subscription" component={Subscription} />
         <Route path="/checkout/:courseId" component={Checkout} />
         <Route path="/payment-success" component={PaymentSuccess} />
-        <Route path="/blog/:slug" component={BlogPost} />
-        <Route path="/courses">
-          <Courses />
-          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
-        </Route>
-        <Route path="/track">
-          <Track />
-          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
-        </Route>
-        <Route path="/discounts">
-          <Discounts />
-          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
-        </Route>
-        <Route path="/family">
-          <Family />
-          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
-        </Route>
         <Route path="/checkout" component={Checkout} />
         <Route path="/manage" component={Manage} />
         <Route path="/feature-demo" component={FeatureDemo} />
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
         <Route path="/admin" component={Admin} />
-        <Route path="/profile" component={Profile} />
         <Route path="/terms" component={Terms} />
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
+        
+        {/* Routes that use the desktop layout */}
+        <Route path="/blog/:slug">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <BlogPost />
+            </div>
+          </DesktopLayout>
+        </Route>
+        <Route path="/courses">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Courses />
+            </div>
+          </DesktopLayout>
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/track">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Track />
+            </div>
+          </DesktopLayout>
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/discounts">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Discounts />
+            </div>
+          </DesktopLayout>
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/family">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Family />
+            </div>
+          </DesktopLayout>
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/profile">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Profile />
+            </div>
+          </DesktopLayout>
+          {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
         <Route path="/home">
-          <Home />
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Home />
+            </div>
+          </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/">
-          <Home />
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Home />
+            </div>
+          </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route component={NotFound} />

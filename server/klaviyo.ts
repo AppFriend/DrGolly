@@ -127,13 +127,43 @@ export class KlaviyoService {
         }
       });
 
+      // Format phone number for Klaviyo (requires E.164 format)
+      const formatPhoneNumber = (phone: string | null | undefined): string | undefined => {
+        if (!phone) return undefined;
+        
+        // Remove all non-digit characters
+        const cleaned = phone.replace(/\D/g, '');
+        
+        // If it's already in E.164 format (starts with +), return as-is
+        if (phone.startsWith('+')) {
+          return phone;
+        }
+        
+        // If it's an Australian number without country code, add +61
+        if (cleaned.length === 10 && cleaned.startsWith('0')) {
+          return `+61${cleaned.substring(1)}`;
+        }
+        
+        // If it's a US number, add +1
+        if (cleaned.length === 10) {
+          return `+1${cleaned}`;
+        }
+        
+        // If it's already formatted with country code but no +, add +
+        if (cleaned.length > 10) {
+          return `+${cleaned}`;
+        }
+        
+        return undefined; // Invalid format
+      };
+
       const profile: KlaviyoProfile = {
         type: "profile",
         attributes: {
           email: user.email || undefined,
           first_name: user.firstName || undefined,
           last_name: user.lastName || undefined,
-          phone_number: user.phoneNumber || user.phone,
+          phone_number: formatPhoneNumber(user.phoneNumber || user.phone),
           properties: customProperties
         }
       };
@@ -162,7 +192,7 @@ export class KlaviyoService {
                 attributes: {
                   first_name: user.firstName || undefined,
                   last_name: user.lastName || undefined,
-                  phone_number: user.phoneNumber || user.phone,
+                  phone_number: formatPhoneNumber(user.phoneNumber || user.phone),
                   properties: customProperties
                 }
               }
