@@ -121,9 +121,6 @@ export default function Home() {
         </div>
         <div className="flex items-center space-x-3">
           <button className="text-white hover:text-gray-200 transition-colors">
-            <Search className="h-5 w-5" />
-          </button>
-          <button className="text-white hover:text-gray-200 transition-colors">
             <Bell className="h-5 w-5" />
           </button>
           <button

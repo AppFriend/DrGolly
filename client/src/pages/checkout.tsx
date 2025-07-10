@@ -213,9 +213,9 @@ export default function Checkout() {
           <h3 className="font-semibold mb-3">Let our customers speak for us</h3>
           
           <div className="text-center mb-4">
-            <div className="text-3xl font-bold text-dr-teal">4.83</div>
+            <div className="text-3xl font-bold text-dr-teal">4.82</div>
             <div className="text-yellow-400 text-lg">⭐⭐⭐⭐⭐</div>
-            <p className="text-sm text-gray-600">Based on 653 reviews</p>
+            <p className="text-sm text-gray-600">Based on 92 reviews</p>
             <p className="text-xs text-gray-500">Reviews from Google</p>
           </div>
 

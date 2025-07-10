@@ -360,12 +360,12 @@ export default function Family() {
                 <h3 className="font-semibold text-amber-800">Gold Feature</h3>
               </div>
               <p className="text-sm text-amber-700 mb-3">
-                Invite family members to share your Dr. Golly experience. Available with Gold subscription.
+                Invite family members to share your Dr Golly experience. Available with Gold subscription.
               </p>
               <Button 
                 size="sm" 
                 className="bg-amber-600 hover:bg-amber-700 text-white"
-                onClick={() => window.location.href = '/checkout'}
+                onClick={() => window.location.href = '/manage'}
               >
                 Upgrade to Gold
               </Button>

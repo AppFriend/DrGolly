@@ -13,7 +13,7 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
 
   const monthlyPrice = 199;
-  const yearlyPrice = 99; // 50% discount
+  const yearlyPrice = 1188; // Annual price (99 * 12)
   const currentPrice = billingPeriod === "yearly" ? yearlyPrice : monthlyPrice;
   const originalPrice = billingPeriod === "yearly" ? monthlyPrice : null;
 
@@ -132,7 +132,7 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
             onClick={handleUpgrade}
             className="w-full bg-gradient-to-r from-[#6B9CA3] to-[#095D66] hover:from-[#095D66] hover:to-[#6B9CA3] text-white font-semibold py-3 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200"
           >
-            Upgrade to Gold - ${currentPrice}/month
+            Upgrade to Gold - ${billingPeriod === "yearly" ? `$${currentPrice}/year` : `$${currentPrice}/month`}
           </Button>
           
           <p className="text-xs text-gray-500 text-center mt-2">

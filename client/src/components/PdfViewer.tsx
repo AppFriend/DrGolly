@@ -94,13 +94,6 @@ export function PdfViewer({ pdfUrl, title, onClose }: PdfViewerProps) {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              onClick={handleDownload}
-              className="bg-[#095D66] hover:bg-[#074A52] text-white flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Download PDF
-            </Button>
-            <Button
               variant="ghost"
               size="sm"
               onClick={onClose}

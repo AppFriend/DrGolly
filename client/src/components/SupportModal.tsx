@@ -47,7 +47,7 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
     },
     onSuccess: () => {
       toast({
-        title: "Support Request Sent",
+        title: "Thank you, help is on the way!",
         description: "We've received your message and will get back to you as soon as possible.",
       });
       setFormData({
