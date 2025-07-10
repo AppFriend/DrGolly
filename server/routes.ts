@@ -2462,6 +2462,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to sync pending transactions with Stripe
+  app.post('/api/admin/sync-pending-transactions', isAdmin, async (req, res) => {
+    try {
+      // Get all pending transactions from database
+      const { db } = await import('./db');
+      const { coursePurchases } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const pendingPurchases = await db.select().from(coursePurchases).where(eq(coursePurchases.status, 'pending'));
+      
+      let updatedCount = 0;
+      let results = [];
+      
+      for (const purchase of pendingPurchases) {
+        try {
+          // Get payment intent from Stripe
+          const paymentIntent = await stripe.paymentIntents.retrieve(purchase.stripePaymentIntentId);
+          
+          let newStatus = 'pending';
+          if (paymentIntent.status === 'succeeded') {
+            newStatus = 'completed';
+          } else if (paymentIntent.status === 'payment_failed') {
+            newStatus = 'failed';
+          }
+          
+          if (newStatus !== 'pending') {
+            await storage.updateCoursePurchaseStatus(purchase.id, newStatus);
+            updatedCount++;
+            results.push({
+              id: purchase.id,
+              paymentIntentId: purchase.stripePaymentIntentId,
+              oldStatus: 'pending',
+              newStatus: newStatus,
+              stripeStatus: paymentIntent.status
+            });
+          }
+        } catch (error) {
+          console.error(`Error syncing payment ${purchase.stripePaymentIntentId}:`, error);
+          results.push({
+            id: purchase.id,
+            paymentIntentId: purchase.stripePaymentIntentId,
+            error: error.message
+          });
+        }
+      }
+      
+      res.json({
+        message: `Successfully synced ${updatedCount} transactions`,
+        totalPending: pendingPurchases.length,
+        updatedCount: updatedCount,
+        results: results
+      });
+    } catch (error) {
+      console.error("Error syncing pending transactions:", error);
+      res.status(500).json({ message: "Failed to sync pending transactions" });
+    }
+  });
+
   // Profile management routes
   app.get('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
