@@ -196,7 +196,7 @@ export default function Home() {
                 </p>
                 <Button
                   variant="secondary"
-                  className="bg-[#166534] text-white hover:bg-[#095D66] font-medium rounded-xl shadow-lg"
+                  className="bg-[#095D66] text-white hover:bg-[#166534] font-medium rounded-xl shadow-lg"
                   onClick={() => window.location.href = "/subscription"}
                 >
                   Try Gold 50% off for 1 month
