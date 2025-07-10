@@ -639,7 +639,7 @@ export default function Signup() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="max-w-md mx-auto px-6 pt-8">
+      <div className="max-w-2xl mx-auto px-6 pt-8">
         <div className="flex items-center justify-between mb-8">
           <Link href="/">
             <Button variant="ghost" size="sm" className="p-2">

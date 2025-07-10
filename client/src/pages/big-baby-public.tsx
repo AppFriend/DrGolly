@@ -545,8 +545,8 @@ export default function BigBabyPublic() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Left Column - Course Details */}
           <div className="space-y-6">
             <div>
@@ -583,26 +583,28 @@ export default function BigBabyPublic() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="firstName" className="text-sm text-gray-600">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={customerDetails.firstName}
-                      onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                      className="mt-1"
-                      placeholder="First Name"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="lastName" className="text-sm text-gray-600">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={customerDetails.lastName}
-                      onChange={(e) => handleDetailsChange("lastName", e.target.value)}
-                      className="mt-1"
-                      placeholder="Last Name"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName" className="text-sm text-gray-600">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        value={customerDetails.firstName}
+                        onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                        className="mt-1"
+                        placeholder="First Name"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="lastName" className="text-sm text-gray-600">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={customerDetails.lastName}
+                        onChange={(e) => handleDetailsChange("lastName", e.target.value)}
+                        className="mt-1"
+                        placeholder="Last Name"
+                      />
+                    </div>
                   </div>
                   
                   <div>
@@ -931,8 +933,27 @@ function SignupFlow({ onComplete, customerDetails }: {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-md mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6">
+      {/* Header */}
+      <div className="bg-white border-b">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <img 
+                src={drGollyLogo} 
+                alt="Dr. Golly" 
+                className="h-10 w-auto object-contain"
+              />
+            </div>
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              <Shield className="h-3 w-3 mr-1" />
+              30-Day Money Back Guarantee
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Profile</h1>
             <p className="text-gray-600">Just a few more details to access your course</p>
@@ -941,7 +962,7 @@ function SignupFlow({ onComplete, customerDetails }: {
           <div className="space-y-6">
             <div>
               <Label className="text-sm text-gray-600 mb-3 block">What are you interested in? *</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {interestOptions.map((interest) => (
                   <Button
                     key={interest}
@@ -979,7 +1000,7 @@ function SignupFlow({ onComplete, customerDetails }: {
 
             <div>
               <Label className="text-sm text-gray-600 mb-2 block">I am a *</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {["Parent", "Grandparent", "Caregiver", "Professional"].map((roleOption) => (
                   <Button
                     key={roleOption}
@@ -999,20 +1020,21 @@ function SignupFlow({ onComplete, customerDetails }: {
 
             <div>
               <Label className="text-sm text-gray-600 mb-2 block">Create Password *</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a secure password"
-                className="mb-2"
-              />
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your password"
-                className={confirmPassword && password !== confirmPassword ? "border-red-500" : ""}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create a secure password"
+                />
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  className={confirmPassword && password !== confirmPassword ? "border-red-500" : ""}
+                />
+              </div>
               {confirmPassword && password !== confirmPassword && (
                 <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
               )}
