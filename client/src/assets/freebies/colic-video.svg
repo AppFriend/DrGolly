@@ -1,0 +1,19 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#83CFCC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#095D66;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="200" fill="url(#bg6)"/>
+  <circle cx="320" cy="50" r="15" fill="white" opacity="0.8"/>
+  <circle cx="340" cy="40" r="10" fill="white" opacity="0.6"/>
+  <circle cx="360" cy="60" r="12" fill="white" opacity="0.7"/>
+  <text x="50" y="80" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white">Access my free</text>
+  <text x="50" y="105" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white">colic video</text>
+  <text x="50" y="130" font-family="Arial, sans-serif" font-size="16" fill="white">Free DL</text>
+  <circle cx="50" cy="160" r="20" fill="white" opacity="0.3"/>
+  <path d="M 45 155 L 50 160 L 55 165" stroke="white" stroke-width="2" fill="none"/>
+  <circle cx="320" cy="140" r="40" fill="white" opacity="0.3"/>
+  <polygon points="310,130 310,150 330,140" fill="white" opacity="0.8"/>
+</svg>

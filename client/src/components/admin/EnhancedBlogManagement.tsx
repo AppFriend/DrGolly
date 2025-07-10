@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { getFreebieAssetOptions } from "@/components/FreebieImageLoader";
 import { 
   FileText, 
   Plus, 
@@ -248,12 +249,27 @@ export function EnhancedBlogManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="imageUrl">Featured Image URL</Label>
-                  <Input
-                    id="imageUrl"
-                    value={newPost.imageUrl}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, imageUrl: e.target.value }))}
-                    placeholder="Enter image URL..."
-                  />
+                  {newPost.category === 'freebies' ? (
+                    <Select value={newPost.imageUrl} onValueChange={(value) => setNewPost(prev => ({ ...prev, imageUrl: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select freebie image..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getFreebieAssetOptions().map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="imageUrl"
+                      value={newPost.imageUrl}
+                      onChange={(e) => setNewPost(prev => ({ ...prev, imageUrl: e.target.value }))}
+                      placeholder="Enter image URL..."
+                    />
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="pdfUrl">PDF Download URL (for freebies)</Label>

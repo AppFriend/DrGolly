@@ -1,5 +1,6 @@
 import { Eye, Heart, Clock, ArrowRight, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FreebieImage } from "@/components/FreebieImageLoader";
 import type { BlogPost } from "@shared/schema";
 
 interface BlogCardProps {
@@ -51,11 +52,19 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
       onClick={onClick}
     >
       <div className="relative p-3">
-        <img
-          src={post.imageUrl || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
-          alt={post.title}
-          className="w-full h-32 object-cover rounded-xl"
-        />
+        {post.category === "freebies" && post.imageUrl?.startsWith('@/assets/freebies/') ? (
+          <FreebieImage
+            src={post.imageUrl}
+            alt={post.title}
+            className="w-full h-32 object-cover rounded-xl"
+          />
+        ) : (
+          <img
+            src={post.imageUrl || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
+            alt={post.title}
+            className="w-full h-32 object-cover rounded-xl"
+          />
+        )}
         <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
           <button 
             onClick={() => window.location.href = `/blog/${post.slug}`}
