@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 
-// Import all freebie assets
+// Import all freebie assets - High-resolution PNG versions
+import sleepTipsHD from '@assets/App Freebies-Sleeping Tips_1752112448277.png';
+import fussyEatersHD from '@assets/App Freebies-Fussy eating_1752112448277.png';
+import bedtimeRoutineChartHD from '@assets/App Freebies-Toddler bedtime chart_1752112448276.png';
+import colicsVideoHD from '@assets/App Freebies-Colic and babies_1752112448277.png';
+import earlyMorningWakingHD from '@assets/App Freebies-Early morning waking_1752112448277.png';
+import breastmilkStorageHD from '@assets/App Freebies-Breast milk storage_1752112448278.png';
+
+// Legacy SVG imports for fallback
 import sleepTips from '@/assets/freebies/sleep-tips.svg';
 import fussyEaters from '@/assets/freebies/fussy-eaters.svg';
 import startingSolids from '@/assets/freebies/starting-solids.svg';
@@ -11,6 +19,15 @@ import earlyMorningWaking from '@/assets/freebies/early-morning-waking.svg';
 
 // Asset mapping for admin panel management
 export const FREEBIE_ASSETS = {
+  // High-resolution PNG versions
+  '@assets/App Freebies-Sleeping Tips_1752112448277.png': sleepTipsHD,
+  '@assets/App Freebies-Fussy eating_1752112448277.png': fussyEatersHD,
+  '@assets/App Freebies-Toddler bedtime chart_1752112448276.png': bedtimeRoutineChartHD,
+  '@assets/App Freebies-Colic and babies_1752112448277.png': colicsVideoHD,
+  '@assets/App Freebies-Early morning waking_1752112448277.png': earlyMorningWakingHD,
+  '@assets/App Freebies-Breast milk storage_1752112448278.png': breastmilkStorageHD,
+  
+  // Legacy SVG versions for fallback
   '@/assets/freebies/sleep-tips.svg': sleepTips,
   '@/assets/freebies/fussy-eaters.svg': fussyEaters,
   '@/assets/freebies/starting-solids.svg': startingSolids,
@@ -30,8 +47,8 @@ export function FreebieImage({ src, alt, className = '' }: FreebieImageProps) {
   const [imageSrc, setImageSrc] = useState<string>('');
 
   useEffect(() => {
-    // Check if the src is a freebie asset path
-    if (src.startsWith('@/assets/freebies/')) {
+    // Check if the src is a freebie asset path (including new HD PNG versions)
+    if (src.startsWith('@/assets/freebies/') || src.startsWith('@assets/App Freebies-')) {
       const assetSrc = FREEBIE_ASSETS[src as keyof typeof FREEBIE_ASSETS];
       if (assetSrc) {
         setImageSrc(assetSrc);
