@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement } from "@stripe/react-stripe-js";
+import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, CardElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
@@ -180,6 +180,12 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
       // Track initiate checkout
       FacebookPixel.trackInitiatePurchase(6, BIG_BABY_COURSE.title, coursePrice, currency);
       
+      // Get card element
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card element not found');
+      }
+
       // Create payment intent when user clicks submit
       const paymentResponse = await fetch('/api/create-big-baby-payment', {
         method: 'POST',
@@ -198,15 +204,19 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
         throw new Error(paymentData.message || 'Failed to create payment');
       }
 
-      // Confirm payment with the new payment intent
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        clientSecret: paymentData.clientSecret,
-        confirmParams: {
-          return_url: `${window.location.origin}/big-baby-public`,
-        },
-        redirect: 'if_required',
-      });
+      // Confirm payment with card element
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        paymentData.clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: `${customerDetails.firstName} ${customerDetails.lastName}`,
+              email: customerDetails.email,
+            },
+          },
+        }
+      );
 
       if (error) {
         console.error('Payment confirmation error:', error);
@@ -281,14 +291,26 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
         </div>
       )}
 
-      {/* Payment Form with Link and Card */}
+      {/* Payment Form with Card */}
       <form onSubmit={(e) => handleCardSubmit(e, customerDetails)} className="space-y-4">
-        <PaymentElement 
-          options={{
-            layout: "tabs",
-            paymentMethodOrder: ["link", "card"]
-          }}
-        />
+        <div className="p-4 border rounded-lg bg-white">
+          <CardElement 
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#424770',
+                  '::placeholder': {
+                    color: '#aab7c4',
+                  },
+                },
+                invalid: {
+                  color: '#9e2146',
+                },
+              },
+            }}
+          />
+        </div>
         <Button
           type="submit"
           disabled={!stripe || isProcessing}
