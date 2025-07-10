@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Search, Bell, HelpCircle } from "lucide-react";
+import { Search, Bell, HelpCircle, Settings } from "lucide-react";
 import { BlogCard } from "@/components/ui/blog-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,6 +36,14 @@ export default function Home() {
   
   // Initialize personalization hook to save signup data after auth
   const { personalization } = usePersonalization();
+
+  // Check if user is admin
+  const { data: adminCheck } = useQuery({
+    queryKey: ["/api/admin/check"],
+    enabled: !!user,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   const { data: blogPosts, isLoading, isFetching, error } = useQuery({
     queryKey: ["/api/blog-posts", activeCategory === "all" ? undefined : activeCategory],
@@ -120,6 +128,16 @@ export default function Home() {
           </button>
         </div>
         <div className="flex items-center space-x-3">
+          {adminCheck?.isAdmin && (
+            <button
+              onClick={() => setLocation("/admin")}
+              className="flex items-center space-x-1 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
+              title="Admin Panel"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="text-sm font-medium">Admin Panel</span>
+            </button>
+          )}
           <button className="text-white hover:text-gray-200 transition-colors">
             <Bell className="h-5 w-5" />
           </button>

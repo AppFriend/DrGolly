@@ -343,7 +343,6 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
           placeholder="https://example.com/image.jpg"
         />
       </div>
-      </div>
 
       {formData.category === "freebies" && (
         <div>
