@@ -452,6 +452,19 @@ Changelog:
   * Enhanced backend API metrics to include platinumUsers count for complete subscription tier tracking
   * Migration includes 13,150 users with child birth dates and 12,988 users with phone numbers
   * Created 62,192 individual course purchase records from CSV course mapping
+- July 10, 2025. Fixed critical Big Baby checkout payment intent ID mismatch causing account creation failures:
+  * Resolved payment intent ID tracking issue where successful payments used different IDs than account creation
+  * Enhanced payment success handlers to capture and pass the correct payment intent ID to parent component
+  * Made Klaviyo integration non-blocking to prevent account creation failures (account creation continues even if Klaviyo fails)
+  * Fixed Klaviyo event structure with proper "data" key formatting for profile and metric relationships
+  * Added comprehensive error handling and logging for account creation process with detailed debugging
+  * Enhanced error messages for duplicate email detection and invalid input validation
+  * Fixed date field handling for customer due dates with proper Date object conversion
+  * Updated both Apple Pay/Google Pay and card payment flows to use consistent payment intent ID tracking
+  * Eliminated incomplete payment intents in Stripe by only creating payment intents when users actively initiate payment
+  * Removed automatic payment intent creation on form completion to prevent abandoned transactions cluttering Stripe dashboard
+  * Payment intents now created only when user clicks payment buttons (Apple Pay, Google Pay, or card payment forms)
+  * Enhanced payment flow efficiency by creating payment intents just-in-time rather than pre-emptively
 ```
 
 ## User Preferences
