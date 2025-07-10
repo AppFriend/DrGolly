@@ -13,6 +13,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { getFreebieAssetOptions } from "@/components/FreebieImageLoader";
+import { PDF_ASSETS } from "@/components/PdfViewer";
 import { 
   FileText, 
   Plus, 
@@ -273,12 +274,28 @@ export function EnhancedBlogManagement() {
                 </div>
                 <div>
                   <Label htmlFor="pdfUrl">PDF Download URL (for freebies)</Label>
-                  <Input
-                    id="pdfUrl"
-                    value={newPost.pdfUrl}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, pdfUrl: e.target.value }))}
-                    placeholder="Enter PDF URL..."
-                  />
+                  {newPost.category === 'freebies' ? (
+                    <Select value={newPost.pdfUrl} onValueChange={(value) => setNewPost(prev => ({ ...prev, pdfUrl: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select freebie PDF..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No PDF</SelectItem>
+                        {Object.keys(PDF_ASSETS).map((pdfPath) => (
+                          <SelectItem key={pdfPath} value={pdfPath}>
+                            {pdfPath.split('/').pop()?.replace('.pdf', '') || 'PDF'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="pdfUrl"
+                      value={newPost.pdfUrl}
+                      onChange={(e) => setNewPost(prev => ({ ...prev, pdfUrl: e.target.value }))}
+                      placeholder="Enter PDF URL..."
+                    />
+                  )}
                 </div>
               </div>
               <div>

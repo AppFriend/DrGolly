@@ -1,7 +1,9 @@
 import { Eye, Heart, Clock, ArrowRight, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FreebieImage } from "@/components/FreebieImageLoader";
+import { PdfViewer } from "@/components/PdfViewer";
 import type { BlogPost } from "@shared/schema";
+import { useState } from "react";
 
 interface BlogCardProps {
   post: BlogPost;
@@ -10,6 +12,8 @@ interface BlogCardProps {
 }
 
 export function BlogCard({ post, onClick, className }: BlogCardProps) {
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "sleep":
@@ -30,8 +34,7 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (post.pdfUrl) {
-      // Open PDF in new window for viewing and downloading
-      window.open(post.pdfUrl, '_blank', 'noopener,noreferrer');
+      setShowPdfViewer(true);
     }
   };
 
@@ -44,15 +47,16 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
   };
 
   return (
-    <div
-      className={cn(
-        "bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer",
-        className
-      )}
-      onClick={onClick}
-    >
+    <>
+      <div
+        className={cn(
+          "bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1 cursor-pointer",
+          className
+        )}
+        onClick={onClick}
+      >
       <div className="relative p-3">
-        {post.category === "freebies" && post.imageUrl?.startsWith('@/assets/freebies/') ? (
+        {post.category === "freebies" && (post.imageUrl?.startsWith('@/assets/freebies/') || post.imageUrl?.startsWith('@assets/App Freebies-')) ? (
           <FreebieImage
             src={post.imageUrl}
             alt={post.title}
@@ -124,6 +128,16 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+
+      {/* PDF Viewer Modal */}
+      {showPdfViewer && post.pdfUrl && (
+        <PdfViewer
+          pdfUrl={post.pdfUrl}
+          title={post.title}
+          onClose={() => setShowPdfViewer(false)}
+        />
+      )}
+    </>
   );
 }

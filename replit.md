@@ -418,6 +418,13 @@ Changelog:
   * Enhanced FreebieImageLoader component to support new PNG asset paths
   * Maintained backward compatibility with legacy SVG assets
   * All freebie images now display consistent professional branding with teal color scheme and download icons
+- July 10, 2025. Implemented comprehensive PDF download functionality for freebies:
+  * Created PdfViewer component with modal display and immediate download button
+  * Added PDF asset management system with 5 professional PDFs (Sleep Tips, Fussy Eaters, Bedtime Routine, Starting Solids, Breastmilk Storage)
+  * Enhanced BlogCard component to open PDF viewer instead of direct download
+  * Updated admin panel with PDF dropdown selection for freebie posts
+  * Excluded Colic Video from PDF downloads as it's video-only content
+  * All PDF downloads feature proper asset mapping for easy future replacement through admin panel
 ```
 
 ## User Preferences
