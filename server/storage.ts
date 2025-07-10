@@ -774,6 +774,13 @@ export class DatabaseStorage implements IStorage {
     return progress;
   }
 
+  async getAllUserChapterProgress(userId: string): Promise<UserChapterProgress[]> {
+    return await db
+      .select()
+      .from(userChapterProgress)
+      .where(eq(userChapterProgress.userId, userId));
+  }
+
   async updateUserChapterProgress(progress: InsertUserChapterProgress): Promise<UserChapterProgress> {
     const [updatedProgress] = await db
       .insert(userChapterProgress)

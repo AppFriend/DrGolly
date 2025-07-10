@@ -17,11 +17,11 @@ import drGollyLogo from "../assets/dr-golly-logo.png";
 
 const categories = [
   { id: "all", label: "All" },
+  { id: "freebies", label: "Freebies" },
   { id: "sleep", label: "Sleep" },
   { id: "nutrition", label: "Nutrition" },
   { id: "health", label: "Health" },
   { id: "parenting", label: "Parenting" },
-  { id: "freebies", label: "Freebies" },
 ];
 
 export default function Home() {
