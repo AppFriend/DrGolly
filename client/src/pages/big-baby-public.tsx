@@ -180,19 +180,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
       // Track initiate checkout
       FacebookPixel.trackInitiatePurchase(6, BIG_BABY_COURSE.title, coursePrice, currency);
       
-      // Submit the payment element to collect payment method first
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        console.error('Elements submit error:', submitError);
-        toast({
-          title: "Payment Failed",
-          description: submitError.message || "Please check your payment details.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Only create payment intent when user is ready to pay
+      // Create payment intent when user clicks submit
       const paymentResponse = await fetch('/api/create-big-baby-payment', {
         method: 'POST',
         headers: {
@@ -210,7 +198,7 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
         throw new Error(paymentData.message || 'Failed to create payment');
       }
 
-      // Then confirm the payment with the new payment intent
+      // Confirm payment with the new payment intent
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret: paymentData.clientSecret,
@@ -721,6 +709,9 @@ export default function BigBabyPublic() {
                   <Elements 
                     stripe={stripePromise} 
                     options={{ 
+                      mode: 'payment',
+                      amount: Math.round((finalPrice || originalPrice) * 100),
+                      currency: currency.toLowerCase(),
                       appearance: {
                         theme: 'stripe',
                         variables: {
