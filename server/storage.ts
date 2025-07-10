@@ -1574,14 +1574,48 @@ export class DatabaseStorage implements IStorage {
   async createBulkUsers(userList: UpsertUser[]): Promise<User[]> {
     const results: User[] = [];
     
-    // Process in batches of 100 to prevent memory issues
-    const batchSize = 100;
+    // Optimized batch size for 20,000 users - larger batches for better performance
+    const batchSize = 500;
+    console.log(`Processing ${userList.length} users in batches of ${batchSize}...`);
+    
     for (let i = 0; i < userList.length; i += batchSize) {
       const batch = userList.slice(i, i + batchSize);
-      const batchResults = await db.insert(users).values(batch).returning();
-      results.push(...batchResults);
+      const startTime = Date.now();
+      
+      try {
+        // Use onConflictDoUpdate for upsert behavior in case of duplicates
+        const batchResults = await db.insert(users)
+          .values(batch)
+          .onConflictDoUpdate({
+            target: users.email,
+            set: {
+              firstName: sql`EXCLUDED.first_name`,
+              lastName: sql`EXCLUDED.last_name`,
+              country: sql`EXCLUDED.country`,
+              phone: sql`EXCLUDED.phone`,
+              subscriptionTier: sql`EXCLUDED.subscription_tier`,
+              migrated: sql`EXCLUDED.migrated`,
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        
+        results.push(...batchResults);
+        
+        const processingTime = Date.now() - startTime;
+        console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(userList.length/batchSize)} (${batch.length} users) in ${processingTime}ms`);
+        
+        // Small delay between batches to prevent overwhelming the database
+        if (i + batchSize < userList.length) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      } catch (error) {
+        console.error(`Error processing batch ${Math.floor(i/batchSize) + 1}:`, error);
+        throw error;
+      }
     }
     
+    console.log(`Successfully processed ${results.length} users`);
     return results;
   }
 
