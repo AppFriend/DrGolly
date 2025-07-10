@@ -16,6 +16,7 @@ import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
+import { FacebookPixel } from "@/lib/facebook-pixel";
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
@@ -132,6 +133,10 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
             variant: "destructive",
           });
         } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+          // Track Facebook Pixel Purchase conversion
+          const finalAmount = paymentData.finalAmount ? paymentData.finalAmount / 100 : coursePrice;
+          FacebookPixel.trackPurchase(6, BIG_BABY_COURSE.title, finalAmount, currency);
+          
           ev.complete('success');
           onSuccess();
         }
@@ -172,6 +177,9 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
     setIsProcessing(true);
 
     try {
+      // Track initiate checkout
+      FacebookPixel.trackInitiatePurchase(6, BIG_BABY_COURSE.title, coursePrice, currency);
+      
       // First, create the payment intent with current customer details and coupon
       const paymentResponse = await fetch('/api/create-big-baby-payment', {
         method: 'POST',
@@ -221,6 +229,11 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
         });
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded:', paymentIntent.id);
+        
+        // Track Facebook Pixel Purchase conversion
+        const finalAmount = paymentData.finalAmount ? paymentData.finalAmount / 100 : coursePrice;
+        FacebookPixel.trackPurchase(6, BIG_BABY_COURSE.title, finalAmount, currency);
+        
         onSuccess();
       }
     } catch (err) {

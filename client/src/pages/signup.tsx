@@ -11,6 +11,7 @@ import { Link } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
+import { FacebookPixel } from "@/lib/facebook-pixel";
 
 interface PersonalizationData {
   primaryConcerns: string[];
@@ -65,6 +66,10 @@ export default function Signup() {
   const handleBasicSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName || !lastName || !email || !password) return;
+    
+    // Track registration initiation
+    FacebookPixel.trackInitiateRegistration();
+    
     setStep(2);
   };
 
@@ -131,6 +136,9 @@ export default function Signup() {
   const handleCompleteSignup = async () => {
     setIsLoading(true);
     try {
+      // Track complete registration
+      FacebookPixel.trackCompleteRegistration();
+      
       // Store signup data with personalization for the login flow
       localStorage.setItem('signupData', JSON.stringify({
         firstName,

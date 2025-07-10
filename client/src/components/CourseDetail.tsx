@@ -10,6 +10,7 @@ import { CopyProtection } from '@/lib/copyProtection';
 import { apiRequest } from '@/lib/queryClient';
 import confetti from 'canvas-confetti';
 import ModuleDetail from './ModuleDetail';
+import { FacebookPixel } from '@/lib/facebook-pixel';
 
 interface CourseDetailProps {
   courseId: number;
@@ -115,6 +116,13 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     queryKey: [`/api/courses/${courseId}`],
     enabled: !!courseId,
   });
+
+  // Track course view with Facebook Pixel
+  useEffect(() => {
+    if (course) {
+      FacebookPixel.trackViewContent(course.id, course.title);
+    }
+  }, [course]);
 
   // Fetch chapters
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery({

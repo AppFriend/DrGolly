@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Course } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
+import { FacebookPixel } from "@/lib/facebook-pixel";
 
 interface CheckoutFormProps {
   course: Course;
@@ -130,6 +131,9 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
     setIsProcessing(true);
 
     try {
+      // Track initiate checkout
+      FacebookPixel.trackInitiatePurchase(course.id, course.title, total / 100, currency);
+      
       // First, create the payment intent with current coupon data
       const paymentResponse = await fetch('/api/create-course-payment', {
         method: 'POST',
@@ -186,6 +190,11 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
         });
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded:', paymentIntent.id);
+        
+        // Track Facebook Pixel Purchase conversion
+        const finalAmount = paymentData.finalAmount ? paymentData.finalAmount / 100 : total / 100;
+        FacebookPixel.trackPurchase(course.id, course.title, finalAmount, currency);
+        
         toast({
           title: "Payment Successful",
           description: "Your course purchase is complete!",
