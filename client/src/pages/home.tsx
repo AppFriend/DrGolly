@@ -11,6 +11,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { cn } from "@/lib/utils";
 import { WelcomePopup } from "@/components/WelcomePopup";
 import { SupportModal } from "@/components/SupportModal";
+import { FreebieImage } from "@/components/FreebieImageLoader";
 import type { BlogPost } from "@shared/schema";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 import drGollyLogo from "../assets/dr-golly-logo.png";
