@@ -264,8 +264,25 @@ export default function Home() {
             </div>
           )}
           
+          {/* Mobile: Single column layout */}
           <div className={cn(
-            "space-y-6 transition-opacity duration-200",
+            "space-y-6 transition-opacity duration-200 lg:hidden",
+            isFetching && blogPosts ? "opacity-50" : "opacity-100"
+          )}>
+            {blogPosts
+              ?.filter(post => activeCategory === "all" || post.category === activeCategory)
+              ?.map((post) => (
+              <BlogCard
+                key={post.id}
+                post={post}
+                onClick={() => handleBlogClick(post)}
+              />
+            ))}
+          </div>
+
+          {/* Desktop: Three column grid layout */}
+          <div className={cn(
+            "hidden lg:grid lg:grid-cols-3 lg:gap-6 transition-opacity duration-200",
             isFetching && blogPosts ? "opacity-50" : "opacity-100"
           )}>
             {blogPosts

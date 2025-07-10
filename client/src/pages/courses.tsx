@@ -220,7 +220,62 @@ export default function Courses() {
         )}
 
         {/* Course Cards */}
-        <div className="space-y-6">
+        {/* Mobile: Single column layout */}
+        <div className="space-y-6 lg:hidden">
+          {filteredCourses?.map((course: Course) => (
+            <div key={course.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+              <img
+                src={course.thumbnailUrl || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
+                alt={course.title}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-1">{course.title}</h3>
+                <p className="text-sm text-gray-600 mb-1">{course.ageRange}</p>
+                <p className="text-sm text-gray-500 mb-4 capitalize">{course.category}</p>
+                
+                {(() => {
+                  const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
+                  const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+                  
+                  // If user has purchased this course or has Gold/Platinum access, show access button
+                  if (hasPurchased || hasGoldAccess) {
+                    return (
+                      <Button
+                        onClick={() => handleCourseClick(course)}
+                        className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white"
+                      >
+                        {getCourseButtonText(course)}
+                      </Button>
+                    );
+                  }
+                  
+                  // Free users without this course purchased - show purchase options
+                  return (
+                    <>
+                      <Button
+                        onClick={() => window.location.href = "/manage"}
+                        className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
+                      >
+                        Unlimited Access with Gold
+                      </Button>
+                      <Button
+                        onClick={() => window.location.href = `/checkout/${course.id}`}
+                        variant="outline"
+                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        Buy for $120
+                      </Button>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: Three column grid layout */}
+        <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
           {filteredCourses?.map((course: Course) => (
             <div key={course.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
               <img
