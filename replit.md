@@ -515,6 +515,12 @@ Changelog:
   * Button uses admin check API endpoint (/api/admin/check) to verify permissions
   * Styled button to match category filters with brand green color, rounded corners, and no icon
   * Admin access currently limited to frazer.adnam@cq-partners.com.au as configured
+- July 10, 2025. Streamlined admin panel by removing legacy migration features:
+  * Removed bulk user import tab as migration is complete with 17,500+ users imported
+  * Removed thinkific migration tab as platform migration is no longer needed
+  * Fixed runtime errors in blogs and courses tabs with proper array validation
+  * Updated tab layout from 8 tabs to 6 tabs with improved grid layout (3 mobile, 6 desktop)
+  * Admin panel now focuses on core management: Dashboard, Blog Posts, Courses, Users, Notifications, Admin Users
 ```
 
 ## User Preferences

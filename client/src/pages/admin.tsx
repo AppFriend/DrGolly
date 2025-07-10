@@ -13,8 +13,7 @@ import {
   GraduationCap, 
   Bell,
   Settings,
-  Database,
-  UserPlus
+  Database
 } from "lucide-react";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
@@ -25,10 +24,8 @@ import { AdminBlogManagement } from "@/components/admin/AdminBlogManagement";
 import { AdminCourseManagement } from "@/components/admin/AdminCourseManagement";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { AdminUserSettings } from "@/components/admin/AdminUserSettings";
-import { BulkUserImport } from "@/components/admin/BulkUserImport";
 import { EnhancedCourseManagement } from "@/components/admin/EnhancedCourseManagement";
 import { EnhancedBlogManagement } from "@/components/admin/EnhancedBlogManagement";
-import ThinkificMigrationTool from "@/components/admin/ThinkificMigrationTool";
 
 
 export default function AdminPanel() {
@@ -111,7 +108,7 @@ export default function AdminPanel() {
       {/* Admin Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 mb-6">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -124,17 +121,9 @@ export default function AdminPanel() {
               <GraduationCap className="h-4 w-4" />
               <span className="hidden sm:inline">Courses</span>
             </TabsTrigger>
-            <TabsTrigger value="migration" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              <span className="hidden sm:inline">Migration</span>
-            </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Bulk Import</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
@@ -158,18 +147,9 @@ export default function AdminPanel() {
             <EnhancedCourseManagement />
           </TabsContent>
 
-          <TabsContent value="migration" className="mt-6">
-            <ThinkificMigrationTool />
-          </TabsContent>
-
           <TabsContent value="users" className="mt-6">
             <AdminUserManagement />
           </TabsContent>
-
-          <TabsContent value="import" className="mt-6">
-            <BulkUserImport />
-          </TabsContent>
-
 
 
           <TabsContent value="notifications" className="mt-6">
