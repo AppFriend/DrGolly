@@ -3032,6 +3032,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { couponCode } = req.body;
       
+      console.log("Validating coupon code:", couponCode);
+      
       if (!couponCode) {
         return res.status(400).json({ message: "Coupon code is required" });
       }
@@ -3042,13 +3044,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Search for promotion code first
+        console.log("Searching for promotion codes with code:", couponCode);
         const promotionCodes = await stripe.promotionCodes.list({
           code: couponCode,
           limit: 1,
         });
         
+        console.log("Found promotion codes:", promotionCodes.data.length);
+        
         if (promotionCodes.data.length > 0) {
           promotionCode = promotionCodes.data[0];
+          console.log("Found promotion code:", {
+            id: promotionCode.id,
+            code: promotionCode.code,
+            active: promotionCode.active,
+            coupon_id: promotionCode.coupon.id
+          });
           
           // Check if promotion code is active
           if (!promotionCode.active) {
@@ -3067,16 +3078,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Get the underlying coupon
           coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
+          console.log("Retrieved underlying coupon:", coupon.id);
         }
       } catch (error) {
-        console.log("Promotion code lookup failed, trying direct coupon lookup");
+        console.log("Promotion code lookup failed:", error.message);
       }
       
       // If no promotion code found, try direct coupon lookup
       if (!coupon) {
         try {
+          console.log("Trying direct coupon lookup for:", couponCode);
           coupon = await stripe.coupons.retrieve(couponCode);
+          console.log("Found direct coupon:", coupon.id);
         } catch (error: any) {
+          console.log("Direct coupon lookup failed:", error.message);
           if (error.code === 'resource_missing') {
             return res.status(400).json({ message: "Invalid coupon code" });
           }
