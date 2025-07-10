@@ -922,6 +922,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/user/chapter-progress', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log('Chapter progress request:', req.body);
+      console.log('User ID:', userId);
+      
       const requestData = {
         ...req.body,
         userId,
@@ -934,12 +937,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requestData.completedAt = new Date(requestData.completedAt);
       }
       
+      console.log('Processed request data:', requestData);
+      
       const progressData = insertUserChapterProgressSchema.parse(requestData);
+      console.log('Validated progress data:', progressData);
+      
       const progress = await storage.updateUserChapterProgress(progressData);
+      console.log('Updated progress:', progress);
+      
       res.json(progress);
     } catch (error) {
       console.error("Error updating chapter progress:", error);
-      res.status(500).json({ message: "Failed to update chapter progress" });
+      console.error("Error details:", error.message);
+      if (error.issues) {
+        console.error("Validation errors:", error.issues);
+      }
+      res.status(500).json({ message: "Failed to update chapter progress", error: error.message });
     }
   });
 
@@ -1886,12 +1899,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/consultations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
       const bookingData = { 
         ...req.body, 
         userId,
         preferredDate: new Date(req.body.preferredDate)
       };
+      
       const booking = await storage.createConsultationBooking(bookingData);
+      
+      // Send email notification to alex@drgolly.com
+      const emailBody = `
+New Consultation Booking
+
+Customer Details:
+- Name: ${user?.firstName || ''} ${user?.lastName || ''}
+- Email: ${user?.email || 'N/A'}
+- Phone: ${user?.phoneNumber || 'N/A'}
+
+Consultation Details:
+- Type: ${booking.consultationType.replace('-', ' ')}
+- Preferred Date: ${new Date(booking.preferredDate).toLocaleDateString()}
+- Preferred Time: ${booking.preferredTime}
+- Concerns: ${booking.concerns || 'None provided'}
+
+Status: ${booking.status}
+Booking ID: ${booking.id}
+
+Please contact the customer to confirm the appointment.
+      `;
+      
+      try {
+        // Send notification via your preferred email service
+        console.log('Consultation booking email notification:');
+        console.log('To: alex@drgolly.com');
+        console.log('Subject: New Consultation Booking - ' + booking.consultationType);
+        console.log('Body:', emailBody);
+        
+        // You can implement actual email sending here using your preferred service
+        // For now, we'll just log the notification
+        
+      } catch (emailError) {
+        console.error('Error sending email notification:', emailError);
+        // Don't fail the booking if email fails
+      }
+      
       res.json(booking);
     } catch (error) {
       console.error("Error creating consultation booking:", error);

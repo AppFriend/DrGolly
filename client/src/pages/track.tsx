@@ -1090,10 +1090,13 @@ function SleepTracking({ childId }: { childId: number | null }) {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="font-semibold font-heading">
-                      {calculateDuration(entry.sleepStart, entry.sleepEnd)}
+                      {entry.sleepStart && entry.sleepEnd ? calculateDuration(entry.sleepStart, entry.sleepEnd) : "Duration not available"}
                     </p>
                     <p className="text-sm text-gray-600">
-                      {new Date(entry.sleepStart).toLocaleString()} - {new Date(entry.sleepEnd).toLocaleString()}
+                      {entry.sleepStart && entry.sleepEnd ? 
+                        `${new Date(entry.sleepStart).toLocaleDateString()} - ${new Date(entry.sleepEnd).toLocaleDateString()}` : 
+                        "Date not available"
+                      }
                     </p>
                     <p className="text-xs text-gray-500 capitalize">Quality: {entry.quality}</p>
                     {entry.notes && <p className="text-xs text-gray-500">{entry.notes}</p>}
@@ -1115,7 +1118,7 @@ function ConsultationBooking() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    consultationType: "sleep-review" as "sleep-review" | "development" | "nutrition",
+    consultationType: "sleep-review" as "sleep-review" | "development",
     preferredDate: "",
     preferredTime: "",
     concerns: ""
@@ -1191,7 +1194,6 @@ function ConsultationBooking() {
               >
                 <option value="sleep-review">Sleep Review</option>
                 <option value="development">Development Consultation</option>
-                <option value="nutrition">Nutrition Consultation</option>
               </select>
             </div>
             
