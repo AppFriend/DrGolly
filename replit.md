@@ -509,6 +509,12 @@ Changelog:
   * Resolved FormData vs JSON mismatch causing 400 errors in support form
   * Changed client to send JSON data matching server expectations
   * Support form now successfully submits and logs to console for email/Slack integration
+- July 10, 2025. Fixed admin panel blog management runtime error and added Admin Panel button:
+  * Fixed missing closing div tag in AdminBlogManagement.tsx causing runtime crash in blogs tab
+  * Added Admin Panel button to home page header that only shows for admin users
+  * Button uses admin check API endpoint (/api/admin/check) to verify permissions
+  * Styled button to match category filters with brand green color, rounded corners, and no icon
+  * Admin access currently limited to frazer.adnam@cq-partners.com.au as configured
 ```
 
 ## User Preferences
