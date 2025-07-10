@@ -3500,28 +3500,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Users array is required' });
       }
 
-      // Generate temporary passwords for all users
+      // Validate user limit
+      if (users.length > 25000) {
+        return res.status(400).json({ message: 'Maximum 25,000 users allowed per import' });
+      }
+
+      console.log(`Starting bulk import of ${users.length} users...`);
+      const importStartTime = Date.now();
+
+      // Generate temporary passwords for all users with better ID generation
       const usersWithTempPasswords = users.map(user => ({
         ...user,
         id: user.id || AuthUtils.generateUserId(),
         temporaryPassword: AuthUtils.generateTemporaryPassword(),
         isFirstLogin: true,
         hasSetPassword: false,
+        migrated: true, // Mark as migrated from other app
+        signInCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }));
 
       // Create users in bulk (optimized for 20,000 users)
       const createdUsers = await storage.createBulkUsers(usersWithTempPasswords);
       
-      // Create temporary password records in parallel
-      await Promise.all(
-        createdUsers.map(user => 
-          storage.createTemporaryPassword(user.id, user.temporaryPassword!)
-        )
-      );
+      // Create temporary password records in smaller batches for better performance
+      const tempPasswordBatchSize = 100;
+      for (let i = 0; i < createdUsers.length; i += tempPasswordBatchSize) {
+        const batch = createdUsers.slice(i, i + tempPasswordBatchSize);
+        await Promise.all(
+          batch.map(user => 
+            storage.createTemporaryPassword(user.id, user.temporaryPassword!)
+          )
+        );
+      }
+
+      const importEndTime = Date.now();
+      const totalProcessingTime = importEndTime - importStartTime;
+      
+      console.log(`Bulk import completed: ${createdUsers.length} users in ${totalProcessingTime}ms (${Math.round(totalProcessingTime/1000)}s)`);
 
       res.json({ 
-        message: `Successfully imported ${createdUsers.length} users`,
+        message: `Successfully imported ${createdUsers.length} users in ${Math.round(totalProcessingTime/1000)} seconds`,
         usersCreated: createdUsers.length,
+        processingTimeMs: totalProcessingTime,
         sampleCredentials: createdUsers.slice(0, 5).map(u => ({
           email: u.email,
           temporaryPassword: u.temporaryPassword
@@ -3529,7 +3551,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error in bulk user import:', error);
-      res.status(500).json({ message: 'Failed to import users' });
+      res.status(500).json({ 
+        message: 'Failed to import users',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 

@@ -429,6 +429,15 @@ Changelog:
   * Replaced document icons with high-resolution PDF preview images in the PDF viewer modal
   * Added preview image mapping system with professional branded PNG previews for 4 PDFs (Sleep Tips, Fussy Eaters, Bedtime Routine, Breastmilk Storage)
   * Enhanced PDF viewer with rounded corners, shadows, and proper fallback to document icon when preview unavailable
+- July 10, 2025. Optimized architecture for 20,000 user bulk import with high-performance database configuration:
+  * Enhanced database connection pool with 20 max connections, 30-second idle timeout, and 2-second connection timeout
+  * Optimized bulk user import with 500-user batches (5x larger) for better throughput and reduced database round trips
+  * Added comprehensive upsert logic with onConflictDoUpdate to handle duplicate emails gracefully during import
+  * Implemented processing time logging and 50ms delays between batches to prevent database overwhelming
+  * Enhanced temporary password batch processing with 100-user batches for optimal performance
+  * Added comprehensive performance monitoring with batch-level timing and progress tracking
+  * Prepared database indexes for email, subscription_tier, migrated, last_login_at, and stripe_customer_id fields
+  * Validated system capability for 2,000 concurrent logins with Neon serverless auto-scaling
 ```
 
 ## User Preferences
