@@ -364,6 +364,7 @@ export const blogPosts = pgTable("blog_posts", {
   imageUrl: varchar("image_url"),
   pdfUrl: varchar("pdf_url"), // For freebies downloads
   readTime: integer("read_time"), // in minutes
+  author: varchar("author").default("Daniel Golshevsky").notNull(),
   publishedAt: timestamp("published_at"),
   views: integer("views").default(0),
   likes: integer("likes").default(0),

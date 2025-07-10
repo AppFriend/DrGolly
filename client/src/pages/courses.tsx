@@ -21,12 +21,12 @@ export default function Courses() {
   const { user } = useAuth();
   const { openUpgradeModal } = useUpgradeModal();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("my");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
 
   const { data: courses, isLoading, error } = useQuery({
-    queryKey: ["/api/courses", activeTab === "all" ? undefined : activeTab],
+    queryKey: ["/api/courses", searchQuery ? "all" : (activeTab === "all" ? undefined : activeTab)],
     enabled: !!user,
   });
 
@@ -79,7 +79,7 @@ export default function Courses() {
       return hasPurchased; // Only show completed purchases in "Purchases"
     }
     
-    // Apply search filter
+    // Apply search filter - search across all courses when search query is present
     if (searchQuery) {
       return course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
              course.description?.toLowerCase().includes(searchQuery.toLowerCase());

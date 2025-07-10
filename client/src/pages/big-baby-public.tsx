@@ -29,8 +29,8 @@ const BIG_BABY_COURSE = {
   duration: 60,
   ageRange: "4-8 Months",
   thumbnailUrl: "https://25c623a83912a41d23bcc5865ecf275d.cdn.bubble.io/f1741818614506x569606633915210600/2.png",
-  rating: 4.9,
-  reviewCount: 427,
+  rating: 4.82,
+  reviewCount: 92,
   category: "sleep",
   tier: "platinum"
 };
@@ -575,7 +575,7 @@ export default function BigBabyPublic() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Left Column - Course Details */}
           <div className="space-y-6">
@@ -588,7 +588,13 @@ export default function BigBabyPublic() {
               </p>
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <div className="flex">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  </div>
                   <span className="font-medium">{BIG_BABY_COURSE.rating}</span>
                   <span>({BIG_BABY_COURSE.reviewCount} reviews)</span>
                 </div>
@@ -608,7 +614,7 @@ export default function BigBabyPublic() {
           <div className="space-y-6">
             {/* 1. Complete Your Purchase */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle>Complete Your Purchase</CardTitle>
               </CardHeader>
               <CardContent>
@@ -863,23 +869,27 @@ export default function BigBabyPublic() {
               <ul className="space-y-2">
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Sleep training techniques for 4-8 month olds</span>
+                  <span className="text-sm">Tried and tested sleep training techniques for 4-8 month olds</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Establishing healthy sleep patterns</span>
+                  <span className="text-sm">Understanding your baby's sleep patterns and cycles</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Managing sleep regressions</span>
+                  <span className="text-sm">How to handle sleep regressions and disruptions</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Creating the perfect sleep environment</span>
+                  <span className="text-sm">Creating the optimal sleep environment for your baby</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Gentle sleep training methods</span>
+                  <span className="text-sm">Gentle approaches to sleep training that work</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                  <span className="text-sm">Troubleshooting common sleep problems</span>
                 </li>
               </ul>
             </CardContent>
@@ -1086,7 +1096,7 @@ function SignupFlow({ onComplete, customerDetails }: {
                   className="mt-1"
                 />
                 <span className="text-sm text-gray-600">
-                  I agree to the <a href="/terms" target="_blank" className="text-[#095D66] hover:underline">Terms of Service</a> and Privacy Policy *
+                  I agree to the <a href="/terms" target="_blank" className="text-[#095D66] hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-[#095D66] hover:underline">Privacy Policy</a> *
                 </span>
               </label>
               

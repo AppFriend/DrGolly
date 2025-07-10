@@ -202,7 +202,7 @@ export default function CheckoutSubscription() {
         {/* Terms */}
         <div className="mt-4 text-xs text-gray-500 text-center">
           <p>
-            By subscribing, you agree to our Terms of Service and Privacy Policy.
+            By subscribing, you agree to our <a href="/terms" target="_blank" className="text-[#095D66] hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-[#095D66] hover:underline">Privacy Policy</a>.
             You can cancel your subscription at any time from your account settings.
           </p>
         </div>

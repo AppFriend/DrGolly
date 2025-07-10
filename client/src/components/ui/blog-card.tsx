@@ -113,7 +113,7 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
         </p>
         <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
           <span>{formatDate(post.publishedAt)}</span>
-          {post.readTime && (
+          {post.readTime && post.category !== "freebies" && (
             <span className="flex items-center">
               <Clock className="h-4 w-4 mr-1" />
               {post.readTime} min read

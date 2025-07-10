@@ -34,6 +34,7 @@ interface BlogPost {
   imageUrl?: string;
   excerpt?: string;
   pdfUrl?: string;
+  author?: string;
   views: number;
   likes: number;
   createdAt: string;
@@ -213,6 +214,9 @@ export function AdminBlogManagement() {
                           <Calendar className="h-3 w-3" />
                           {formatDate(post.createdAt)}
                         </span>
+                        <span className="text-gray-700">
+                          By {post.author || 'Daniel Golshevsky'}
+                        </span>
                         <span className="flex items-center gap-1">
                           <Eye className="h-3 w-3" />
                           {post.views} views
@@ -273,6 +277,7 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
     excerpt: post?.excerpt || "",
     imageUrl: post?.imageUrl || "",
     pdfUrl: post?.pdfUrl || "",
+    author: post?.author || "Daniel Golshevsky",
     isPinned: post?.isPinned || false,
     isDraft: post?.isDraft || true,
   });
@@ -318,14 +323,26 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
           </Select>
         </div>
         <div>
-          <Label htmlFor="imageUrl">Featured Image URL</Label>
+          <Label htmlFor="author">Author</Label>
           <Input
-            id="imageUrl"
-            value={formData.imageUrl}
-            onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-            placeholder="https://example.com/image.jpg"
+            id="author"
+            value={formData.author}
+            onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+            placeholder="Daniel Golshevsky"
+            required
           />
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="imageUrl">Featured Image URL</Label>
+        <Input
+          id="imageUrl"
+          value={formData.imageUrl}
+          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+          placeholder="https://example.com/image.jpg"
+        />
+      </div>
       </div>
 
       {formData.category === "freebies" && (

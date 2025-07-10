@@ -159,12 +159,20 @@ export default function BlogPostPage() {
           {post.title}
         </h1>
 
+        {/* Author Attribution */}
+        <div className="flex items-center space-x-2 mb-4">
+          <span className="text-sm text-gray-600">Article by</span>
+          <span className="text-sm font-semibold text-gray-900">{post.author || 'Daniel Golshevsky'}</span>
+        </div>
+
         {/* Meta Information */}
         <div className="flex items-center space-x-4 text-sm text-gray-500 mb-6">
-          <div className="flex items-center">
-            <Clock className="h-4 w-4 mr-1" />
-            <span>{post.readTime} min read</span>
-          </div>
+          {post.category !== "freebies" && post.readTime && (
+            <div className="flex items-center">
+              <Clock className="h-4 w-4 mr-1" />
+              <span>{post.readTime} min read</span>
+            </div>
+          )}
           <div className="flex items-center">
             <Eye className="h-4 w-4 mr-1" />
             <span>{post.views || 0} views</span>
@@ -190,11 +198,11 @@ export default function BlogPostPage() {
           <div className="space-y-6">
             {post.content.split('\n\n').map((paragraph, index) => {
               if (paragraph.startsWith('## ')) {
-                return <h2 key={index} className="text-xl font-semibold text-gray-900 mt-8 mb-4">{paragraph.replace('## ', '')}</h2>;
+                return <h2 key={index} className="text-2xl font-semibold text-gray-900 mt-8 mb-4">{paragraph.replace('## ', '')}</h2>;
               } else if (paragraph.startsWith('### ')) {
-                return <h3 key={index} className="text-lg font-medium text-gray-900 mt-6 mb-3">{paragraph.replace('### ', '')}</h3>;
+                return <h3 key={index} className="text-xl font-medium text-gray-900 mt-6 mb-3">{paragraph.replace('### ', '')}</h3>;
               } else if (paragraph.startsWith('#### ')) {
-                return <h4 key={index} className="text-base font-medium text-gray-900 mt-4 mb-2">{paragraph.replace('#### ', '')}</h4>;
+                return <h4 key={index} className="text-lg font-medium text-gray-900 mt-4 mb-2">{paragraph.replace('#### ', '')}</h4>;
               } else if (paragraph.startsWith('- ')) {
                 const listItems = paragraph.split('\n').filter(line => line.startsWith('- '));
                 return (

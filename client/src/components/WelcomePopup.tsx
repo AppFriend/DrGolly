@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { X, BookOpen, CheckCircle } from 'lucide-react';
+import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
 interface WelcomePopupProps {
   isOpen: boolean;
@@ -31,10 +32,18 @@ export function WelcomePopup({ isOpen, onClose, userName = "there" }: WelcomePop
             <X className="h-5 w-5" />
           </button>
           <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-8 w-8 text-white" />
+            <span className="text-3xl">👋</span>
+          </div>
+          <div className="mb-4">
+            <img 
+              src={drGollyLogo} 
+              alt="Dr. Golly" 
+              className="h-12 w-auto object-contain mx-auto"
+              style={{ filter: 'brightness(0) invert(1)' }} // Makes the logo white
+            />
           </div>
           <CardTitle className="text-xl font-bold">
-            Welcome to the Dr. Golly App!
+            Welcome to the Dr Golly App!
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 text-center">
