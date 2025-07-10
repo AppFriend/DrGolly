@@ -3719,6 +3719,18 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Get all users with pagination (Admin only)
+  app.get('/api/admin/users', isAdmin, async (req, res) => {
+    try {
+      const { page = 1, limit = 50 } = req.query;
+      const users = await storage.getAllUsers(parseInt(page as string), parseInt(limit as string));
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   app.get('/api/admin/users/search', isAdmin, async (req, res) => {
     try {
       const query = req.query.q as string;
