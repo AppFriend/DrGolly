@@ -68,6 +68,9 @@ export const users = pgTable("users", {
   newMemberOfferShown: boolean("new_member_offer_shown").default(false), // Whether new member offer was shown
   newMemberOfferAccepted: boolean("new_member_offer_accepted").default(false), // Whether they accepted the offer
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  // New fields for CSV migration
+  firstChildDob: timestamp("first_child_dob"), // Date of birth of first child
+  accountActivated: boolean("account_activated").default(false), // Whether user has activated their account
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

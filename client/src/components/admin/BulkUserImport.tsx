@@ -12,6 +12,8 @@ import { useMutation } from "@tanstack/react-query";
 interface BulkImportResult {
   message: string;
   usersCreated: number;
+  coursePurchasesCreated: number;
+  processingTimeMs: number;
   sampleCredentials: Array<{
     email: string;
     temporaryPassword: string;
@@ -32,7 +34,7 @@ export function BulkUserImport() {
       setImportResult(data);
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${data.usersCreated} users with temporary passwords.`,
+        description: `Successfully imported ${data.usersCreated} users and ${data.coursePurchasesCreated} course purchases in ${Math.round(data.processingTimeMs/1000)} seconds.`,
       });
       setCsvData("");
     },
@@ -56,32 +58,61 @@ export function BulkUserImport() {
       headers.forEach((header, index) => {
         const value = values[index] || '';
         
-        // Map CSV headers to user schema
+        // Map CSV headers to user schema - precise mapping for CSV migration
         switch (header.toLowerCase()) {
           case 'email':
             user.email = value;
             break;
+          case 'first name':
           case 'firstname':
           case 'first_name':
             user.firstName = value;
             break;
+          case 'last name':
           case 'lastname':
           case 'last_name':
             user.lastName = value;
             break;
+          case 'first child dob':
+          case 'firstchilddob':
+            user.firstChildDob = value;
+            break;
           case 'country':
             user.country = value;
             break;
+          case 'user phone number':
           case 'phone':
             user.phone = value;
             break;
+          case 'source':
           case 'signup_source':
           case 'signupsource':
             user.signupSource = value;
             break;
+          case 'choose plan':
           case 'subscription_tier':
           case 'plan':
             user.subscriptionTier = value.toLowerCase() || 'free';
+            break;
+          case 'count courses':
+          case 'countcourses':
+            user.countCourses = parseInt(value) || 0;
+            break;
+          case 'courses purchased':
+          case 'coursespurchased':
+            user.coursesPurchased = value;
+            break;
+          case 'sign in count':
+          case 'signincount':
+            user.signInCount = parseInt(value) || 0;
+            break;
+          case 'last sign in':
+          case 'lastsignin':
+            user.lastSignIn = value;
+            break;
+          case 'account activated in app':
+          case 'accountactivated':
+            user.accountActivated = value.toLowerCase() === 'y' || value.toLowerCase() === 'yes';
             break;
           default:
             // Store unknown fields as is

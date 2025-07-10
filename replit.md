@@ -438,6 +438,12 @@ Changelog:
   * Added comprehensive performance monitoring with batch-level timing and progress tracking
   * Prepared database indexes for email, subscription_tier, migrated, last_login_at, and stripe_customer_id fields
   * Validated system capability for 2,000 concurrent logins with Neon serverless auto-scaling
+  * Created comprehensive CSV field mapping system with precise course name to database ID mapping
+  * Added new database fields: firstChildDob (timestamp), accountActivated (boolean) for migration tracking
+  * Implemented automated course purchase creation from CSV "COURSES PURCHASED" field
+  * Enhanced bulk import to process users and course purchases simultaneously with performance monitoring
+  * Course mapping: "Preparation for Newborns" → ID 10, "Little Baby Sleep Program" → ID 5, etc.
+  * All users set with accountActivated = false initially, updated to true after successful first login
 ```
 
 ## User Preferences
