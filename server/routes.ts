@@ -1947,6 +1947,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let promotionCode = null;
       if (couponId) {
         try {
+          console.log('Processing coupon code:', couponId);
+          
           // First try to find promotion code
           const promotionCodes = await stripe.promotionCodes.list({
             code: couponId,
@@ -1955,31 +1957,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (promotionCodes.data.length > 0) {
             promotionCode = promotionCodes.data[0];
+            console.log('Found promotion code:', promotionCode.id, 'Active:', promotionCode.active);
             if (promotionCode.active) {
               couponData = await stripe.coupons.retrieve(promotionCode.coupon.id);
+              console.log('Retrieved coupon from promotion code:', couponData.id);
             }
           } else {
             // If no promotion code found, try direct coupon lookup
-            couponData = await stripe.coupons.retrieve(couponId);
+            try {
+              couponData = await stripe.coupons.retrieve(couponId);
+              console.log('Retrieved direct coupon:', couponData.id);
+            } catch (directCouponError) {
+              console.log('No direct coupon found with code:', couponId);
+            }
           }
           
           // Apply discount if coupon is valid
           if (couponData && couponData.valid) {
-            console.log('Applying coupon:', couponData.id, 'Original price:', coursePrice);
-            // Calculate discounted price
+            console.log('Applying coupon:', couponData.id, 'Type:', couponData.amount_off ? 'Fixed amount' : 'Percentage', 'Original price: $' + coursePrice);
+            
             if (couponData.amount_off) {
-              // amount_off is already in cents, so convert to dollars
+              // Fixed amount discount - amount_off is in cents
               const discountAmount = couponData.amount_off / 100;
               coursePrice = coursePrice - discountAmount;
-              console.log('Amount off discount: $' + discountAmount, 'New price: $' + coursePrice);
+              console.log('Fixed amount discount: $' + discountAmount, 'New price: $' + coursePrice);
             } else if (couponData.percent_off) {
+              // Percentage discount
               const originalPrice = coursePrice;
               coursePrice = coursePrice * (1 - couponData.percent_off / 100);
-              console.log('Percent off discount:', couponData.percent_off + '%', 'Original: $' + originalPrice, 'New price: $' + coursePrice);
+              console.log('Percentage discount:', couponData.percent_off + '%', 'Original: $' + originalPrice, 'New price: $' + coursePrice);
             }
+            
             // Ensure price doesn't go below 0
             coursePrice = Math.max(0, coursePrice);
             console.log('Final discounted price: $' + coursePrice);
+          } else {
+            console.log('No valid coupon found for code:', couponId);
           }
         } catch (error) {
           console.error("Error retrieving coupon:", error);
@@ -2064,6 +2077,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let promotionCode = null;
       if (couponId) {
         try {
+          console.log('Processing Big Baby coupon code:', couponId);
+          
           // First try to find promotion code
           const promotionCodes = await stripe.promotionCodes.list({
             code: couponId,
@@ -2072,30 +2087,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (promotionCodes.data.length > 0) {
             promotionCode = promotionCodes.data[0];
+            console.log('Found promotion code:', promotionCode.id, 'Active:', promotionCode.active);
             if (promotionCode.active) {
               appliedCoupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
+              console.log('Retrieved coupon from promotion code:', appliedCoupon.id);
             }
           } else {
             // If no promotion code found, try direct coupon lookup
-            appliedCoupon = await stripe.coupons.retrieve(couponId);
+            try {
+              appliedCoupon = await stripe.coupons.retrieve(couponId);
+              console.log('Retrieved direct coupon:', appliedCoupon.id);
+            } catch (directCouponError) {
+              console.log('No direct coupon found with code:', couponId);
+            }
           }
           
           // Apply discount if coupon is valid
           if (appliedCoupon && appliedCoupon.valid) {
-            console.log('Applying coupon to Big Baby:', appliedCoupon.id, 'Original amount: $' + (finalAmount / 100));
+            console.log('Applying coupon to Big Baby:', appliedCoupon.id, 'Type:', appliedCoupon.amount_off ? 'Fixed amount' : 'Percentage', 'Original amount: $' + (finalAmount / 100));
+            
             if (appliedCoupon.percent_off) {
+              // Percentage discount
               const originalAmount = finalAmount;
               finalAmount = Math.round(finalAmount * (1 - appliedCoupon.percent_off / 100));
-              console.log('Percent off discount:', appliedCoupon.percent_off + '%', 'Original: $' + (originalAmount / 100), 'New: $' + (finalAmount / 100));
+              console.log('Percentage discount:', appliedCoupon.percent_off + '%', 'Original: $' + (originalAmount / 100), 'New: $' + (finalAmount / 100));
             } else if (appliedCoupon.amount_off) {
-              // amount_off is already in cents for Stripe
+              // Fixed amount discount - amount_off is already in cents
               const originalAmount = finalAmount;
               finalAmount = Math.max(0, finalAmount - appliedCoupon.amount_off);
-              console.log('Amount off discount: $' + (appliedCoupon.amount_off / 100), 'Original: $' + (originalAmount / 100), 'New: $' + (finalAmount / 100));
+              console.log('Fixed amount discount: $' + (appliedCoupon.amount_off / 100), 'Original: $' + (originalAmount / 100), 'New: $' + (finalAmount / 100));
             }
+          } else {
+            console.log('No valid coupon found for Big Baby code:', couponId);
           }
         } catch (error) {
-          console.error("Error applying coupon:", error);
+          console.error("Error applying Big Baby coupon:", error);
         }
       }
 

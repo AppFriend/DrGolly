@@ -397,6 +397,15 @@ Changelog:
   * Implemented payment processing overlay for both authenticated checkout and public checkout pages
   * Added proper null-checking and validation for Stripe payment request API to prevent runtime errors
   * Enhanced user experience with visual feedback during payment processing with branded loader animation
+- July 10, 2025. Fixed critical payment and discount system bugs:
+  * Fixed discount calculation bug where amount_off coupons were incorrectly divided by 100
+  * Restructured payment flow to only create payment intents when user clicks "Place order"
+  * Eliminated incomplete transactions cluttering Stripe dashboard
+  * Enhanced coupon validation to properly handle both promotion codes and direct coupons
+  * Added comprehensive logging for discount calculations with dollar amounts
+  * Implemented robust checking for both fixed amount and percentage-based discounts
+  * Updated both authenticated checkout and Big Baby public checkout flows
+  * Fixed Stripe Elements configuration with proper amount parameter
 ```
 
 ## User Preferences
