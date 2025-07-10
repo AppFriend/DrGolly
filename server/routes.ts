@@ -647,59 +647,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Payment not completed" });
       }
       
-      // Generate temporary user ID and hash provided password
-      const tempUserId = AuthUtils.generateUserId();
-      console.log("Generated user ID:", tempUserId);
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(customerDetails.email);
+      let userId;
       
-      const hashedPassword = await AuthUtils.hashPassword(password);
-      console.log("Password hashed successfully");
-      
-      // Create user account
-      const userData = {
-        id: tempUserId,
-        email: customerDetails.email,
-        firstName: customerDetails.firstName,
-        lastName: customerDetails.lastName || '',
-        phone: customerDetails.phone || '',
-        subscriptionTier: 'free',
-        subscriptionStatus: 'active',
-        interests: interests.join(','),
-        role: customerDetails.role || 'Parent',
-        dueDate: customerDetails.dueDate ? new Date(customerDetails.dueDate) : null,
-        hasSetPassword: true,
-        isFirstLogin: false,
-        passwordHash: hashedPassword,
-        signupSource: 'public_checkout',
-        country: 'US',
-        profileImageUrl: '',
-      };
-      
-      console.log("Creating user with data:", { ...userData, passwordHash: '[HIDDEN]' });
-      const user = await storage.upsertUser(userData);
-      console.log("User created successfully:", user.id);
-      
-      // Create Stripe customer
-      console.log("Creating Stripe customer...");
-      const stripeCustomer = await stripe.customers.create({
-        email: customerDetails.email,
-        name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
-        metadata: {
-          userId: tempUserId,
+      if (existingUser) {
+        // User exists - just add course to their account
+        console.log("Existing user found:", existingUser.id);
+        userId = existingUser.id;
+        
+        // Check if user already has Stripe customer ID
+        if (!existingUser.stripeCustomerId) {
+          console.log("Creating Stripe customer for existing user...");
+          const stripeCustomer = await stripe.customers.create({
+            email: customerDetails.email,
+            name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+            metadata: {
+              userId: existingUser.id,
+              signupSource: 'public_checkout',
+            },
+          });
+          console.log("Stripe customer created:", stripeCustomer.id);
+          await storage.updateUserStripeCustomerId(existingUser.id, stripeCustomer.id);
+        }
+      } else {
+        // Create new user account
+        const tempUserId = AuthUtils.generateUserId();
+        console.log("Generated user ID:", tempUserId);
+        
+        const hashedPassword = await AuthUtils.hashPassword(password);
+        console.log("Password hashed successfully");
+        
+        const userData = {
+          id: tempUserId,
+          email: customerDetails.email,
+          firstName: customerDetails.firstName,
+          lastName: customerDetails.lastName || '',
+          phone: customerDetails.phone || '',
+          subscriptionTier: 'free',
+          subscriptionStatus: 'active',
+          interests: interests.join(','),
+          role: customerDetails.role || 'Parent',
+          dueDate: customerDetails.dueDate ? new Date(customerDetails.dueDate) : null,
+          hasSetPassword: true,
+          isFirstLogin: false,
+          passwordHash: hashedPassword,
           signupSource: 'public_checkout',
-        },
-      });
-      console.log("Stripe customer created:", stripeCustomer.id);
+          country: 'US',
+          profileImageUrl: '',
+        };
+        
+        console.log("Creating user with data:", { ...userData, passwordHash: '[HIDDEN]' });
+        const user = await storage.upsertUser(userData);
+        console.log("User created successfully:", user.id);
+        userId = user.id;
+        
+        // Create Stripe customer
+        console.log("Creating Stripe customer...");
+        const stripeCustomer = await stripe.customers.create({
+          email: customerDetails.email,
+          name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+          metadata: {
+            userId: tempUserId,
+            signupSource: 'public_checkout',
+          },
+        });
+        console.log("Stripe customer created:", stripeCustomer.id);
+        
+        // Update user with Stripe customer ID
+        await storage.updateUserStripeCustomerId(tempUserId, stripeCustomer.id);
+        console.log("User updated with Stripe customer ID");
+        
+        // Send welcome email for new users only
+        try {
+          await klaviyoService.syncBigBabySignupToKlaviyo(user, customerDetails);
+          console.log("Klaviyo sync successful for Big Baby signup");
+        } catch (klaviyoError) {
+          console.error("Klaviyo sync failed for Big Baby signup, but account creation continues:", klaviyoError);
+        }
+      }
       
-      // Update user with Stripe customer ID
-      await storage.updateUserStripeCustomerId(tempUserId, stripeCustomer.id);
-      console.log("User updated with Stripe customer ID");
-      
-      // Create course purchase record
+      // Create course purchase record for both new and existing users
       const courseId = parseInt(paymentIntent.metadata.courseId);
       console.log("Creating course purchase record for course:", courseId);
       
       await storage.createCoursePurchase({
-        userId: tempUserId,
+        userId: userId,
         courseId: courseId,
         paymentIntentId: paymentIntentId,
         status: 'completed',
@@ -712,34 +745,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       console.log("Course purchase record created successfully");
       
-      // Send welcome email with temporary login credentials (don't fail if Klaviyo fails)
-      try {
-        await klaviyoService.syncBigBabySignupToKlaviyo(user, customerDetails);
-        console.log("Klaviyo sync successful for Big Baby signup");
-      } catch (klaviyoError) {
-        console.error("Klaviyo sync failed for Big Baby signup, but account creation continues:", klaviyoError);
-        // Don't fail the account creation if Klaviyo fails
-      }
-      
-      console.log("Account creation completed successfully for user:", tempUserId);
+      console.log("Account creation/update completed successfully for user:", userId);
       res.json({ 
-        message: "Account created successfully",
-        userId: tempUserId,
+        message: existingUser ? "Course added to existing account" : "Account created successfully",
+        userId: userId,
         loginUrl: "/login",
+        isExistingUser: !!existingUser,
       });
     } catch (error) {
       console.error("Error creating account with purchase - Full error:", error);
       console.error("Error stack:", error.stack);
       
-      // Provide more specific error message
-      let errorMessage = "Failed to create account";
-      if (error.message.includes('duplicate key')) {
-        errorMessage = "An account with this email already exists";
-      } else if (error.message.includes('invalid input')) {
-        errorMessage = "Invalid account information provided";
-      }
-      
-      res.status(500).json({ message: errorMessage });
+      res.status(500).json({ message: "Failed to process purchase" });
     }
   });
 
