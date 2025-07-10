@@ -179,6 +179,9 @@ export function EnhancedCourseManagement() {
     queryFn: () => apiRequest("GET", "/api/courses"),
   });
 
+  // Ensure courses is always an array
+  const coursesList = Array.isArray(courses) ? courses : [];
+
   // Fetch chapters for selected course
   const { data: courseChapters } = useQuery({
     queryKey: ["/api/courses", selectedCourse?.id, "chapters"],
@@ -466,7 +469,7 @@ export function EnhancedCourseManagement() {
 
       {/* Courses Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {courses?.map((course: Course) => (
+        {coursesList.map((course: Course) => (
           <Card key={course.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
