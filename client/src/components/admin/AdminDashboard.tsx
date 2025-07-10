@@ -152,7 +152,14 @@ export function AdminDashboard() {
           title="Gold Users"
           value={metrics.goldUsers.toLocaleString()}
           icon={<Crown className="h-4 w-4 text-yellow-500" />}
-          description="Premium subscribers"
+          description="Gold plan subscribers"
+        />
+        
+        <MetricCard
+          title="Platinum Users"
+          value={metrics.platinumUsers.toLocaleString()}
+          icon={<Crown className="h-4 w-4 text-purple-500" />}
+          description="Platinum plan subscribers"
         />
         
         <MetricCard
