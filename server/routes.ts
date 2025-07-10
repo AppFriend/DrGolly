@@ -751,7 +751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error("User not found after creation/update");
       }
       
-      // Create authentication session
+      // Create authentication session manually
       const authSession = {
         claims: {
           sub: user.id,
@@ -764,13 +764,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
       };
       
-      // Set session in request
-      req.login(authSession, (err) => {
-        if (err) {
-          console.error("Error setting login session:", err);
-          // Continue without failing the request
-        }
-      });
+      // Set the user session manually
+      req.session.passport = { user: authSession };
+      console.log("Authentication session created for user:", user.id);
       
       console.log("Account creation/update completed successfully for user:", userId);
       res.json({ 
