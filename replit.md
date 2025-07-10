@@ -425,6 +425,7 @@ Changelog:
   * Updated admin panel with PDF dropdown selection for freebie posts
   * Excluded Colic Video from PDF downloads as it's video-only content
   * All PDF downloads feature proper asset mapping for easy future replacement through admin panel
+  * Updated all PDF download buttons to use official Dark Green brand color (green-700 #166534) for consistency with app design
 ```
 
 ## User Preferences
@@ -433,8 +434,9 @@ Changelog:
 Preferred communication style: Simple, everyday language.
 
 Brand Color Guidelines:
-- Primary Button Colors: Brand Teal (#095D66) or Dark Green (#166534/green-700)
+- Primary Button Colors: Brand Teal (#095D66) or Dark Green (green-700 #166534)
 - No blue buttons should be created - always use brand colors
-- Dark Green (green-700/green-800) preferred for completion and success states
-- Brand Teal preferred for navigation and primary actions
+- **Dark Green (green-700 #166534)** - Official brand dark green for completion and success states, same as header menu
+- **Brand Teal (#095D66)** - For navigation and primary actions
+- Hover states: Dark Green uses green-800, Brand Teal uses hover:bg-brand-teal/90
 ```
