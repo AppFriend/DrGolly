@@ -1,0 +1,49 @@
+	
+Yvonne Pflieger sent you instructions for installing the Meta Pixel on a website. Your organization is using the Meta Pixel to track website activity and run ads based on that activity.
+
+You must install two kinds of code snippets on the website. This includes pixel base code on every page of your website and event code on specific webpages.
+
+1
+Meta Pixel ID
+Your pixel ID is the unique number assigned to your Meta Pixel. You can use this number in your pixel base code.
+
+Pixel ID: 1778915552268946
+2
+Install Pixel Base Code
+The pixel base code tracks activity on your website, providing a baseline for measuring specific events. Copy the base code below and paste it between the header tags on every page of your website:
+
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window,document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+ fbq('init', '1778915552268946'); 
+fbq('track', 'PageView');
+</script>
+<noscript>
+ <img height="1" width="1" 
+src="https://www.facebook.com/tr?id=1778915552268946&ev=PageView
+&noscript=1"/>
+</noscript>
+<!-- End Meta Pixel Code -->
+You can also turn on data matching so that information from your pixel can be used to match website actions with Facebook people. This helps increase the effectiveness of conversion reporting, ad optimization and targeting. Learn More.
+
+3
+Install Event Code
+Event code lets your organization track specific actions and leverage them in advertising. You must install event code on specific pages of your website where the actions will happen.
+
+You can use the 9 actions that Facebook pre-defines to track and optimize ads for conversions. To measure and optimize for more granular actions, you can add parameters to your events by using recommended or advanced installation options for your event tags. You can also create custom events for actions important to your business that you define. There are three implementation settings: basic, recommended, and advanced.
+
+Get Event Code for Conversions
+4
+Check Pixel Status
+Go to Meta Events Manager and select Data sources from the top menu. If the status is Active, your pixel has been installed correctly. It may take up to 20 minutes for your pixel status to change after installing it.
+
+To troubleshoot or check your setup use the Test Events tool in Events Manager. You can also download the Pixel Helper Chrome browser extension for basic troubleshooting.
+
+If the status is still No Activity Yet after 30 minutes, your pixel code may not be installed correctly. View the pixel set up guide.

@@ -8,6 +8,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { FacebookPixel } from "@/lib/facebook-pixel";
 
 export default function Manage() {
   const { user } = useAuth();
@@ -167,6 +168,9 @@ export default function Manage() {
           });
           return;
         }
+        
+        // Track subscription initiation
+        FacebookPixel.trackSubscribe(planKey, price, regionalPricing?.currency || 'USD');
         
         setLocation(`/checkout-subscription?plan=${planKey}&period=${billingPeriod}&price=${price}`);
         return;
