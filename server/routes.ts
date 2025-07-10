@@ -3867,6 +3867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { courseModules } = await import('../shared/schema');
       const { eq } = await import('drizzle-orm');
+      const { db } = await import('./db');
       
       // Sample content for the first 3 modules of "Preparation for Newborns"
       const contentUpdates = [
@@ -3964,9 +3965,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .update(courseModules)
             .set({
               content: content.content,
-              videoUrl: content.videoUrl,
+              video_url: content.videoUrl,
               duration: content.duration,
-              updatedAt: new Date()
+              updated_at: new Date()
             })
             .where(eq(courseModules.id, content.moduleId));
           
