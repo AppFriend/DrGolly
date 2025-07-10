@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,13 @@ import {
   TrendingUp,
   Calendar,
   UserMinus,
-  BarChart3
+  BarChart3,
+  RefreshCw
 } from "lucide-react";
 import OrderAnalytics from "./OrderAnalytics";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface MetricCardProps {
   title: string;
@@ -57,10 +60,34 @@ function MetricCard({ title, value, icon, description, trend }: MetricCardProps)
 
 export function AdminDashboard() {
   const [activeView, setActiveView] = useState<"orders" | "users">("orders");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["/api/admin/metrics"],
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const syncPendingTransactions = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/admin/sync-pending-transactions", {});
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Sync Complete",
+        description: `Successfully synced ${data.updatedCount} pending transactions`,
+      });
+      // Refresh metrics and orders
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync pending transactions",
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -99,11 +126,30 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
-        <p className="text-muted-foreground">
-          Monitor your app's performance and user metrics
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
+          <p className="text-muted-foreground">
+            Monitor your app's performance and user metrics
+          </p>
+        </div>
+        <Button
+          onClick={() => syncPendingTransactions.mutate()}
+          disabled={syncPendingTransactions.isPending}
+          className="bg-[#095D66] hover:bg-[#095D66]/90"
+        >
+          {syncPendingTransactions.isPending ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Syncing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Sync Transactions
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Toggle Pills */}
