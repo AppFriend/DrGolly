@@ -1400,6 +1400,7 @@ export class DatabaseStorage implements IStorage {
     totalUsers: number;
     freeUsers: number;
     goldUsers: number;
+    platinumUsers: number;
     monthlyActiveUsers: number;
     totalCoursesSold: number;
     totalSubscriptionUpgrades: number;
@@ -1414,6 +1415,7 @@ export class DatabaseStorage implements IStorage {
     const totalUsers = await db.select({ count: count() }).from(users);
     const freeUsers = await db.select({ count: count() }).from(users).where(eq(users.subscriptionTier, "free"));
     const goldUsers = await db.select({ count: count() }).from(users).where(eq(users.subscriptionTier, "gold"));
+    const platinumUsers = await db.select({ count: count() }).from(users).where(eq(users.subscriptionTier, "platinum"));
     const monthlyActiveUsers = await db
       .select({ count: count() })
       .from(users)
@@ -1493,6 +1495,7 @@ export class DatabaseStorage implements IStorage {
       totalUsers: totalUsers[0]?.count || 0,
       freeUsers: freeUsers[0]?.count || 0,
       goldUsers: goldUserCount,
+      platinumUsers: platinumUsers[0]?.count || 0,
       monthlyActiveUsers: monthlyActiveUsers[0]?.count || 0,
       totalCoursesSold: totalCoursesSold[0]?.count || 0,
       totalSubscriptionUpgrades: totalSubscriptionUpgrades[0]?.count || 0,
