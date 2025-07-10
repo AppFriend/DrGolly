@@ -28,22 +28,15 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
 
   const supportMutation = useMutation({
     mutationFn: async (data: typeof formData & { attachments: File[] }) => {
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', data.name);
-      formDataToSend.append('email', data.email);
-      formDataToSend.append('phone', data.phone);
-      formDataToSend.append('message', data.message);
-      
-      // Add attachments if any
-      data.attachments.forEach((file, index) => {
-        formDataToSend.append(`attachment_${index}`, file);
-      });
+      // Send as JSON since we're not actually processing attachments yet
+      const requestData = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        message: data.message
+      };
 
-      return apiRequest("POST", "/api/support", formDataToSend, {
-        headers: {
-          // Don't set Content-Type for FormData, let browser set it with boundary
-        }
-      });
+      return apiRequest("POST", "/api/support", requestData);
     },
     onSuccess: () => {
       toast({
