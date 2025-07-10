@@ -177,7 +177,14 @@ export default function Checkout() {
 
         {/* Payment Section */}
         <div className="bg-white rounded-lg p-4">
-          <Elements stripe={stripePromise} options={{ mode: 'payment', currency: currency.toLowerCase() }}>
+          <Elements 
+            stripe={stripePromise} 
+            options={{ 
+              mode: 'payment', 
+              currency: currency.toLowerCase(),
+              amount: Math.round(finalPrice * 100)
+            }}
+          >
             <CheckoutForm 
               course={course} 
               customerDetails={customerDetails}
