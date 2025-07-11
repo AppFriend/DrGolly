@@ -1188,6 +1188,10 @@ export class DatabaseStorage implements IStorage {
     return updatedPost;
   }
 
+  async deleteBlogPost(id: number): Promise<void> {
+    await db.delete(blogPosts).where(eq(blogPosts.id, id));
+  }
+
   // Course chapter operations
   async getCourseChapters(courseId: number): Promise<CourseChapter[]> {
     return await db.select().from(courseChapters)
