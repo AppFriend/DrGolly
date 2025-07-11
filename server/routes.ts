@@ -62,8 +62,40 @@ const isAdmin: RequestHandler = async (req, res, next) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Test endpoint to verify routing
+  app.get('/api/test', (req, res) => {
+    res.json({ message: 'Test endpoint working' });
+  });
+
   // Auth middleware
   await setupAuth(app);
+
+  // Course lesson routes (before auth protection)
+  app.get('/api/courses/:courseId/lessons', async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      console.log('Fetching lessons for course:', courseId);
+      const lessons = await storage.getCourseLessons(parseInt(courseId));
+      console.log('Found lessons:', lessons.length);
+      res.json(lessons);
+    } catch (error) {
+      console.error("Error fetching course lessons:", error);
+      res.status(500).json({ message: "Failed to fetch course lessons" });
+    }
+  });
+
+  app.get('/api/courses/:courseId/lesson-content', async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      console.log('Fetching lesson content for course:', courseId);
+      const lessonContent = await storage.getLessonContentByCourse(parseInt(courseId));
+      console.log('Found lesson content:', lessonContent.length);
+      res.json(lessonContent);
+    } catch (error) {
+      console.error("Error fetching lesson content:", error);
+      res.status(500).json({ message: "Failed to fetch lesson content" });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -1953,32 +1985,7 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Course lesson routes
-  app.get('/api/courses/:courseId/lessons', isAuthenticated, async (req, res) => {
-    try {
-      const { courseId } = req.params;
-      console.log('Fetching lessons for course:', courseId);
-      const lessons = await storage.getCourseLessons(parseInt(courseId));
-      console.log('Found lessons:', lessons.length);
-      res.json(lessons);
-    } catch (error) {
-      console.error("Error fetching course lessons:", error);
-      res.status(500).json({ message: "Failed to fetch course lessons" });
-    }
-  });
 
-  app.get('/api/courses/:courseId/lesson-content', isAuthenticated, async (req, res) => {
-    try {
-      const { courseId } = req.params;
-      console.log('Fetching lesson content for course:', courseId);
-      const lessonContent = await storage.getLessonContentByCourse(parseInt(courseId));
-      console.log('Found lesson content:', lessonContent.length);
-      res.json(lessonContent);
-    } catch (error) {
-      console.error("Error fetching lesson content:", error);
-      res.status(500).json({ message: "Failed to fetch lesson content" });
-    }
-  });
 
   // Individual lesson routes with URL structure
   app.get('/api/lessons/:id', isAuthenticated, async (req, res) => {
