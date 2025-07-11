@@ -72,6 +72,16 @@ export default function CourseOverview() {
     }
   }, [course, coursePurchases, user, purchasesLoading]);
 
+  // Debug logging
+  console.log('Course Overview Debug:', {
+    courseId,
+    course,
+    chapters: chapters.length,
+    lessonContent: lessonContent.length,
+    user,
+    hasAccess: hasAccess()
+  });
+
   const handleBackToCourses = () => {
     setLocation('/courses');
   };
