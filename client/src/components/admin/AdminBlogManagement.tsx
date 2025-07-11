@@ -52,10 +52,28 @@ export function AdminBlogManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: blogPosts, isLoading } = useQuery({
-    queryKey: ["/api/blog-posts"],
-    queryFn: () => apiRequest("GET", "/api/blog-posts?includeUnpublished=true"),
+  const { data: blogPosts, isLoading, error } = useQuery({
+    queryKey: ["/api/blog-posts", "admin"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/blog-posts?includeUnpublished=true");
+        const data = await response.json();
+        console.log("API Response data:", data);
+        return data;
+      } catch (err) {
+        console.error("API Error:", err);
+        throw err;
+      }
+    },
+    retry: 3,
   });
+
+  // Debug logging
+  console.log("Blog posts data:", blogPosts);
+  console.log("Is loading:", isLoading);
+  console.log("Error:", error);
+  console.log("Blog posts length:", blogPosts?.length);
+  console.log("Is array:", Array.isArray(blogPosts));
 
   const createPostMutation = useMutation({
     mutationFn: (post: Partial<BlogPost>) =>
@@ -211,9 +229,15 @@ export function AdminBlogManagement() {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : error ? (
+            <div className="text-center py-8">
+              <div className="text-red-600 mb-4">
+                <p>Error loading blog posts: {error.message}</p>
+              </div>
+            </div>
+          ) : blogPosts && Array.isArray(blogPosts) && blogPosts.length > 0 ? (
             <div className="space-y-4">
-              {blogPosts?.map((post: BlogPost) => (
+              {blogPosts.map((post: BlogPost) => (
                 <div
                   key={post.id}
                   className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50"
@@ -306,6 +330,12 @@ export function AdminBlogManagement() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No blog posts found</h3>
+              <p className="text-gray-500">Create your first blog post to get started.</p>
             </div>
           )}
         </CardContent>
