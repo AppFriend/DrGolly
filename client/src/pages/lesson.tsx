@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Play, CheckCircle, Circle, Clock, BookOpen } from 'lucide-react';
+import { ChevronLeft, Play, CheckCircle, Circle, Clock, BookOpen, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { isUnauthorizedError } from '@/lib/authUtils';
+import confetti from 'canvas-confetti';
 
 interface LessonContent {
   id: number;
@@ -37,6 +38,8 @@ interface LessonData {
     orderIndex: number;
     courseId: number;
     chapterId?: number;
+    chapterIndex: number;
+    moduleIndex: number;
   };
   course: {
     id: number;
@@ -47,6 +50,12 @@ interface LessonData {
   };
   content: LessonContent[];
   progress?: LessonProgress;
+  nextLesson?: {
+    id: number;
+    title: string;
+    chapterIndex: number;
+    moduleIndex: number;
+  } | null;
 }
 
 export default function LessonPage() {
@@ -121,8 +130,42 @@ export default function LessonPage() {
     },
   });
 
-  const handleMarkComplete = () => {
+  const handleMarkComplete = async () => {
     markProgressMutation.mutate({ completed: true, watchTime });
+    
+    // Check if this completes the chapter
+    if (lessonData?.lesson.chapterIndex && lessonData?.lesson.courseId) {
+      try {
+        const response = await fetch(`/api/courses/${lessonData.lesson.courseId}/chapters/${lessonData.lesson.chapterIndex}/completion`);
+        const { isCompleted } = await response.json();
+        
+        if (isCompleted) {
+          // Show confetti for chapter completion
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+          
+          toast({
+            title: "Chapter Completed! 🎉",
+            description: `You've completed Chapter ${lessonData.lesson.chapterIndex}!`,
+          });
+          
+          // Navigate back to course overview after confetti
+          setTimeout(() => {
+            setLocation(`/courses/${lessonData.lesson.courseId}`);
+          }, 2000);
+        } else if (lessonData.nextLesson) {
+          // Navigate to next lesson
+          setTimeout(() => {
+            setLocation(`/lesson/${lessonData.nextLesson!.id}`);
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Error checking chapter completion:', error);
+      }
+    }
   };
 
   const handleBackToCourse = () => {
@@ -311,23 +354,31 @@ export default function LessonPage() {
 
                 {/* Complete Lesson Button */}
                 <div className="mt-8 pt-6 border-t border-gray-200">
-                  <Button
-                    onClick={handleMarkComplete}
-                    disabled={isCompleted || markProgressMutation.isPending}
-                    className="w-full bg-green-700 hover:bg-green-800 text-white"
-                  >
-                    {isCompleted ? (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Lesson Completed
-                      </>
-                    ) : (
-                      <>
-                        <Circle className="w-4 h-4 mr-2" />
-                        Mark as Complete
-                      </>
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleMarkComplete}
+                      disabled={isCompleted || markProgressMutation.isPending}
+                      className="w-full bg-green-700 hover:bg-green-800 text-white"
+                    >
+                      {isCompleted ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Lesson Completed
+                        </>
+                      ) : (
+                        <>
+                          <Circle className="w-4 h-4 mr-2" />
+                          {lessonData.nextLesson ? 'Complete & Continue' : 'Mark as Complete'}
+                        </>
+                      )}
+                    </Button>
+                    
+                    {lessonData.nextLesson && (
+                      <div className="text-sm text-gray-600 text-center">
+                        Next: {lessonData.nextLesson.title}
+                      </div>
                     )}
-                  </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
