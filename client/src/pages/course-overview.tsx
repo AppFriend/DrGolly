@@ -21,8 +21,9 @@ export default function CourseOverview() {
   });
 
   // Check if user has purchased this course
-  const { data: coursePurchases } = useQuery({
+  const { data: coursePurchases, isLoading: purchasesLoading } = useQuery({
     queryKey: ['/api/user/course-purchases'],
+    enabled: !!user,
     retry: false,
   });
 
@@ -56,7 +57,8 @@ export default function CourseOverview() {
 
   // Redirect if user doesn't have access
   React.useEffect(() => {
-    if (course && !hasAccess()) {
+    // Only run access check when all data is loaded
+    if (course && !purchasesLoading && !hasAccess()) {
       toast({
         title: "Access Required",
         description: "You need to purchase this course or upgrade to Gold for access.",
@@ -64,7 +66,7 @@ export default function CourseOverview() {
       });
       setLocation('/courses');
     }
-  }, [course, coursePurchases, user]);
+  }, [course, coursePurchases, user, purchasesLoading]);
 
   const handleBackToCourses = () => {
     setLocation('/courses');
@@ -78,7 +80,7 @@ export default function CourseOverview() {
     });
   };
 
-  if (courseLoading) {
+  if (courseLoading || purchasesLoading) {
     return (
       <div className="min-h-screen bg-white p-4">
         <div className="max-w-4xl mx-auto">
