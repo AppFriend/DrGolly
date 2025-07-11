@@ -2046,9 +2046,17 @@ Please contact the customer to confirm the appointment.
       }
       
       // Check if user has access to this lesson
-      const hasAccess = await storage.hasUserAccessToCourse(userId, lesson.courseId);
-      if (!hasAccess) {
-        return res.status(403).json({ message: 'Access denied. Please upgrade your plan or purchase this course.' });
+      const user = await storage.getUser(userId);
+      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      
+      if (!hasGoldAccess) {
+        // Check if user has purchased this course
+        const coursePurchases = await storage.getUserCoursePurchases(userId);
+        const hasPurchased = coursePurchases.some(purchase => purchase.courseId === lesson.courseId && purchase.status === 'completed');
+        
+        if (!hasPurchased) {
+          return res.status(403).json({ message: 'Access denied. Please upgrade your plan or purchase this course.' });
+        }
       }
       
       // Get lesson content
