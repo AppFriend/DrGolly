@@ -38,7 +38,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
 
   // Check user's access to this course
   const hasAccess = () => {
-    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course?.id);
+    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.course_id === course?.id);
     const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
     return hasPurchased || hasGoldAccess;
   };
