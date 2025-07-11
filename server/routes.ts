@@ -50,20 +50,30 @@ const COURSE_STRIPE_MAPPING = {
 
 // Admin middleware
 const isAdmin: RequestHandler = async (req, res, next) => {
+  console.log('isAdmin middleware called for:', req.path);
+  console.log('req.isAuthenticated():', req.isAuthenticated());
+  console.log('req.user:', req.user ? 'exists' : 'null');
+  
   if (!req.isAuthenticated()) {
+    console.log('User not authenticated');
     return res.status(401).json({ message: "Unauthorized" });
   }
   
   const userId = req.user?.claims?.sub;
+  console.log('User ID:', userId);
   if (!userId) {
+    console.log('No user ID found');
     return res.status(401).json({ message: "Unauthorized" });
   }
   
   const isUserAdmin = await storage.isUserAdmin(userId);
+  console.log('Is user admin?', isUserAdmin);
   if (!isUserAdmin) {
+    console.log('User is not admin');
     return res.status(403).json({ message: "Forbidden: Admin access required" });
   }
   
+  console.log('Admin access granted');
   next();
 };
 
