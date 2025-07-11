@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -22,9 +23,12 @@ import {
   MapPin,
   BookOpen,
   UserPlus,
-  Shield
+  Shield,
+  List,
+  Grid3X3
 } from "lucide-react";
 import UserCourseManagement from "./UserCourseManagement";
+import { AdminUsersAccordion } from "./AdminUsersAccordion";
 
 interface User {
   id: string;
@@ -48,6 +52,7 @@ export function AdminUserManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUserForCourses, setSelectedUserForCourses] = useState<User | null>(null);
   const [isCourseManagementOpen, setIsCourseManagementOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "accordion">("accordion");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -147,10 +152,27 @@ export function AdminUserManagement() {
             Manage users, subscriptions, and view user activity
           </p>
         </div>
-
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === "accordion" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("accordion")}
+            className="flex items-center gap-2"
+          >
+            <Grid3X3 className="h-4 w-4" />
+            Accordion
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="flex items-center gap-2"
+          >
+            <List className="h-4 w-4" />
+            List
+          </Button>
+        </div>
       </div>
-
-
 
       {/* Search */}
       <Card className="py-2">
@@ -170,115 +192,123 @@ export function AdminUserManagement() {
         </CardContent>
       </Card>
 
-      {/* Users Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Users className="h-4 w-4" />
-            Users ({displayUsers?.length || 0})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-gray-200 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
-                displayUsers.map((user: User) => (
-                  <div
-                    key={user.id}
-                    className="border rounded-lg p-3 hover:bg-gray-50"
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                        {user.firstName?.[0] || user.email[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <h3 className="font-semibold text-sm truncate">
-                              {user.firstName} {user.lastName}
-                            </h3>
-                          <Badge className={`${getTierColor(user.subscriptionTier)} text-xs px-2 py-0.5`}>
-                            {user.subscriptionTier}
-                          </Badge>
+      {/* Users Content */}
+      {viewMode === "accordion" ? (
+        <AdminUsersAccordion
+          users={displayUsers || []}
+          onUpdateUser={handleUpdateUser}
+          isLoading={isLoading}
+        />
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="h-4 w-4" />
+              Users ({displayUsers?.length || 0})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-16 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
+                  displayUsers.map((user: User) => (
+                    <div
+                      key={user.id}
+                      className="border rounded-lg p-3 hover:bg-gray-50"
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className="w-8 h-8 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                          {user.firstName?.[0] || user.email[0].toUpperCase()}
                         </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleManageCourses(user)}
-                            className="h-7 w-7 p-0 flex-shrink-0"
-                            title="Manage Courses"
-                          >
-                            <BookOpen className="h-3 w-3" />
-                          </Button>
-                          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedUser(user)}
-                                className="h-7 w-7 p-0 flex-shrink-0"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                            </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
-                            </DialogHeader>
-                            {selectedUser && (
-                              <UserEditForm
-                                user={selectedUser}
-                                onUpdate={handleUpdateUser}
-                                isLoading={updateUserMutation.isPending}
-                              />
-                            )}
-                          </DialogContent>
-                        </Dialog>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <h3 className="font-semibold text-sm truncate">
+                                {user.firstName} {user.lastName}
+                              </h3>
+                            <Badge className={`${getTierColor(user.subscriptionTier)} text-xs px-2 py-0.5`}>
+                              {user.subscriptionTier}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleManageCourses(user)}
+                              className="h-7 w-7 p-0 flex-shrink-0"
+                              title="Manage Courses"
+                            >
+                              <BookOpen className="h-3 w-3" />
+                            </Button>
+                            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedUser(user)}
+                                  className="h-7 w-7 p-0 flex-shrink-0"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
+                              </DialogHeader>
+                              {selectedUser && (
+                                <UserEditForm
+                                  user={selectedUser}
+                                  onUpdate={handleUpdateUser}
+                                  isLoading={updateUserMutation.isPending}
+                                />
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-xs text-gray-600 truncate mt-1">
-                        <Mail className="h-3 w-3 inline mr-1" />
-                        {user.email}
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(user.createdAt)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            {user.signInCount} logins
-                          </span>
+                        <div className="text-xs text-gray-600 truncate mt-1">
+                          <Mail className="h-3 w-3 inline mr-1" />
+                          {user.email}
                         </div>
-                        {user.country && (
-                          <span className="text-xs text-gray-400">
-                            {user.country}
-                          </span>
-                        )}
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(user.createdAt)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {user.signInCount} logins
+                            </span>
+                          </div>
+                          {user.country && (
+                            <span className="text-xs text-gray-400">
+                              {user.country}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                ))
-              ) : (
-                <div className="text-center text-gray-500 py-8">
-                  {searchQuery.length > 2 ? "No users found matching your search." : "No users found."}
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    {searchQuery.length > 2 ? "No users found matching your search." : "No users found."}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
       
       {/* Course Management Modal */}
       {isCourseManagementOpen && selectedUserForCourses && (
