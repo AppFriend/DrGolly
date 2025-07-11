@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Play, Clock, Users, Star, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Play, Clock, Users, Star, CheckCircle, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,9 @@ export default function CourseOverview() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // State for managing expanded chapters
+  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
 
   // Fetch course details
   const { data: course, isLoading: courseLoading } = useQuery({
@@ -30,6 +33,12 @@ export default function CourseOverview() {
   // Fetch course modules
   const { data: modules = [] } = useQuery({
     queryKey: [`/api/courses/${courseId}/modules`],
+    enabled: !!courseId,
+  });
+
+  // Fetch submodules for each module
+  const { data: submodules = [] } = useQuery({
+    queryKey: [`/api/courses/${courseId}/submodules`],
     enabled: !!courseId,
   });
 
@@ -73,6 +82,26 @@ export default function CourseOverview() {
       title: "Module Starting",
       description: "Opening module content...",
     });
+  };
+
+  const handleStartSubmodule = (submoduleId: number, submoduleTitle: string) => {
+    // Navigate to submodule content
+    toast({
+      title: "Opening Content",
+      description: `Opening "${submoduleTitle}"...`,
+    });
+  };
+
+  const toggleChapter = (moduleId: number) => {
+    setExpandedChapters(prev => ({
+      ...prev,
+      [moduleId]: !prev[moduleId]
+    }));
+  };
+
+  // Get submodules for a specific module
+  const getSubmodulesForModule = (moduleId: number) => {
+    return submodules.filter((sub: any) => sub.moduleId === moduleId);
   };
 
   if (courseLoading || purchasesLoading) {
@@ -233,46 +262,125 @@ export default function CourseOverview() {
                 {modules.map((module: any, index: number) => {
                   const progress = getModuleProgress(module.id);
                   const isCompleted = !!progress?.completedAt;
+                  const moduleSubmodules = getSubmodulesForModule(module.id);
+                  const isExpanded = expandedChapters[module.id] || false;
+                  const hasSubmodules = moduleSubmodules.length > 0;
                   
                   return (
-                    <div 
-                      key={module.id} 
-                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-[#095D66]/20 hover:bg-gray-50/50 transition-all duration-200"
-                    >
-                      <div className="flex-shrink-0">
-                        {isCompleted ? (
-                          <CheckCircle className="w-6 h-6 text-green-500" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center">
-                            <span className="text-xs font-medium text-gray-600">{index + 1}</span>
+                    <div key={module.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                      {/* Chapter Header */}
+                      <div 
+                        className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50/50 transition-all duration-200 ${
+                          hasSubmodules ? 'hover:border-[#095D66]/20' : ''
+                        }`}
+                        onClick={() => hasSubmodules ? toggleChapter(module.id) : handleStartModule(module.id)}
+                      >
+                        <div className="flex-shrink-0">
+                          {isCompleted ? (
+                            <CheckCircle className="w-6 h-6 text-green-500" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                              <span className="text-xs font-medium text-gray-600">{index + 1}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-base font-medium text-gray-900 mb-1">
+                            {module.title}
+                          </h4>
+                          {module.description && (
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {module.description}
+                            </p>
+                          )}
+                          {hasSubmodules && (
+                            <p className="text-xs text-[#095D66] mt-1">
+                              {moduleSubmodules.length} topics
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                          {hasSubmodules && (
+                            <div className="p-1">
+                              {isExpanded ? (
+                                <ChevronDown className="w-5 h-5 text-gray-500" />
+                              ) : (
+                                <ChevronRight className="w-5 h-5 text-gray-500" />
+                              )}
+                            </div>
+                          )}
+                          {!hasSubmodules && (
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartModule(module.id);
+                              }}
+                              className={`min-h-[40px] px-4 rounded-lg transition-all duration-200 ${
+                                isCompleted 
+                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  : 'bg-[#095D66] hover:bg-[#095D66]/90 text-white'
+                              }`}
+                            >
+                              <Play className="w-4 h-4 mr-2" />
+                              {isCompleted ? 'Review' : 'Start'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Submodules - Expandable */}
+                      {hasSubmodules && isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50/30">
+                          <div className="py-2">
+                            {moduleSubmodules.map((submodule: any, subIndex: number) => (
+                              <div
+                                key={submodule.id}
+                                className="flex items-center gap-4 py-3 px-6 hover:bg-gray-50 transition-colors cursor-pointer"
+                                onClick={() => handleStartSubmodule(submodule.id, submodule.title)}
+                              >
+                                {/* Indentation line */}
+                                <div className="w-8 flex justify-center">
+                                  <div className="w-0.5 h-6 bg-gray-200"></div>
+                                </div>
+                                
+                                <div className="flex-shrink-0">
+                                  <div className="w-5 h-5 rounded-full border-2 border-[#095D66]/30 flex items-center justify-center">
+                                    <BookOpen className="w-3 h-3 text-[#095D66]" />
+                                  </div>
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-sm font-medium text-gray-800">
+                                    {submodule.title}
+                                  </h5>
+                                  {submodule.description && (
+                                    <p className="text-xs text-gray-600 mt-1 line-clamp-1">
+                                      {submodule.description}
+                                    </p>
+                                  )}
+                                </div>
+                                
+                                <div className="flex-shrink-0">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-[#095D66] hover:text-[#095D66]/80 hover:bg-[#095D66]/5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartSubmodule(submodule.id, submodule.title);
+                                    }}
+                                  >
+                                    <Play className="w-3 h-3 mr-1" />
+                                    Read
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-base font-medium text-gray-900 mb-1">
-                          {module.title}
-                        </h4>
-                        {module.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {module.description}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="flex-shrink-0">
-                        <Button
-                          onClick={() => handleStartModule(module.id)}
-                          className={`min-h-[40px] px-4 rounded-lg transition-all duration-200 ${
-                            isCompleted 
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-[#095D66] hover:bg-[#095D66]/90 text-white'
-                          }`}
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          {isCompleted ? 'Review' : 'Start'}
-                        </Button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
