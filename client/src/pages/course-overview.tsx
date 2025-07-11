@@ -103,8 +103,15 @@ export default function CourseOverview() {
   };
 
   const handleStartLessonContent = (contentId: number, contentTitle: string) => {
-    // Navigate to lesson content page
-    setLocation(`/lesson/${contentId}`);
+    // Find the lesson ID that contains this content
+    const content = lessonContent.find((c: any) => c.id === contentId);
+    if (content && content.lessonId) {
+      // Navigate to lesson page with the correct lesson ID, and pass content ID as query param
+      setLocation(`/lesson/${content.lessonId}?contentId=${contentId}`);
+    } else {
+      // Fallback to content ID (legacy)
+      setLocation(`/lesson/${contentId}`);
+    }
   };
 
   const toggleChapter = (chapterId: number) => {
