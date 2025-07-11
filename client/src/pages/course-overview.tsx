@@ -31,13 +31,13 @@ export default function CourseOverview() {
   });
 
   // Fetch course chapters (renamed from modules)
-  const { data: chapters = [] } = useQuery({
+  const { data: chapters = [], isLoading: chaptersLoading, error: chaptersError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lessons`],
     enabled: !!courseId,
   });
 
   // Fetch lesson content (renamed from submodules)
-  const { data: lessonContent = [] } = useQuery({
+  const { data: lessonContent = [], isLoading: lessonContentLoading, error: lessonContentError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lesson-content`],
     enabled: !!courseId,
   });
@@ -87,7 +87,11 @@ export default function CourseOverview() {
     chapters: chapters.length,
     lessonContent: lessonContent.length,
     user,
-    hasAccess: hasAccess()
+    hasAccess: hasAccess(),
+    chaptersLoading,
+    lessonContentLoading,
+    chaptersError,
+    lessonContentError
   });
 
   const handleBackToCourses = () => {
