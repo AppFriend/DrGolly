@@ -71,7 +71,7 @@ export default function LessonPage() {
   }, [isAuthenticated, isLoading, toast, setLocation]);
 
   const { data: lessonData, isLoading: lessonLoading, error } = useQuery<LessonData>({
-    queryKey: ['/api/lessons', id],
+    queryKey: [`/api/lessons/${id}`],
     enabled: isAuthenticated && !!id,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
