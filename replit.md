@@ -549,6 +549,10 @@ Changelog:
   * All courses now have proper chapter structure: Welcome modules (0.0) and numbered chapters (1.1, 1.2, etc.)
   * Rich content includes HTML formatting, images, and professional medical guidance
   * Special mapping logic handles title mismatches (e.g., "Vernix" content mapped to "What is Normal" module)
+  * CRITICAL BUG FIX: Fixed course access control issue where users couldn't access purchased courses
+  * Updated all course access checks to use correct database column name 'course_id' instead of 'courseId'
+  * Fixed access bug in course-overview.tsx, courses.tsx, and CourseDetail.tsx components
+  * Users can now properly access purchased courses like "Little baby sleep program"
 ```
 
 ## User Preferences
