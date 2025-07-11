@@ -77,12 +77,8 @@ export default function Courses() {
     // For "Purchases" tab, show purchased courses only
     if (activeTab === "my") {
       const hasPurchased = coursePurchases?.some((purchase: any) => 
-        purchase.course_id === course.id && purchase.status === 'completed'
+        purchase.courseId === course.id && purchase.status === 'completed'
       );
-      console.log(`Course ${course.id} (${course.title}): purchased = ${hasPurchased}`);
-      if (coursePurchases && coursePurchases.length > 0) {
-        console.log('Available purchases:', coursePurchases.map((p: any) => ({ course_id: p.course_id, status: p.status })));
-      }
       return hasPurchased; // Only show completed purchases in "Purchases"
     }
     
@@ -124,7 +120,7 @@ export default function Courses() {
   });
 
   const handleCourseClick = (course: Course) => {
-    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.course_id === course.id);
+    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course.id);
     const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
     
     // Allow access if user has Gold/Platinum or has purchased this specific course
