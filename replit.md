@@ -540,6 +540,15 @@ Changelog:
   * Toddler Toolkit: All 19 modules now have rich content with 5 video modules
   * Content includes professional medical guidance, FAQ sections, video tutorials, and step-by-step instructions
   * All content properly formatted with consistent styling and embedded Vimeo video players
+- July 11, 2025. COMPLETE COURSE STRUCTURE REBUILD - Fixed chapter formatting and rich content mapping:
+  * Rebuilt entire course structure from CSV with proper "1.1 What is Normal?" chapter format matching user reference
+  * Successfully created 130 chapters and 142 modules across 10 courses with correct hierarchy
+  * Fixed CSV parsing issues by identifying trailing spaces in column headers ('Title of rich text ')
+  * Mapped 401 modules with rich text content from second CSV file using intelligent title matching
+  * Validated Vernix content mapping - exact match with screenshot showing vernix caseosa information and baby image
+  * All courses now have proper chapter structure: Welcome modules (0.0) and numbered chapters (1.1, 1.2, etc.)
+  * Rich content includes HTML formatting, images, and professional medical guidance
+  * Special mapping logic handles title mismatches (e.g., "Vernix" content mapped to "What is Normal" module)
 ```
 
 ## User Preferences
