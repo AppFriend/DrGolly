@@ -555,6 +555,22 @@ Changelog:
   * Fixed access bug in course-overview.tsx, courses.tsx, and CourseDetail.tsx components
   * Users can now properly access purchased courses in both "Purchases" tab and individual course access
   * Purchased courses now show correctly in "Purchases" tab and users can access course content without access denial
+- July 11, 2025. Applied systematic chapter numbering from spreadsheet to ALL courses:
+  * Changed "Course modules" heading to "Chapters" throughout the interface
+  * Updated progress text to show "X of Y chapters completed" for all courses
+  * Applied proper chapter numbering system to all 10 courses matching exact spreadsheet format:
+    - Little Baby Sleep Program: 0.0 Welcome through 1.20 Troubleshooting and Other
+    - Big Baby Sleep Program: 0.0 Welcome through 1.16 Troubleshooting & Other
+    - Pre-toddler Sleep Program: 0.0 Welcome through 1.14 Troublshooting
+    - Toddler Sleep Program: 0.0 Welcome through 1.11 Troubleshooting
+    - Pre-School Sleep Program: 0.0 Welcome through 1.10 Troubleshooting
+    - Preparation for Newborns: 0.0 Welcome through 1.21 Parental Wellbeing
+    - New Sibling Supplement: 0.0 Welcome through 1.7 Coping Strategies
+    - Twins Supplement: 0.0 Welcome through 1.8 Getting Time Out
+    - Toddler Toolkit: 0.0 Introduction - Toddler Toolkit
+  * Cleaned up duplicate and legacy module entries that were causing display issues
+  * All courses now display proper chapter structure with exact titles and numbering from spreadsheet
+  * Removed debug console logging for cleaner production experience
 ```
 
 ## User Preferences
