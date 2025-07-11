@@ -73,7 +73,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     if (course && hasAccess()) {
       // Redirect immediately if user has access
       const timer = setTimeout(() => {
-        window.location.href = `/courses/${course.id}/overview`;
+        window.location.href = `/courses/${course.id}`;
       }, 100);
       return () => clearTimeout(timer);
     }
