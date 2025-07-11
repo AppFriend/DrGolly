@@ -79,6 +79,8 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  console.log('AdminCoursesAccordion component rendered with courses:', courses.length);
+
   // Fetch course chapters
   const { data: chaptersData, isLoading: chaptersLoading, error: chaptersError } = useQuery({
     queryKey: ['/api/admin/chapters'],
