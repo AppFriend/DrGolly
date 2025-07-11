@@ -156,7 +156,7 @@ export const courses = pgTable("courses", {
   videoUrl: varchar("video_url"), // Course introduction video
   duration: integer("duration"), // Total course duration in minutes
   ageRange: varchar("age_range"), // e.g., "4-16 Weeks", "4-8 Months"
-  tier: varchar("tier").default("free").notNull(), // free, gold, platinum
+
   skillLevel: varchar("skill_level"), // beginner, intermediate, advanced
   stripeProductId: varchar("stripe_product_id"),
   uniqueId: varchar("unique_id"),

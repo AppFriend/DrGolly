@@ -2176,19 +2176,14 @@ Please contact the customer to confirm the appointment.
       // Check if user has access to this lesson
       const user = await storage.getUser(userId);
       const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      const coursePurchases = await storage.getUserCoursePurchases(userId);
+      const hasPurchased = coursePurchases.some(purchase => purchase.courseId === lesson.courseId && purchase.status === 'completed');
       
-      console.log(`User subscription: ${user?.subscriptionTier}, hasGoldAccess: ${hasGoldAccess}`);
+      console.log(`User subscription: ${user?.subscriptionTier}, hasGoldAccess: ${hasGoldAccess}, hasPurchased: ${hasPurchased}`);
       
-      if (!hasGoldAccess) {
-        // Check if user has purchased this course
-        const coursePurchases = await storage.getUserCoursePurchases(userId);
-        const hasPurchased = coursePurchases.some(purchase => purchase.courseId === lesson.courseId && purchase.status === 'completed');
-        
-        console.log(`User has purchased courses: ${coursePurchases.length}, hasPurchased this course: ${hasPurchased}`);
-        
-        if (!hasPurchased) {
-          return res.status(403).json({ message: 'Access denied. Please upgrade your plan or purchase this course.' });
-        }
+      // User has access if they have Gold/Platinum subscription OR have purchased this specific course
+      if (!hasGoldAccess && !hasPurchased) {
+        return res.status(403).json({ message: 'Access denied. Please upgrade your plan or purchase this course.' });
       }
       
       // Get lesson content
