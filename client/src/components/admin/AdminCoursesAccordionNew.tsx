@@ -401,11 +401,17 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
     }
   };
 
+  // Debug logging
+  console.log('AdminCoursesAccordion received courses:', courses);
+  console.log('Chapters data:', allChapters);
+  console.log('Lessons data:', allLessons);
+  console.log('Sublessons data:', allSubLessons);
+
   if (!courses || courses.length === 0) {
     return (
       <Card>
         <CardContent className="py-8">
-          <p className="text-center text-gray-500">No courses available</p>
+          <p className="text-center text-gray-500">No courses available (courses: {courses?.length || 'undefined'})</p>
         </CardContent>
       </Card>
     );
