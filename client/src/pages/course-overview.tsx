@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { isUnauthorizedError } from '@/lib/authUtils';
 
 export default function CourseOverview() {
   const { courseId } = useParams();
@@ -36,13 +37,15 @@ export default function CourseOverview() {
   // Fetch course chapters (renamed from modules)
   const { data: chapters = [], isLoading: chaptersLoading, error: chaptersError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lessons`],
-    enabled: !!courseId,
+    enabled: !!courseId && !!user,
+    retry: false,
   });
 
   // Fetch lesson content (renamed from submodules)
   const { data: lessonContent = [], isLoading: lessonContentLoading, error: lessonContentError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lesson-content`],
-    enabled: !!courseId,
+    enabled: !!courseId && !!user,
+    retry: false,
   });
 
   // Fetch user progress
@@ -62,26 +65,27 @@ export default function CourseOverview() {
     return hasPurchased || hasGoldAccess;
   };
 
-  // Redirect if user doesn't have access - temporarily disabled for debugging
+  // Handle access control errors from API
   React.useEffect(() => {
-    // Only run access check when all data is loaded
-    if (course && !purchasesLoading && !hasAccess()) {
-      console.log('Access check failed:', {
-        course: !!course,
-        purchasesLoading,
-        hasAccess: hasAccess(),
-        user: user,
-        coursePurchases: coursePurchases
-      });
-      // Temporarily disabled redirect to debug lesson loading
-      // toast({
-      //   title: "Access Required",
-      //   description: "You need to purchase this course or upgrade to Gold for access.",
-      //   variant: "destructive",
-      // });
-      // setLocation('/courses');
+    if (chaptersError || lessonContentError) {
+      // Check if it's a 403 (access denied) error
+      if (chaptersError?.message?.includes('403') || lessonContentError?.message?.includes('403')) {
+        toast({
+          title: "Access Required",
+          description: "Purchase this course or upgrade to Gold for unlimited access.",
+          variant: "destructive",
+        });
+        setLocation('/courses');
+      } else if (isUnauthorizedError(chaptersError) || isUnauthorizedError(lessonContentError)) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to access this course.",
+          variant: "destructive",
+        });
+        setLocation('/login');
+      }
     }
-  }, [course, coursePurchases, user, purchasesLoading]);
+  }, [chaptersError, lessonContentError, toast, setLocation]);
 
   // Debug logging
   console.log('Course Overview Debug:', {
