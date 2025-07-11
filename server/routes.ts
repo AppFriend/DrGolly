@@ -7,6 +7,15 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { regionalPricingService } from "./regional-pricing";
 import { z } from "zod";
 import Stripe from "stripe";
+
+// Extend Express Request interface to include adminBypass property
+declare global {
+  namespace Express {
+    interface Request {
+      adminBypass?: boolean;
+    }
+  }
+}
 import {
   insertCourseSchema,
   insertUserCourseProgressSchema,
@@ -68,6 +77,41 @@ const isAdmin: RequestHandler = async (req, res, next) => {
   next();
 };
 
+// Global admin bypass middleware - admins get full access to everything
+const adminBypass: RequestHandler = async (req, res, next) => {
+  try {
+    // Check if user is authenticated and is admin
+    if (req.isAuthenticated()) {
+      const userId = req.user?.claims?.sub;
+      if (userId) {
+        const isUserAdmin = await storage.isUserAdmin(userId);
+        if (isUserAdmin) {
+          // Admin gets full access - skip all other auth checks
+          req.adminBypass = true;
+          return next();
+        }
+      }
+    }
+    
+    // Not an admin, continue with normal auth flow
+    next();
+  } catch (error) {
+    console.error("Error in admin bypass check:", error);
+    next(); // Continue with normal auth on error
+  }
+};
+
+// Enhanced isAuthenticated that respects admin bypass
+const isAuthenticatedOrAdmin: RequestHandler = async (req, res, next) => {
+  // If admin bypass is set, skip auth check
+  if (req.adminBypass) {
+    return next();
+  }
+  
+  // Use normal authentication check
+  return isAuthenticated(req, res, next);
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to verify routing
   app.get('/api/test', (req, res) => {
@@ -76,32 +120,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   await setupAuth(app);
+  
+  // Apply admin bypass middleware globally
+  app.use(adminBypass);
 
   // Course chapters route (with access control)
-  app.get('/api/courses/:courseId/chapters', isAuthenticated, async (req: any, res) => {
+  app.get('/api/courses/:courseId/chapters', isAuthenticatedOrAdmin, async (req: any, res) => {
     try {
       const { courseId } = req.params;
       const userId = req.user.claims.sub;
       
       console.log('Fetching chapters for course:', courseId, 'user:', userId);
       
-      // Check user's access to this course
-      const user = await storage.getUser(userId);
-      const coursePurchases = await storage.getUserCoursePurchases(userId);
-      
-      // Check if user is admin (admins have full access)
-      const isUserAdmin = await storage.isUserAdmin(userId);
-      
-      if (!isUserAdmin) {
-        // Check if user has purchased this course or has gold/platinum access
-        const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
-        const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      // Check user's access to this course (skip if admin bypass)
+      if (!req.adminBypass) {
+        const user = await storage.getUser(userId);
+        const coursePurchases = await storage.getUserCoursePurchases(userId);
         
-        if (!hasPurchased && !hasGoldAccess) {
-          return res.status(403).json({ 
-            message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
-            requiresUpgrade: true
-          });
+        // Check if user is admin (admins have full access)
+        const isUserAdmin = await storage.isUserAdmin(userId);
+        
+        if (!isUserAdmin) {
+          // Check if user has purchased this course or has gold/platinum access
+          const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
+          const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+          
+          if (!hasPurchased && !hasGoldAccess) {
+            return res.status(403).json({ 
+              message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
+              requiresUpgrade: true
+            });
+          }
         }
       }
       
@@ -115,30 +164,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Course lesson routes (with access control)
-  app.get('/api/courses/:courseId/lessons', isAuthenticated, async (req: any, res) => {
+  app.get('/api/courses/:courseId/lessons', isAuthenticatedOrAdmin, async (req: any, res) => {
     try {
       const { courseId } = req.params;
       const userId = req.user.claims.sub;
       
       console.log('Fetching lessons for course:', courseId, 'user:', userId);
       
-      // Check user's access to this course
-      const user = await storage.getUser(userId);
-      const coursePurchases = await storage.getUserCoursePurchases(userId);
-      
-      // Check if user is admin (admins have full access)
-      const isUserAdmin = await storage.isUserAdmin(userId);
-      
-      if (!isUserAdmin) {
-        // Check if user has purchased this course or has gold/platinum access
-        const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
-        const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      // Check user's access to this course (skip if admin bypass)
+      if (!req.adminBypass) {
+        const user = await storage.getUser(userId);
+        const coursePurchases = await storage.getUserCoursePurchases(userId);
         
-        if (!hasPurchased && !hasGoldAccess) {
-          return res.status(403).json({ 
-            message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
-            requiresUpgrade: true
-          });
+        // Check if user is admin (admins have full access)
+        const isUserAdmin = await storage.isUserAdmin(userId);
+        
+        if (!isUserAdmin) {
+          // Check if user has purchased this course or has gold/platinum access
+          const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
+          const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+          
+          if (!hasPurchased && !hasGoldAccess) {
+            return res.status(403).json({ 
+              message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
+              requiresUpgrade: true
+            });
+          }
         }
       }
       
@@ -2478,6 +2529,21 @@ Please contact the customer to confirm the appointment.
   app.get('/api/blog-posts', async (req, res) => {
     try {
       const { category, includeUnpublished } = req.query;
+      
+      // If includeUnpublished is true, check if user is admin (unless admin bypass)
+      if (includeUnpublished === 'true' && !req.adminBypass) {
+        if (!req.isAuthenticated()) {
+          return res.status(401).json({ message: "Authentication required for admin access" });
+        }
+        
+        const userId = req.user?.claims?.sub;
+        const isUserAdmin = await storage.isUserAdmin(userId);
+        
+        if (!isUserAdmin) {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+      }
+      
       const blogPosts = await storage.getBlogPosts(
         category as string | undefined,
         includeUnpublished === 'true'
@@ -2551,7 +2617,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Blog post management routes (admin)
-  app.post('/api/blog-posts', isAuthenticated, async (req, res) => {
+  app.post('/api/blog-posts', isAdmin, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
