@@ -18,10 +18,14 @@ import {
   insertBlogPostSchema,
   insertCoursePurchaseSchema,
   insertStripeProductSchema,
+  courses,
+  courseLessons,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeDataSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
