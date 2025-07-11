@@ -67,6 +67,13 @@ export function AdminBlogManagement() {
         const data = await response.json();
         console.log("API Response data:", data);
         console.log("Data type:", typeof data, "Is array:", Array.isArray(data));
+        
+        // Ensure we always return an array
+        if (!Array.isArray(data)) {
+          console.warn("API returned non-array data, wrapping in array");
+          return [];
+        }
+        
         return data;
       } catch (err) {
         console.error("API Error:", err);
@@ -82,7 +89,8 @@ export function AdminBlogManagement() {
     error: error?.message,
     blogPostsLength: blogPosts?.length,
     blogPostsType: typeof blogPosts,
-    isArray: Array.isArray(blogPosts)
+    isArray: Array.isArray(blogPosts),
+    firstPost: blogPosts?.[0]
   });
 
 

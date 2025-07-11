@@ -2558,6 +2558,12 @@ Please contact the customer to confirm the appointment.
         category as string | undefined,
         includeUnpublished === 'true'
       );
+      console.log("Blog posts API response:", { 
+        count: blogPosts.length,
+        includeUnpublished: includeUnpublished === 'true',
+        adminBypass: req.adminBypass,
+        firstPost: blogPosts[0] ? { id: blogPosts[0].id, title: blogPosts[0].title } : null
+      });
       res.json(blogPosts);
     } catch (error) {
       console.error("Error fetching blog posts:", error);
