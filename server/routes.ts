@@ -3845,6 +3845,109 @@ Please contact the customer to confirm the appointment.
     res.json({ isAdmin: true });
   });
 
+  // Admin course management API endpoints
+  app.get('/api/chapters', isAdmin, async (req, res) => {
+    try {
+      const chapters = await storage.getAllChapters();
+      res.json(chapters);
+    } catch (error) {
+      console.error('Error fetching chapters:', error);
+      res.status(500).json({ message: 'Failed to fetch chapters' });
+    }
+  });
+
+  app.get('/api/lessons', isAdmin, async (req, res) => {
+    try {
+      const lessons = await storage.getAllLessons();
+      res.json(lessons);
+    } catch (error) {
+      console.error('Error fetching lessons:', error);
+      res.status(500).json({ message: 'Failed to fetch lessons' });
+    }
+  });
+
+  app.get('/api/sublessons', isAdmin, async (req, res) => {
+    try {
+      const sublessons = await storage.getAllSublessons();
+      res.json(sublessons);
+    } catch (error) {
+      console.error('Error fetching sublessons:', error);
+      res.status(500).json({ message: 'Failed to fetch sublessons' });
+    }
+  });
+
+  // CRUD operations for chapters
+  app.post('/api/chapters', isAdmin, async (req, res) => {
+    try {
+      const chapterData = req.body;
+      const chapter = await storage.createChapter(chapterData);
+      res.json(chapter);
+    } catch (error) {
+      console.error('Error creating chapter:', error);
+      res.status(500).json({ message: 'Failed to create chapter' });
+    }
+  });
+
+  app.patch('/api/chapters/:id', isAdmin, async (req, res) => {
+    try {
+      const chapterId = parseInt(req.params.id);
+      const updates = req.body;
+      const chapter = await storage.updateChapter(chapterId, updates);
+      res.json(chapter);
+    } catch (error) {
+      console.error('Error updating chapter:', error);
+      res.status(500).json({ message: 'Failed to update chapter' });
+    }
+  });
+
+  // CRUD operations for lessons
+  app.post('/api/lessons', isAdmin, async (req, res) => {
+    try {
+      const lessonData = req.body;
+      const lesson = await storage.createLesson(lessonData);
+      res.json(lesson);
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      res.status(500).json({ message: 'Failed to create lesson' });
+    }
+  });
+
+  app.patch('/api/lessons/:id', isAdmin, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.id);
+      const updates = req.body;
+      const lesson = await storage.updateLesson(lessonId, updates);
+      res.json(lesson);
+    } catch (error) {
+      console.error('Error updating lesson:', error);
+      res.status(500).json({ message: 'Failed to update lesson' });
+    }
+  });
+
+  // CRUD operations for sublessons (lesson content)
+  app.post('/api/sublessons', isAdmin, async (req, res) => {
+    try {
+      const sublessonData = req.body;
+      const sublesson = await storage.createSublesson(sublessonData);
+      res.json(sublesson);
+    } catch (error) {
+      console.error('Error creating sublesson:', error);
+      res.status(500).json({ message: 'Failed to create sublesson' });
+    }
+  });
+
+  app.patch('/api/sublessons/:id', isAdmin, async (req, res) => {
+    try {
+      const sublessonId = parseInt(req.params.id);
+      const updates = req.body;
+      const sublesson = await storage.updateSublesson(sublessonId, updates);
+      res.json(sublesson);
+    } catch (error) {
+      console.error('Error updating sublesson:', error);
+      res.status(500).json({ message: 'Failed to update sublesson' });
+    }
+  });
+
   app.get('/api/admin/metrics', isAdmin, async (req, res) => {
     try {
       const metrics = await storage.getUserMetrics();

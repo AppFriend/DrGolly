@@ -255,7 +255,7 @@ export function AdminCourseManagement() {
             <div className="space-y-4">
               {viewMode === "accordion" ? (
                 <AdminCoursesAccordion 
-                  courses={courses} 
+                  courses={courses || []} 
                   onUpdateCourse={handleUpdateCourse}
                 />
               ) : (
