@@ -144,6 +144,17 @@
   .prose-lesson * {
     line-height: 1.6;
   }
+  
+  /* Enhanced image handling */
+  .prose-lesson img {
+    @apply rounded-lg shadow-sm mb-4 max-w-full h-auto;
+  }
+  
+  /* Handle images with src containing bubble.io or other CDN URLs */
+  .prose-lesson img[src*="bubble.io"],
+  .prose-lesson img[src*="cdn."] {
+    @apply w-full max-w-md mx-auto block;
+  }
   .text-dr-teal {
     color: var(--dr-teal);
   }
