@@ -591,13 +591,15 @@ Changelog:
   * Fixed HTML content rendering to display formatted text instead of raw HTML tags
   * Sublessions display as clean, readable cards with focused content on specific subtopics
   * Updated terminology from "subleson" to "sublession" for consistency throughout codebase
-- July 11, 2025. Implemented comprehensive admin user management accordion system:
-  * Created AdminUsersAccordion component with tier-based user organization (Platinum, Gold, Free)
-  * Added view switching between accordion and list modes in admin user management
-  * Integrated inline editing capabilities for user details within accordion cards
-  * Enhanced user organization with subscription tier grouping and visual hierarchy
-  * Added comprehensive user information display including contact details and activity metrics
-  * Implemented proper course management integration within accordion structure
+- July 11, 2025. Implemented comprehensive admin course management accordion system with drag-and-drop:
+  * Created AdminCoursesAccordionNew component with hierarchical course structure (Course → Chapter → Lesson → Sub-lesson)
+  * Added drag-and-drop reordering functionality for chapters, lessons, and sub-lessons using @dnd-kit
+  * Implemented inline rich text editing with RichTextEditor component for all content levels
+  * Added "Add Chapter/Lesson/Sub-lesson" buttons with creation dialogs at each level
+  * Enhanced visual hierarchy with color-coded borders (blue for chapters, green for lessons, orange for sub-lessons)
+  * Integrated real-time content updates with proper mutation handling and cache invalidation
+  * Added comprehensive CRUD operations for chapters, lessons, and sub-lessons with API endpoints
+  * Implemented expandable accordion structure with course-level organization and management
 ```
 
 ## User Preferences
