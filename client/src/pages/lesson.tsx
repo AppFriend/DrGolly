@@ -204,14 +204,7 @@ export default function LessonPage() {
                   <BookOpen className="w-5 h-5 text-brand-teal" />
                   <CardTitle className="text-xl">{lesson.title}</CardTitle>
                 </div>
-                {lesson.content && (
-                  <CardDescription>
-                    <div
-                      className="prose-lesson max-w-none"
-                      dangerouslySetInnerHTML={{ __html: lesson.content }}
-                    />
-                  </CardDescription>
-                )}
+
               </CardHeader>
               <CardContent>
                 {/* Video Player */}
