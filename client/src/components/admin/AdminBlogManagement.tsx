@@ -59,8 +59,14 @@ export function AdminBlogManagement() {
         console.log("Making API call to fetch blog posts...");
         const response = await apiRequest("GET", "/api/blog-posts?includeUnpublished=true");
         console.log("API Response received:", response);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
         console.log("API Response data:", data);
+        console.log("Data type:", typeof data, "Is array:", Array.isArray(data));
         return data;
       } catch (err) {
         console.error("API Error:", err);
@@ -240,9 +246,21 @@ export function AdminBlogManagement() {
             <div className="text-center py-8">
               <div className="text-red-600 mb-4">
                 <p>Error loading blog posts: {error.message}</p>
+                <p className="text-sm text-gray-500 mt-2">Check console for more details</p>
               </div>
             </div>
-          ) : blogPosts && Array.isArray(blogPosts) && blogPosts.length > 0 ? (
+          ) : !Array.isArray(blogPosts) ? (
+            <div className="text-center py-8 text-gray-500">
+              <div className="font-semibold">Invalid blog posts data</div>
+              <div className="text-sm mt-2">Expected array, got: {typeof blogPosts}</div>
+              <div className="text-xs mt-2">Check console for debugging info</div>
+            </div>
+          ) : blogPosts.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <div className="font-semibold">No blog posts found</div>
+              <div className="text-sm mt-2">Empty array returned from API</div>
+            </div>
+          ) : (
             <div className="space-y-4">
               {blogPosts.map((post: BlogPost) => (
                 <div

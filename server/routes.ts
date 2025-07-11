@@ -88,7 +88,6 @@ const adminBypass: RequestHandler = async (req, res, next) => {
         if (isUserAdmin) {
           // Admin gets full access - skip all other auth checks
           req.adminBypass = true;
-          console.log("Admin bypass enabled for user:", userId);
           return next();
         }
       }
@@ -2542,22 +2541,16 @@ Please contact the customer to confirm the appointment.
       const { category, includeUnpublished } = req.query;
       
       // If includeUnpublished is true, check if user is admin (unless admin bypass)
-      if (includeUnpublished === 'true') {
-        console.log("Blog posts includeUnpublished=true, adminBypass:", req.adminBypass);
+      if (includeUnpublished === 'true' && !req.adminBypass) {
+        if (!req.isAuthenticated()) {
+          return res.status(401).json({ message: "Authentication required for admin access" });
+        }
         
-        if (!req.adminBypass) {
-          if (!req.isAuthenticated()) {
-            console.log("Blog posts: Authentication required");
-            return res.status(401).json({ message: "Authentication required for admin access" });
-          }
-          
-          const userId = req.user?.claims?.sub;
-          const isUserAdmin = await storage.isUserAdmin(userId);
-          
-          if (!isUserAdmin) {
-            console.log("Blog posts: Admin access required for user:", userId);
-            return res.status(403).json({ message: "Admin access required" });
-          }
+        const userId = req.user?.claims?.sub;
+        const isUserAdmin = await storage.isUserAdmin(userId);
+        
+        if (!isUserAdmin) {
+          return res.status(403).json({ message: "Admin access required" });
         }
       }
       
