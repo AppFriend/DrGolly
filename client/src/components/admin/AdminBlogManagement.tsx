@@ -68,16 +68,7 @@ export function AdminBlogManagement() {
     retry: 3,
   });
 
-  // Debug logging
-  console.log("=== BLOG DEBUG ===");
-  console.log("Blog posts data:", blogPosts);
-  console.log("Is loading:", isLoading);
-  console.log("Error:", error);
-  console.log("Blog posts length:", blogPosts?.length);
-  console.log("Is array:", Array.isArray(blogPosts));
-  console.log("typeof blogPosts:", typeof blogPosts);
-  console.log("blogPosts truthy:", !!blogPosts);
-  console.log("=== END DEBUG ===");
+
 
   const createPostMutation = useMutation({
     mutationFn: (post: Partial<BlogPost>) =>
@@ -225,15 +216,7 @@ export function AdminBlogManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 p-4 bg-gray-100 rounded">
-            <h4 className="font-semibold mb-2">Debug Info:</h4>
-            <p>Loading: {isLoading ? 'YES' : 'NO'}</p>
-            <p>Error: {error ? error.message : 'NONE'}</p>
-            <p>Data Type: {typeof blogPosts}</p>
-            <p>Is Array: {Array.isArray(blogPosts) ? 'YES' : 'NO'}</p>
-            <p>Length: {blogPosts?.length || 'UNDEFINED'}</p>
-            <p>First Item: {blogPosts?.[0] ? JSON.stringify(blogPosts[0]).substring(0, 100) + '...' : 'NONE'}</p>
-          </div>
+
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
