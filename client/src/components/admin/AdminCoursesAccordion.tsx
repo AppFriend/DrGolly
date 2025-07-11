@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   BookOpen, 
   Video, 
@@ -20,9 +21,12 @@ import {
   Plus, 
   GripVertical,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  FileText,
+  Play
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -52,8 +56,7 @@ interface Lesson {
   title: string;
   content: string;
   videoUrl?: string;
-  chapterIndex: number;
-  moduleIndex: number;
+  chapterId: number;
   orderIndex: number;
 }
 

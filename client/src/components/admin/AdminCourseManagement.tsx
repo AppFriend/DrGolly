@@ -25,9 +25,11 @@ import {
   FileText,
   Book,
   Users,
-  DollarSign
+  DollarSign,
+  List,
+  Grid3X3
 } from "lucide-react";
-import AdminCoursesAccordion from './AdminCoursesAccordion';
+import AdminCoursesAccordion from './AdminCoursesAccordionNew';
 
 interface Course {
   id: number;
@@ -95,6 +97,7 @@ export function AdminCourseManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [viewMode, setViewMode] = useState<"accordion" | "cards">("accordion");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -190,23 +193,45 @@ export function AdminCourseManagement() {
             Create and manage courses with chapters and submodules
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#6B9CA3] hover:bg-[#095D66] w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Course
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === "accordion" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("accordion")}
+              className="flex items-center gap-2"
+            >
+              <Grid3X3 className="h-4 w-4" />
+              Accordion
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Course</DialogTitle>
-            </DialogHeader>
-            <CourseForm
-              onSubmit={handleCreateCourse}
-              isLoading={createCourseMutation.isPending}
-            />
-          </DialogContent>
-        </Dialog>
+            <Button
+              variant={viewMode === "cards" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              className="flex items-center gap-2"
+            >
+              <List className="h-4 w-4" />
+              Cards
+            </Button>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#6B9CA3] hover:bg-[#095D66] w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Course
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Course</DialogTitle>
+              </DialogHeader>
+              <CourseForm
+                onSubmit={handleCreateCourse}
+                isLoading={createCourseMutation.isPending}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Courses List */}
@@ -227,20 +252,13 @@ export function AdminCourseManagement() {
               ))}
             </div>
           ) : (
-            <Tabs defaultValue="accordion" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="accordion">Accordion View</TabsTrigger>
-                <TabsTrigger value="cards">Card View</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="accordion" className="space-y-4">
+            <div className="space-y-4">
+              {viewMode === "accordion" ? (
                 <AdminCoursesAccordion 
                   courses={courses} 
                   onUpdateCourse={handleUpdateCourse}
                 />
-              </TabsContent>
-              
-              <TabsContent value="cards" className="space-y-4">
+              ) : (
                 <div className="space-y-3">
                   {courses?.map((course: Course) => (
                     <div
@@ -321,8 +339,8 @@ export function AdminCourseManagement() {
                     </div>
                   ))}
                 </div>
-              </TabsContent>
-            </Tabs>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
