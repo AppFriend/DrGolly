@@ -10,19 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { isUnauthorizedError } from '@/lib/authUtils';
 
 export default function CourseOverview() {
-  console.log('🔥 CourseOverview component starting to load...');
-  
   const { courseId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   
-  console.log('🔥 CourseOverview component loaded with courseId:', courseId);
-  console.log('🔥 User in CourseOverview:', user);
-  
   // Early return for testing - render basic content
   if (!courseId) {
-    console.log('🔥 No courseId found, returning early');
     return <div>No course ID found</div>;
   }
   
@@ -109,11 +103,8 @@ export default function CourseOverview() {
   };
 
   const handleStartLessonContent = (contentId: number, contentTitle: string) => {
-    // Navigate to lesson content
-    toast({
-      title: "Opening Content",
-      description: `Opening "${contentTitle}"...`,
-    });
+    // Navigate to lesson content page
+    setLocation(`/lesson/${contentId}`);
   };
 
   const toggleChapter = (chapterId: number) => {
