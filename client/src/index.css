@@ -129,6 +129,21 @@
   .prose-lesson a {
     @apply text-brand-teal hover:text-brand-teal/80 underline;
   }
+  
+  /* Handle inline styles and span elements */
+  .prose-lesson span {
+    @apply text-gray-700;
+  }
+  
+  /* Override inline font-size styles */
+  .prose-lesson span[style*="font-size"] {
+    font-size: 16px !important;
+  }
+  
+  /* Ensure proper line height for inline styled content */
+  .prose-lesson * {
+    line-height: 1.6;
+  }
   .text-dr-teal {
     color: var(--dr-teal);
   }
