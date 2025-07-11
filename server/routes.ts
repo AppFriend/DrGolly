@@ -2153,26 +2153,38 @@ Please contact the customer to confirm the appointment.
       const lessonId = parseInt(req.params.id);
       const userId = req.user?.claims?.sub;
       
+      console.log(`Fetching lesson ${lessonId} for user ${userId}`);
+      
       // Get lesson details
       const [lesson] = await db.select().from(courseLessons).where(eq(courseLessons.id, lessonId));
       if (!lesson) {
+        console.log(`Lesson ${lessonId} not found`);
         return res.status(404).json({ message: 'Lesson not found' });
       }
+      
+      console.log(`Found lesson: ${lesson.title}, courseId: ${lesson.courseId}`);
       
       // Get course details for access control
       const [course] = await db.select().from(courses).where(eq(courses.id, lesson.courseId));
       if (!course) {
+        console.log(`Course ${lesson.courseId} not found`);
         return res.status(404).json({ message: 'Course not found' });
       }
+      
+      console.log(`Found course: ${course.title}`);
       
       // Check if user has access to this lesson
       const user = await storage.getUser(userId);
       const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
       
+      console.log(`User subscription: ${user?.subscriptionTier}, hasGoldAccess: ${hasGoldAccess}`);
+      
       if (!hasGoldAccess) {
         // Check if user has purchased this course
         const coursePurchases = await storage.getUserCoursePurchases(userId);
         const hasPurchased = coursePurchases.some(purchase => purchase.courseId === lesson.courseId && purchase.status === 'completed');
+        
+        console.log(`User has purchased courses: ${coursePurchases.length}, hasPurchased this course: ${hasPurchased}`);
         
         if (!hasPurchased) {
           return res.status(403).json({ message: 'Access denied. Please upgrade your plan or purchase this course.' });
@@ -2180,13 +2192,35 @@ Please contact the customer to confirm the appointment.
       }
       
       // Get lesson content
+      console.log(`Getting lesson content for lesson ${lessonId}`);
       const content = await storage.getLessonContent(lessonId);
+      console.log(`Found ${content.length} content items`);
+      
+      // If no sub-lesson content, create a default content item from lesson content
+      if (content.length === 0 && lesson.content) {
+        console.log('No sub-lesson content found, using lesson content as default');
+        content.push({
+          id: 0,
+          lessonId: lesson.id,
+          title: lesson.title,
+          description: lesson.description,
+          videoUrl: lesson.videoUrl,
+          content: lesson.content,
+          duration: lesson.duration,
+          orderIndex: 0,
+          createdAt: new Date()
+        });
+      }
       
       // Get user progress
+      console.log(`Getting user progress for lesson ${lessonId}`);
       const progress = await storage.getUserLessonProgress(userId, lessonId);
+      console.log(`Progress: ${progress ? 'found' : 'not found'}`);
       
       // Get next lesson in the course
+      console.log(`Getting next lesson after chapter ${lesson.chapterIndex}, module ${lesson.moduleIndex}`);
       const nextLesson = await storage.getNextLesson(lesson.courseId, lesson.chapterIndex, lesson.moduleIndex);
+      console.log(`Next lesson: ${nextLesson ? nextLesson.title : 'none'}`);
       
       res.json({
         lesson,
