@@ -121,6 +121,7 @@ export interface IStorage {
   getCourseLessons(courseId: number): Promise<CourseLesson[]>;
   getChapterLessons(chapterId: number): Promise<CourseLesson[]>;
   createCourseLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
+  updateLessonContent(lessonId: number, content: string): Promise<CourseLesson>;
   getAllLessons(): Promise<CourseLesson[]>;
   createLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
   updateLesson(id: number, updates: Partial<CourseLesson>): Promise<CourseLesson>;
@@ -782,6 +783,15 @@ export class DatabaseStorage implements IStorage {
       .values(lesson)
       .returning();
     return newLesson;
+  }
+
+  async updateLessonContent(lessonId: number, content: string): Promise<CourseLesson> {
+    const [updatedLesson] = await db
+      .update(courseLessons)
+      .set({ content })
+      .where(eq(courseLessons.id, lessonId))
+      .returning();
+    return updatedLesson;
   }
 
   async getAllChapters(): Promise<CourseChapter[]> {
