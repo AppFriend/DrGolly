@@ -56,7 +56,9 @@ export function AdminBlogManagement() {
     queryKey: ["/api/blog-posts", "admin"],
     queryFn: async () => {
       try {
+        console.log("Making API call to fetch blog posts...");
         const response = await apiRequest("GET", "/api/blog-posts?includeUnpublished=true");
+        console.log("API Response received:", response);
         const data = await response.json();
         console.log("API Response data:", data);
         return data;
@@ -66,6 +68,15 @@ export function AdminBlogManagement() {
       }
     },
     retry: 3,
+  });
+  
+  // Debug logging for current state
+  console.log("AdminBlogManagement State:", {
+    isLoading,
+    error: error?.message,
+    blogPostsLength: blogPosts?.length,
+    blogPostsType: typeof blogPosts,
+    isArray: Array.isArray(blogPosts)
   });
 
 
