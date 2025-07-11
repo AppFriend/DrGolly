@@ -89,15 +89,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const coursePurchases = await storage.getUserCoursePurchases(userId);
       
-      // Check if user has purchased this course or has gold/platinum access
-      const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
-      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      // Check if user is admin (admins have full access)
+      const isUserAdmin = await storage.isUserAdmin(userId);
       
-      if (!hasPurchased && !hasGoldAccess) {
-        return res.status(403).json({ 
-          message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
-          requiresUpgrade: true
-        });
+      if (!isUserAdmin) {
+        // Check if user has purchased this course or has gold/platinum access
+        const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
+        const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+        
+        if (!hasPurchased && !hasGoldAccess) {
+          return res.status(403).json({ 
+            message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
+            requiresUpgrade: true
+          });
+        }
       }
       
       const chapters = await storage.getCourseChapters(parseInt(courseId));
@@ -121,15 +126,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const coursePurchases = await storage.getUserCoursePurchases(userId);
       
-      // Check if user has purchased this course or has gold/platinum access
-      const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
-      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      // Check if user is admin (admins have full access)
+      const isUserAdmin = await storage.isUserAdmin(userId);
       
-      if (!hasPurchased && !hasGoldAccess) {
-        return res.status(403).json({ 
-          message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
-          requiresUpgrade: true
-        });
+      if (!isUserAdmin) {
+        // Check if user has purchased this course or has gold/platinum access
+        const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
+        const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+        
+        if (!hasPurchased && !hasGoldAccess) {
+          return res.status(403).json({ 
+            message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
+            requiresUpgrade: true
+          });
+        }
       }
       
       const lessons = await storage.getCourseLessons(parseInt(courseId));
@@ -152,15 +162,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const coursePurchases = await storage.getUserCoursePurchases(userId);
       
-      // Check if user has purchased this course or has gold/platinum access
-      const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
-      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      // Check if user is admin (admins have full access)
+      const isUserAdmin = await storage.isUserAdmin(userId);
       
-      if (!hasPurchased && !hasGoldAccess) {
-        return res.status(403).json({ 
-          message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
-          requiresUpgrade: true
-        });
+      if (!isUserAdmin) {
+        // Check if user has purchased this course or has gold/platinum access
+        const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
+        const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+        
+        if (!hasPurchased && !hasGoldAccess) {
+          return res.status(403).json({ 
+            message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
+            requiresUpgrade: true
+          });
+        }
       }
       
       const lessonContent = await storage.getLessonContentByCourse(parseInt(courseId));
@@ -169,6 +184,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching lesson content:", error);
       res.status(500).json({ message: "Failed to fetch lesson content" });
+    }
+  });
+
+  // Update lesson content (admin only)
+  app.patch('/api/lessons/:lessonId', isAdmin, async (req: any, res) => {
+    try {
+      const { lessonId } = req.params;
+      const { content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+      
+      console.log('Updating lesson content for lesson:', lessonId);
+      
+      const updatedLesson = await storage.updateLessonContent(parseInt(lessonId), content);
+      res.json(updatedLesson);
+    } catch (error) {
+      console.error("Error updating lesson content:", error);
+      res.status(500).json({ message: "Failed to update lesson content" });
     }
   });
 

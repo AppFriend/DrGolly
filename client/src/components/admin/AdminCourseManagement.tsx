@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -1004,9 +1005,9 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
                       
                       {editingLesson === lesson.id ? (
                         <div className="space-y-2">
-                          <Textarea
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
+                          <RichTextEditor
+                            content={editContent}
+                            onChange={(content) => setEditContent(content)}
                             placeholder="Enter lesson content..."
                             className="min-h-[120px] text-sm"
                           />
