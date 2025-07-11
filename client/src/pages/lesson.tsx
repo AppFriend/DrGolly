@@ -51,12 +51,18 @@ interface LessonData {
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [watchTime, setWatchTime] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  
+  // Extract contentId from query parameters
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const contentId = urlParams.get('contentId');
+  
+  console.log('Lesson page - lesson ID:', id, 'contentId:', contentId);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -225,7 +231,8 @@ export default function LessonPage() {
                 {content.length > 0 && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Lesson Content</h3>
-                    {content.map((item, index) => (
+                    {/* Filter content based on contentId if provided */}
+                    {(contentId ? content.filter(item => item.id === parseInt(contentId)) : content).map((item, index) => (
                       <Card key={item.id} className="border-l-4 border-l-brand-teal">
                         <CardHeader className="pb-3">
                           <div className="flex items-center space-x-2">
