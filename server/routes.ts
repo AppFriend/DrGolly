@@ -2550,6 +2550,102 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Blog post management routes (admin)
+  app.post('/api/blog-posts', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const postData = {
+        title: req.body.title,
+        slug: req.body.slug,
+        excerpt: req.body.excerpt || '',
+        content: req.body.content,
+        category: req.body.category,
+        tags: req.body.tags || [],
+        imageUrl: req.body.imageUrl,
+        pdfUrl: req.body.pdfUrl,
+        readTime: req.body.readTime || 5,
+        author: req.body.author || 'Daniel Golshevsky',
+        isPublished: !req.body.isDraft,
+        status: req.body.isDraft ? 'draft' : 'published',
+        publishedAt: req.body.isDraft ? null : new Date(),
+        views: 0,
+        likes: 0,
+      };
+
+      const blogPost = await storage.createBlogPost(postData);
+      res.json(blogPost);
+    } catch (error) {
+      console.error("Error creating blog post:", error);
+      res.status(500).json({ message: "Failed to create blog post" });
+    }
+  });
+
+  app.put('/api/blog-posts/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid blog post ID" });
+      }
+
+      const updateData = {
+        title: req.body.title,
+        slug: req.body.slug,
+        excerpt: req.body.excerpt || '',
+        content: req.body.content,
+        category: req.body.category,
+        tags: req.body.tags || [],
+        imageUrl: req.body.imageUrl,
+        pdfUrl: req.body.pdfUrl,
+        readTime: req.body.readTime || 5,
+        author: req.body.author || 'Daniel Golshevsky',
+        isPublished: !req.body.isDraft,
+        status: req.body.isDraft ? 'draft' : 'published',
+        publishedAt: req.body.isDraft ? null : new Date(),
+      };
+
+      const blogPost = await storage.updateBlogPost(postId, updateData);
+      res.json(blogPost);
+    } catch (error) {
+      console.error("Error updating blog post:", error);
+      res.status(500).json({ message: "Failed to update blog post" });
+    }
+  });
+
+  app.delete('/api/blog-posts/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid blog post ID" });
+      }
+
+      await storage.deleteBlogPost(postId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting blog post:", error);
+      res.status(500).json({ message: "Failed to delete blog post" });
+    }
+  });
+
   // Feature flag routes
   app.get('/api/feature-flags', isAuthenticated, async (req, res) => {
     try {

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -17,26 +18,29 @@ import {
   Edit, 
   Eye, 
   Heart, 
-  Pin,
   Save,
   Calendar,
-  Tag
+  Tag,
+  Trash2
 } from "lucide-react";
 
 interface BlogPost {
   id: number;
   title: string;
+  slug: string;
+  excerpt?: string;
   content: string;
   category: string;
-  isPinned: boolean;
-  isDraft: boolean;
-  slug: string;
+  tags?: string[];
   imageUrl?: string;
-  excerpt?: string;
   pdfUrl?: string;
+  readTime?: number;
   author?: string;
+  publishedAt?: string;
   views: number;
   likes: number;
+  isPublished: boolean;
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +54,7 @@ export function AdminBlogManagement() {
 
   const { data: blogPosts, isLoading } = useQuery({
     queryKey: ["/api/blog-posts"],
+    queryFn: () => apiRequest("GET", "/api/blog-posts?includeUnpublished=true"),
   });
 
   const createPostMutation = useMutation({
@@ -74,7 +79,7 @@ export function AdminBlogManagement() {
 
   const updatePostMutation = useMutation({
     mutationFn: ({ id, updates }: { id: number; updates: Partial<BlogPost> }) =>
-      apiRequest("PATCH", `/api/blog-posts/${id}`, updates),
+      apiRequest("PUT", `/api/blog-posts/${id}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
       toast({
@@ -82,6 +87,7 @@ export function AdminBlogManagement() {
         description: "Blog post updated successfully",
       });
       setIsEditDialogOpen(false);
+      setSelectedPost(null);
     },
     onError: (error) => {
       toast({
@@ -92,12 +98,46 @@ export function AdminBlogManagement() {
     },
   });
 
-  const handleCreatePost = (postData: Partial<BlogPost>) => {
+  const deletePostMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/blog-posts/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
+      toast({
+        title: "Success",
+        description: "Blog post deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreatePost = (formData: any) => {
+    const postData = {
+      ...formData,
+      slug: formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      isPublished: !formData.isDraft,
+      status: !formData.isDraft ? 'published' : 'draft',
+      publishedAt: !formData.isDraft ? new Date().toISOString() : null,
+    };
+    delete postData.isDraft;
     createPostMutation.mutate(postData);
   };
 
-  const handleUpdatePost = (postData: Partial<BlogPost>) => {
+  const handleUpdatePost = (formData: any) => {
     if (selectedPost) {
+      const postData = {
+        ...formData,
+        slug: formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        isPublished: !formData.isDraft,
+        status: !formData.isDraft ? 'published' : 'draft',
+        publishedAt: !formData.isDraft ? new Date().toISOString() : selectedPost.publishedAt,
+      };
+      delete postData.isDraft;
       updatePostMutation.mutate({
         id: selectedPost.id,
         updates: postData,
@@ -194,15 +234,14 @@ export function AdminBlogManagement() {
                         <Badge className={getCategoryColor(post.category)}>
                           {post.category}
                         </Badge>
-                        {post.isPinned && (
-                          <Badge variant="outline" className="text-yellow-600">
-                            <Pin className="h-3 w-3 mr-1" />
-                            Pinned
-                          </Badge>
-                        )}
-                        {post.isDraft && (
+                        {!post.isPublished && (
                           <Badge variant="outline" className="text-gray-600">
                             Draft
+                          </Badge>
+                        )}
+                        {post.isPublished && (
+                          <Badge variant="outline" className="text-green-600">
+                            Published
                           </Badge>
                         )}
                       </div>
@@ -252,6 +291,18 @@ export function AdminBlogManagement() {
                         )}
                       </DialogContent>
                     </Dialog>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("Are you sure you want to delete this blog post?")) {
+                          deletePostMutation.mutate(post.id);
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -278,8 +329,8 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
     imageUrl: post?.imageUrl || "",
     pdfUrl: post?.pdfUrl || "",
     author: post?.author || "Daniel Golshevsky",
-    isPinned: post?.isPinned || false,
-    isDraft: post?.isDraft || true,
+    readTime: post?.readTime || 5,
+    isDraft: !post?.isPublished,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -332,6 +383,17 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
             required
           />
         </div>
+        <div>
+          <Label htmlFor="readTime">Read Time (minutes)</Label>
+          <Input
+            id="readTime"
+            type="number"
+            value={formData.readTime}
+            onChange={(e) => setFormData({ ...formData, readTime: parseInt(e.target.value) || 5 })}
+            min="1"
+            max="60"
+          />
+        </div>
       </div>
 
       <div>
@@ -372,25 +434,14 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
 
       <div>
         <Label htmlFor="content">Content</Label>
-        <Textarea
-          id="content"
+        <RichTextEditor
           value={formData.content}
-          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+          onChange={(content) => setFormData({ ...formData, content })}
           placeholder="Write your blog post content here..."
-          rows={12}
-          required
         />
       </div>
 
       <div className="flex items-center space-x-6">
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="isPinned"
-            checked={formData.isPinned}
-            onCheckedChange={(checked) => setFormData({ ...formData, isPinned: checked })}
-          />
-          <Label htmlFor="isPinned">Pin to top</Label>
-        </div>
         <div className="flex items-center space-x-2">
           <Switch
             id="isDraft"
