@@ -36,16 +36,16 @@ export default function CourseOverview() {
     retry: false,
   });
 
-  // Fetch course chapters (renamed from modules)
+  // Fetch course chapters
   const { data: chapters = [], isLoading: chaptersLoading, error: chaptersError } = useQuery({
-    queryKey: [`/api/courses/${courseId}/lessons`],
+    queryKey: [`/api/courses/${courseId}/chapters`],
     enabled: !!courseId && !!user,
     retry: false,
   });
 
-  // Fetch lesson content (renamed from submodules)
-  const { data: lessonContent = [], isLoading: lessonContentLoading, error: lessonContentError } = useQuery({
-    queryKey: [`/api/courses/${courseId}/lesson-content`],
+  // Fetch course lessons (grouped by chapter)
+  const { data: lessons = [], isLoading: lessonsLoading, error: lessonsError } = useQuery({
+    queryKey: [`/api/courses/${courseId}/lessons`],
     enabled: !!courseId && !!user,
     retry: false,
   });
@@ -71,16 +71,16 @@ export default function CourseOverview() {
 
   // Handle access control errors from API
   React.useEffect(() => {
-    if (chaptersError || lessonContentError) {
+    if (chaptersError || lessonsError) {
       // Check if it's a 403 (access denied) error
-      if (chaptersError?.message?.includes('403') || lessonContentError?.message?.includes('403')) {
+      if (chaptersError?.message?.includes('403') || lessonsError?.message?.includes('403')) {
         toast({
           title: "Access Required",
           description: "Purchase this course or upgrade to Gold for unlimited access.",
           variant: "destructive",
         });
         setLocation('/courses');
-      } else if (isUnauthorizedError(chaptersError) || isUnauthorizedError(lessonContentError)) {
+      } else if (isUnauthorizedError(chaptersError) || isUnauthorizedError(lessonsError)) {
         toast({
           title: "Authentication Required",
           description: "Please log in to access this course.",
@@ -89,7 +89,7 @@ export default function CourseOverview() {
         setLocation('/login');
       }
     }
-  }, [chaptersError, lessonContentError, toast, setLocation]);
+  }, [chaptersError, lessonsError, toast, setLocation]);
 
 
 
@@ -121,12 +121,12 @@ export default function CourseOverview() {
     }));
   };
 
-  // Get lesson content for a specific lesson
-  const getLessonContentForLesson = (lessonId: number) => {
-    return lessonContent.filter((content: any) => content.lessonId === lessonId);
+  // Get lessons for a specific chapter
+  const getLessonsForChapter = (chapterId: number) => {
+    return lessons.filter((lesson: any) => lesson.chapterId === chapterId);
   };
 
-  if (courseLoading || purchasesLoading) {
+  if (courseLoading || purchasesLoading || chaptersLoading || lessonsLoading) {
     return (
       <div className="min-h-screen bg-white p-4">
         <div className="max-w-4xl mx-auto">
@@ -158,17 +158,17 @@ export default function CourseOverview() {
     );
   }
 
-  // Calculate progress
+  // Calculate progress based on lessons, not chapters
   const getLessonProgress = (lessonId: number) => {
     return userProgress?.find((p: any) => p.courseId === parseInt(courseId || '0') && p.lessonId === lessonId);
   };
 
-  const completedLessons = chapters.filter((lesson: any) => {
+  const completedLessons = lessons.filter((lesson: any) => {
     const progress = getLessonProgress(lesson.id);
     return progress?.completedAt;
   });
 
-  const progressPercentage = chapters.length > 0 ? (completedLessons.length / chapters.length) * 100 : 0;
+  const progressPercentage = lessons.length > 0 ? (completedLessons.length / lessons.length) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-8">
@@ -250,7 +250,7 @@ export default function CourseOverview() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Your Progress</h3>
                 <span className="text-sm font-medium text-[#095D66]">
-                  {completedLessons.length} of {chapters.length} chapters completed
+                  {completedLessons.length} of {lessons.length} lessons completed
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
@@ -282,11 +282,9 @@ export default function CourseOverview() {
             ) : (
               <div className="space-y-2">
                 {chapters.map((chapter: any, index: number) => {
-                  const progress = getLessonProgress(chapter.id);
-                  const isCompleted = !!progress?.completedAt;
-                  const lessonContentItems = getLessonContentForLesson(chapter.id);
+                  const chapterLessons = getLessonsForChapter(chapter.id);
                   const isExpanded = expandedChapters[chapter.id] || false;
-                  const hasLessonContent = lessonContentItems.length > 0;
+                  const hasLessons = chapterLessons.length > 0;
                   
                   return (
                     <div key={chapter.id} className="relative">
@@ -307,9 +305,9 @@ export default function CourseOverview() {
                           <h4 className="text-sm font-medium text-gray-900">
                             {chapter.title}
                           </h4>
-                          {hasLessonContent && (
+                          {hasLessons && (
                             <p className="text-xs text-gray-500 mt-0.5">
-                              {lessonContentItems.length} lesson{lessonContentItems.length !== 1 ? 's' : ''}
+                              {chapterLessons.length} lesson{chapterLessons.length !== 1 ? 's' : ''}
                             </p>
                           )}
                         </div>
@@ -327,9 +325,9 @@ export default function CourseOverview() {
                       {/* Expanded Lessons */}
                       {isExpanded && (
                         <div className="ml-2.5 border-l-2 border-gray-200 pl-4 mt-2">
-                          {hasLessonContent ? (
+                          {hasLessons ? (
                             // Multiple lessons
-                            lessonContentItems.map((lesson: any, lessonIndex: number) => (
+                            chapterLessons.map((lesson: any, lessonIndex: number) => (
                               <div
                                 key={lesson.id}
                                 className="flex items-center gap-3 py-2 hover:bg-gray-50/50 transition-colors rounded-lg -ml-4 pl-4"
@@ -360,7 +358,7 @@ export default function CourseOverview() {
                                     className="bg-[#095D66] hover:bg-[#095D66]/90 text-white text-xs px-3 py-1 h-7"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleStartLessonContent(lesson.id, lesson.title);
+                                      handleStartLesson(lesson.id);
                                     }}
                                   >
                                     <Play className="w-3 h-3 mr-1" />
@@ -370,40 +368,14 @@ export default function CourseOverview() {
                               </div>
                             ))
                           ) : (
-                            // Single lesson
-                            <div className="flex items-center gap-3 py-2 hover:bg-gray-50/50 transition-colors rounded-lg -ml-4 pl-4">
+                            // No lessons in this chapter
+                            <div className="flex items-center gap-3 py-2 text-gray-500 text-sm">
                               <div className="flex-shrink-0">
                                 <div className="w-4 h-4 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center">
                                   <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
                                 </div>
                               </div>
-                              
-                              <div className="flex-1 min-w-0">
-                                <h5 className="text-sm font-medium text-gray-800">
-                                  {chapter.title}
-                                </h5>
-                                <p className="text-xs text-gray-600 mt-0.5">
-                                  Begin this lesson
-                                </p>
-                              </div>
-                              
-                              <div className="flex-shrink-0">
-                                <Button
-                                  size="sm"
-                                  className={`text-xs px-3 py-1 h-7 ${
-                                    isCompleted 
-                                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                                      : 'bg-[#095D66] hover:bg-[#095D66]/90 text-white'
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartLesson(chapter.id);
-                                  }}
-                                >
-                                  <Play className="w-3 h-3 mr-1" />
-                                  {isCompleted ? 'Review' : 'Start'}
-                                </Button>
-                              </div>
+                              <span>No lessons available</span>
                             </div>
                           )}
                         </div>
