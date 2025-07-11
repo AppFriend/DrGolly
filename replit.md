@@ -571,6 +571,13 @@ Changelog:
   * Cleaned up duplicate and legacy module entries that were causing display issues
   * All courses now display proper chapter structure with exact titles and numbering from spreadsheet
   * Removed debug console logging for cleaner production experience
+- July 11, 2025. Enhanced lesson content structure with sublession support:
+  * Implemented sublession structure where lessons contain multiple sublessions (e.g., "Safe swaddling" has "Swaddling benefits", "Safe swaddling techniques", "When to stop swaddling")
+  * Updated lesson page to display main lesson content with rich HTML formatting separately from sublession cards
+  * Enhanced CSS prose-lesson styling to properly handle inline styles and span elements
+  * Fixed HTML content rendering to display formatted text instead of raw HTML tags
+  * Sublessions display as clean, readable cards with focused content on specific subtopics
+  * Updated terminology from "subleson" to "sublession" for consistency throughout codebase
 ```
 
 ## User Preferences
