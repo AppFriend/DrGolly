@@ -11,7 +11,8 @@ import {
   insertCourseSchema,
   insertUserCourseProgressSchema,
   insertUserChapterProgressSchema,
-  insertUserModuleProgressSchema,
+  insertUserLessonProgressSchema,
+  insertUserLessonContentProgressSchema,
   insertPartnerDiscountSchema,
   insertBillingHistorySchema,
   insertBlogPostSchema,
@@ -1952,71 +1953,134 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Course module routes
-  app.get('/api/courses/:courseId/modules', isAuthenticated, async (req, res) => {
+  // Course lesson routes
+  app.get('/api/courses/:courseId/lessons', isAuthenticated, async (req, res) => {
     try {
       const { courseId } = req.params;
-      const modules = await storage.getCourseModules(parseInt(courseId));
-      res.json(modules);
+      const lessons = await storage.getCourseLessons(parseInt(courseId));
+      res.json(lessons);
     } catch (error) {
-      console.error("Error fetching course modules:", error);
-      res.status(500).json({ message: "Failed to fetch course modules" });
+      console.error("Error fetching course lessons:", error);
+      res.status(500).json({ message: "Failed to fetch course lessons" });
     }
   });
 
-  app.get('/api/courses/:courseId/submodules', isAuthenticated, async (req, res) => {
+  app.get('/api/courses/:courseId/lesson-content', isAuthenticated, async (req, res) => {
     try {
       const { courseId } = req.params;
-      const submodules = await storage.getCourseSubmodulesByCourse(parseInt(courseId));
-      res.json(submodules);
+      const lessonContent = await storage.getLessonContentByCourse(parseInt(courseId));
+      res.json(lessonContent);
     } catch (error) {
-      console.error("Error fetching course submodules:", error);
-      res.status(500).json({ message: "Failed to fetch course submodules" });
+      console.error("Error fetching lesson content:", error);
+      res.status(500).json({ message: "Failed to fetch lesson content" });
     }
   });
 
-  app.get('/api/modules/:moduleId/submodules', isAuthenticated, async (req, res) => {
+  // Individual lesson routes with URL structure
+  app.get('/api/lessons/:id', isAuthenticated, async (req, res) => {
     try {
-      const { moduleId } = req.params;
-      const submodules = await storage.getCourseSubmodules(parseInt(moduleId));
-      res.json(submodules);
+      const lessonId = parseInt(req.params.id);
+      const userId = req.user?.claims?.sub;
+      
+      // Get lesson details
+      const [lesson] = await db.select().from(courseLessons).where(eq(courseLessons.id, lessonId));
+      if (!lesson) {
+        return res.status(404).json({ message: 'Lesson not found' });
+      }
+      
+      // Get course details for access control
+      const [course] = await db.select().from(courses).where(eq(courses.id, lesson.courseId));
+      if (!course) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
+      
+      // Check if user has access to this lesson
+      const hasAccess = await storage.hasUserAccessToCourse(userId, lesson.courseId);
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied. Please upgrade your plan or purchase this course.' });
+      }
+      
+      // Get lesson content
+      const content = await storage.getLessonContent(lessonId);
+      
+      // Get user progress
+      const progress = await storage.getUserLessonProgress(userId, lessonId);
+      
+      res.json({
+        lesson,
+        course,
+        content,
+        progress
+      });
     } catch (error) {
-      console.error("Error fetching submodules:", error);
-      res.status(500).json({ message: "Failed to fetch submodules" });
+      console.error('Error fetching lesson:', error);
+      res.status(500).json({ message: 'Failed to fetch lesson' });
     }
   });
 
-  app.post('/api/submodules/:submoduleId/progress', isAuthenticated, async (req, res) => {
+  app.get('/api/lessons/:lessonId/content', isAuthenticated, async (req, res) => {
     try {
-      const { submoduleId } = req.params;
+      const { lessonId } = req.params;
+      const content = await storage.getLessonContent(parseInt(lessonId));
+      res.json(content);
+    } catch (error) {
+      console.error("Error fetching lesson content:", error);
+      res.status(500).json({ message: "Failed to fetch lesson content" });
+    }
+  });
+
+  app.post('/api/lessons/:lessonId/progress', isAuthenticated, async (req, res) => {
+    try {
+      const { lessonId } = req.params;
       const userId = req.user?.claims?.sub;
       
       const progressData = {
         userId,
-        submoduleId: parseInt(submoduleId),
+        lessonId: parseInt(lessonId),
         completed: req.body.completed || false,
         watchTime: req.body.watchTime || 0,
         completedAt: req.body.completed ? new Date() : null,
       };
 
-      const progress = await storage.updateUserSubmoduleProgress(progressData);
+      const progress = await storage.updateUserLessonProgress(progressData);
       res.json(progress);
     } catch (error) {
-      console.error("Error updating submodule progress:", error);
+      console.error("Error updating lesson progress:", error);
       res.status(500).json({ message: "Failed to update progress" });
     }
   });
 
-  app.get('/api/submodules/:submoduleId/progress', isAuthenticated, async (req, res) => {
+  app.get('/api/lessons/:lessonId/progress', isAuthenticated, async (req, res) => {
     try {
-      const { submoduleId } = req.params;
+      const { lessonId } = req.params;
       const userId = req.user?.claims?.sub;
       
-      const progress = await storage.getUserSubmoduleProgress(userId, parseInt(submoduleId));
+      const progress = await storage.getUserLessonProgress(userId, parseInt(lessonId));
       res.json(progress || null);
     } catch (error) {
-      console.error("Error fetching submodule progress:", error);
+      console.error("Error fetching lesson progress:", error);
       res.status(500).json({ message: "Failed to fetch progress" });
+    }
+  });
+
+  app.post('/api/lesson-content/:contentId/progress', isAuthenticated, async (req, res) => {
+    try {
+      const { contentId } = req.params;
+      const userId = req.user?.claims?.sub;
+      
+      const progressData = {
+        userId,
+        lessonContentId: parseInt(contentId),
+        completed: req.body.completed || false,
+        watchTime: req.body.watchTime || 0,
+        completedAt: req.body.completed ? new Date() : null,
+      };
+
+      const progress = await storage.updateUserLessonContentProgress(progressData);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error updating lesson content progress:", error);
+      res.status(500).json({ message: "Failed to update progress" });
     }
   });
 
