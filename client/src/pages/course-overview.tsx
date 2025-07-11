@@ -40,8 +40,8 @@ export default function CourseOverview() {
 
   // Check user's access to this course
   const hasAccess = () => {
-    // Check if user has purchased this course (note: database uses course_id, not courseId)
-    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.course_id === parseInt(courseId || '0'));
+    // Check if user has purchased this course (database returns courseId field)
+    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === parseInt(courseId || '0'));
     const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
     return hasPurchased || hasGoldAccess;
   };

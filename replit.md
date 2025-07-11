@@ -550,9 +550,11 @@ Changelog:
   * Rich content includes HTML formatting, images, and professional medical guidance
   * Special mapping logic handles title mismatches (e.g., "Vernix" content mapped to "What is Normal" module)
   * CRITICAL BUG FIX: Fixed course access control issue where users couldn't access purchased courses
-  * Updated all course access checks to use correct database column name 'course_id' instead of 'courseId'
+  * FINAL FIX: Database returns 'courseId' (camelCase) field, not 'course_id' (snake_case) as originally assumed
+  * Updated all course access checks to use correct field name 'courseId' instead of 'course_id'
   * Fixed access bug in course-overview.tsx, courses.tsx, and CourseDetail.tsx components
-  * Users can now properly access purchased courses like "Little baby sleep program"
+  * Users can now properly access purchased courses in both "Purchases" tab and individual course access
+  * Purchased courses now show correctly in "Purchases" tab and users can access course content without access denial
 ```
 
 ## User Preferences
