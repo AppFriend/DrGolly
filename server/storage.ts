@@ -135,6 +135,8 @@ export interface IStorage {
   getUserCourseProgress(userId: string, courseId: number): Promise<UserCourseProgress | undefined>;
   getUserProgress(userId: string): Promise<UserCourseProgress[]>;
   updateUserProgress(progress: InsertUserCourseProgress): Promise<UserCourseProgress>;
+  getNextLesson(courseId: number, currentChapterId: number, currentOrderIndex: number): Promise<CourseLesson | null>;
+  isChapterCompleted(courseId: number, chapterIndex: number, userId: string): Promise<boolean>;
   
   // Partner discount operations
   getPartnerDiscounts(requiredTier?: string): Promise<PartnerDiscount[]>;
@@ -959,7 +961,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Get next lesson in course
-  async getNextLesson(courseId: number, currentChapterIndex: number, currentModuleIndex: number): Promise<CourseLesson | null> {
+  async getNextLesson(courseId: number, currentChapterId: number, currentOrderIndex: number): Promise<CourseLesson | null> {
+    // Handle null/undefined values by getting the first lesson in the course
+    if (currentChapterId === undefined || currentChapterId === null || 
+        currentOrderIndex === undefined || currentOrderIndex === null) {
+      const firstLesson = await db
+        .select()
+        .from(courseLessons)
+        .where(eq(courseLessons.courseId, courseId))
+        .orderBy(courseLessons.chapterId, courseLessons.orderIndex)
+        .limit(1);
+      
+      return firstLesson.length > 0 ? firstLesson[0] : null;
+    }
+
     // First try to find next lesson in the same chapter
     const nextInChapter = await db
       .select()
@@ -967,11 +982,11 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(courseLessons.courseId, courseId),
-          eq(courseLessons.chapterIndex, currentChapterIndex),
-          gt(courseLessons.moduleIndex, currentModuleIndex)
+          eq(courseLessons.chapterId, currentChapterId),
+          gt(courseLessons.orderIndex, currentOrderIndex)
         )
       )
-      .orderBy(courseLessons.moduleIndex)
+      .orderBy(courseLessons.orderIndex)
       .limit(1);
 
     if (nextInChapter.length > 0) {
@@ -985,10 +1000,10 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(courseLessons.courseId, courseId),
-          gt(courseLessons.chapterIndex, currentChapterIndex)
+          gt(courseLessons.chapterId, currentChapterId)
         )
       )
-      .orderBy(courseLessons.chapterIndex, courseLessons.moduleIndex)
+      .orderBy(courseLessons.chapterId, courseLessons.orderIndex)
       .limit(1);
 
     return nextChapter.length > 0 ? nextChapter[0] : null;
