@@ -85,7 +85,7 @@ import {
   type InsertLeadCapture,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, gte, or, ilike, sql, isNotNull } from "drizzle-orm";
+import { eq, desc, and, count, gte, or, ilike, sql, isNotNull, gt } from "drizzle-orm";
 import { AuthUtils } from "./auth-utils";
 import Stripe from "stripe";
 
