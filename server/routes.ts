@@ -1048,7 +1048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin API endpoints for accordion view
   app.get('/api/admin/chapters', isAuthenticated, async (req, res) => {
     try {
-      const chapters = await db.select().from(courseChapters).orderBy(courseChapters.courseId, courseChapters.chapterIndex);
+      const chapters = await db.select().from(courseChapters).orderBy(courseChapters.courseId, courseChapters.orderIndex);
       res.json(chapters);
     } catch (error) {
       console.error('Error fetching chapters:', error);
@@ -1058,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/lessons', isAuthenticated, async (req, res) => {
     try {
-      const lessons = await db.select().from(courseLessons).orderBy(courseLessons.courseId, courseLessons.chapterIndex, courseLessons.moduleIndex);
+      const lessons = await db.select().from(courseLessons).orderBy(courseLessons.courseId, courseLessons.chapterId, courseLessons.orderIndex);
       res.json(lessons);
     } catch (error) {
       console.error('Error fetching lessons:', error);
@@ -1092,6 +1092,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating course:', error);
       res.status(500).json({ error: 'Failed to update course' });
+    }
+  });
+
+  // Admin create endpoints
+  app.post('/api/admin/chapters', isAuthenticated, async (req, res) => {
+    try {
+      const { title, content, courseId } = req.body;
+      
+      // Get the next order index for this course
+      const existingChapters = await db.select().from(courseChapters).where(eq(courseChapters.courseId, courseId));
+      const nextOrderIndex = existingChapters.length;
+      
+      const [newChapter] = await db
+        .insert(courseChapters)
+        .values({
+          title,
+          content: content || '',
+          courseId,
+          orderIndex: nextOrderIndex,
+          chapterNumber: `${nextOrderIndex + 1}.0`
+        })
+        .returning();
+      
+      res.json(newChapter);
+    } catch (error) {
+      console.error('Error creating chapter:', error);
+      res.status(500).json({ error: 'Failed to create chapter' });
+    }
+  });
+
+  app.post('/api/admin/lessons', isAuthenticated, async (req, res) => {
+    try {
+      const { title, content, videoUrl, courseId, chapterId } = req.body;
+      
+      // Get the next order index for this chapter
+      const existingLessons = await db.select().from(courseLessons).where(eq(courseLessons.chapterId, chapterId));
+      const nextOrderIndex = existingLessons.length;
+      
+      const [newLesson] = await db
+        .insert(courseLessons)
+        .values({
+          title,
+          content: content || '',
+          videoUrl: videoUrl || null,
+          courseId,
+          chapterId,
+          orderIndex: nextOrderIndex
+        })
+        .returning();
+      
+      res.json(newLesson);
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      res.status(500).json({ error: 'Failed to create lesson' });
+    }
+  });
+
+  app.post('/api/admin/lesson-content', isAuthenticated, async (req, res) => {
+    try {
+      const { title, content, videoUrl, lessonId } = req.body;
+      
+      // Get the next order index for this lesson
+      const existingContent = await db.select().from(lessonContent).where(eq(lessonContent.lessonId, lessonId));
+      const nextOrderIndex = existingContent.length;
+      
+      const [newContent] = await db
+        .insert(lessonContent)
+        .values({
+          title,
+          content: content || '',
+          videoUrl: videoUrl || null,
+          lessonId,
+          orderIndex: nextOrderIndex
+        })
+        .returning();
+      
+      res.json(newContent);
+    } catch (error) {
+      console.error('Error creating lesson content:', error);
+      res.status(500).json({ error: 'Failed to create lesson content' });
     }
   });
 
@@ -1148,6 +1228,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to update sublesson' });
     }
   });
+
+
 
   app.post('/api/user/module-progress', isAuthenticated, async (req: any, res) => {
     try {
