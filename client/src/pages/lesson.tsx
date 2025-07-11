@@ -87,12 +87,26 @@ export default function LessonPage() {
     queryKey: [`/api/lessons/${id}`],
     enabled: isAuthenticated && !!id,
     retry: (failureCount, error) => {
+      console.log(`Query retry for lesson ${id}, attempt ${failureCount}, error:`, error);
       if (isUnauthorizedError(error as Error)) {
         return false;
       }
       return failureCount < 3;
     },
+    onError: (error) => {
+      console.error(`Failed to load lesson ${id}:`, error);
+    },
   });
+
+  // Debug lesson loading
+  useEffect(() => {
+    if (id) {
+      console.log(`Loading lesson ${id}, isAuthenticated: ${isAuthenticated}, isLoading: ${lessonLoading}, error:`, error);
+      if (lessonData) {
+        console.log('Lesson data loaded:', lessonData);
+      }
+    }
+  }, [id, isAuthenticated, lessonLoading, error, lessonData]);
 
   const markProgressMutation = useMutation({
     mutationFn: async (data: { completed: boolean; watchTime: number }) => {
@@ -200,7 +214,23 @@ export default function LessonPage() {
   if (lessonLoading || !lessonData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-600">Loading lesson {id}...</p>
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+              <p className="text-red-700 font-medium">Error loading lesson:</p>
+              <p className="text-red-600 text-sm">{error.message}</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="mt-2"
+                variant="outline"
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
