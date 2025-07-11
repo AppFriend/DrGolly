@@ -14,6 +14,9 @@ export default function CourseOverview() {
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // Add unique identifier to verify component is loading
+  console.log('CourseOverview component loaded with courseId:', courseId);
+  
   // State for managing expanded chapters
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
 
@@ -91,8 +94,15 @@ export default function CourseOverview() {
     chaptersLoading,
     lessonContentLoading,
     chaptersError,
-    lessonContentError
+    lessonContentError,
+    chaptersQueryKey: [`/api/courses/${courseId}/lessons`],
+    lessonContentQueryKey: [`/api/courses/${courseId}/lesson-content`]
   });
+
+  // Log specific API calls being made
+  console.log('API calls being made:');
+  console.log('Chapters API:', `/api/courses/${courseId}/lessons`);
+  console.log('Lesson Content API:', `/api/courses/${courseId}/lesson-content`);
 
   const handleBackToCourses = () => {
     setLocation('/courses');

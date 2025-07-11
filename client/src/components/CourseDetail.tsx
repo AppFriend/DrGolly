@@ -65,7 +65,7 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     }
     
     // Navigate directly to course overview page
-    window.location.href = `/courses/${course.id}/overview`;
+    window.location.href = `/courses/${course.id}`;
   };
 
   // Redirect users who have access directly to course overview
