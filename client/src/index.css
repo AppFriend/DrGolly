@@ -145,15 +145,28 @@
     line-height: 1.6;
   }
   
-  /* Enhanced image handling */
+  /* Enhanced image handling for Thinkific CDN */
   .prose-lesson img {
     @apply rounded-lg shadow-sm mb-4 max-w-full h-auto;
   }
   
-  /* Handle images with src containing bubble.io or other CDN URLs */
-  .prose-lesson img[src*="bubble.io"],
+  /* Handle Thinkific image container structure */
+  .prose-lesson .se-component.se-image-container {
+    @apply mb-6 text-center;
+  }
+  
+  .prose-lesson .se-component.se-image-container figure {
+    @apply inline-block max-w-full;
+  }
+  
+  .prose-lesson .se-component.se-image-container img {
+    @apply w-full max-w-2xl mx-auto rounded-lg shadow-md;
+  }
+  
+  /* Handle images with Thinkific CDN URLs */
+  .prose-lesson img[src*="thinkific.com"],
   .prose-lesson img[src*="cdn."] {
-    @apply w-full max-w-md mx-auto block;
+    @apply w-full max-w-2xl mx-auto block;
   }
   .text-dr-teal {
     color: var(--dr-teal);
