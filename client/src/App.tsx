@@ -165,6 +165,7 @@ function AuthenticatedApp() {
         onClose={closeUpgradeModal}
         onUpgrade={handleUpgrade}
       />
+      <Toaster />
     </div>
   );
 }
@@ -209,6 +210,7 @@ function Router() {
           <Route path="/share/:slug" component={Share} />
           <Route component={Landing} />
         </Switch>
+        <Toaster />
       </div>
     );
   }
@@ -220,7 +222,6 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Toaster />
         <Router />
       </QueryClientProvider>
     </ErrorBoundary>
