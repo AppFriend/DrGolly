@@ -282,133 +282,132 @@ export default function CourseOverview() {
                 <p className="text-gray-600">Course chapters will be available soon.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {chapters.map((lesson: any, index: number) => {
-                  const progress = getLessonProgress(lesson.id);
+              <div className="space-y-2">
+                {chapters.map((chapter: any, index: number) => {
+                  const progress = getLessonProgress(chapter.id);
                   const isCompleted = !!progress?.completedAt;
-                  const lessonContentItems = getLessonContentForLesson(lesson.id);
-                  const isExpanded = expandedChapters[lesson.id] || false;
+                  const lessonContentItems = getLessonContentForLesson(chapter.id);
+                  const isExpanded = expandedChapters[chapter.id] || false;
                   const hasLessonContent = lessonContentItems.length > 0;
                   
                   return (
-                    <div key={lesson.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                    <div key={chapter.id} className="relative">
                       {/* Chapter Header */}
                       <div 
-                        className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50/50 transition-all duration-200 ${
-                          hasLessonContent ? 'hover:border-[#095D66]/20' : ''
-                        }`}
-                        onClick={() => hasLessonContent ? toggleChapter(lesson.id) : handleStartLesson(lesson.id)}
+                        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50/50 transition-all duration-200 rounded-lg"
+                        onClick={() => toggleChapter(chapter.id)}
                       >
+                        {/* Chapter Circle */}
                         <div className="flex-shrink-0">
-                          {isCompleted ? (
-                            <CheckCircle className="w-6 h-6 text-green-500" />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center">
-                              <span className="text-xs font-medium text-gray-600">{index + 1}</span>
-                            </div>
-                          )}
+                          <div className="w-5 h-5 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                          </div>
                         </div>
                         
+                        {/* Chapter Content */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-base font-medium text-gray-900 mb-1">
-                            {lesson.title}
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {chapter.title}
                           </h4>
-                          {lesson.description && (
-                            <p className="text-sm text-gray-600 line-clamp-2">
-                              {lesson.description}
-                            </p>
-                          )}
                           {hasLessonContent && (
-                            <p className="text-xs text-[#095D66] mt-1">
-                              {lessonContentItems.length} topics
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {lessonContentItems.length} lesson{lessonContentItems.length !== 1 ? 's' : ''}
                             </p>
                           )}
                         </div>
                         
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                          {hasLessonContent && (
-                            <div className="p-1">
-                              {isExpanded ? (
-                                <ChevronDown className="w-5 h-5 text-gray-500" />
-                              ) : (
-                                <ChevronRight className="w-5 h-5 text-gray-500" />
-                              )}
-                            </div>
-                          )}
-                          {!hasLessonContent && (
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleStartLesson(lesson.id);
-                              }}
-                              className={`min-h-[40px] px-4 rounded-lg transition-all duration-200 ${
-                                isCompleted 
-                                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                                  : 'bg-[#095D66] hover:bg-[#095D66]/90 text-white'
-                              }`}
-                            >
-                              <Play className="w-4 h-4 mr-2" />
-                              {isCompleted ? 'Review' : 'Start'}
-                            </Button>
+                        {/* Expand/Collapse Icon */}
+                        <div className="flex-shrink-0">
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-gray-500" />
                           )}
                         </div>
                       </div>
 
-                      {/* Lesson Content - Expandable */}
-                      {hasLessonContent && isExpanded && (
-                        <div className="border-t border-gray-100 bg-gray-50/30">
-                          <div className="py-2">
-                            {lessonContentItems.length === 0 ? (
-                              <div className="text-center py-4">
-                                <p className="text-sm text-gray-600">No content available for this chapter.</p>
-                              </div>
-                            ) : (
-                              lessonContentItems.map((contentItem: any, contentIndex: number) => (
+                      {/* Expanded Lessons */}
+                      {isExpanded && (
+                        <div className="ml-2.5 border-l-2 border-gray-200 pl-4 mt-2">
+                          {hasLessonContent ? (
+                            // Multiple lessons
+                            lessonContentItems.map((lesson: any, lessonIndex: number) => (
                               <div
-                                key={contentItem.id}
-                                className="flex items-center gap-4 py-3 px-6 hover:bg-gray-50 transition-colors cursor-pointer"
-                                onClick={() => handleStartLessonContent(contentItem.id, contentItem.title)}
+                                key={lesson.id}
+                                className="flex items-center gap-3 py-2 hover:bg-gray-50/50 transition-colors rounded-lg -ml-4 pl-4"
                               >
-                                {/* Indentation line */}
-                                <div className="w-8 flex justify-center">
-                                  <div className="w-0.5 h-6 bg-gray-200"></div>
-                                </div>
-                                
+                                {/* Lesson Circle */}
                                 <div className="flex-shrink-0">
-                                  <div className="w-5 h-5 rounded-full border-2 border-[#095D66]/30 flex items-center justify-center">
-                                    <BookOpen className="w-3 h-3 text-[#095D66]" />
+                                  <div className="w-4 h-4 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
                                   </div>
                                 </div>
                                 
+                                {/* Lesson Content */}
                                 <div className="flex-1 min-w-0">
                                   <h5 className="text-sm font-medium text-gray-800">
-                                    {contentItem.title}
+                                    {lesson.title}
                                   </h5>
-                                  {contentItem.description && (
-                                    <p className="text-xs text-gray-600 mt-1 line-clamp-1">
-                                      {contentItem.description}
+                                  {lesson.description && (
+                                    <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">
+                                      {lesson.description}
                                     </p>
                                   )}
                                 </div>
                                 
+                                {/* Start Button */}
                                 <div className="flex-shrink-0">
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="text-[#095D66] hover:text-[#095D66]/80 hover:bg-[#095D66]/5"
+                                    className="bg-[#095D66] hover:bg-[#095D66]/90 text-white text-xs px-3 py-1 h-7"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleStartLessonContent(contentItem.id, contentItem.title);
+                                      handleStartLessonContent(lesson.id, lesson.title);
                                     }}
                                   >
                                     <Play className="w-3 h-3 mr-1" />
-                                    Read
+                                    Start
                                   </Button>
                                 </div>
                               </div>
-                              ))
-                            )}
-                          </div>
+                            ))
+                          ) : (
+                            // Single lesson
+                            <div className="flex items-center gap-3 py-2 hover:bg-gray-50/50 transition-colors rounded-lg -ml-4 pl-4">
+                              <div className="flex-shrink-0">
+                                <div className="w-4 h-4 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-sm font-medium text-gray-800">
+                                  {chapter.title}
+                                </h5>
+                                <p className="text-xs text-gray-600 mt-0.5">
+                                  Begin this lesson
+                                </p>
+                              </div>
+                              
+                              <div className="flex-shrink-0">
+                                <Button
+                                  size="sm"
+                                  className={`text-xs px-3 py-1 h-7 ${
+                                    isCompleted 
+                                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                                      : 'bg-[#095D66] hover:bg-[#095D66]/90 text-white'
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartLesson(chapter.id);
+                                  }}
+                                >
+                                  <Play className="w-3 h-3 mr-1" />
+                                  {isCompleted ? 'Review' : 'Start'}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
