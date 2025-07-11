@@ -1053,9 +1053,9 @@ export class DatabaseStorage implements IStorage {
 
   // Course purchase operations
   async getUserCoursePurchases(userId: string): Promise<CoursePurchase[]> {
-    // Only return completed purchases to show in "Purchases" tab
+    // Return all purchases (not just completed) so frontend can filter appropriately
     return await db.select().from(coursePurchases)
-      .where(and(eq(coursePurchases.userId, userId), eq(coursePurchases.status, 'completed')))
+      .where(eq(coursePurchases.userId, userId))
       .orderBy(desc(coursePurchases.purchasedAt));
   }
 

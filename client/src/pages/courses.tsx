@@ -39,6 +39,8 @@ export default function Courses() {
   const { data: coursePurchases, refetch: refetchPurchases } = useQuery({
     queryKey: ["/api/user/course-purchases"],
     enabled: !!user,
+    staleTime: 0, // Force refresh
+    cacheTime: 0, // Don't cache
     refetchInterval: activeTab === "my" ? 5000 : false, // Refresh every 5 seconds when on Purchases tab
     onSuccess: (data) => {
       // Show success notification when new purchases are detected
@@ -77,6 +79,10 @@ export default function Courses() {
       const hasPurchased = coursePurchases?.some((purchase: any) => 
         purchase.course_id === course.id && purchase.status === 'completed'
       );
+      console.log(`Course ${course.id} (${course.title}): purchased = ${hasPurchased}`);
+      if (coursePurchases && coursePurchases.length > 0) {
+        console.log('Available purchases:', coursePurchases.map((p: any) => ({ course_id: p.course_id, status: p.status })));
+      }
       return hasPurchased; // Only show completed purchases in "Purchases"
     }
     
