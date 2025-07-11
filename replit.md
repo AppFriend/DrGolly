@@ -576,6 +576,12 @@ Changelog:
   * Cleaned up duplicate and legacy module entries that were causing display issues
   * All courses now display proper chapter structure with exact titles and numbering from spreadsheet
   * Removed debug console logging for cleaner production experience
+- July 11, 2025. Removed course-level tier system to simplify access control:
+  * Dropped 'tier' column from courses table to eliminate per-course access restrictions
+  * Simplified access control to work purely at user level: Gold/Platinum subscription OR individual course purchase
+  * Removed all course tier checking logic that was interfering with lesson access
+  * Access now determined by user subscription tier or course purchase status only
+  * Fixed lesson 284 spinning issue by removing complex tier-based access controls
 - July 11, 2025. Enhanced lesson content structure with sublession support:
   * Implemented sublession structure where lessons contain multiple sublessions (e.g., "Safe swaddling" has "Swaddling benefits", "Safe swaddling techniques", "When to stop swaddling")
   * Updated lesson page to display main lesson content with rich HTML formatting separately from sublession cards
