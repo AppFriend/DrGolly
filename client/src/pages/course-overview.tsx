@@ -30,15 +30,15 @@ export default function CourseOverview() {
     retry: false,
   });
 
-  // Fetch course modules
-  const { data: modules = [] } = useQuery({
-    queryKey: [`/api/courses/${courseId}/modules`],
+  // Fetch course chapters (renamed from modules)
+  const { data: chapters = [] } = useQuery({
+    queryKey: [`/api/courses/${courseId}/lessons`],
     enabled: !!courseId,
   });
 
-  // Fetch submodules for each module
-  const { data: submodules = [] } = useQuery({
-    queryKey: [`/api/courses/${courseId}/submodules`],
+  // Fetch lesson content (renamed from submodules)
+  const { data: lessonContent = [] } = useQuery({
+    queryKey: [`/api/courses/${courseId}/lesson-content`],
     enabled: !!courseId,
   });
 
@@ -76,32 +76,29 @@ export default function CourseOverview() {
     setLocation('/courses');
   };
 
-  const handleStartModule = (moduleId: number) => {
-    // Navigate to module content - this would be implemented later
-    toast({
-      title: "Module Starting",
-      description: "Opening module content...",
-    });
+  const handleStartLesson = (lessonId: number) => {
+    // Navigate to individual lesson page
+    setLocation(`/lesson/${lessonId}`);
   };
 
-  const handleStartSubmodule = (submoduleId: number, submoduleTitle: string) => {
-    // Navigate to submodule content
+  const handleStartLessonContent = (contentId: number, contentTitle: string) => {
+    // Navigate to lesson content
     toast({
       title: "Opening Content",
-      description: `Opening "${submoduleTitle}"...`,
+      description: `Opening "${contentTitle}"...`,
     });
   };
 
-  const toggleChapter = (moduleId: number) => {
+  const toggleChapter = (chapterId: number) => {
     setExpandedChapters(prev => ({
       ...prev,
-      [moduleId]: !prev[moduleId]
+      [chapterId]: !prev[chapterId]
     }));
   };
 
-  // Get submodules for a specific module
-  const getSubmodulesForModule = (moduleId: number) => {
-    return submodules.filter((sub: any) => sub.moduleId === moduleId);
+  // Get lesson content for a specific lesson
+  const getLessonContentForLesson = (lessonId: number) => {
+    return lessonContent.filter((content: any) => content.lessonId === lessonId);
   };
 
   if (courseLoading || purchasesLoading) {
@@ -137,16 +134,16 @@ export default function CourseOverview() {
   }
 
   // Calculate progress
-  const getModuleProgress = (moduleId: number) => {
-    return userProgress?.find((p: any) => p.courseId === parseInt(courseId || '0') && p.moduleId === moduleId);
+  const getLessonProgress = (lessonId: number) => {
+    return userProgress?.find((p: any) => p.courseId === parseInt(courseId || '0') && p.lessonId === lessonId);
   };
 
-  const completedModules = modules.filter((module: any) => {
-    const progress = getModuleProgress(module.id);
+  const completedLessons = chapters.filter((lesson: any) => {
+    const progress = getLessonProgress(lesson.id);
     return progress?.completedAt;
   });
 
-  const progressPercentage = modules.length > 0 ? (completedModules.length / modules.length) * 100 : 0;
+  const progressPercentage = chapters.length > 0 ? (completedLessons.length / chapters.length) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-white pb-24 md:pb-8">
@@ -228,7 +225,7 @@ export default function CourseOverview() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Your Progress</h3>
                 <span className="text-sm font-medium text-[#095D66]">
-                  {completedModules.length} of {modules.length} chapters completed
+                  {completedLessons.length} of {chapters.length} chapters completed
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
@@ -253,27 +250,27 @@ export default function CourseOverview() {
             <CardTitle className="text-lg md:text-xl text-gray-900 font-semibold">Chapters</CardTitle>
           </CardHeader>
           <CardContent className="px-5 md:px-6">
-            {modules.length === 0 ? (
+            {chapters.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-600">Course chapters will be available soon.</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {modules.map((module: any, index: number) => {
-                  const progress = getModuleProgress(module.id);
+                {chapters.map((lesson: any, index: number) => {
+                  const progress = getLessonProgress(lesson.id);
                   const isCompleted = !!progress?.completedAt;
-                  const moduleSubmodules = getSubmodulesForModule(module.id);
-                  const isExpanded = expandedChapters[module.id] || false;
-                  const hasSubmodules = moduleSubmodules.length > 0;
+                  const lessonContentItems = getLessonContentForLesson(lesson.id);
+                  const isExpanded = expandedChapters[lesson.id] || false;
+                  const hasLessonContent = lessonContentItems.length > 0;
                   
                   return (
-                    <div key={module.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                    <div key={lesson.id} className="border border-gray-100 rounded-xl overflow-hidden">
                       {/* Chapter Header */}
                       <div 
                         className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50/50 transition-all duration-200 ${
-                          hasSubmodules ? 'hover:border-[#095D66]/20' : ''
+                          hasLessonContent ? 'hover:border-[#095D66]/20' : ''
                         }`}
-                        onClick={() => hasSubmodules ? toggleChapter(module.id) : handleStartModule(module.id)}
+                        onClick={() => hasLessonContent ? toggleChapter(lesson.id) : handleStartLesson(lesson.id)}
                       >
                         <div className="flex-shrink-0">
                           {isCompleted ? (
@@ -287,22 +284,22 @@ export default function CourseOverview() {
                         
                         <div className="flex-1 min-w-0">
                           <h4 className="text-base font-medium text-gray-900 mb-1">
-                            {module.title}
+                            {lesson.title}
                           </h4>
-                          {module.description && (
+                          {lesson.description && (
                             <p className="text-sm text-gray-600 line-clamp-2">
-                              {module.description}
+                              {lesson.description}
                             </p>
                           )}
-                          {hasSubmodules && (
+                          {hasLessonContent && (
                             <p className="text-xs text-[#095D66] mt-1">
-                              {moduleSubmodules.length} topics
+                              {lessonContentItems.length} topics
                             </p>
                           )}
                         </div>
                         
                         <div className="flex-shrink-0 flex items-center gap-2">
-                          {hasSubmodules && (
+                          {hasLessonContent && (
                             <div className="p-1">
                               {isExpanded ? (
                                 <ChevronDown className="w-5 h-5 text-gray-500" />
@@ -311,11 +308,11 @@ export default function CourseOverview() {
                               )}
                             </div>
                           )}
-                          {!hasSubmodules && (
+                          {!hasLessonContent && (
                             <Button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleStartModule(module.id);
+                                handleStartLesson(lesson.id);
                               }}
                               className={`min-h-[40px] px-4 rounded-lg transition-all duration-200 ${
                                 isCompleted 
@@ -330,15 +327,15 @@ export default function CourseOverview() {
                         </div>
                       </div>
 
-                      {/* Submodules - Expandable */}
-                      {hasSubmodules && isExpanded && (
+                      {/* Lesson Content - Expandable */}
+                      {hasLessonContent && isExpanded && (
                         <div className="border-t border-gray-100 bg-gray-50/30">
                           <div className="py-2">
-                            {moduleSubmodules.map((submodule: any, subIndex: number) => (
+                            {lessonContentItems.map((contentItem: any, contentIndex: number) => (
                               <div
-                                key={submodule.id}
+                                key={contentItem.id}
                                 className="flex items-center gap-4 py-3 px-6 hover:bg-gray-50 transition-colors cursor-pointer"
-                                onClick={() => handleStartSubmodule(submodule.id, submodule.title)}
+                                onClick={() => handleStartLessonContent(contentItem.id, contentItem.title)}
                               >
                                 {/* Indentation line */}
                                 <div className="w-8 flex justify-center">
@@ -353,11 +350,11 @@ export default function CourseOverview() {
                                 
                                 <div className="flex-1 min-w-0">
                                   <h5 className="text-sm font-medium text-gray-800">
-                                    {submodule.title}
+                                    {contentItem.title}
                                   </h5>
-                                  {submodule.description && (
+                                  {contentItem.description && (
                                     <p className="text-xs text-gray-600 mt-1 line-clamp-1">
-                                      {submodule.description}
+                                      {contentItem.description}
                                     </p>
                                   )}
                                 </div>
@@ -369,7 +366,7 @@ export default function CourseOverview() {
                                     className="text-[#095D66] hover:text-[#095D66]/80 hover:bg-[#095D66]/5"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleStartSubmodule(submodule.id, submodule.title);
+                                      handleStartLessonContent(contentItem.id, contentItem.title);
                                     }}
                                   >
                                     <Play className="w-3 h-3 mr-1" />
