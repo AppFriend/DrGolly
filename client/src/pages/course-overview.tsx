@@ -420,7 +420,17 @@ export default function CourseOverview() {
                       {hasLessonContent && isExpanded && (
                         <div className="border-t border-gray-100 bg-gray-50/30">
                           <div className="py-2">
-                            {lessonContentItems.map((contentItem: any, contentIndex: number) => (
+                            {chaptersLoading || lessonContentLoading ? (
+                              <div className="flex items-center justify-center py-4">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#095D66]"></div>
+                                <span className="ml-2 text-sm text-gray-600">Loading content...</span>
+                              </div>
+                            ) : lessonContentItems.length === 0 ? (
+                              <div className="text-center py-4">
+                                <p className="text-sm text-gray-600">No content available for this chapter.</p>
+                              </div>
+                            ) : (
+                              lessonContentItems.map((contentItem: any, contentIndex: number) => (
                               <div
                                 key={contentItem.id}
                                 className="flex items-center gap-4 py-3 px-6 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -463,7 +473,8 @@ export default function CourseOverview() {
                                   </Button>
                                 </div>
                               </div>
-                            ))}
+                              ))
+                            )}
                           </div>
                         </div>
                       )}
