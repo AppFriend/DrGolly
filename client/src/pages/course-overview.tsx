@@ -45,12 +45,7 @@ export default function CourseOverview() {
     const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === parseInt(courseId || '0'));
     const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
     
-    // Debug logging
-    console.log('Access check for course:', courseId);
-    console.log('User purchases:', coursePurchases?.map(p => ({ id: p.courseId, status: p.status })));
-    console.log('Has purchased:', hasPurchased);
-    console.log('Has gold access:', hasGoldAccess);
-    console.log('Final access:', hasPurchased || hasGoldAccess);
+
     
     return hasPurchased || hasGoldAccess;
   };
@@ -204,7 +199,7 @@ export default function CourseOverview() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Your Progress</h3>
                 <span className="text-sm font-medium text-[#095D66]">
-                  {completedModules.length} of {modules.length} modules completed
+                  {completedModules.length} of {modules.length} chapters completed
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
@@ -223,15 +218,15 @@ export default function CourseOverview() {
           </Card>
         </div>
 
-        {/* Course Modules */}
+        {/* Chapters */}
         <Card className="rounded-2xl border-gray-100 shadow-sm">
           <CardHeader className="pb-4 px-5 md:px-6 pt-6">
-            <CardTitle className="text-lg md:text-xl text-gray-900 font-semibold">Course Modules</CardTitle>
+            <CardTitle className="text-lg md:text-xl text-gray-900 font-semibold">Chapters</CardTitle>
           </CardHeader>
           <CardContent className="px-5 md:px-6">
             {modules.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-600">Course modules will be available soon.</p>
+                <p className="text-gray-600">Course chapters will be available soon.</p>
               </div>
             ) : (
               <div className="space-y-4">
