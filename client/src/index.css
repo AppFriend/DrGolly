@@ -168,6 +168,22 @@
   .prose-lesson img[src*="cdn."] {
     @apply w-full max-w-2xl mx-auto block;
   }
+  
+  /* Ensure all images in lessons and sublessions render properly */
+  .prose-lesson figure img,
+  .prose-lesson .se-image-container img {
+    @apply max-w-full h-auto rounded-lg shadow-md;
+  }
+  
+  /* Handle video containers */
+  .prose-lesson iframe {
+    @apply w-full rounded-lg;
+  }
+  
+  /* Vimeo embed styling */
+  .prose-lesson iframe[src*="vimeo.com"] {
+    @apply aspect-video w-full rounded-lg;
+  }
   .text-dr-teal {
     color: var(--dr-teal);
   }

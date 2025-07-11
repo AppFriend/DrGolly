@@ -205,7 +205,12 @@ export default function LessonPage() {
                   <CardTitle className="text-xl">{lesson.title}</CardTitle>
                 </div>
                 {lesson.content && (
-                  <CardDescription>{lesson.content}</CardDescription>
+                  <CardDescription>
+                    <div
+                      className="prose-lesson max-w-none"
+                      dangerouslySetInnerHTML={{ __html: lesson.content }}
+                    />
+                  </CardDescription>
                 )}
               </CardHeader>
               <CardContent>
