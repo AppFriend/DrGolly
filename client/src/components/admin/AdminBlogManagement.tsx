@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,36 +51,80 @@ export function AdminBlogManagement() {
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Force invalidate cache on mount
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
+  }, [queryClient]);
+
+  // Force fresh data with a test call first
+  const [testData, setTestData] = useState(null);
+  
+  useEffect(() => {
+    const testCall = async () => {
+      try {
+        console.log("=== TESTING API CALL ===");
+        const testUrl = `/api/blog-posts?includeUnpublished=true&test=${Date.now()}`;
+        console.log("Test URL:", testUrl);
+        
+        const testResponse = await fetch(testUrl, {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        console.log("Test response status:", testResponse.status);
+        if (testResponse.ok) {
+          const testData = await testResponse.json();
+          console.log("Test data received:", testData.length, "posts");
+          setTestData(testData);
+        }
+      } catch (error) {
+        console.error("Test call failed:", error);
+      }
+    };
+    
+    testCall();
+  }, []);
 
   const { data: blogPosts, isLoading, error } = useQuery({
-    queryKey: ["/api/blog-posts", "admin"],
+    queryKey: ["admin-blog-posts-unpublished", "v3", Date.now()],
     queryFn: async () => {
       try {
-        console.log("Making API call to fetch blog posts...");
-        const response = await apiRequest("GET", "/api/blog-posts?includeUnpublished=true");
-        console.log("API Response received:", response);
+        console.log("=== QUERY FUNCTION CALLED ===");
+        const url = `/api/blog-posts?includeUnpublished=true&cache=${Date.now()}`;
+        console.log("Query URL:", url);
+        
+        const response = await fetch(url, {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        console.log("Query response status:", response.status);
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const data = await response.json();
-        console.log("API Response data:", data);
-        console.log("Data type:", typeof data, "Is array:", Array.isArray(data));
+        console.log("Query data received:", data.length, "posts");
         
-        // Ensure we always return an array
-        if (!Array.isArray(data)) {
-          console.warn("API returned non-array data, wrapping in array");
-          return [];
-        }
-        
-        return data;
+        return Array.isArray(data) ? data : [];
       } catch (err) {
-        console.error("API Error:", err);
+        console.error("Query Error:", err);
         throw err;
       }
     },
-    retry: 3,
+    retry: 1,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+    gcTime: 0,
   });
   
   // Debug logging for current state

@@ -2565,14 +2565,18 @@ Please contact the customer to confirm the appointment.
         return res.status(403).json({ message: "Admin access required" });
       }
       
+      // FOR ADMIN USERS: Always include unpublished posts regardless of parameter
+      const shouldIncludeUnpublished = includeUnpublished === 'true' || isAdminUser;
+
       const blogPosts = await storage.getBlogPosts(
         category as string | undefined,
-        includeUnpublished === 'true'
+        shouldIncludeUnpublished
       );
       console.log("Blog posts API response:", { 
         count: blogPosts.length,
         includeUnpublished: includeUnpublished === 'true',
         includeUnpublishedParam: includeUnpublished,
+        shouldIncludeUnpublished,
         isAdminUser,
         queryParams: req.query,
         firstPost: blogPosts[0] ? { id: blogPosts[0].id, title: blogPosts[0].title, isPublished: blogPosts[0].isPublished } : null
