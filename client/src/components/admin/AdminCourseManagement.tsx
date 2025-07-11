@@ -866,8 +866,9 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
   };
 
   const handleEditLesson = (lessonId: number, currentContent: string) => {
+    console.log('Editing lesson:', lessonId, 'Content:', currentContent);
     setEditingLesson(lessonId);
-    setEditContent(currentContent);
+    setEditContent(currentContent || '');
   };
 
   const handleSaveLesson = (lessonId: number) => {
@@ -880,8 +881,20 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
   };
 
   const getLessonsForChapter = (chapterId: number) => {
-    return lessons.filter((lesson: any) => lesson.chapterId === chapterId)
+    const filteredLessons = lessons.filter((lesson: any) => lesson.chapterId === chapterId)
       .sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+    
+    // Debug: Log lesson data to see content structure
+    if (filteredLessons.length > 0) {
+      console.log('Lessons for chapter', chapterId, ':', filteredLessons.map(l => ({
+        id: l.id,
+        title: l.title,
+        hasContent: !!l.content,
+        contentPreview: l.content?.substring(0, 100) + '...'
+      })));
+    }
+    
+    return filteredLessons;
   };
 
   const getCategoryColor = (category: string) => {
