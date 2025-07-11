@@ -2536,22 +2536,33 @@ Please contact the customer to confirm the appointment.
   });
 
   // Blog post routes
-  app.get('/api/blog-posts', adminBypass, async (req, res) => {
+  app.get('/api/blog-posts', async (req, res) => {
     try {
       const { category, includeUnpublished } = req.query;
       
-      // If includeUnpublished is true, check if user is admin (unless admin bypass)
-      if (includeUnpublished === 'true' && !req.adminBypass) {
+      // Check if user is authenticated and is admin for admin bypass
+      let isAdminUser = false;
+      if (req.isAuthenticated()) {
+        const userId = req.user?.claims?.sub;
+        if (userId) {
+          isAdminUser = await storage.isUserAdmin(userId);
+        }
+      }
+      
+      console.log("Blog posts API request:", { 
+        category, 
+        includeUnpublished,
+        isAdminUser,
+        isAuthenticated: req.isAuthenticated()
+      });
+      
+      // If includeUnpublished is true, check if user is admin
+      if (includeUnpublished === 'true' && !isAdminUser) {
         if (!req.isAuthenticated()) {
           return res.status(401).json({ message: "Authentication required for admin access" });
         }
         
-        const userId = req.user?.claims?.sub;
-        const isUserAdmin = await storage.isUserAdmin(userId);
-        
-        if (!isUserAdmin) {
-          return res.status(403).json({ message: "Admin access required" });
-        }
+        return res.status(403).json({ message: "Admin access required" });
       }
       
       const blogPosts = await storage.getBlogPosts(
@@ -2561,8 +2572,10 @@ Please contact the customer to confirm the appointment.
       console.log("Blog posts API response:", { 
         count: blogPosts.length,
         includeUnpublished: includeUnpublished === 'true',
-        adminBypass: req.adminBypass,
-        firstPost: blogPosts[0] ? { id: blogPosts[0].id, title: blogPosts[0].title } : null
+        includeUnpublishedParam: includeUnpublished,
+        isAdminUser,
+        queryParams: req.query,
+        firstPost: blogPosts[0] ? { id: blogPosts[0].id, title: blogPosts[0].title, isPublished: blogPosts[0].isPublished } : null
       });
       res.json(blogPosts);
     } catch (error) {
