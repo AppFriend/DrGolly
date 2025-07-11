@@ -34,19 +34,30 @@ export default function CourseOverview() {
     retry: false,
   });
 
-  // Fetch course chapters (renamed from modules)
+  // Fetch course chapters (renamed from modules) - SIMPLIFIED FOR DEBUGGING
   const { data: chapters = [], isLoading: chaptersLoading, error: chaptersError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lessons`],
-    enabled: !!courseId && !!user,
+    enabled: !!courseId, // Remove user condition temporarily
     retry: false,
   });
 
-  // Fetch lesson content (renamed from submodules)
+  // Fetch lesson content (renamed from submodules) - SIMPLIFIED FOR DEBUGGING
   const { data: lessonContent = [], isLoading: lessonContentLoading, error: lessonContentError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lesson-content`],
-    enabled: !!courseId && !!user,
+    enabled: !!courseId, // Remove user condition temporarily
     retry: false,
   });
+
+  // Force trigger queries for debugging
+  React.useEffect(() => {
+    if (courseId && user) {
+      console.log('FORCE DEBUGGING: Conditions met for lesson queries');
+      console.log('CourseId:', courseId);
+      console.log('User exists:', !!user);
+      console.log('User ID:', user?.id);
+      console.log('Should trigger lesson queries now');
+    }
+  }, [courseId, user]);
 
   // Fetch user progress
   const { data: userProgress } = useQuery({
