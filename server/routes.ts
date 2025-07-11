@@ -77,6 +77,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Course chapters route (with access control)
+  app.get('/api/courses/:courseId/chapters', isAuthenticated, async (req: any, res) => {
+    try {
+      const { courseId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      console.log('Fetching chapters for course:', courseId, 'user:', userId);
+      
+      // Check user's access to this course
+      const user = await storage.getUser(userId);
+      const coursePurchases = await storage.getUserCoursePurchases(userId);
+      
+      // Check if user has purchased this course or has gold/platinum access
+      const hasPurchased = coursePurchases.some((purchase: any) => purchase.courseId === parseInt(courseId));
+      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      
+      if (!hasPurchased && !hasGoldAccess) {
+        return res.status(403).json({ 
+          message: "Access denied. Purchase this course or upgrade to Gold for unlimited access.",
+          requiresUpgrade: true
+        });
+      }
+      
+      const chapters = await storage.getCourseChapters(parseInt(courseId));
+      console.log('Found chapters:', chapters.length);
+      res.json(chapters);
+    } catch (error) {
+      console.error("Error fetching course chapters:", error);
+      res.status(500).json({ message: "Failed to fetch course chapters" });
+    }
+  });
+
   // Course lesson routes (with access control)
   app.get('/api/courses/:courseId/lessons', isAuthenticated, async (req: any, res) => {
     try {
