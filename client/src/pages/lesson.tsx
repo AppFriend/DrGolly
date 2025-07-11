@@ -225,43 +225,89 @@ export default function LessonPage() {
                   </div>
                 )}
 
-                {/* Lesson Content Items */}
+                {/* Main Lesson Content */}
+                {lesson.content && (
+                  <div className="mb-6">
+                    <div
+                      className="prose-lesson max-w-none"
+                      dangerouslySetInnerHTML={{ __html: lesson.content }}
+                    />
+                  </div>
+                )}
+
+                {/* Sublessons as Accordion */}
                 {content.length > 0 && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Lesson Content</h3>
-                    {/* Filter content based on contentId if provided */}
-                    {(contentId ? content.filter(item => item.id === parseInt(contentId)) : content).map((item, index) => (
-                      <Card key={item.id} className="border-l-4 border-l-brand-teal">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-500">
-                              {index + 1}.
-                            </span>
-                            <CardTitle className="text-base">{item.title}</CardTitle>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {item.description && (
-                            <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-                          )}
-                          {item.videoUrl && (
-                            <div className="mb-4">
-                              <iframe
-                                src={item.videoUrl}
-                                title={item.title}
-                                className="w-full h-48 rounded-lg"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
+                    {contentId ? (
+                      // If contentId is provided, show only that specific content
+                      content.filter(item => item.id === parseInt(contentId)).map((item, index) => (
+                        <Card key={item.id} className="border-l-4 border-l-brand-teal">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-500">
+                                {index + 1}.
+                              </span>
+                              <CardTitle className="text-base">{item.title}</CardTitle>
                             </div>
-                          )}
-                          <div
-                            className="prose-lesson max-w-none"
-                            dangerouslySetInnerHTML={{ __html: item.content }}
-                          />
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardHeader>
+                          <CardContent>
+                            {item.description && (
+                              <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                            )}
+                            {item.videoUrl && (
+                              <div className="mb-4">
+                                <iframe
+                                  src={item.videoUrl}
+                                  title={item.title}
+                                  className="w-full h-48 rounded-lg"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                />
+                              </div>
+                            )}
+                            <div
+                              className="prose-lesson max-w-none"
+                              dangerouslySetInnerHTML={{ __html: item.content }}
+                            />
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      // Show all content as collapsible subleson cards
+                      content.map((item, index) => (
+                        <Card key={item.id} className="border-l-4 border-l-brand-teal">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-500">
+                                {index + 1}.
+                              </span>
+                              <CardTitle className="text-base">{item.title}</CardTitle>
+                            </div>
+                            {item.description && (
+                              <p className="text-sm text-gray-600 mt-2">{item.description}</p>
+                            )}
+                          </CardHeader>
+                          <CardContent>
+                            {item.videoUrl && (
+                              <div className="mb-4">
+                                <iframe
+                                  src={item.videoUrl}
+                                  title={item.title}
+                                  className="w-full h-48 rounded-lg"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                />
+                              </div>
+                            )}
+                            <div
+                              className="prose-lesson max-w-none"
+                              dangerouslySetInnerHTML={{ __html: item.content }}
+                            />
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
                   </div>
                 )}
 
