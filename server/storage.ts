@@ -113,14 +113,25 @@ export interface IStorage {
   // Chapter operations
   getCourseChapters(courseId: number): Promise<CourseChapter[]>;
   createCourseChapter(chapter: InsertCourseChapter): Promise<CourseChapter>;
+  getAllChapters(): Promise<CourseChapter[]>;
+  createChapter(chapter: InsertCourseChapter): Promise<CourseChapter>;
+  updateChapter(id: number, updates: Partial<CourseChapter>): Promise<CourseChapter>;
   
   // Lesson operations
   getCourseLessons(courseId: number): Promise<CourseLesson[]>;
   getChapterLessons(chapterId: number): Promise<CourseLesson[]>;
   createCourseLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
+  getAllLessons(): Promise<CourseLesson[]>;
+  createLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
+  updateLesson(id: number, updates: Partial<CourseLesson>): Promise<CourseLesson>;
   getLessonContent(lessonId: number): Promise<LessonContent[]>;
   getLessonContentByCourse(courseId: number): Promise<LessonContent[]>;
   createLessonContent(lessonContent: InsertLessonContent): Promise<LessonContent>;
+  
+  // Sublesson operations (lesson content)
+  getAllSublessons(): Promise<LessonContent[]>;
+  createSublesson(sublesson: InsertLessonContent): Promise<LessonContent>;
+  updateSublesson(id: number, updates: Partial<LessonContent>): Promise<LessonContent>;
   
   // User progress operations
   getUserChapterProgress(userId: string, chapterId: number): Promise<UserChapterProgress | undefined>;
@@ -773,16 +784,67 @@ export class DatabaseStorage implements IStorage {
     return newLesson;
   }
 
-  async getCourseChapters(courseId: number): Promise<CourseChapter[]> {
-    return await db.select().from(courseChapters).where(eq(courseChapters.courseId, courseId)).orderBy(courseChapters.orderIndex);
+  async getAllChapters(): Promise<CourseChapter[]> {
+    return await db.select().from(courseChapters).orderBy(courseChapters.courseId, courseChapters.orderIndex);
   }
 
-  async createCourseChapter(chapter: InsertCourseChapter): Promise<CourseChapter> {
+  async createChapter(chapter: InsertCourseChapter): Promise<CourseChapter> {
     const [newChapter] = await db
       .insert(courseChapters)
       .values(chapter)
       .returning();
     return newChapter;
+  }
+
+  async updateChapter(id: number, updates: Partial<CourseChapter>): Promise<CourseChapter> {
+    const [updatedChapter] = await db
+      .update(courseChapters)
+      .set(updates)
+      .where(eq(courseChapters.id, id))
+      .returning();
+    return updatedChapter;
+  }
+
+  async getAllLessons(): Promise<CourseLesson[]> {
+    return await db.select().from(courseLessons).orderBy(courseLessons.courseId, courseLessons.orderIndex);
+  }
+
+  async createLesson(lesson: InsertCourseLesson): Promise<CourseLesson> {
+    const [newLesson] = await db
+      .insert(courseLessons)
+      .values(lesson)
+      .returning();
+    return newLesson;
+  }
+
+  async updateLesson(id: number, updates: Partial<CourseLesson>): Promise<CourseLesson> {
+    const [updatedLesson] = await db
+      .update(courseLessons)
+      .set(updates)
+      .where(eq(courseLessons.id, id))
+      .returning();
+    return updatedLesson;
+  }
+
+  async getAllSublessons(): Promise<LessonContent[]> {
+    return await db.select().from(lessonContent).orderBy(lessonContent.lessonId, lessonContent.orderIndex);
+  }
+
+  async createSublesson(sublesson: InsertLessonContent): Promise<LessonContent> {
+    const [newSublesson] = await db
+      .insert(lessonContent)
+      .values(sublesson)
+      .returning();
+    return newSublesson;
+  }
+
+  async updateSublesson(id: number, updates: Partial<LessonContent>): Promise<LessonContent> {
+    const [updatedSublesson] = await db
+      .update(lessonContent)
+      .set(updates)
+      .where(eq(lessonContent.id, id))
+      .returning();
+    return updatedSublesson;
   }
 
   // User progress implementations
