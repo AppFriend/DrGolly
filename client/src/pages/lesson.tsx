@@ -235,7 +235,7 @@ export default function LessonPage() {
                   </div>
                 )}
 
-                {/* Sublessons as Accordion */}
+                {/* Sublessions as Accordion */}
                 {content.length > 0 && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Lesson Content</h3>
@@ -274,7 +274,7 @@ export default function LessonPage() {
                         </Card>
                       ))
                     ) : (
-                      // Show all content as collapsible subleson cards
+                      // Show all content as collapsible sublession cards
                       content.map((item, index) => (
                         <Card key={item.id} className="border-l-4 border-l-brand-teal">
                           <CardHeader className="pb-3">
