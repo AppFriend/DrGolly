@@ -45,6 +45,11 @@ export function isPublicRoute(path: string): boolean {
  * Check if a route is protected (requires authentication)
  */
 export function isProtectedRoute(path: string): boolean {
+  // Special handling for course routes - they should be accessible
+  if (path.match(/^\/courses\/\d+$/)) {
+    return true; // Course routes are protected but should be accessible to authenticated users
+  }
+  
   return PROTECTED_ROUTES.some(route => path.startsWith(route));
 }
 
@@ -62,6 +67,14 @@ export function getRedirectPath(currentPath: string, authState: AuthState): stri
   // Allow access to big-baby-public regardless of authentication state
   if (currentPath === '/big-baby-public') {
     return null;
+  }
+  
+  // Special handling for course routes - allow access if authenticated
+  if (currentPath.match(/^\/courses\/\d+$/)) {
+    if (!isAuthenticated) {
+      return '/';
+    }
+    return null; // Allow access to course routes for authenticated users
   }
   
   // If user is authenticated and tries to access public auth routes, redirect to home

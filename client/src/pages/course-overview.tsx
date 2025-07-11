@@ -42,17 +42,17 @@ export default function CourseOverview() {
     retry: false,
   });
 
-  // Fetch course chapters (renamed from modules) - SIMPLIFIED FOR DEBUGGING
+  // Fetch course chapters (renamed from modules)
   const { data: chapters = [], isLoading: chaptersLoading, error: chaptersError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lessons`],
-    enabled: !!courseId, // Remove user condition temporarily
+    enabled: !!courseId && !!user,
     retry: false,
   });
 
-  // Fetch lesson content (renamed from submodules) - SIMPLIFIED FOR DEBUGGING
+  // Fetch lesson content (renamed from submodules)
   const { data: lessonContent = [], isLoading: lessonContentLoading, error: lessonContentError } = useQuery({
     queryKey: [`/api/courses/${courseId}/lesson-content`],
-    enabled: !!courseId, // Remove user condition temporarily
+    enabled: !!courseId && !!user,
     retry: false,
   });
 

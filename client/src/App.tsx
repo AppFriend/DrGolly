@@ -18,7 +18,7 @@ import Signup from "@/pages/signup";
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
 import CourseOverview from "@/pages/course-overview";
-import CourseOverviewTest from "@/pages/course-overview-test";
+
 import LessonPage from "@/pages/lesson";
 import Checkout from "@/pages/checkout";
 import BigBabyPublic from "@/pages/big-baby-public";
@@ -90,7 +90,7 @@ function AuthenticatedApp() {
         <Route path="/courses/:courseId">
           <DesktopLayout>
             <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
-              <CourseOverviewTest />
+              <CourseOverview />
             </div>
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
