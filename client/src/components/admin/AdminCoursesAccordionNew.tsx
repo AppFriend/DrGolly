@@ -80,24 +80,37 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
   const queryClient = useQueryClient();
 
   // Fetch course chapters
-  const { data: chaptersData, isLoading: chaptersLoading } = useQuery({
+  const { data: chaptersData, isLoading: chaptersLoading, error: chaptersError } = useQuery({
     queryKey: ['/api/admin/chapters'],
     retry: 1,
     refetchOnWindowFocus: false,
   });
 
   // Fetch course lessons
-  const { data: lessonsData, isLoading: lessonsLoading } = useQuery({
+  const { data: lessonsData, isLoading: lessonsLoading, error: lessonsError } = useQuery({
     queryKey: ['/api/admin/lessons'],
     retry: 1,
     refetchOnWindowFocus: false,
   });
 
   // Fetch lesson content (sub-lessons)
-  const { data: lessonContentData, isLoading: lessonContentLoading } = useQuery({
+  const { data: lessonContentData, isLoading: lessonContentLoading, error: lessonContentError } = useQuery({
     queryKey: ['/api/admin/sublessons'],
     retry: 1,
     refetchOnWindowFocus: false,
+  });
+
+  // Debug logging
+  console.log('Accordion Data:', {
+    courses: courses.length,
+    chapters: chaptersData?.length || 0,
+    lessons: lessonsData?.length || 0,
+    sublessons: lessonContentData?.length || 0,
+    errors: {
+      chapters: chaptersError?.message,
+      lessons: lessonsError?.message,
+      sublessons: lessonContentError?.message
+    }
   });
 
   // Helper functions to organize data
@@ -224,6 +237,18 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2 text-sm text-gray-600">Loading course data...</span>
+      </div>
+    );
+  }
+
+  if (chaptersError || lessonsError || lessonContentError) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-red-600 mb-2">Error loading course data</div>
+        <div className="text-sm text-gray-600">
+          {chaptersError?.message || lessonsError?.message || lessonContentError?.message}
+        </div>
       </div>
     );
   }
