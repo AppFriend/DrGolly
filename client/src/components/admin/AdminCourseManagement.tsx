@@ -866,7 +866,7 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
   };
 
   const handleEditLesson = (lessonId: number, currentContent: string) => {
-    console.log('Editing lesson:', lessonId, 'Content:', currentContent);
+    console.log('Editing lesson:', lessonId, 'Content length:', currentContent?.length, 'Content preview:', currentContent?.substring(0, 200));
     setEditingLesson(lessonId);
     setEditContent(currentContent || '');
   };
