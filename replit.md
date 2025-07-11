@@ -576,6 +576,13 @@ Changelog:
   * Cleaned up duplicate and legacy module entries that were causing display issues
   * All courses now display proper chapter structure with exact titles and numbering from spreadsheet
   * Removed debug console logging for cleaner production experience
+- July 11, 2025. FIXED: Admin course management lesson content editor now working properly:
+  * Added admin bypass to course API endpoints to resolve 403 access denied errors
+  * Implemented updateLessonContent method in storage interface and database layer
+  * Created secure admin-only API endpoint for lesson content updates
+  * Enhanced RichTextEditor component with useEffect to properly handle content updates when props change
+  * Fixed lesson content loading - rich text editor now displays actual database content when editing lessons
+  * Admin panel course management now fully functional with rich HTML content editing capabilities
 - July 11, 2025. Removed course-level tier system to simplify access control:
   * Dropped 'tier' column from courses table to eliminate per-course access restrictions
   * Simplified access control to work purely at user level: Gold/Platinum subscription OR individual course purchase
