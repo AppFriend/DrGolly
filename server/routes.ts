@@ -1048,7 +1048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API endpoints for accordion view
-  app.get('/api/admin/chapters', isAuthenticated, async (req, res) => {
+  app.get('/api/admin/chapters', isAdmin, async (req, res) => {
     try {
       const chapters = await db.select().from(courseChapters).orderBy(courseChapters.courseId, courseChapters.orderIndex);
       res.json(chapters);
@@ -1058,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/lessons', isAuthenticated, async (req, res) => {
+  app.get('/api/admin/lessons', isAdmin, async (req, res) => {
     try {
       const lessons = await db.select().from(courseLessons).orderBy(courseLessons.courseId, courseLessons.chapterId, courseLessons.orderIndex);
       res.json(lessons);
@@ -1068,7 +1068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/sublessons', isAuthenticated, async (req, res) => {
+  app.get('/api/admin/sublessons', isAdmin, async (req, res) => {
     try {
       const sublessons = await db.select().from(lessonContent).orderBy(lessonContent.lessonId, lessonContent.orderIndex);
       res.json(sublessons);
@@ -1079,7 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin update endpoints
-  app.put('/api/admin/courses/:id', isAuthenticated, async (req, res) => {
+  app.put('/api/admin/courses/:id', isAdmin, async (req, res) => {
     try {
       const courseId = parseInt(req.params.id);
       const { content } = req.body;
@@ -1098,7 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin create endpoints
-  app.post('/api/admin/chapters', isAuthenticated, async (req, res) => {
+  app.post('/api/admin/chapters', isAdmin, async (req, res) => {
     try {
       const { title, content, courseId } = req.body;
       
@@ -1124,7 +1124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/lessons', isAuthenticated, async (req, res) => {
+  app.post('/api/admin/lessons', isAdmin, async (req, res) => {
     try {
       const { title, content, videoUrl, courseId, chapterId } = req.body;
       
@@ -1151,7 +1151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/sublessons', isAuthenticated, async (req, res) => {
+  app.post('/api/admin/sublessons', isAdmin, async (req, res) => {
     try {
       const { title, content, lessonId, videoUrl } = req.body;
       
@@ -1203,7 +1203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/admin/chapters/:id', isAuthenticated, async (req, res) => {
+  app.put('/api/admin/chapters/:id', isAdmin, async (req, res) => {
     try {
       const chapterId = parseInt(req.params.id);
       const { content } = req.body;
@@ -1221,7 +1221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/admin/lessons/:id', isAuthenticated, async (req, res) => {
+  app.put('/api/admin/lessons/:id', isAdmin, async (req, res) => {
     try {
       const lessonId = parseInt(req.params.id);
       const { content } = req.body;
@@ -1239,25 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/admin/sublessons/:id', isAuthenticated, async (req, res) => {
-    try {
-      const sublessonId = parseInt(req.params.id);
-      const { content } = req.body;
-      
-      const [updatedSublesson] = await db
-        .update(lessonContent)
-        .set({ content })
-        .where(eq(lessonContent.id, sublessonId))
-        .returning();
-      
-      res.json(updatedSublesson);
-    } catch (error) {
-      console.error('Error updating sublesson:', error);
-      res.status(500).json({ error: 'Failed to update sublesson' });
-    }
-  });
-
-  app.put('/api/admin/sublessons/:id', isAuthenticated, async (req, res) => {
+  app.put('/api/admin/sublessons/:id', isAdmin, async (req, res) => {
     try {
       const sublessonId = parseInt(req.params.id);
       const { content } = req.body;
