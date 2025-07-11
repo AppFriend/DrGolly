@@ -61,8 +61,6 @@ export default function LessonPage() {
   // Extract contentId from query parameters
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const contentId = urlParams.get('contentId');
-  
-  console.log('Lesson page - lesson ID:', id, 'contentId:', contentId);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -258,7 +256,7 @@ export default function LessonPage() {
                             </div>
                           )}
                           <div
-                            className="prose prose-sm max-w-none"
+                            className="prose-lesson max-w-none"
                             dangerouslySetInnerHTML={{ __html: item.content }}
                           />
                         </CardContent>
