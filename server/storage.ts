@@ -119,6 +119,7 @@ export interface IStorage {
   getChapterModules(chapterId: number): Promise<CourseModule[]>;
   createCourseModule(module: InsertCourseModule): Promise<CourseModule>;
   getCourseSubmodules(moduleId: number): Promise<CourseSubmodule[]>;
+  getCourseSubmodulesByCourse(courseId: number): Promise<CourseSubmodule[]>;
   createCourseSubmodule(submodule: InsertCourseSubmodule): Promise<CourseSubmodule>;
   
   // User progress operations
@@ -905,6 +906,26 @@ export class DatabaseStorage implements IStorage {
 
   async getCourseSubmodules(moduleId: number): Promise<CourseSubmodule[]> {
     return await db.select().from(courseSubmodules).where(eq(courseSubmodules.moduleId, moduleId)).orderBy(courseSubmodules.orderIndex);
+  }
+
+  async getCourseSubmodulesByCourse(courseId: number): Promise<CourseSubmodule[]> {
+    const results = await db.select({
+      id: courseSubmodules.id,
+      moduleId: courseSubmodules.moduleId,
+      title: courseSubmodules.title,
+      content: courseSubmodules.content,
+      videoUrl: courseSubmodules.videoUrl,
+      orderIndex: courseSubmodules.orderIndex,
+      createdAt: courseSubmodules.createdAt,
+      updatedAt: courseSubmodules.updatedAt,
+      description: courseSubmodules.description
+    })
+      .from(courseSubmodules)
+      .innerJoin(courseModules, eq(courseSubmodules.moduleId, courseModules.id))
+      .where(eq(courseModules.courseId, courseId))
+      .orderBy(courseModules.orderIndex, courseSubmodules.orderIndex);
+    
+    return results;
   }
 
   async createCourseSubmodule(submodule: InsertCourseSubmodule): Promise<CourseSubmodule> {

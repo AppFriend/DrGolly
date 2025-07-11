@@ -1964,6 +1964,17 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  app.get('/api/courses/:courseId/submodules', isAuthenticated, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const submodules = await storage.getCourseSubmodulesByCourse(parseInt(courseId));
+      res.json(submodules);
+    } catch (error) {
+      console.error("Error fetching course submodules:", error);
+      res.status(500).json({ message: "Failed to fetch course submodules" });
+    }
+  });
+
   app.get('/api/modules/:moduleId/submodules', isAuthenticated, async (req, res) => {
     try {
       const { moduleId } = req.params;
