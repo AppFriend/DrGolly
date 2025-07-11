@@ -36,9 +36,16 @@ export default function Courses() {
     enabled: !!user,
   });
 
-  const { data: coursePurchases, refetch: refetchPurchases } = useQuery({
+  const { data: coursePurchases, refetch: refetchPurchases, error: purchasesError } = useQuery({
     queryKey: ["/api/user/course-purchases"],
     enabled: !!user,
+    retry: (failureCount, error) => {
+      // Don't retry on 401 errors
+      if (error?.message?.includes('401')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
     refetchInterval: activeTab === "my" ? 5000 : false, // Refresh every 5 seconds when on Purchases tab
     onSuccess: (data) => {
       // Show success notification when new purchases are detected
@@ -70,6 +77,20 @@ export default function Courses() {
       }, 500);
     }
   }, [error, toast]);
+
+  // Handle purchases error separately
+  useEffect(() => {
+    if (purchasesError && isUnauthorizedError(purchasesError as Error)) {
+      toast({
+        title: "Session Expired",
+        description: "Please log in again to view your purchases.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [purchasesError, toast]);
 
   const filteredCourses = courses?.filter((course: Course) => {
     // For "Purchases" tab, show purchased courses only
