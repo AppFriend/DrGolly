@@ -259,94 +259,92 @@ export function AdminCourseManagement() {
             <div className="space-y-4">
               {viewMode === "accordion" ? (
                 <div className="space-y-4">
-                  {courses?.map((course: Course) => (
-                    <CourseAccordionView 
-                      key={course.id} 
-                      course={course}
-                      onUpdateCourse={handleUpdateCourse}
-                    />
-                  ))}
+                  {Array.isArray(courses) && courses.length > 0 ? (
+                    courses.map((course: Course) => (
+                      <CourseAccordionView 
+                        key={course.id} 
+                        course={course}
+                        onUpdateCourse={handleUpdateCourse}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <GraduationCap className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <p>No courses available</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {courses?.map((course: Course) => (
-                    <div
-                      key={course.id}
-                      className="border rounded-lg p-3 hover:bg-gray-50"
-                    >
-                      <div className="flex items-start space-x-3">
-                        {course.thumbnailUrl && (
-                          <div className="w-12 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
-                              src={course.thumbnailUrl}
-                              alt={course.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h3 className="font-semibold text-sm truncate mr-2">{course.title}</h3>
-                            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setSelectedCourse(course)}
-                                  className="h-7 w-7 p-0 flex-shrink-0"
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
-                                <DialogHeader>
-                                  <DialogTitle>Edit Course: {selectedCourse?.title}</DialogTitle>
-                                </DialogHeader>
-                                {selectedCourse && (
-                                  <CourseEditor
-                                    course={selectedCourse}
-                                    onUpdate={handleUpdateCourse}
-                                    isLoading={updateCourseMutation.isPending}
-                                  />
-                                )}
-                              </DialogContent>
-                            </Dialog>
-                          </div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge className={`${getCategoryColor(course.category)} text-xs px-2 py-0.5`}>
-                              {course.category}
-                            </Badge>
-                            <Badge className={`${getTierColor(course.tier)} text-xs px-2 py-0.5`}>
-                              {course.tier}
-                            </Badge>
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              ${course.price}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                            {course.description}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(course.createdAt)}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Eye className="h-3 w-3" />
-                                {course.views}
+                  {Array.isArray(courses) && courses.length > 0 ? (
+                    courses.map((course: Course) => (
+                      <div
+                        key={course.id}
+                        className="border rounded-lg p-3 hover:bg-gray-50"
+                      >
+                        <div className="flex items-start space-x-3">
+                          {course.thumbnailUrl && (
+                            <div className="w-12 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                              <img
+                                src={course.thumbnailUrl}
+                                alt={course.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h3 className="font-semibold text-sm truncate mr-2">{course.title}</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedCourse(course)}
+                                className="h-7 w-7 p-0 flex-shrink-0"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge className={`${getCategoryColor(course.category)} text-xs px-2 py-0.5`}>
+                                {course.category}
+                              </Badge>
+                              <Badge className={`${getTierColor(course.tier)} text-xs px-2 py-0.5`}>
+                                {course.tier}
+                              </Badge>
+                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                ${course.price}
                               </span>
                             </div>
-                            <span className="flex items-center gap-1 text-xs text-gray-500">
-                              <Heart className="h-3 w-3" />
-                              {course.likes}
-                            </span>
+                            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                              {course.description}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3 text-xs text-gray-500">
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDate(course.createdAt)}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Eye className="h-3 w-3" />
+                                  {course.views}
+                                </span>
+                              </div>
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <Heart className="h-3 w-3" />
+                                {course.likes}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <GraduationCap className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <p>No courses available</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
