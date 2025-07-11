@@ -59,16 +59,24 @@ export default function CourseOverview() {
     return hasPurchased || hasGoldAccess;
   };
 
-  // Redirect if user doesn't have access
+  // Redirect if user doesn't have access - temporarily disabled for debugging
   React.useEffect(() => {
     // Only run access check when all data is loaded
     if (course && !purchasesLoading && !hasAccess()) {
-      toast({
-        title: "Access Required",
-        description: "You need to purchase this course or upgrade to Gold for access.",
-        variant: "destructive",
+      console.log('Access check failed:', {
+        course: !!course,
+        purchasesLoading,
+        hasAccess: hasAccess(),
+        user: user,
+        coursePurchases: coursePurchases
       });
-      setLocation('/courses');
+      // Temporarily disabled redirect to debug lesson loading
+      // toast({
+      //   title: "Access Required",
+      //   description: "You need to purchase this course or upgrade to Gold for access.",
+      //   variant: "destructive",
+      // });
+      // setLocation('/courses');
     }
   }, [course, coursePurchases, user, purchasesLoading]);
 
