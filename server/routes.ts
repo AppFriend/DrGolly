@@ -5349,6 +5349,31 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Course Migration endpoint (Admin only)
+  app.post('/api/admin/migrate-courses', isAdmin, async (req: any, res) => {
+    try {
+      console.log('Starting course migration from CSV files...');
+      
+      // Import the migration function
+      const { migrateCourses } = await import('../scripts/migrate-courses-from-csv');
+      
+      // Run the migration
+      await migrateCourses();
+      
+      res.json({ 
+        success: true, 
+        message: 'Course migration completed successfully' 
+      });
+    } catch (error) {
+      console.error('Course migration error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Course migration failed', 
+        error: error.message 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
