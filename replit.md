@@ -600,6 +600,20 @@ Changelog:
   * Integrated real-time content updates with proper mutation handling and cache invalidation
   * Added comprehensive CRUD operations for chapters, lessons, and sub-lessons with API endpoints
   * Implemented expandable accordion structure with course-level organization and management
+- July 11, 2025. COMPLETED COMPREHENSIVE COURSE STRUCTURE TEMPLATE APPLICATION:
+  * Successfully applied varying lesson count structure to ALL 10 courses matching reference screenshots
+  * Little Baby Sleep Program: 22 chapters, 132 lessons total (2,10,8,6,1,6,20,5,12,2,5,5,6,7,8,2,1,11,6,2,6,1)
+  * Big Baby Sleep Program: 18 chapters, 120 lessons total (already completed)
+  * Preparation for Newborns: 24 chapters, 88 lessons total (2,6,1,2,9,2,6,5,6,6,7,7,1,1,3,1,1,3,1,5,1,10,1,1)
+  * Pre-toddler Sleep Program: 15 chapters, 93 lessons total with realistic varying counts
+  * Toddler Sleep Program: 12 chapters, 65 lessons total with age-appropriate content
+  * Pre-school Sleep Program: 11 chapters, 53 lessons total with developmental focus
+  * New Sibling Supplement: 8 chapters, 41 lessons total with family dynamics content
+  * Twins Supplement: 8 chapters, 44 lessons total with twin-specific strategies
+  * Toddler Toolkit: 31 chapters, 66 lessons total with behavior management focus
+  * All courses now display proper expandable chapter structure with realistic lesson counts
+  * Template ensures each course has Welcome chapter + Evidence-based Research chapter + varying lesson counts per chapter
+  * Frontend displays correct lesson counts in grey text with expandable accordion functionality
 ```
 
 ## User Preferences
