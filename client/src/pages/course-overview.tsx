@@ -50,14 +50,37 @@ export default function CourseOverview() {
 
   // Force trigger queries for debugging
   React.useEffect(() => {
-    if (courseId && user) {
-      console.log('FORCE DEBUGGING: Conditions met for lesson queries');
-      console.log('CourseId:', courseId);
-      console.log('User exists:', !!user);
-      console.log('User ID:', user?.id);
-      console.log('Should trigger lesson queries now');
+    console.log('FORCE DEBUGGING: Query conditions check');
+    console.log('CourseId:', courseId);
+    console.log('User exists:', !!user);
+    console.log('User ID:', user?.id);
+    console.log('Chapters enabled:', !!courseId);
+    console.log('Lesson content enabled:', !!courseId);
+    console.log('Chapters loading:', chaptersLoading);
+    console.log('Lesson content loading:', lessonContentLoading);
+    console.log('Chapters error:', chaptersError);
+    console.log('Lesson content error:', lessonContentError);
+    
+    // Try to manually trigger the queries by calling the fetch directly
+    if (courseId) {
+      console.log('Attempting manual fetch for debugging...');
+      fetch(`/api/courses/${courseId}/lessons`, { credentials: 'include' })
+        .then(res => {
+          console.log('Manual lessons fetch response:', res.status);
+          return res.json();
+        })
+        .then(data => console.log('Manual lessons data:', data))
+        .catch(err => console.error('Manual lessons fetch error:', err));
+        
+      fetch(`/api/courses/${courseId}/lesson-content`, { credentials: 'include' })
+        .then(res => {
+          console.log('Manual lesson-content fetch response:', res.status);
+          return res.json();
+        })
+        .then(data => console.log('Manual lesson-content data:', data))
+        .catch(err => console.error('Manual lesson-content fetch error:', err));
     }
-  }, [courseId, user]);
+  }, [courseId, user, chaptersLoading, lessonContentLoading, chaptersError, lessonContentError]);
 
   // Fetch user progress
   const { data: userProgress } = useQuery({
