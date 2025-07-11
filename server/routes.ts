@@ -2213,8 +2213,8 @@ Please contact the customer to confirm the appointment.
       console.log(`Progress: ${progress ? 'found' : 'not found'}`);
       
       // Get next lesson in the course
-      console.log(`Getting next lesson after chapter ${lesson.chapterIndex}, module ${lesson.moduleIndex}`);
-      const nextLesson = await storage.getNextLesson(lesson.courseId, lesson.chapterIndex, lesson.moduleIndex);
+      console.log(`Getting next lesson after chapter ${lesson.chapterId}, order ${lesson.orderIndex}`);
+      const nextLesson = await storage.getNextLesson(lesson.courseId, lesson.chapterId, lesson.orderIndex);
       console.log(`Next lesson: ${nextLesson ? nextLesson.title : 'none'}`);
       
       res.json({
