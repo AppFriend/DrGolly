@@ -555,6 +555,11 @@ Changelog:
   * Fixed access bug in course-overview.tsx, courses.tsx, and CourseDetail.tsx components
   * Users can now properly access purchased courses in both "Purchases" tab and individual course access
   * Purchased courses now show correctly in "Purchases" tab and users can access course content without access denial
+- July 11, 2025. Fixed duplicate course progress display issue on courses page:
+  * Enhanced progress display logic to properly deduplicate entries by courseId
+  * Added Map-based grouping to show highest progress per course
+  * Improved course title display using actual course data instead of generic "Course Progress"
+  * Fixed layout with proper text truncation and spacing for mobile display
 - July 11, 2025. Applied systematic chapter numbering from spreadsheet to ALL courses:
   * Changed "Course modules" heading to "Chapters" throughout the interface
   * Updated progress text to show "X of Y chapters completed" for all courses

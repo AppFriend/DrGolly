@@ -260,18 +260,24 @@ export default function Courses() {
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-4">Your Progress</h2>
             <div className="space-y-4">
-              {userProgress
-                .filter((progress: any, index: number, self: any[]) => 
-                  // Remove duplicates by courseId
-                  self.findIndex(p => p.courseId === progress.courseId) === index
-                )
-                .map((progress: any) => {
+              {(() => {
+                // Create a map to group progress by courseId and get the highest progress
+                const progressMap = new Map();
+                userProgress.forEach((progress: any) => {
+                  const courseId = progress.courseId;
+                  if (!progressMap.has(courseId) || progressMap.get(courseId).progress < progress.progress) {
+                    progressMap.set(courseId, progress);
+                  }
+                });
+                
+                // Convert map back to array and render
+                return Array.from(progressMap.values()).map((progress: any) => {
                   // Find the course title from the courses data
                   const course = courses?.find((c: Course) => c.id === progress.courseId);
                   const courseTitle = course?.title || `Course ${progress.courseId}`;
                   
                   return (
-                    <div key={`${progress.courseId}-${progress.id}`} className="bg-white rounded-lg p-4 border border-gray-100">
+                    <div key={`progress-${progress.courseId}`} className="bg-white rounded-lg p-4 border border-gray-100">
                       <div className="flex justify-between items-center mb-2">
                         <h3 className="font-medium truncate mr-2">{courseTitle}</h3>
                         <span className="text-sm text-gray-500 flex-shrink-0">{progress.progress}% Complete</span>
@@ -284,7 +290,8 @@ export default function Courses() {
                       </div>
                     </div>
                   );
-                })}
+                });
+              })()}
             </div>
           </div>
         )}
