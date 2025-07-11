@@ -27,9 +27,13 @@ import {
   Users,
   DollarSign,
   List,
-  Grid3X3
+  Grid3X3,
+  BookOpen,
+  X,
+  Loader2
 } from "lucide-react";
 import AdminCoursesAccordion from './AdminCoursesAccordionNew';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface Course {
   id: number;
@@ -254,10 +258,15 @@ export function AdminCourseManagement() {
           ) : (
             <div className="space-y-4">
               {viewMode === "accordion" ? (
-                <AdminCoursesAccordion 
-                  courses={courses || []} 
-                  onUpdateCourse={handleUpdateCourse}
-                />
+                <div className="space-y-4">
+                  {courses?.map((course: Course) => (
+                    <CourseAccordionView 
+                      key={course.id} 
+                      course={course}
+                      onUpdateCourse={handleUpdateCourse}
+                    />
+                  ))}
+                </div>
               ) : (
                 <div className="space-y-3">
                   {courses?.map((course: Course) => (
@@ -800,5 +809,273 @@ function CourseModuleManager({ courseId }: CourseModuleManagerProps) {
         </div>
       )}
     </div>
+  );
+}
+
+interface CourseAccordionViewProps {
+  course: Course;
+  onUpdateCourse: (updates: Partial<Course>) => void;
+}
+
+function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProps) {
+  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
+  const [editingLesson, setEditingLesson] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch course chapters
+  const { data: chapters = [], isLoading: chaptersLoading } = useQuery({
+    queryKey: [`/api/courses/${course.id}/chapters`],
+    enabled: !!course.id,
+  });
+
+  // Fetch course lessons
+  const { data: lessons = [], isLoading: lessonsLoading } = useQuery({
+    queryKey: [`/api/courses/${course.id}/lessons`],
+    enabled: !!course.id,
+  });
+
+  // Update lesson content mutation
+  const updateLessonMutation = useMutation({
+    mutationFn: ({ lessonId, content }: { lessonId: number; content: string }) =>
+      apiRequest("PATCH", `/api/lessons/${lessonId}`, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson content updated successfully",
+      });
+      setEditingLesson(null);
+      setEditContent('');
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleChapter = (chapterId: number) => {
+    setExpandedChapters(prev => ({
+      ...prev,
+      [chapterId]: !prev[chapterId]
+    }));
+  };
+
+  const handleEditLesson = (lessonId: number, currentContent: string) => {
+    setEditingLesson(lessonId);
+    setEditContent(currentContent);
+  };
+
+  const handleSaveLesson = (lessonId: number) => {
+    updateLessonMutation.mutate({ lessonId, content: editContent });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLesson(null);
+    setEditContent('');
+  };
+
+  const getLessonsForChapter = (chapterId: number) => {
+    return lessons.filter((lesson: any) => lesson.chapterId === chapterId)
+      .sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case "sleep":
+        return "bg-blue-100 text-blue-800";
+      case "nutrition":
+        return "bg-green-100 text-green-800";
+      case "health":
+        return "bg-red-100 text-red-800";
+      case "freebies":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  if (chaptersLoading || lessonsLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+              <BookOpen className="h-6 w-6" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">{course.title}</CardTitle>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className={`${getCategoryColor(course.category)} text-xs`}>
+                  {course.category}
+                </Badge>
+                <span className="text-sm text-gray-500">
+                  {chapters.length} chapters • {lessons.length} lessons
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              ${course.price}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // TODO: Add course editing functionality
+                toast({
+                  title: "Coming Soon",
+                  description: "Course editing functionality will be added soon",
+                });
+              }}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Accordion type="multiple" value={Object.keys(expandedChapters).filter(k => expandedChapters[parseInt(k)])} onValueChange={() => {}}>
+          {chapters.map((chapter: any) => (
+            <AccordionItem key={chapter.id} value={chapter.id.toString()}>
+              <AccordionTrigger 
+                className="text-left hover:no-underline py-3"
+                onClick={() => toggleChapter(chapter.id)}
+              >
+                <div className="flex items-center justify-between w-full mr-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Book className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{chapter.title}</h3>
+                      <p className="text-sm text-gray-500">
+                        {getLessonsForChapter(chapter.id).length} lessons
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="pl-11 space-y-2">
+                  {getLessonsForChapter(chapter.id).map((lesson: any) => (
+                    <div key={lesson.id} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+                            <FileText className="h-3 w-3 text-green-600" />
+                          </div>
+                          <h4 className="font-medium text-sm">{lesson.title}</h4>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {lesson.videoUrl && (
+                            <Badge variant="outline" className="text-xs">
+                              <Play className="h-3 w-3 mr-1" />
+                              Video
+                            </Badge>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditLesson(lesson.id, lesson.content || '')}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {editingLesson === lesson.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            placeholder="Enter lesson content..."
+                            className="min-h-[120px] text-sm"
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveLesson(lesson.id)}
+                              disabled={updateLessonMutation.isPending}
+                              className="h-7 bg-green-700 hover:bg-green-800 text-white"
+                            >
+                              {updateLessonMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <Save className="h-3 w-3 mr-1" />
+                              )}
+                              Save
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleCancelEdit}
+                              className="h-7"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-600">
+                          {lesson.content ? (
+                            <div dangerouslySetInnerHTML={{ __html: lesson.content.substring(0, 200) + (lesson.content.length > 200 ? '...' : '') }} />
+                          ) : (
+                            <p className="text-gray-400 italic">No content available</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {getLessonsForChapter(chapter.id).length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">No lessons in this chapter yet</p>
+                      <Button variant="outline" size="sm" className="mt-2">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Lesson
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+        
+        {chapters.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            <Book className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+            <p className="text-sm">No chapters in this course yet</p>
+            <Button variant="outline" size="sm" className="mt-2">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Chapter
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
