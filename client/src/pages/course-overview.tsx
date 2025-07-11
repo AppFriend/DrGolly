@@ -56,39 +56,7 @@ export default function CourseOverview() {
     retry: false,
   });
 
-  // Force trigger queries for debugging
-  React.useEffect(() => {
-    console.log('🔥 FORCE DEBUGGING: Query conditions check');
-    console.log('🔥 CourseId:', courseId);
-    console.log('🔥 User exists:', !!user);
-    console.log('🔥 User ID:', user?.id);
-    console.log('🔥 Chapters enabled:', !!courseId);
-    console.log('🔥 Lesson content enabled:', !!courseId);
-    console.log('🔥 Chapters loading:', chaptersLoading);
-    console.log('🔥 Lesson content loading:', lessonContentLoading);
-    console.log('🔥 Chapters error:', chaptersError);
-    console.log('🔥 Lesson content error:', lessonContentError);
-    
-    // Try to manually trigger the queries by calling the fetch directly
-    if (courseId) {
-      console.log('🔥 Attempting manual fetch for debugging...');
-      fetch(`/api/courses/${courseId}/lessons`, { credentials: 'include' })
-        .then(res => {
-          console.log('🔥 Manual lessons fetch response:', res.status);
-          return res.json();
-        })
-        .then(data => console.log('🔥 Manual lessons data:', data))
-        .catch(err => console.error('🔥 Manual lessons fetch error:', err));
-        
-      fetch(`/api/courses/${courseId}/lesson-content`, { credentials: 'include' })
-        .then(res => {
-          console.log('🔥 Manual lesson-content fetch response:', res.status);
-          return res.json();
-        })
-        .then(data => console.log('🔥 Manual lesson-content data:', data))
-        .catch(err => console.error('🔥 Manual lesson-content fetch error:', err));
-    }
-  }, [courseId, user, chaptersLoading, lessonContentLoading, chaptersError, lessonContentError]);
+
 
   // Fetch user progress
   const { data: userProgress } = useQuery({
@@ -129,37 +97,7 @@ export default function CourseOverview() {
     }
   }, [chaptersError, lessonContentError, toast, setLocation]);
 
-  // Debug logging
-  console.log('Course Overview Debug:', {
-    courseId,
-    course,
-    chapters: chapters.length,
-    lessonContent: lessonContent.length,
-    user,
-    hasAccess: hasAccess(),
-    chaptersLoading,
-    lessonContentLoading,
-    chaptersError,
-    lessonContentError,
-    chaptersQueryKey: [`/api/courses/${courseId}/lessons`],
-    lessonContentQueryKey: [`/api/courses/${courseId}/lesson-content`],
-    // Debug query conditions
-    chaptersEnabled: !!courseId && !!user,
-    lessonContentEnabled: !!courseId && !!user,
-    courseIdExists: !!courseId,
-    userExists: !!user
-  });
 
-  // Log specific API calls being made
-  console.log('API calls being made:');
-  console.log('Chapters API:', `/api/courses/${courseId}/lessons`);
-  console.log('Lesson Content API:', `/api/courses/${courseId}/lesson-content`);
-  console.log('Query enabled conditions:', {
-    chaptersEnabled: !!courseId && !!user,
-    lessonContentEnabled: !!courseId && !!user,
-    courseId,
-    user: !!user
-  });
 
   const handleBackToCourses = () => {
     setLocation('/courses');
@@ -420,12 +358,7 @@ export default function CourseOverview() {
                       {hasLessonContent && isExpanded && (
                         <div className="border-t border-gray-100 bg-gray-50/30">
                           <div className="py-2">
-                            {chaptersLoading || lessonContentLoading ? (
-                              <div className="flex items-center justify-center py-4">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#095D66]"></div>
-                                <span className="ml-2 text-sm text-gray-600">Loading content...</span>
-                              </div>
-                            ) : lessonContentItems.length === 0 ? (
+                            {lessonContentItems.length === 0 ? (
                               <div className="text-center py-4">
                                 <p className="text-sm text-gray-600">No content available for this chapter.</p>
                               </div>
