@@ -10,13 +10,21 @@ import { useToast } from '@/hooks/use-toast';
 import { isUnauthorizedError } from '@/lib/authUtils';
 
 export default function CourseOverview() {
+  console.log('🔥 CourseOverview component starting to load...');
+  
   const { courseId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Add unique identifier to verify component is loading
-  console.log('CourseOverview component loaded with courseId:', courseId);
+  console.log('🔥 CourseOverview component loaded with courseId:', courseId);
+  console.log('🔥 User in CourseOverview:', user);
+  
+  // Early return for testing - render basic content
+  if (!courseId) {
+    console.log('🔥 No courseId found, returning early');
+    return <div>No course ID found</div>;
+  }
   
   // State for managing expanded chapters
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
@@ -50,35 +58,35 @@ export default function CourseOverview() {
 
   // Force trigger queries for debugging
   React.useEffect(() => {
-    console.log('FORCE DEBUGGING: Query conditions check');
-    console.log('CourseId:', courseId);
-    console.log('User exists:', !!user);
-    console.log('User ID:', user?.id);
-    console.log('Chapters enabled:', !!courseId);
-    console.log('Lesson content enabled:', !!courseId);
-    console.log('Chapters loading:', chaptersLoading);
-    console.log('Lesson content loading:', lessonContentLoading);
-    console.log('Chapters error:', chaptersError);
-    console.log('Lesson content error:', lessonContentError);
+    console.log('🔥 FORCE DEBUGGING: Query conditions check');
+    console.log('🔥 CourseId:', courseId);
+    console.log('🔥 User exists:', !!user);
+    console.log('🔥 User ID:', user?.id);
+    console.log('🔥 Chapters enabled:', !!courseId);
+    console.log('🔥 Lesson content enabled:', !!courseId);
+    console.log('🔥 Chapters loading:', chaptersLoading);
+    console.log('🔥 Lesson content loading:', lessonContentLoading);
+    console.log('🔥 Chapters error:', chaptersError);
+    console.log('🔥 Lesson content error:', lessonContentError);
     
     // Try to manually trigger the queries by calling the fetch directly
     if (courseId) {
-      console.log('Attempting manual fetch for debugging...');
+      console.log('🔥 Attempting manual fetch for debugging...');
       fetch(`/api/courses/${courseId}/lessons`, { credentials: 'include' })
         .then(res => {
-          console.log('Manual lessons fetch response:', res.status);
+          console.log('🔥 Manual lessons fetch response:', res.status);
           return res.json();
         })
-        .then(data => console.log('Manual lessons data:', data))
-        .catch(err => console.error('Manual lessons fetch error:', err));
+        .then(data => console.log('🔥 Manual lessons data:', data))
+        .catch(err => console.error('🔥 Manual lessons fetch error:', err));
         
       fetch(`/api/courses/${courseId}/lesson-content`, { credentials: 'include' })
         .then(res => {
-          console.log('Manual lesson-content fetch response:', res.status);
+          console.log('🔥 Manual lesson-content fetch response:', res.status);
           return res.json();
         })
-        .then(data => console.log('Manual lesson-content data:', data))
-        .catch(err => console.error('Manual lesson-content fetch error:', err));
+        .then(data => console.log('🔥 Manual lesson-content data:', data))
+        .catch(err => console.error('🔥 Manual lesson-content fetch error:', err));
     }
   }, [courseId, user, chaptersLoading, lessonContentLoading, chaptersError, lessonContentError]);
 
