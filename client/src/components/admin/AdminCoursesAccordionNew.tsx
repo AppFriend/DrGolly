@@ -95,7 +95,7 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
 
   // Fetch lesson content (sub-lessons)
   const { data: lessonContentData, isLoading: lessonContentLoading } = useQuery({
-    queryKey: ['/api/lesson-content'],
+    queryKey: ['/api/admin/sublessons'],
     retry: 1,
     refetchOnWindowFocus: false,
   });
@@ -132,14 +132,14 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
       const endpoint = type === 'course' ? `/api/admin/courses/${id}` : 
                      type === 'chapter' ? `/api/admin/chapters/${id}` :
                      type === 'lesson' ? `/api/admin/lessons/${id}` :
-                     `/api/admin/lesson-content/${id}`;
+                     `/api/admin/sublessons/${id}`;
 
       await apiRequest('PUT', endpoint, { content: editContent });
       
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/admin/chapters'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lessons'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/lesson-content'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sublessons'] });
 
       setEditingItem(null);
       setEditContent('');
@@ -186,7 +186,7 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
     try {
       const endpoint = createType === 'chapter' ? '/api/admin/chapters' :
                      createType === 'lesson' ? '/api/admin/lessons' :
-                     '/api/admin/lesson-content';
+                     '/api/admin/sublessons';
 
       const payload = {
         title: createTitle,
@@ -202,7 +202,7 @@ export default function AdminCoursesAccordion({ courses, onUpdateCourse }: Admin
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/admin/chapters'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lessons'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/lesson-content'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sublessons'] });
 
       setIsCreateDialogOpen(false);
       

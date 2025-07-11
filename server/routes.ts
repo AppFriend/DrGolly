@@ -20,6 +20,8 @@ import {
   insertStripeProductSchema,
   courses,
   courseLessons,
+  courseChapters,
+  lessonContent,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeDataSyncService } from "./stripe-sync";
@@ -1068,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/sublessons', isAuthenticated, async (req, res) => {
     try {
-      const sublessons = await db.select().from(courseLessonContent).orderBy(courseLessonContent.lessonId, courseLessonContent.orderIndex);
+      const sublessons = await db.select().from(lessonContent).orderBy(lessonContent.lessonId, lessonContent.orderIndex);
       res.json(sublessons);
     } catch (error) {
       console.error('Error fetching sublessons:', error);
@@ -1149,6 +1151,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/admin/sublessons', isAuthenticated, async (req, res) => {
+    try {
+      const { title, content, lessonId, videoUrl } = req.body;
+      
+      // Get the next order index for this lesson
+      const existingSublessons = await db.select().from(lessonContent).where(eq(lessonContent.lessonId, lessonId));
+      const nextOrderIndex = existingSublessons.length;
+      
+      const [newSublesson] = await db
+        .insert(lessonContent)
+        .values({
+          title,
+          content: content || '',
+          lessonId,
+          videoUrl: videoUrl || null,
+          orderIndex: nextOrderIndex
+        })
+        .returning();
+      
+      res.json(newSublesson);
+    } catch (error) {
+      console.error('Error creating sublesson:', error);
+      res.status(500).json({ error: 'Failed to create sublesson' });
+    }
+  });
+
   app.post('/api/admin/lesson-content', isAuthenticated, async (req, res) => {
     try {
       const { title, content, videoUrl, lessonId } = req.body;
@@ -1217,9 +1245,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { content } = req.body;
       
       const [updatedSublesson] = await db
-        .update(courseLessonContent)
+        .update(lessonContent)
         .set({ content })
-        .where(eq(courseLessonContent.id, sublessonId))
+        .where(eq(lessonContent.id, sublessonId))
+        .returning();
+      
+      res.json(updatedSublesson);
+    } catch (error) {
+      console.error('Error updating sublesson:', error);
+      res.status(500).json({ error: 'Failed to update sublesson' });
+    }
+  });
+
+  app.put('/api/admin/sublessons/:id', isAuthenticated, async (req, res) => {
+    try {
+      const sublessonId = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      const [updatedSublesson] = await db
+        .update(lessonContent)
+        .set({ content })
+        .where(eq(lessonContent.id, sublessonId))
         .returning();
       
       res.json(updatedSublesson);
