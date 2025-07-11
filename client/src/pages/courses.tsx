@@ -39,8 +39,6 @@ export default function Courses() {
   const { data: coursePurchases, refetch: refetchPurchases } = useQuery({
     queryKey: ["/api/user/course-purchases"],
     enabled: !!user,
-    staleTime: 0, // Force refresh
-    cacheTime: 0, // Don't cache
     refetchInterval: activeTab === "my" ? 5000 : false, // Refresh every 5 seconds when on Purchases tab
     onSuccess: (data) => {
       // Show success notification when new purchases are detected
