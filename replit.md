@@ -582,6 +582,7 @@ Changelog:
   * Removed all course tier checking logic that was interfering with lesson access
   * Access now determined by user subscription tier or course purchase status only
   * Fixed lesson 284 spinning issue by removing complex tier-based access controls
+  * Fixed lesson 285 spinning issue by adding missing 'gt' import to Drizzle ORM in storage.ts
 - July 11, 2025. Enhanced lesson content structure with sublession support:
   * Implemented sublession structure where lessons contain multiple sublessions (e.g., "Safe swaddling" has "Swaddling benefits", "Safe swaddling techniques", "When to stop swaddling")
   * Updated lesson page to display main lesson content with rich HTML formatting separately from sublession cards
