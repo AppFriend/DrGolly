@@ -55,6 +55,11 @@ export default {
           "4": "var(--chart-4)",
           "5": "var(--chart-5)",
         },
+        // Dr. Golly Brand Colors
+        "brand-teal": "#095D66",
+        "brand-mint": "#83CFCC",
+        "brand-lemon": "#FEEDC7",
+        "brand-charcoal": "#3C3C3B",
         sidebar: {
           DEFAULT: "var(--sidebar-background)",
           foreground: "var(--sidebar-foreground)",
