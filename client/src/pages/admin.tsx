@@ -144,7 +144,7 @@ export default function AdminPanel() {
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6">
-            <EnhancedCourseManagement />
+            <AdminCourseManagement />
           </TabsContent>
 
           <TabsContent value="users" className="mt-6">
