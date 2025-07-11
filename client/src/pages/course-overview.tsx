@@ -100,13 +100,24 @@ export default function CourseOverview() {
     chaptersError,
     lessonContentError,
     chaptersQueryKey: [`/api/courses/${courseId}/lessons`],
-    lessonContentQueryKey: [`/api/courses/${courseId}/lesson-content`]
+    lessonContentQueryKey: [`/api/courses/${courseId}/lesson-content`],
+    // Debug query conditions
+    chaptersEnabled: !!courseId && !!user,
+    lessonContentEnabled: !!courseId && !!user,
+    courseIdExists: !!courseId,
+    userExists: !!user
   });
 
   // Log specific API calls being made
   console.log('API calls being made:');
   console.log('Chapters API:', `/api/courses/${courseId}/lessons`);
   console.log('Lesson Content API:', `/api/courses/${courseId}/lesson-content`);
+  console.log('Query enabled conditions:', {
+    chaptersEnabled: !!courseId && !!user,
+    lessonContentEnabled: !!courseId && !!user,
+    courseId,
+    user: !!user
+  });
 
   const handleBackToCourses = () => {
     setLocation('/courses');
