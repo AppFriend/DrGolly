@@ -152,15 +152,38 @@
   
   /* Handle Thinkific image container structure */
   .prose-lesson .se-component.se-image-container {
-    @apply mb-6 text-center;
+    @apply mb-4 text-center;
   }
   
   .prose-lesson .se-component.se-image-container figure {
-    @apply inline-block max-w-full;
+    @apply inline-block max-w-full m-0;
   }
   
   .prose-lesson .se-component.se-image-container img {
     @apply w-full max-w-2xl mx-auto rounded-lg shadow-md;
+  }
+  
+  /* Remove excessive margins and padding */
+  .prose-lesson p:empty,
+  .prose-lesson div:empty {
+    @apply hidden;
+  }
+  
+  .prose-lesson br + br {
+    @apply hidden;
+  }
+  
+  /* Tighten spacing for better mobile experience */
+  .prose-lesson p {
+    @apply mb-3;
+  }
+  
+  .prose-lesson h1, .prose-lesson h2, .prose-lesson h3 {
+    @apply mb-3 mt-4;
+  }
+  
+  .prose-lesson h1:first-child, .prose-lesson h2:first-child, .prose-lesson h3:first-child {
+    @apply mt-0;
   }
   
   /* Handle images with Thinkific CDN URLs */

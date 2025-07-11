@@ -958,6 +958,108 @@ export class DatabaseStorage implements IStorage {
     return updatedProgress;
   }
 
+  // Get next lesson in course
+  async getNextLesson(courseId: number, currentChapterIndex: number, currentModuleIndex: number): Promise<CourseLesson | null> {
+    // First try to find next lesson in the same chapter
+    const nextInChapter = await db
+      .select()
+      .from(courseLessons)
+      .where(
+        and(
+          eq(courseLessons.courseId, courseId),
+          eq(courseLessons.chapterIndex, currentChapterIndex),
+          gt(courseLessons.moduleIndex, currentModuleIndex)
+        )
+      )
+      .orderBy(courseLessons.moduleIndex)
+      .limit(1);
+
+    if (nextInChapter.length > 0) {
+      return nextInChapter[0];
+    }
+
+    // If no next lesson in current chapter, find first lesson in next chapter
+    const nextChapter = await db
+      .select()
+      .from(courseLessons)
+      .where(
+        and(
+          eq(courseLessons.courseId, courseId),
+          gt(courseLessons.chapterIndex, currentChapterIndex)
+        )
+      )
+      .orderBy(courseLessons.chapterIndex, courseLessons.moduleIndex)
+      .limit(1);
+
+    return nextChapter.length > 0 ? nextChapter[0] : null;
+  }
+
+  async isChapterCompleted(courseId: number, chapterIndex: number, userId: string): Promise<boolean> {
+    // Get all lessons in the chapter
+    const lessonsInChapter = await db
+      .select()
+      .from(courseLessons)
+      .where(
+        and(
+          eq(courseLessons.courseId, courseId),
+          eq(courseLessons.chapterIndex, chapterIndex)
+        )
+      );
+    
+    if (lessonsInChapter.length === 0) {
+      return false;
+    }
+    
+    // Check if all lessons in the chapter are completed
+    const lessonIds = lessonsInChapter.map(lesson => lesson.id);
+    const completedLessons = await db
+      .select()
+      .from(userChapterProgress)
+      .where(
+        and(
+          eq(userChapterProgress.userId, userId),
+          inArray(userChapterProgress.chapterId, lessonIds),
+          eq(userChapterProgress.completed, true)
+        )
+      );
+    
+    return completedLessons.length === lessonsInChapter.length;
+  }
+
+  // Check if all lessons in a chapter are completed
+  async checkChapterCompletion(userId: string, courseId: number, chapterIndex: number): Promise<boolean> {
+    // Get all lessons in this chapter
+    const chapterLessons = await db
+      .select()
+      .from(courseLessons)
+      .where(
+        and(
+          eq(courseLessons.courseId, courseId),
+          eq(courseLessons.chapterIndex, chapterIndex)
+        )
+      );
+
+    if (chapterLessons.length === 0) {
+      return false;
+    }
+
+    // Check if all lessons are completed
+    const completedLessons = await db
+      .select()
+      .from(userLessonProgress)
+      .where(
+        and(
+          eq(userLessonProgress.userId, userId),
+          eq(userLessonProgress.completed, true)
+        )
+      );
+
+    const completedLessonIds = completedLessons.map(p => p.lessonId);
+    const chapterLessonIds = chapterLessons.map(l => l.id);
+
+    return chapterLessonIds.every(id => completedLessonIds.includes(id));
+  }
+
   // Blog post operations
   async getBlogPosts(category?: string, includeUnpublished?: boolean): Promise<BlogPost[]> {
     let conditions = [];

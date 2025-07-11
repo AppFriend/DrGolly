@@ -1029,6 +1029,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check chapter completion API
+  app.get('/api/courses/:courseId/chapters/:chapterIndex/completion', isAuthenticated, async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const chapterIndex = parseFloat(req.params.chapterIndex);
+      const userId = req.user?.claims?.sub;
+      
+      const isCompleted = await storage.isChapterCompleted(courseId, chapterIndex, userId);
+      
+      res.json({ isCompleted });
+    } catch (error) {
+      console.error('Error checking chapter completion:', error);
+      res.status(500).json({ error: 'Failed to check chapter completion' });
+    }
+  });
+
+  // Admin API endpoints for accordion view
+  app.get('/api/admin/chapters', isAuthenticated, async (req, res) => {
+    try {
+      const chapters = await db.select().from(courseChapters).orderBy(courseChapters.courseId, courseChapters.chapterIndex);
+      res.json(chapters);
+    } catch (error) {
+      console.error('Error fetching chapters:', error);
+      res.status(500).json({ error: 'Failed to fetch chapters' });
+    }
+  });
+
+  app.get('/api/admin/lessons', isAuthenticated, async (req, res) => {
+    try {
+      const lessons = await db.select().from(courseLessons).orderBy(courseLessons.courseId, courseLessons.chapterIndex, courseLessons.moduleIndex);
+      res.json(lessons);
+    } catch (error) {
+      console.error('Error fetching lessons:', error);
+      res.status(500).json({ error: 'Failed to fetch lessons' });
+    }
+  });
+
+  app.get('/api/admin/sublessons', isAuthenticated, async (req, res) => {
+    try {
+      const sublessons = await db.select().from(courseLessonContent).orderBy(courseLessonContent.lessonId, courseLessonContent.orderIndex);
+      res.json(sublessons);
+    } catch (error) {
+      console.error('Error fetching sublessons:', error);
+      res.status(500).json({ error: 'Failed to fetch sublessons' });
+    }
+  });
+
+  // Admin update endpoints
+  app.put('/api/admin/courses/:id', isAuthenticated, async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      const [updatedCourse] = await db
+        .update(courses)
+        .set({ description: content })
+        .where(eq(courses.id, courseId))
+        .returning();
+      
+      res.json(updatedCourse);
+    } catch (error) {
+      console.error('Error updating course:', error);
+      res.status(500).json({ error: 'Failed to update course' });
+    }
+  });
+
+  app.put('/api/admin/chapters/:id', isAuthenticated, async (req, res) => {
+    try {
+      const chapterId = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      const [updatedChapter] = await db
+        .update(courseChapters)
+        .set({ content })
+        .where(eq(courseChapters.id, chapterId))
+        .returning();
+      
+      res.json(updatedChapter);
+    } catch (error) {
+      console.error('Error updating chapter:', error);
+      res.status(500).json({ error: 'Failed to update chapter' });
+    }
+  });
+
+  app.put('/api/admin/lessons/:id', isAuthenticated, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      const [updatedLesson] = await db
+        .update(courseLessons)
+        .set({ content })
+        .where(eq(courseLessons.id, lessonId))
+        .returning();
+      
+      res.json(updatedLesson);
+    } catch (error) {
+      console.error('Error updating lesson:', error);
+      res.status(500).json({ error: 'Failed to update lesson' });
+    }
+  });
+
+  app.put('/api/admin/sublessons/:id', isAuthenticated, async (req, res) => {
+    try {
+      const sublessonId = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      const [updatedSublesson] = await db
+        .update(courseLessonContent)
+        .set({ content })
+        .where(eq(courseLessonContent.id, sublessonId))
+        .returning();
+      
+      res.json(updatedSublesson);
+    } catch (error) {
+      console.error('Error updating sublesson:', error);
+      res.status(500).json({ error: 'Failed to update sublesson' });
+    }
+  });
+
   app.post('/api/user/module-progress', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -2065,11 +2185,15 @@ Please contact the customer to confirm the appointment.
       // Get user progress
       const progress = await storage.getUserLessonProgress(userId, lessonId);
       
+      // Get next lesson in the course
+      const nextLesson = await storage.getNextLesson(lesson.courseId, lesson.chapterIndex, lesson.moduleIndex);
+      
       res.json({
         lesson,
         course,
         content,
-        progress
+        progress,
+        nextLesson
       });
     } catch (error) {
       console.error('Error fetching lesson:', error);
