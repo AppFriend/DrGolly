@@ -320,6 +320,7 @@ export interface IStorage {
   markAllNotificationsAsRead(userId: string): Promise<void>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   createUserNotification(userNotification: InsertUserNotification): Promise<UserNotification>;
+  seedLoyaltyNotification(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2037,6 +2038,34 @@ export class DatabaseStorage implements IStorage {
       .values(notification)
       .returning();
     return newNotification;
+  }
+
+  async seedLoyaltyNotification(): Promise<void> {
+    // Check if loyalty notification already exists
+    const existingNotification = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.type, 'loyalty'))
+      .limit(1);
+    
+    if (existingNotification.length === 0) {
+      await db.insert(notifications).values({
+        title: 'Gold Member Loyalty Reward',
+        message: "Thanks for your first month as a gold member, you've unlocked a free sleep review valued at $250 - book now",
+        type: 'loyalty',
+        category: 'reward',
+        priority: 'high',
+        actionText: 'Book Now',
+        actionUrl: '/track?section=review',
+        targetType: 'tier',
+        targetTiers: ['Gold', 'Platinum'],
+        isActive: true,
+        isPublished: true,
+        publishedAt: new Date(),
+        createdBy: 'system',
+      });
+      console.log('Loyalty notification seeded successfully');
+    }
   }
 
   async createUserNotification(userNotification: InsertUserNotification): Promise<UserNotification> {

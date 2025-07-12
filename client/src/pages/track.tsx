@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Baby, Calendar, Clock, TrendingUp, Video, Timer, Moon, Sun } from "lucide-react";
+import { Baby, Calendar, Clock, TrendingUp, Video, Timer, Moon, Sun, Gift, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,16 @@ export default function Track() {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [activeChild, setActiveChild] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState("growth");
+
+  // Check URL parameters for section navigation
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const section = urlParams.get('section');
+    if (section) {
+      setActiveTab(section);
+    }
+  }, []);
 
   // Fetch user's children
   const { data: children = [], isLoading: isChildrenLoading } = useQuery({
@@ -150,7 +160,7 @@ export default function Track() {
         )}
 
         {/* Tracking Tabs */}
-        <Tabs defaultValue="growth" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="growth" className="text-xs">Growth</TabsTrigger>
             <TabsTrigger value="development" className="text-xs">Dev</TabsTrigger>
@@ -1117,6 +1127,7 @@ function SleepTracking({ childId }: { childId: number | null }) {
 function ConsultationBooking() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     consultationType: "sleep-review" as "sleep-review" | "development",
     preferredDate: "",
@@ -1177,6 +1188,27 @@ function ConsultationBooking() {
 
   return (
     <div className="space-y-4">
+      {/* Gold Member Loyalty Benefits - Only show for Gold/Platinum users */}
+      {(user?.subscriptionTier === 'gold' || user?.subscriptionTier === 'platinum') && (
+        <Card className="border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3 mb-2">
+              <Crown className="h-5 w-5 text-yellow-600" />
+              <h3 className="font-semibold text-yellow-800 font-heading">Gold Member Benefits</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Gift className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm text-yellow-700">FREE Sleep Review valued at $250</span>
+              </div>
+              <p className="text-xs text-yellow-600">
+                Thanks for your first month as a Gold member! You've unlocked exclusive benefits including complimentary sleep consultations.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Book Consultation */}
       <Card>
         <CardHeader>
