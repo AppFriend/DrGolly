@@ -17,7 +17,7 @@ import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
-import { FacebookPixel } from "@/lib/facebook-pixel";
+
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
@@ -439,7 +439,6 @@ export default function BigBabyPublic() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <FacebookPixel />
       
       {/* Header */}
       <div className="bg-white border-b px-4 py-3 flex items-center justify-center">
