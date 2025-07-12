@@ -311,8 +311,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 stripeData = await stripeDataSyncService.getStripeDataForUser(updatedUser);
               }
 
-              // Sync to Klaviyo with comprehensive data including children and Stripe data
-              await klaviyoService.syncLoginToKlaviyo(updatedUser, children, stripeData);
+              // Fetch course purchase data for comprehensive profile sync
+              const coursePurchases = await storage.getUserCoursePurchases(userId);
+
+              // Sync to Klaviyo with comprehensive data including children, Stripe data, and course purchases
+              await klaviyoService.syncLoginToKlaviyo(updatedUser, children, stripeData, coursePurchases);
             } catch (error) {
               console.error("Background sync failed:", error);
             }
@@ -472,9 +475,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Sync to Klaviyo
+      // Sync to Klaviyo with comprehensive data
       try {
-        await klaviyoService.syncUserToKlaviyo(user);
+        // Fetch course purchase data for new user sync
+        const coursePurchases = await storage.getUserCoursePurchases(user.id);
+        await klaviyoService.syncUserToKlaviyo(user, undefined, coursePurchases);
       } catch (error) {
         console.error("Failed to sync user to Klaviyo:", error);
       }
@@ -3289,6 +3294,16 @@ Please contact the customer to confirm the appointment.
             if (purchase) {
               await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
               console.log(`Course purchase completed: ${paymentIntent.id} for user ${purchase.userId}`);
+              
+              // Sync course purchase to Klaviyo
+              try {
+                const user = await storage.getUser(purchase.userId);
+                if (user) {
+                  await klaviyoService.syncCoursePurchaseToKlaviyo(user, purchase);
+                }
+              } catch (error) {
+                console.error("Failed to sync course purchase to Klaviyo:", error);
+              }
             }
           }
           break;
@@ -3762,6 +3777,16 @@ Please contact the customer to confirm the appointment.
             if (purchase) {
               await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
               console.log(`Course purchase ${purchase.id} marked as completed`);
+              
+              // Sync course purchase to Klaviyo
+              try {
+                const user = await storage.getUser(purchase.userId);
+                if (user) {
+                  await klaviyoService.syncCoursePurchaseToKlaviyo(user, purchase);
+                }
+              } catch (error) {
+                console.error("Failed to sync course purchase to Klaviyo:", error);
+              }
             }
           } catch (error) {
             console.error('Error updating course purchase:', error);
@@ -3878,6 +3903,16 @@ Please contact the customer to confirm the appointment.
         const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
         if (purchase) {
           await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+          
+          // Sync course purchase to Klaviyo
+          try {
+            const user = await storage.getUser(purchase.userId);
+            if (user) {
+              await klaviyoService.syncCoursePurchaseToKlaviyo(user, purchase);
+            }
+          } catch (error) {
+            console.error("Failed to sync course purchase to Klaviyo:", error);
+          }
         }
         break;
 

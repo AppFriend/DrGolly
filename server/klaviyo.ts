@@ -47,7 +47,7 @@ export class KlaviyoService {
     "revision": "2024-10-15"
   };
 
-  async createOrUpdateProfile(user: User, children?: any[]): Promise<string | null> {
+  async createOrUpdateProfile(user: User, children?: any[], coursePurchases?: any[]): Promise<string | null> {
     if (!KLAVIYO_API_KEY) {
       console.error("Klaviyo API key not configured");
       return null;
@@ -61,6 +61,7 @@ export class KlaviyoService {
         signup_source: user.signupSource || "App",
         signup_date: user.createdAt?.toISOString() || new Date().toISOString(),
         last_sign_in: user.lastSignIn?.toISOString(),
+        last_login_at: user.lastLoginAt?.toISOString(),
         sign_in_count: user.signInCount || 0,
         
         // Subscription info
@@ -82,6 +83,24 @@ export class KlaviyoService {
         // Course and engagement data
         courses_purchased_previously: user.coursesPurchasedPreviously,
         count_courses: user.countCourses || 0,
+        
+        // Real-time course purchase data
+        ...(coursePurchases && coursePurchases.length > 0 && {
+          courses_purchased_count: coursePurchases.length,
+          courses_purchased_list: coursePurchases
+            .filter(p => p.status === 'completed')
+            .map(p => p.courseName || `Course ${p.courseId}`)
+            .join(', '),
+          courses_purchased_total_amount: coursePurchases
+            .filter(p => p.status === 'completed')
+            .reduce((sum, p) => sum + (p.amount || 0), 0) / 100, // Convert from cents
+          last_course_purchase_date: coursePurchases
+            .filter(p => p.status === 'completed')
+            .sort((a, b) => new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime())[0]?.purchasedAt,
+          last_course_purchased: coursePurchases
+            .filter(p => p.status === 'completed')
+            .sort((a, b) => new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime())[0]?.courseName
+        }),
         
         // Migration and admin status
         migrated: user.migrated || false,
@@ -305,10 +324,10 @@ export class KlaviyoService {
     }
   }
 
-  async syncUserToKlaviyo(user: User, children?: any[]): Promise<boolean> {
+  async syncUserToKlaviyo(user: User, children?: any[], coursePurchases?: any[]): Promise<boolean> {
     try {
       // First create or update the profile with comprehensive data
-      const profileId = await this.createOrUpdateProfile(user, children);
+      const profileId = await this.createOrUpdateProfile(user, children, coursePurchases);
       
       // Then add to superapp list if profile was created successfully
       if (profileId && user.email) {
@@ -699,10 +718,10 @@ export class KlaviyoService {
     }
   }
 
-  async syncLoginToKlaviyo(user: User, children?: any[], stripeData?: any): Promise<boolean> {
+  async syncLoginToKlaviyo(user: User, children?: any[], stripeData?: any, coursePurchases?: any[]): Promise<boolean> {
     try {
       // Update profile with latest login info and all user data
-      const profileId = await this.createOrUpdateProfile(user, children);
+      const profileId = await this.createOrUpdateProfile(user, children, coursePurchases);
       
       if (!profileId) {
         console.error("Failed to sync login to Klaviyo");
@@ -779,6 +798,85 @@ export class KlaviyoService {
     } catch (error) {
       console.error("Error syncing login to Klaviyo:", error);
       return false;
+    }
+  }
+
+  async syncCoursePurchaseToKlaviyo(user: User, coursePurchase: any): Promise<boolean> {
+    try {
+      // Get user's children and course purchase data for comprehensive sync
+      const children = user.id ? await this.getUserChildren(user.id) : [];
+      const coursePurchases = user.id ? await this.getUserCoursePurchases(user.id) : [];
+      
+      // Update profile with latest purchase data
+      const profileId = await this.createOrUpdateProfile(user, children, coursePurchases);
+      
+      if (!profileId) {
+        console.error("Failed to sync course purchase to Klaviyo");
+        return false;
+      }
+
+      // Send course purchase event
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: user.email
+          },
+          metric: {
+            name: "Course Purchase"
+          },
+          properties: {
+            course_name: coursePurchase.courseName,
+            course_id: coursePurchase.courseId,
+            purchase_amount: coursePurchase.amount / 100, // Convert from cents
+            currency: coursePurchase.currency || "USD",
+            purchase_date: coursePurchase.purchasedAt || new Date().toISOString(),
+            payment_intent_id: coursePurchase.paymentIntentId,
+            customer_email: coursePurchase.customerEmail,
+            customer_name: coursePurchase.customerName,
+            purchase_status: coursePurchase.status
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to send course purchase event to Klaviyo:", response.status, errorText);
+        return false;
+      }
+
+      console.log("Course purchase event sent to Klaviyo successfully");
+      return true;
+    } catch (error) {
+      console.error("Error syncing course purchase to Klaviyo:", error);
+      return false;
+    }
+  }
+
+  // Helper methods for course purchase sync
+  private async getUserChildren(userId: string): Promise<any[]> {
+    try {
+      const { storage } = await import('./storage');
+      return await storage.getUserChildren(userId);
+    } catch (error) {
+      console.error("Error fetching user children:", error);
+      return [];
+    }
+  }
+
+  private async getUserCoursePurchases(userId: string): Promise<any[]> {
+    try {
+      const { storage } = await import('./storage');
+      return await storage.getUserCoursePurchases(userId);
+    } catch (error) {
+      console.error("Error fetching user course purchases:", error);
+      return [];
     }
   }
 
