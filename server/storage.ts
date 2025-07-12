@@ -784,6 +784,35 @@ export class DatabaseStorage implements IStorage {
     return updatedLesson;
   }
 
+  async getCourseStructureReport(): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT 
+        c.id as course_id,
+        c.title as course_title,
+        COUNT(DISTINCT cl.chapter_id) as total_chapters,
+        COUNT(cl.id) as total_lessons,
+        COUNT(CASE WHEN cl.content IS NOT NULL AND cl.content != '' THEN 1 END) as populated_lessons,
+        ROUND(
+          (COUNT(CASE WHEN cl.content IS NOT NULL AND cl.content != '' THEN 1 END) * 100.0 / COUNT(cl.id)), 
+          1
+        ) as population_percentage
+      FROM courses c
+      LEFT JOIN course_lessons cl ON c.id = cl.course_id
+      WHERE c.id BETWEEN 5 AND 14
+      GROUP BY c.id, c.title
+      ORDER BY c.id
+    `);
+    
+    return result.rows.map(row => ({
+      course_id: row.course_id,
+      course_title: row.course_title,
+      total_chapters: Number(row.total_chapters),
+      total_lessons: Number(row.total_lessons),
+      populated_lessons: Number(row.populated_lessons),
+      population_percentage: Number(row.population_percentage)
+    }));
+  }
+
   async getAllChapters(): Promise<CourseChapter[]> {
     return await db.select().from(courseChapters).orderBy(courseChapters.courseId, courseChapters.orderIndex);
   }
