@@ -338,7 +338,8 @@ function PaymentForm({
         {/* Link Payment Section - White container within gray */}
         <div className="bg-white p-4 rounded-lg border">
           <div className="flex items-center space-x-3 mb-3">
-            <span className="text-lg font-bold">▶ link</span>
+            <img src="/attached_assets/Link_1752294500139.png" alt="Link" className="h-6 w-6" />
+            <span className="text-lg font-bold">link</span>
             <div className="ml-auto text-sm text-gray-600">frazeradnam@gmail.com ▼ ✕</div>
           </div>
           <div className="flex space-x-2">
@@ -384,9 +385,7 @@ function PaymentForm({
         {/* Apple Pay Button */}
         <Button className="w-full h-12 bg-black text-white hover:bg-gray-800 rounded-lg flex items-center justify-center">
           <span className="text-white text-lg font-medium">Buy with </span>
-          <svg className="ml-2 h-6 w-10" viewBox="0 0 40 16" fill="white">
-            <path d="M6.55 2.5c0-.69.56-1.25 1.25-1.25h.4c.69 0 1.25.56 1.25 1.25v.4c0 .69-.56 1.25-1.25 1.25h-.4c-.69 0-1.25-.56-1.25-1.25v-.4zm-3.3 1.25c0-.69.56-1.25 1.25-1.25h.4c.69 0 1.25.56 1.25 1.25v.4c0 .69-.56 1.25-1.25 1.25h-.4c-.69 0-1.25-.56-1.25-1.25v-.4zM8.05 5.5c-.69 0-1.25.56-1.25 1.25v7.5c0 .69.56 1.25 1.25 1.25h23.9c.69 0 1.25-.56 1.25-1.25v-7.5c0-.69-.56-1.25-1.25-1.25H8.05z"/>
-          </svg>
+          <img src="/attached_assets/apple_1752294500140.png" alt="Apple" className="ml-2 h-6 w-6" />
           <span className="text-white text-lg font-medium">Pay</span>
         </Button>
 
@@ -407,9 +406,7 @@ function PaymentForm({
 
         {/* Link Button */}
         <Button className="w-full h-12 bg-green-500 text-white hover:bg-green-600 rounded-lg flex items-center justify-center">
-          <svg className="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
+          <img src="/attached_assets/Link_1752294500139.png" alt="Link" className="h-6 w-6 mr-2" />
           <span className="text-white text-lg font-bold">link</span>
           <div className="ml-auto flex items-center text-sm">
             <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium mr-1">VISA</span>
