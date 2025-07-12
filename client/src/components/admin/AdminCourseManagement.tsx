@@ -101,6 +101,7 @@ export function AdminCourseManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [previewCourse, setPreviewCourse] = useState<Course | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [viewMode, setViewMode] = useState<"accordion" | "cards">("accordion");
   const { toast } = useToast();
@@ -239,6 +240,49 @@ export function AdminCourseManagement() {
         </div>
       </div>
 
+      {/* Course Preview Dialog */}
+      <Dialog open={!!previewCourse} onOpenChange={(open) => !open && setPreviewCourse(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Course Preview</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPreviewCourse(null)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          {previewCourse && (
+            <div className="space-y-4">
+              {/* User View Banner */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">Currently viewing as a user</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPreviewCourse(null)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Back to Admin
+                  </Button>
+                </div>
+              </div>
+
+              {/* Course Preview Content */}
+              <CoursePreview course={previewCourse} />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Courses List */}
       <Card>
         <CardHeader className="pb-3">
@@ -296,14 +340,24 @@ export function AdminCourseManagement() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <h3 className="font-semibold text-sm truncate mr-2">{course.title}</h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedCourse(course)}
-                                className="h-7 w-7 p-0 flex-shrink-0"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setPreviewCourse(course)}
+                                  className="h-7 w-7 p-0 flex-shrink-0"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedCourse(course)}
+                                  className="h-7 w-7 p-0 flex-shrink-0"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 mb-2">
                               <Badge className={`${getCategoryColor(course.category)} text-xs px-2 py-0.5`}>
@@ -314,7 +368,7 @@ export function AdminCourseManagement() {
                               </Badge>
                               <span className="text-xs text-gray-500 flex items-center gap-1">
                                 <DollarSign className="h-3 w-3" />
-                                ${course.price}
+                                ${typeof course.price === 'number' ? course.price.toFixed(2) : course.price}
                               </span>
                             </div>
                             <p className="text-xs text-gray-600 mb-2 line-clamp-2">
@@ -1076,5 +1130,99 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// CoursePreview component to show course as a user would see it
+function CoursePreview({ course }: { course: Course }) {
+  const { data: chapters = [] } = useQuery({
+    queryKey: [`/api/courses/${course.id}/chapters`],
+    enabled: !!course.id,
+  });
+
+  const { data: lessons = [] } = useQuery({
+    queryKey: [`/api/courses/${course.id}/lessons`],
+    enabled: !!course.id,
+  });
+
+  const getLessonsForChapter = (chapterId: number) => {
+    return lessons.filter((lesson: any) => lesson.chapterId === chapterId)
+      .sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Course Header */}
+      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-6">
+        <div className="flex items-start gap-4">
+          {course.thumbnailUrl && (
+            <img
+              src={course.thumbnailUrl}
+              alt={course.title}
+              className="w-20 h-20 object-cover rounded-lg"
+            />
+          )}
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{course.title}</h1>
+            <p className="text-gray-600 mb-4">{course.description}</p>
+            <div className="flex items-center gap-4">
+              <span className="text-2xl font-bold text-teal-600">${course.price}</span>
+              <Badge className="bg-teal-100 text-teal-800">
+                {course.category}
+              </Badge>
+              <span className="text-sm text-gray-500">
+                {chapters.length} chapters • {lessons.length} lessons
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Course Content */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-gray-900">Course Content</h2>
+        <div className="space-y-3">
+          {chapters.map((chapter: any, index: number) => (
+            <div key={chapter.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                  <span className="text-sm font-medium text-teal-600">{index + 1}</span>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">{chapter.title}</h3>
+                  <p className="text-sm text-gray-500">
+                    {getLessonsForChapter(chapter.id).length} lessons
+                  </p>
+                </div>
+              </div>
+              <div className="ml-11 space-y-2">
+                {getLessonsForChapter(chapter.id).map((lesson: any, lessonIndex: number) => (
+                  <div key={lesson.id} className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                    <span>{lessonIndex + 1}. {lesson.title}</span>
+                    {lesson.videoUrl && (
+                      <Badge variant="outline" className="ml-2">
+                        <Play className="h-3 w-3 mr-1" />
+                        Video
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Course Actions */}
+      <div className="flex items-center gap-4 pt-4 border-t">
+        <Button className="flex-1 bg-teal-600 hover:bg-teal-700 text-white">
+          Access Course
+        </Button>
+        <Button variant="outline" className="flex-1">
+          Add to Wishlist
+        </Button>
+      </div>
+    </div>
   );
 }
