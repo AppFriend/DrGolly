@@ -340,10 +340,8 @@ function PaymentForm({
 
         {/* Link Payment Section - White container within gray */}
         <div className="bg-white p-4 rounded-lg border">
-          <div className="flex items-center space-x-3 mb-3">
-            <img src={linkLogo} alt="Link" className="h-6 w-6" />
-            <span className="text-lg font-bold">link</span>
-            <div className="ml-auto text-sm text-gray-600">frazeradnam@gmail.com ▼ ✕</div>
+          <div className="flex items-center justify-center mb-3">
+            <img src={linkLogo} alt="Link" className="h-12 w-auto" />
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" className="flex-1 text-sm">
@@ -409,12 +407,7 @@ function PaymentForm({
 
         {/* Link Button */}
         <Button className="w-full h-12 bg-green-500 text-white hover:bg-green-600 rounded-lg flex items-center justify-center">
-          <img src={linkLogo} alt="Link" className="h-6 w-6 mr-2" />
-          <span className="text-white text-lg font-bold">link</span>
-          <div className="ml-auto flex items-center text-sm">
-            <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium mr-1">VISA</span>
-            <span>0796</span>
-          </div>
+          <img src={linkLogo} alt="Link" className="h-8 w-auto" />
         </Button>
       </div>
 

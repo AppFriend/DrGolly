@@ -15,6 +15,9 @@ import { useStripe, useElements, PaymentRequestButtonElement, CardElement } from
 import { CouponInput } from "@/components/CouponInput";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
+import appleLogo from "@assets/apple_1752294500140.png";
+import linkLogo from "@assets/Link_1752294500139.png";
+import afterpayLogo from "@assets/Afterpay_Badge_BlackonMint_1752294624500.png";
 import type { Course } from "@shared/schema";
 
 // Initialize Stripe
@@ -210,8 +213,9 @@ function PaymentForm({
       {isMobile && paymentRequest && (
         <div className="space-y-3">
           <div className="bg-black text-white rounded-lg p-4 flex items-center justify-center">
-            <Smartphone className="h-5 w-5 mr-2" />
-            <span className="font-medium">Pay with Apple Pay</span>
+            <span className="font-medium">Buy with </span>
+            <img src={appleLogo} alt="Apple" className="mx-2 h-6 w-6" />
+            <span className="font-medium">Pay</span>
           </div>
           <PaymentRequestButtonElement
             options={{ paymentRequest }}
@@ -223,19 +227,18 @@ function PaymentForm({
       {/* Payment Method Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="link">🔗 Link</TabsTrigger>
+          <TabsTrigger value="link" className="flex items-center justify-center">
+            <img src={linkLogo} alt="Link" className="h-5 w-auto" />
+          </TabsTrigger>
           <TabsTrigger value="card">💳 Card</TabsTrigger>
         </TabsList>
         
         <TabsContent value="link" className="space-y-4">
           <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <div className="bg-green-500 text-white rounded-full p-2">
-                <Check className="h-4 w-4" />
-              </div>
-              <span className="font-medium">Link - Pay with saved details</span>
+            <div className="flex items-center justify-center mb-4">
+              <img src={linkLogo} alt="Link" className="h-16 w-auto" />
             </div>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-600 text-center">
               Use your saved payment information for a faster checkout
             </p>
           </div>
