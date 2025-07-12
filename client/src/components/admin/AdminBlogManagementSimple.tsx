@@ -3,9 +3,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Edit, Eye, Heart, Calendar, Tag, Trash2 } from "lucide-react";
+import { FileText, Plus, Edit, Eye, Heart, Calendar, Tag, Trash2, Save, X } from "lucide-react";
 
 interface BlogPost {
   id: number;
@@ -32,32 +37,72 @@ export function AdminBlogManagementSimple() {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Direct fetch approach
-  useEffect(() => {
-    const fetchBlogPosts = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response = await apiRequest('GET', '/api/blog-posts?includeUnpublished=true');
-        const data = await response.json();
-        
-        if (Array.isArray(data)) {
-          setBlogPosts(data);
-        } else {
-          setError("Invalid data format received");
-        }
-      } catch (err) {
-        console.error("Error fetching blog posts:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch blog posts");
-      } finally {
-        setIsLoading(false);
+  const fetchBlogPosts = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await apiRequest('GET', '/api/blog-posts?includeUnpublished=true');
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        setBlogPosts(data);
+      } else {
+        setError("Invalid data format received");
       }
-    };
+    } catch (err) {
+      console.error("Error fetching blog posts:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch blog posts");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchBlogPosts();
   }, []);
+
+  // Update blog post mutation
+  const updatePostMutation = useMutation({
+    mutationFn: async (updatedPost: BlogPost) => {
+      const response = await apiRequest('PUT', `/api/blog-posts/${updatedPost.id}`, updatedPost);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/blog-posts'] });
+      toast({
+        title: "Success",
+        description: "Blog post updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setEditingPost(null);
+      // Refresh the local state
+      fetchBlogPosts();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update blog post",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditPost = (post: BlogPost) => {
+    setEditingPost(post);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSavePost = () => {
+    if (editingPost) {
+      updatePostMutation.mutate(editingPost);
+    }
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category.toLowerCase()) {
@@ -206,7 +251,12 @@ export function AdminBlogManagementSimple() {
                       
                       {/* Action buttons */}
                       <div className="flex items-center justify-end gap-2 pt-2 border-t">
-                        <Button variant="outline" size="sm" className="text-xs">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => handleEditPost(post)}
+                        >
                           <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                           Edit
                         </Button>
@@ -224,7 +274,169 @@ export function AdminBlogManagementSimple() {
         </CardContent>
       </Card>
 
+      {/* Edit Blog Post Modal */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Blog Post</DialogTitle>
+          </DialogHeader>
+          
+          {editingPost && (
+            <div className="space-y-6">
+              {/* Title */}
+              <div className="space-y-2">
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={editingPost.title}
+                  onChange={(e) => setEditingPost(prev => prev ? {...prev, title: e.target.value} : null)}
+                  placeholder="Enter blog post title"
+                />
+              </div>
 
+              {/* Category */}
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select 
+                  value={editingPost.category} 
+                  onValueChange={(value) => setEditingPost(prev => prev ? {...prev, category: value} : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sleep">Sleep</SelectItem>
+                    <SelectItem value="nutrition">Nutrition</SelectItem>
+                    <SelectItem value="development">Development</SelectItem>
+                    <SelectItem value="health">Health</SelectItem>
+                    <SelectItem value="freebies">Freebies</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Author */}
+              <div className="space-y-2">
+                <Label htmlFor="author">Author</Label>
+                <Input
+                  id="author"
+                  value={editingPost.author || ''}
+                  onChange={(e) => setEditingPost(prev => prev ? {...prev, author: e.target.value} : null)}
+                  placeholder="Enter author name"
+                />
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <Input
+                  id="tags"
+                  value={editingPost.tags?.join(', ') || ''}
+                  onChange={(e) => setEditingPost(prev => prev ? {...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)} : null)}
+                  placeholder="Enter tags separated by commas"
+                />
+              </div>
+
+              {/* Excerpt */}
+              <div className="space-y-2">
+                <Label htmlFor="excerpt">Excerpt</Label>
+                <Textarea
+                  id="excerpt"
+                  value={editingPost.excerpt || ''}
+                  onChange={(e) => setEditingPost(prev => prev ? {...prev, excerpt: e.target.value} : null)}
+                  placeholder="Enter a brief excerpt"
+                  rows={3}
+                />
+              </div>
+
+              {/* Content - Rich Text Editor */}
+              <div className="space-y-2">
+                <Label htmlFor="content">Content</Label>
+                <div className="border rounded-md">
+                  <Textarea
+                    id="content"
+                    value={editingPost.content}
+                    onChange={(e) => setEditingPost(prev => prev ? {...prev, content: e.target.value} : null)}
+                    placeholder="Enter blog post content (HTML supported)"
+                    rows={15}
+                    className="min-h-[400px] border-0 resize-none"
+                  />
+                </div>
+                <p className="text-sm text-gray-500">
+                  You can use HTML tags for formatting. Common tags: &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;strong&gt;, &lt;em&gt;
+                </p>
+              </div>
+
+              {/* Image URL */}
+              <div className="space-y-2">
+                <Label htmlFor="imageUrl">Image URL</Label>
+                <Input
+                  id="imageUrl"
+                  value={editingPost.imageUrl || ''}
+                  onChange={(e) => setEditingPost(prev => prev ? {...prev, imageUrl: e.target.value} : null)}
+                  placeholder="Enter image URL"
+                />
+              </div>
+
+              {/* PDF URL */}
+              <div className="space-y-2">
+                <Label htmlFor="pdfUrl">PDF URL</Label>
+                <Input
+                  id="pdfUrl"
+                  value={editingPost.pdfUrl || ''}
+                  onChange={(e) => setEditingPost(prev => prev ? {...prev, pdfUrl: e.target.value} : null)}
+                  placeholder="Enter PDF URL"
+                />
+              </div>
+
+              {/* Published Status */}
+              <div className="space-y-2">
+                <Label htmlFor="isPublished">Publication Status</Label>
+                <Select 
+                  value={editingPost.isPublished ? 'published' : 'draft'} 
+                  onValueChange={(value) => setEditingPost(prev => prev ? {...prev, isPublished: value === 'published'} : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-6 border-t">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsEditDialogOpen(false)}
+                  disabled={updatePostMutation.isPending}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSavePost}
+                  disabled={updatePostMutation.isPending}
+                  className="bg-[#6B9CA3] hover:bg-[#095D66]"
+                >
+                  {updatePostMutation.isPending ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
