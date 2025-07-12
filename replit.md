@@ -630,6 +630,17 @@ Changelog:
   * Admin panel and user courses reference same database records for real-time updates
   * Content includes: welcome messages, sleep environment guidance, feeding schedules, developmental milestones, settling strategies, and troubleshooting guides
   * All courses now have complete, professional content ready for user consumption
+- July 12, 2025. COMPLETED: Admin user management system with pagination and admin user creation:
+  * Implemented Users tab pagination with 20 users per page sorted by newest signup date
+  * Added total user count display (17,505 users) with page navigation controls
+  * Created admin user creation API endpoints for bulk admin management
+  * Added "Create Admin Users" button to Admin Users tab
+  * Successfully created/updated three admin users with full admin access and Gold tier:
+    - alannah@drgolly.com (Alannah O'Kane) - updated existing user to admin
+    - alex@drgolly.com (Alex Dawkins) - updated existing user to admin
+    - tech@drgolly.com (Tech DrGolly) - created new admin user
+  * All admin users have unlimited access to courses, admin panel, and Gold tier features
+  * Admin Users tab displays current admin users with proper empty state messaging
 ```
 
 ## User Preferences
