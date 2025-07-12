@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { WelcomePopup } from "@/components/WelcomePopup";
 import { SupportModal } from "@/components/SupportModal";
 import { FreebieImage } from "@/components/FreebieImageLoader";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import type { BlogPost } from "@shared/schema";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 import drGollyLogo from "../assets/dr-golly-logo.png";
@@ -137,9 +138,7 @@ export default function Home() {
               Admin
             </button>
           )}
-          <button className="text-white hover:text-gray-200 transition-colors">
-            <Bell className="h-5 w-5" />
-          </button>
+          <NotificationBell />
           <button
             onClick={() => setShowSupportModal(true)}
             className="text-white hover:text-gray-200 transition-colors"

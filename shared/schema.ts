@@ -10,6 +10,7 @@ import {
   boolean,
   decimal,
   unique,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -817,7 +818,67 @@ export type FamilyInvite = typeof familyInvites.$inferSelect;
 export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
 export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
 
-// Admin notifications table
+// Notification system tables
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // welcome, birthday, discount, manual, system
+  category: varchar("category", { length: 50 }).default("general"), // general, birthday, discount, welcome, system
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high
+  
+  // Targeting options
+  targetType: varchar("target_type", { length: 20 }).notNull(), // global, user, tier
+  targetUsers: text("target_users").array(), // Array of user IDs for specific targeting
+  targetTiers: text("target_tiers").array(), // Array of tiers (free, gold, platinum)
+  
+  // Scheduling and automation
+  isScheduled: boolean("is_scheduled").default(false),
+  scheduledFor: timestamp("scheduled_for"),
+  isAutomated: boolean("is_automated").default(false),
+  automationTrigger: varchar("automation_trigger", { length: 100 }), // signup, birthday, new_discount
+  
+  // Status and metadata
+  isActive: boolean("is_active").default(true),
+  isPublished: boolean("is_published").default(false),
+  publishedAt: timestamp("published_at"),
+  expiresAt: timestamp("expires_at"),
+  
+  // Action buttons (optional)
+  actionText: varchar("action_text", { length: 100 }),
+  actionUrl: varchar("action_url", { length: 500 }),
+  
+  // Tracking
+  totalSent: integer("total_sent").default(0),
+  totalRead: integer("total_read").default(0),
+  
+  createdBy: varchar("created_by"), // Admin user ID
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User notification status tracking
+export const userNotifications = pgTable("user_notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  notificationId: integer("notification_id").notNull(),
+  
+  // Status tracking
+  isRead: boolean("is_read").default(false),
+  isClicked: boolean("is_clicked").default(false),
+  readAt: timestamp("read_at"),
+  clickedAt: timestamp("clicked_at"),
+  
+  // Delivery metadata
+  deliveredAt: timestamp("delivered_at").defaultNow(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("unique_user_notification").on(table.userId, table.notificationId),
+]);
+
+// Admin notifications table (legacy - keeping for backward compatibility)
 export const adminNotifications = pgTable("admin_notifications", {
   id: serial("id").primaryKey(),
   heading: varchar("heading", { length: 200 }).notNull(),
@@ -828,15 +889,23 @@ export const adminNotifications = pgTable("admin_notifications", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Admin notification insert schema
-export const insertAdminNotificationSchema = createInsertSchema(adminNotifications).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// Notification relations
+export const notificationRelations = relations(notifications, ({ many }) => ({
+  userNotifications: many(userNotifications),
+}));
 
-export type AdminNotification = typeof adminNotifications.$inferSelect;
-export type InsertAdminNotification = z.infer<typeof insertAdminNotificationSchema>;
+export const userNotificationRelations = relations(userNotifications, ({ one }) => ({
+  notification: one(notifications, {
+    fields: [userNotifications.notificationId],
+    references: [notifications.id],
+  }),
+  user: one(users, {
+    fields: [userNotifications.userId],
+    references: [users.id],
+  }),
+}));
+
+
 
 // Temporary password types
 export type TemporaryPassword = typeof temporaryPasswords.$inferSelect;
@@ -863,6 +932,36 @@ export const insertRegionalPricingSchema = createInsertSchema(regionalPricing).o
   createdAt: true,
   updatedAt: true,
 });
+
+// Notification schema types
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  totalSent: true,
+  totalRead: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserNotificationSchema = createInsertSchema(userNotifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type UserNotification = typeof userNotifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertUserNotification = z.infer<typeof insertUserNotificationSchema>;
+
+// Legacy admin notification schema
+export const insertAdminNotificationSchema = createInsertSchema(adminNotifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AdminNotification = typeof adminNotifications.$inferSelect;
+export type InsertAdminNotification = z.infer<typeof insertAdminNotificationSchema>;
 
 // Stripe product types
 export type StripeProduct = typeof stripeProducts.$inferSelect;
