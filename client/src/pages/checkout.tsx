@@ -246,10 +246,12 @@ function PaymentForm({
             <div className="flex items-center space-x-2 mb-4">
               <CreditCard className="h-5 w-5 text-gray-600" />
               <span className="font-medium">Credit / Debit Card</span>
-              <div className="flex space-x-1">
-                <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4.svg" alt="Visa" className="h-6" />
-                <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130.svg" alt="Mastercard" className="h-6" />
-                <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5c.svg" alt="American Express" className="h-6" />
+              <div className="flex space-x-1 text-xs text-gray-500">
+                <span>Visa</span>
+                <span>•</span>
+                <span>Mastercard</span>
+                <span>•</span>
+                <span>Amex</span>
               </div>
             </div>
             
@@ -396,6 +398,21 @@ export default function Checkout() {
     });
     setLocation("/courses");
   };
+
+  // Handle case where no courseId is provided
+  if (!courseId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Course</h1>
+          <p className="text-gray-600 mb-6">No course specified for checkout.</p>
+          <Button onClick={() => setLocation("/courses")} className="bg-[#095D66] hover:bg-[#074952]">
+            Browse Courses
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (courseLoading || !course) {
     return (
