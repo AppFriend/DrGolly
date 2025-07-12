@@ -641,6 +641,16 @@ export default function BigBabyPublic() {
                 </div>
                 
                 <div className="border-t pt-4">
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
+                      <span className="text-sm text-green-600">
+                        -{currencySymbol}{(appliedCoupon.amount_off ? 
+                          (appliedCoupon.amount_off / 100).toFixed(2) : 
+                          (originalPrice * appliedCoupon.percent_off / 100).toFixed(2))}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold">Total (incl. GST)</span>
                     <span className="text-lg font-semibold">{currencySymbol}{finalPrice.toFixed(2)}</span>
