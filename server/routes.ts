@@ -5030,6 +5030,9 @@ Please contact the customer to confirm the appointment.
         return res.status(401).json({ message: 'Invalid credentials or expired temporary password' });
       }
 
+      // Update last login timestamp for MAU tracking
+      await storage.updateUserLastLogin(user.id);
+
       res.json({
         user: {
           id: user.id,
@@ -5079,6 +5082,9 @@ Please contact the customer to confirm the appointment.
       
       // Mark temporary password as used
       await storage.markTemporaryPasswordAsUsed(userId);
+
+      // Update last login for MAU tracking since this completes the login process
+      await storage.updateUserLastLogin(userId);
 
       res.json({ message: 'Password set successfully' });
     } catch (error) {
