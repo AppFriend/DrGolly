@@ -540,10 +540,10 @@ export default function BigBabyPublic() {
     <div className="min-h-screen bg-gray-50">
       
       {/* Header Banner */}
-      <div className="bg-white border-b-2 border-[#095D66] px-4 py-4">
+      <div className="bg-white border-b border-[#095D66] px-4 py-4" style={{ borderBottomWidth: '0.5px' }}>
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
-          <p className="text-black font-medium text-lg">You're one step closer to better sleep for your baby!</p>
+          <p className="text-black font-medium text-lg ml-1" style={{ paddingLeft: '5px' }}>You're one step closer to better sleep for your baby!</p>
         </div>
       </div>
 
