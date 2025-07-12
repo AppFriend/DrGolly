@@ -3834,6 +3834,17 @@ Please contact the customer to confirm the appointment.
     res.json({ received: true });
   });
 
+  // Seed loyalty notification
+  app.post('/api/seed-loyalty-notification', async (req, res) => {
+    try {
+      await storage.seedLoyaltyNotification();
+      res.json({ success: true, message: 'Loyalty notification seeded' });
+    } catch (error) {
+      console.error('Error seeding loyalty notification:', error);
+      res.status(500).json({ success: false, message: 'Failed to seed notification' });
+    }
+  });
+
   // Create subscription using regional pricing
   app.post("/api/create-subscription", isAuthenticated, async (req, res) => {
     try {
