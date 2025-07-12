@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,185 +12,166 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  FileText, 
-  Plus, 
-  Edit, 
-  Eye, 
-  Heart, 
+import {
+  Plus,
+  Edit,
+  Trash2,
   Save,
+  FileText,
   Calendar,
-  Tag,
-  Trash2
+  Eye,
+  Heart,
 } from "lucide-react";
 
 interface BlogPost {
   id: number;
   title: string;
-  slug: string;
-  excerpt?: string;
   content: string;
   category: string;
-  tags?: string[];
+  excerpt: string;
   imageUrl?: string;
   pdfUrl?: string;
-  readTime?: number;
-  author?: string;
-  publishedAt?: string;
+  author: string;
+  readTime: number;
+  isPublished: boolean;
+  slug: string;
   views: number;
   likes: number;
-  isPublished: boolean;
-  status: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export function AdminBlogManagement() {
+export default function AdminBlogManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Force invalidate cache on mount
-  useEffect(() => {
+  const { toast } = useToast();
+
+  const invalidateQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
   }, [queryClient]);
 
-
-
+  // Fetch blog posts with authentication header
   const { data: blogPosts, isLoading, error } = useQuery({
-    queryKey: [`/api/blog-posts`, { includeUnpublished: true }],
+    queryKey: ["/api/blog-posts"],
     queryFn: async () => {
-      console.log("=== QUERY FUNCTION EXECUTING ===");
-      const response = await apiRequest('GET', `/api/blog-posts?includeUnpublished=true`);
-      const data = await response.json();
-      console.log("Response data:", data);
-      console.log("Data type:", typeof data);
-      console.log("Is array:", Array.isArray(data));
-      console.log("Data length:", data?.length);
-      return data;
+      const response = await apiRequest("/api/blog-posts", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      return response;
     },
-    retry: 1,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    staleTime: 0,
-    gcTime: 0,
   });
 
-  // Add debug logging for the state
-  console.log("=== AdminBlogManagement State Debug ===");
-  console.log("isLoading:", isLoading);
-  console.log("error:", error);
-  console.log("blogPosts:", blogPosts);
-  console.log("blogPosts type:", typeof blogPosts);
-  console.log("blogPosts is array:", Array.isArray(blogPosts));
-  console.log("blogPosts length:", blogPosts?.length);
-
+  // Create blog post mutation
   const createPostMutation = useMutation({
-    mutationFn: (post: Partial<BlogPost>) =>
-      apiRequest("POST", "/api/blog-posts", post),
+    mutationFn: async (postData: Partial<BlogPost>) => {
+      return await apiRequest("/api/blog-posts", {
+        method: "POST",
+        body: JSON.stringify(postData),
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
       toast({
         title: "Success",
         description: "Blog post created successfully",
       });
       setIsCreateDialogOpen(false);
+      invalidateQueries();
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: `Failed to create blog post: ${error.message}`,
         variant: "destructive",
       });
     },
   });
 
+  // Update blog post mutation
   const updatePostMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: number; updates: Partial<BlogPost> }) =>
-      apiRequest("PUT", `/api/blog-posts/${id}`, updates),
+    mutationFn: async (postData: Partial<BlogPost>) => {
+      return await apiRequest(`/api/blog-posts/${selectedPost!.id}`, {
+        method: "PUT",
+        body: JSON.stringify(postData),
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
       toast({
         title: "Success",
         description: "Blog post updated successfully",
       });
       setIsEditDialogOpen(false);
       setSelectedPost(null);
+      invalidateQueries();
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: `Failed to update blog post: ${error.message}`,
         variant: "destructive",
       });
     },
   });
 
+  // Delete blog post mutation
   const deletePostMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/blog-posts/${id}`),
+    mutationFn: async (postId: number) => {
+      return await apiRequest(`/api/blog-posts/${postId}`, {
+        method: "DELETE",
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
       toast({
         title: "Success",
         description: "Blog post deleted successfully",
       });
+      invalidateQueries();
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: `Failed to delete blog post: ${error.message}`,
         variant: "destructive",
       });
     },
   });
 
-  const handleCreatePost = (formData: any) => {
-    const postData = {
-      ...formData,
-      slug: formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-      isPublished: !formData.isDraft,
-      status: !formData.isDraft ? 'published' : 'draft',
-      publishedAt: !formData.isDraft ? new Date().toISOString() : null,
-    };
-    delete postData.isDraft;
+  const handleCreatePost = (postData: Partial<BlogPost>) => {
     createPostMutation.mutate(postData);
   };
 
-  const handleUpdatePost = (formData: any) => {
-    if (selectedPost) {
-      const postData = {
-        ...formData,
-        slug: formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        isPublished: !formData.isDraft,
-        status: !formData.isDraft ? 'published' : 'draft',
-        publishedAt: !formData.isDraft ? new Date().toISOString() : selectedPost.publishedAt,
-      };
-      delete postData.isDraft;
-      updatePostMutation.mutate({
-        id: selectedPost.id,
-        updates: postData,
-      });
-    }
+  const handleUpdatePost = (postData: Partial<BlogPost>) => {
+    updatePostMutation.mutate(postData);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "sleep":
+      case "general":
         return "bg-blue-100 text-blue-800";
-      case "nutrition":
+      case "pregnancy":
+        return "bg-pink-100 text-pink-800";
+      case "baby":
         return "bg-green-100 text-green-800";
-      case "development":
+      case "freebies":
         return "bg-purple-100 text-purple-800";
+      case "toddler":
+        return "bg-orange-100 text-orange-800";
+      case "nutrition":
+        return "bg-yellow-100 text-yellow-800";
       case "health":
         return "bg-red-100 text-red-800";
-      case "freebies":
-        return "bg-pink-100 text-pink-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -233,7 +214,6 @@ export function AdminBlogManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
@@ -356,12 +336,6 @@ export function AdminBlogManagement() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No blog posts found</h3>
-              <p className="text-gray-500">Create your first blog post to get started.</p>
-            </div>
           )}
         </CardContent>
       </Card>
@@ -403,56 +377,54 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
           id="title"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          placeholder="Enter blog post title..."
-          required
+          placeholder="Enter blog post title"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="category">Category</Label>
-          <Select
-            value={formData.category}
-            onValueChange={(value) => setFormData({ ...formData, category: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="general">General</SelectItem>
-              <SelectItem value="sleep">Sleep</SelectItem>
-              <SelectItem value="nutrition">Nutrition</SelectItem>
-              <SelectItem value="development">Development</SelectItem>
-              <SelectItem value="health">Health</SelectItem>
-              <SelectItem value="freebies">Freebies</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="author">Author</Label>
-          <Input
-            id="author"
-            value={formData.author}
-            onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-            placeholder="Daniel Golshevsky"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="readTime">Read Time (minutes)</Label>
-          <Input
-            id="readTime"
-            type="number"
-            value={formData.readTime}
-            onChange={(e) => setFormData({ ...formData, readTime: parseInt(e.target.value) || 5 })}
-            min="1"
-            max="60"
-          />
-        </div>
+      <div>
+        <Label htmlFor="category">Category</Label>
+        <Select
+          value={formData.category}
+          onValueChange={(value) => setFormData({ ...formData, category: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="general">General</SelectItem>
+            <SelectItem value="pregnancy">Pregnancy</SelectItem>
+            <SelectItem value="baby">Baby</SelectItem>
+            <SelectItem value="freebies">Freebies</SelectItem>
+            <SelectItem value="toddler">Toddler</SelectItem>
+            <SelectItem value="nutrition">Nutrition</SelectItem>
+            <SelectItem value="health">Health</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
-        <Label htmlFor="imageUrl">Featured Image URL</Label>
+        <Label htmlFor="author">Author</Label>
+        <Input
+          id="author"
+          value={formData.author}
+          onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+          placeholder="Author name"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="readTime">Read Time (minutes)</Label>
+        <Input
+          id="readTime"
+          type="number"
+          value={formData.readTime}
+          onChange={(e) => setFormData({ ...formData, readTime: parseInt(e.target.value) || 5 })}
+          placeholder="5"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="imageUrl">Image URL</Label>
         <Input
           id="imageUrl"
           value={formData.imageUrl}
@@ -461,29 +433,23 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
         />
       </div>
 
-      {formData.category === "freebies" && (
-        <div>
-          <Label htmlFor="pdfUrl">PDF Download URL</Label>
-          <Input
-            id="pdfUrl"
-            value={formData.pdfUrl}
-            onChange={(e) => setFormData({ ...formData, pdfUrl: e.target.value })}
-            placeholder="https://example.com/document.pdf"
-          />
-          <p className="text-sm text-gray-500 mt-1">
-            Upload your PDF to a cloud storage service and paste the direct download link here. This will enable the "Download Now" button for freebies posts.
-          </p>
-        </div>
-      )}
+      <div>
+        <Label htmlFor="pdfUrl">PDF URL</Label>
+        <Input
+          id="pdfUrl"
+          value={formData.pdfUrl}
+          onChange={(e) => setFormData({ ...formData, pdfUrl: e.target.value })}
+          placeholder="https://example.com/document.pdf"
+        />
+      </div>
 
       <div>
-        <Label htmlFor="excerpt">Excerpt (Optional)</Label>
+        <Label htmlFor="excerpt">Excerpt</Label>
         <Textarea
           id="excerpt"
           value={formData.excerpt}
           onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-          placeholder="Brief description of the post..."
-          rows={2}
+          placeholder="Brief description of the blog post"
         />
       </div>
 
@@ -491,7 +457,7 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
         <Label htmlFor="content">Content</Label>
         <RichTextEditor
           value={formData.content}
-          onChange={(content) => setFormData({ ...formData, content })}
+          onChange={(value) => setFormData({ ...formData, content: value })}
           placeholder="Write your blog post content here..."
         />
       </div>
