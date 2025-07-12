@@ -435,14 +435,28 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(courses.tier, tier));
     }
     
-    return await db.select().from(courses)
+    const result = await db.select().from(courses)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(courses.createdAt);
+    
+    // Convert price from string to number if needed
+    return result.map(course => ({
+      ...course,
+      price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+      discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
+    }));
   }
 
   async getCourse(id: number): Promise<Course | undefined> {
     const [course] = await db.select().from(courses).where(eq(courses.id, id));
-    return course;
+    if (!course) return undefined;
+    
+    // Convert price from string to number if needed
+    return {
+      ...course,
+      price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+      discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
+    };
   }
 
   async createCourse(course: InsertCourse): Promise<Course> {

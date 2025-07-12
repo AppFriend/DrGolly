@@ -310,6 +310,7 @@ export function AdminCourseManagement() {
                         key={course.id} 
                         course={course}
                         onUpdateCourse={handleUpdateCourse}
+                        onPreviewCourse={setPreviewCourse}
                       />
                     ))
                   ) : (
@@ -868,9 +869,10 @@ function CourseModuleManager({ courseId }: CourseModuleManagerProps) {
 interface CourseAccordionViewProps {
   course: Course;
   onUpdateCourse: (updates: Partial<Course>) => void;
+  onPreviewCourse: (course: Course) => void;
 }
 
-function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProps) {
+function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: CourseAccordionViewProps) {
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
   const [editingLesson, setEditingLesson] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -968,16 +970,16 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-              <BookOpen className="h-6 w-6" />
+      <CardHeader className="p-3 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
+              <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div>
-              <CardTitle className="text-lg">{course.title}</CardTitle>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge className={`${getCategoryColor(course.category)} text-xs`}>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base sm:text-lg truncate">{course.title}</CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                <Badge className={`${getCategoryColor(course.category)} text-xs w-fit`}>
                   {course.category}
                 </Badge>
                 <span className="text-sm text-gray-500">
@@ -986,14 +988,14 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Badge variant="outline" className="text-xs">
               ${typeof course.price === 'number' ? course.price.toFixed(2) : course.price}
             </Badge>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPreviewCourse(course)}
+              onClick={() => onPreviewCourse(course)}
               className="h-8 w-8 p-0"
             >
               <Eye className="h-4 w-4" />
@@ -1008,6 +1010,7 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
                   description: "Course editing functionality will be added soon",
                 });
               }}
+              className="h-8 w-8 p-0"
             >
               <Edit className="h-4 w-4" />
             </Button>
