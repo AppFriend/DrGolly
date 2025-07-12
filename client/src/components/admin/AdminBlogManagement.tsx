@@ -60,7 +60,17 @@ export function AdminBlogManagement() {
 
 
   const { data: blogPosts, isLoading, error } = useQuery({
-    queryKey: [`/api/blog-posts?includeUnpublished=true`],
+    queryKey: [`/api/blog-posts`, { includeUnpublished: true }],
+    queryFn: async () => {
+      console.log("=== QUERY FUNCTION EXECUTING ===");
+      const response = await apiRequest('GET', `/api/blog-posts?includeUnpublished=true`);
+      const data = await response.json();
+      console.log("Response data:", data);
+      console.log("Data type:", typeof data);
+      console.log("Is array:", Array.isArray(data));
+      console.log("Data length:", data?.length);
+      return data;
+    },
     retry: 1,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
@@ -68,8 +78,14 @@ export function AdminBlogManagement() {
     gcTime: 0,
   });
 
-
-
+  // Add debug logging for the state
+  console.log("=== AdminBlogManagement State Debug ===");
+  console.log("isLoading:", isLoading);
+  console.log("error:", error);
+  console.log("blogPosts:", blogPosts);
+  console.log("blogPosts type:", typeof blogPosts);
+  console.log("blogPosts is array:", Array.isArray(blogPosts));
+  console.log("blogPosts length:", blogPosts?.length);
 
   const createPostMutation = useMutation({
     mutationFn: (post: Partial<BlogPost>) =>

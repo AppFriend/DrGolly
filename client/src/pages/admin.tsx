@@ -26,6 +26,7 @@ import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { AdminUserSettings } from "@/components/admin/AdminUserSettings";
 import { EnhancedCourseManagement } from "@/components/admin/EnhancedCourseManagement";
 import { EnhancedBlogManagement } from "@/components/admin/EnhancedBlogManagement";
+import { AdminBlogManagementSimple } from "@/components/admin/AdminBlogManagementSimple";
 
 
 export default function AdminPanel() {
@@ -140,7 +141,7 @@ export default function AdminPanel() {
           </TabsContent>
 
           <TabsContent value="blog" className="mt-6">
-            <EnhancedBlogManagement />
+            <AdminBlogManagementSimple />
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6">
