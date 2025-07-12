@@ -57,85 +57,17 @@ export function AdminBlogManagement() {
     queryClient.invalidateQueries({ queryKey: ["/api/blog-posts"] });
   }, [queryClient]);
 
-  // Force fresh data with a test call first
-  const [testData, setTestData] = useState(null);
-  
-  useEffect(() => {
-    const testCall = async () => {
-      try {
-        console.log("=== TESTING API CALL ===");
-        const testUrl = `/api/blog-posts?includeUnpublished=true&test=${Date.now()}`;
-        console.log("Test URL:", testUrl);
-        
-        const testResponse = await fetch(testUrl, {
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        console.log("Test response status:", testResponse.status);
-        if (testResponse.ok) {
-          const testData = await testResponse.json();
-          console.log("Test data received:", testData.length, "posts");
-          setTestData(testData);
-        }
-      } catch (error) {
-        console.error("Test call failed:", error);
-      }
-    };
-    
-    testCall();
-  }, []);
+
 
   const { data: blogPosts, isLoading, error } = useQuery({
-    queryKey: ["admin-blog-posts-unpublished", "v3", Date.now()],
-    queryFn: async () => {
-      try {
-        console.log("=== QUERY FUNCTION CALLED ===");
-        const url = `/api/blog-posts?includeUnpublished=true&cache=${Date.now()}`;
-        console.log("Query URL:", url);
-        
-        const response = await fetch(url, {
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        console.log("Query response status:", response.status);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log("Query data received:", data.length, "posts");
-        
-        return Array.isArray(data) ? data : [];
-      } catch (err) {
-        console.error("Query Error:", err);
-        throw err;
-      }
-    },
+    queryKey: [`/api/blog-posts?includeUnpublished=true`],
     retry: 1,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     staleTime: 0,
     gcTime: 0,
   });
-  
-  // Debug logging for current state
-  console.log("AdminBlogManagement State:", {
-    isLoading,
-    error: error?.message,
-    blogPostsLength: blogPosts?.length,
-    blogPostsType: typeof blogPosts,
-    isArray: Array.isArray(blogPosts),
-    firstPost: blogPosts?.[0]
-  });
+
 
 
 
