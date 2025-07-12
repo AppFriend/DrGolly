@@ -195,6 +195,16 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
             </div>
           )}
         </div>
+        
+        {/* Footer Close Button */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="w-full py-2 px-4 bg-brand-teal text-white rounded-lg hover:bg-brand-teal/90 transition-colors font-medium"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
