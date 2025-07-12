@@ -22,6 +22,86 @@ import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
+// Testimonial data
+const testimonials = [
+  {
+    name: "Kristiana E",
+    review: "Dr Golly's program has helped me get my baby to have much more quality and long lasting sleeps. I'm so happy that I stumbled across this program especially as a new parent.",
+    program: "Big baby sleep program"
+  },
+  {
+    name: "Sigourney S", 
+    review: "Toddler sleep felt impossible, bedtime battles, night wakes, early starts... we were all exhausted. The Dr Golly Toddler Program gave us the tools (and confidence) to create calm, consistent routines that actually work.",
+    program: "Toddler sleep program"
+  },
+  {
+    name: "Sarah M",
+    review: "Within 3 days of implementing the techniques, our 6-month-old was sleeping through the night. The program is clear, evidence-based, and actually works!",
+    program: "Big baby sleep program"
+  },
+  {
+    name: "Jennifer L",
+    review: "I was skeptical at first, but Dr Golly's approach is so gentle and effective. My toddler now goes to bed without fights and sleeps 11 hours straight!",
+    program: "Toddler sleep program"
+  }
+];
+
+// TestimonialCarousel Component
+function TestimonialCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % testimonials.length);
+    }, 4000); // Change every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="relative overflow-hidden">
+        <div 
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {testimonials.map((testimonial, index) => (
+            <div key={index} className="w-full flex-shrink-0 border-b pb-4">
+              <div className="flex items-center space-x-1 mb-2">
+                <span className="font-medium">{testimonial.name}</span>
+                <div className="flex text-yellow-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-3 w-3 fill-current" />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center space-x-1 mb-2">
+                <Check className="h-4 w-4 text-green-500" />
+                <span className="text-sm text-gray-600">Verified Customer</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-1">{testimonial.program}</p>
+              <p className="text-sm">{testimonial.review}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Dots indicator */}
+      <div className="flex justify-center space-x-2">
+        {testimonials.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentIndex(index)}
+            className={`w-2 h-2 rounded-full transition-colors ${
+              index === currentIndex ? 'bg-[#6B9CA3]' : 'bg-gray-300'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Big Baby course details
 const BIG_BABY_COURSE = {
   id: 6,
@@ -240,71 +320,124 @@ function PaymentForm({
 
   return (
     <div className="space-y-6">
-      {/* Express Payment Buttons (Mobile Only) */}
-      {isMobile && paymentRequest && (
-        <div className="space-y-3">
-          <div className="bg-black text-white rounded-lg p-4 flex items-center justify-center">
-            <Smartphone className="h-5 w-5 mr-2" />
-            <span className="font-medium">Pay with Apple Pay</span>
-          </div>
-          <PaymentRequestButtonElement
-            options={{ paymentRequest }}
-            className="StripeElement"
-          />
-        </div>
-      )}
-
-      {/* Payment Method Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="link">🔗 Link</TabsTrigger>
-          <TabsTrigger value="card">💳 Card</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="link" className="space-y-4">
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <div className="bg-green-500 text-white rounded-full p-2">
-                <Check className="h-4 w-4" />
-              </div>
-              <span className="font-medium">Link - Pay with saved details</span>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              Use your saved payment information for a faster checkout
-            </p>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="card" className="space-y-4">
-          <div className="p-4 border rounded-lg">
-            <div className="flex items-center space-x-2 mb-4">
-              <CreditCard className="h-5 w-5 text-gray-600" />
-              <span className="font-medium">Credit / Debit Card</span>
-              <div className="flex space-x-1 text-xs text-gray-500">
-                <span>Visa</span>
-                <span>•</span>
-                <span>Mastercard</span>
-                <span>•</span>
-                <span>Amex</span>
-              </div>
-            </div>
-            
-            <CardElement
-              options={{
+      {/* Express Payment Buttons */}
+      <div className="space-y-3">
+        {/* Apple Pay Button */}
+        {isMobile && paymentRequest && (
+          <div className="w-full">
+            <PaymentRequestButtonElement
+              options={{ 
+                paymentRequest,
                 style: {
-                  base: {
-                    fontSize: '16px',
-                    color: '#424770',
-                    '::placeholder': {
-                      color: '#aab7c4',
-                    },
+                  paymentRequestButton: {
+                    height: '48px',
+                    theme: 'dark',
+                    type: 'default',
                   },
                 },
               }}
+              className="w-full"
             />
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+
+        {/* Link Button */}
+        <Button
+          onClick={() => setActiveTab('link')}
+          className={`w-full h-12 flex items-center justify-center space-x-2 ${
+            activeTab === 'link' 
+              ? 'bg-[#095D66] text-white' 
+              : 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <span className="text-lg">🔗</span>
+          <span className="font-medium">Link</span>
+        </Button>
+
+        {/* PayPal Button */}
+        <Button
+          onClick={() => setActiveTab('paypal')}
+          className={`w-full h-12 flex items-center justify-center space-x-2 ${
+            activeTab === 'paypal' 
+              ? 'bg-[#0070ba] text-white' 
+              : 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <span className="text-lg font-bold text-[#0070ba]">PayPal</span>
+        </Button>
+
+        {/* Card Button */}
+        <Button
+          onClick={() => setActiveTab('card')}
+          className={`w-full h-12 flex items-center justify-center space-x-2 ${
+            activeTab === 'card' 
+              ? 'bg-[#095D66] text-white' 
+              : 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <CreditCard className="h-5 w-5" />
+          <span className="font-medium">Credit / Debit Card</span>
+        </Button>
+      </div>
+
+      {/* Payment Method Content */}
+      {activeTab === 'link' && (
+        <div className="bg-green-50 p-4 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="bg-green-500 text-white rounded-full p-2">
+              <Check className="h-4 w-4" />
+            </div>
+            <span className="font-medium">Link - Pay with saved details</span>
+          </div>
+          <p className="text-sm text-gray-600 mt-2">
+            Use your saved payment information for a faster checkout
+          </p>
+        </div>
+      )}
+      
+      {activeTab === 'paypal' && (
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="bg-[#0070ba] text-white rounded-full p-2">
+              <Check className="h-4 w-4" />
+            </div>
+            <span className="font-medium">PayPal - Pay with your PayPal account</span>
+          </div>
+          <p className="text-sm text-gray-600 mt-2">
+            You'll be redirected to PayPal to complete your payment
+          </p>
+        </div>
+      )}
+      
+      {activeTab === 'card' && (
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center space-x-2 mb-4">
+            <CreditCard className="h-5 w-5 text-gray-600" />
+            <span className="font-medium">Credit / Debit Card</span>
+            <div className="flex space-x-1 text-xs text-gray-500">
+              <span>Visa</span>
+              <span>•</span>
+              <span>Mastercard</span>
+              <span>•</span>
+              <span>Amex</span>
+            </div>
+          </div>
+          
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#424770',
+                  '::placeholder': {
+                    color: '#aab7c4',
+                  },
+                },
+              },
+            }}
+          />
+        </div>
+      )}
 
       {/* Billing Details */}
       <div className="space-y-4">
@@ -390,7 +523,7 @@ export default function BigBabyPublic() {
   });
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
-  const [orderExpanded, setOrderExpanded] = useState(false);
+  const [orderExpanded, setOrderExpanded] = useState(true);
 
   // Fetch regional pricing
   const { data: regionalPricing } = useQuery({
@@ -531,7 +664,8 @@ export default function BigBabyPublic() {
                 </div>
                 <CouponInput
                   onCouponApplied={setAppliedCoupon}
-                  originalPrice={originalPrice}
+                  onCouponRemoved={() => setAppliedCoupon(null)}
+                  appliedCoupon={appliedCoupon}
                 />
               </div>
               
@@ -600,26 +734,7 @@ export default function BigBabyPublic() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="border-b pb-4">
-              <div className="flex items-center space-x-1 mb-2">
-                <span className="font-medium">Sigourney S</span>
-                <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-3 w-3 fill-current" />
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center space-x-1 mb-2">
-                <Check className="h-4 w-4 text-green-500" />
-                <span className="text-sm text-gray-600">Verified Customer</span>
-              </div>
-              <p className="text-sm text-gray-600 mb-1">Toddler sleep program</p>
-              <p className="text-sm">
-                Toddler sleep felt impossible, bedtime battles, night wakes, early starts... we were all exhausted. The Dr Golly Toddler Program gave us the tools (and confidence) to create calm, consistent routines that actually work. No crying it out, no power struggles, just simple, evidence...
-              </p>
-            </div>
-          </div>
+          <TestimonialCarousel />
         </div>
 
         {/* Footer Links */}
