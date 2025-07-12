@@ -351,19 +351,35 @@ export default function CourseOverview() {
                                   )}
                                 </div>
                                 
-                                {/* Start Button */}
+                                {/* Status Indicator */}
                                 <div className="flex-shrink-0">
-                                  <Button
-                                    size="sm"
-                                    className="bg-[#095D66] hover:bg-[#095D66]/90 text-white text-xs px-3 py-1 h-7"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStartLesson(lesson.id);
-                                    }}
-                                  >
-                                    <Play className="w-3 h-3 mr-1" />
-                                    Start
-                                  </Button>
+                                  {(() => {
+                                    const progress = getLessonProgress(lesson.id);
+                                    const isCompleted = progress?.completedAt;
+                                    
+                                    if (isCompleted) {
+                                      return (
+                                        <div className="flex items-center gap-1 text-green-600">
+                                          <CheckCircle className="w-4 h-4" />
+                                          <span className="text-xs font-medium">Complete</span>
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <Button
+                                        size="sm"
+                                        className="bg-[#095D66] hover:bg-[#095D66]/90 text-white text-xs px-3 py-1 h-7"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStartLesson(lesson.id);
+                                        }}
+                                      >
+                                        <Play className="w-3 h-3 mr-1" />
+                                        Start
+                                      </Button>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             ))
