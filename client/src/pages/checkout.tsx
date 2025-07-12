@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStripe, useElements, PaymentRequestButtonElement, CardElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
+import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
@@ -259,14 +260,14 @@ function PaymentForm({
         <TabsContent value="card" className="space-y-4">
           <div className="p-4 border rounded-lg">
             <div className="flex items-center space-x-2 mb-4">
-              <CreditCard className="h-5 w-5 text-gray-600" />
-              <span className="font-medium">Credit / Debit Card</span>
-              <div className="flex space-x-1 text-xs text-gray-500">
-                <span>Visa</span>
-                <span>•</span>
-                <span>Mastercard</span>
-                <span>•</span>
-                <span>Amex</span>
+              <div className="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded-full"></div>
+              </div>
+              <span className="font-medium text-sm">Credit / Debit Card</span>
+              <div className="flex space-x-1 ml-auto">
+                <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" className="h-5" />
+                <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" className="h-5" />
+                <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a0aae7eba.svg" alt="Amex" className="h-5" />
               </div>
             </div>
             
@@ -327,10 +328,9 @@ function PaymentForm({
         
         <div>
           <Label htmlFor="address">Address</Label>
-          <Input
-            id="address"
+          <GoogleMapsAutocomplete
             value={billingDetails.address}
-            onChange={(e) => handleBillingChange('address', e.target.value)}
+            onChange={(value) => handleBillingChange('address', value)}
             placeholder="Start typing your address"
           />
         </div>
