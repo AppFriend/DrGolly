@@ -10,6 +10,8 @@ import { FcGoogle } from "react-icons/fc";
 import { Link } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import { FacebookPixel } from "@/lib/facebook-pixel";
 
@@ -35,6 +37,7 @@ const COUNTRY_CODES = [
 export default function Signup() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
   
   // Basic info
   const [firstName, setFirstName] = useState("");
@@ -139,40 +142,45 @@ export default function Signup() {
       // Track complete registration
       FacebookPixel.trackCompleteRegistration();
       
-      // Store signup data with personalization for the login flow
-      localStorage.setItem('signupData', JSON.stringify({
+      // Prepare personalization data
+      const personalizationData = {
+        ...personalization,
+        phoneNumber: selectedCountryCode + phoneNumber,
+        onboardingCompleted: true,
+        primaryConcerns: JSON.stringify(personalization.primaryConcerns || []),
+        profilePictureUrl: profilePictureUrl
+      };
+      
+      // Sign up user with Dr. Golly authentication
+      const response = await apiRequest("POST", "/api/auth/signup", {
         firstName,
         lastName,
         email,
-        personalization: {
-          ...personalization,
-          phoneNumber: selectedCountryCode + phoneNumber,
-          onboardingCompleted: true
-        }
-      }));
-      
-      // Redirect to login with our enhanced flow
-      window.location.href = '/api/login';
-    } catch (error) {
+        password,
+        personalization: personalizationData
+      });
+
+      if (response.success) {
+        // Signup successful, redirect to home
+        window.location.href = '/';
+      }
+    } catch (error: any) {
       console.error('Complete signup error:', error);
+      toast({
+        title: "Signup Failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignUp = () => {
-    // Store current step for later completion
-    localStorage.setItem('signupStep', step.toString());
-    localStorage.setItem('signupData', JSON.stringify({
-      firstName,
-      lastName,
-      email,
-      personalization: {
-        ...personalization,
-        phoneNumber: selectedCountryCode + phoneNumber
-      }
-    }));
-    
-    window.location.href = '/api/login';
+    // For now, redirect to email signup since we don't have Google OAuth set up
+    toast({
+      title: "Google Sign Up",
+      description: "Please use email and password for now.",
+    });
   };
 
   const renderStep = () => {
@@ -195,7 +203,7 @@ export default function Signup() {
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="First Name"
                     required
-                    className="rounded-xl border-gray-300 py-3 px-4"
+                    className="rounded-xl border-gray-300 py-3 px-4 bg-white text-gray-900 placeholder-gray-500"
                   />
                 </div>
                 <div>
@@ -206,7 +214,7 @@ export default function Signup() {
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Last Name"
                     required
-                    className="rounded-xl border-gray-300 py-3 px-4"
+                    className="rounded-xl border-gray-300 py-3 px-4 bg-white text-gray-900 placeholder-gray-500"
                   />
                 </div>
               </div>
@@ -220,7 +228,7 @@ export default function Signup() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email Address"
                   required
-                  className="rounded-xl border-gray-300 py-3 px-4"
+                  className="rounded-xl border-gray-300 py-3 px-4 bg-white text-gray-900 placeholder-gray-500"
                 />
               </div>
 
@@ -234,7 +242,7 @@ export default function Signup() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password"
                     required
-                    className="rounded-xl border-gray-300 py-3 px-4 pr-12"
+                    className="rounded-xl border-gray-300 py-3 px-4 pr-12 bg-white text-gray-900 placeholder-gray-500"
                   />
                   <button
                     type="button"

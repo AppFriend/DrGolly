@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, ArrowLeft } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import drGollyImage from "@assets/drgolly_1751955955105.jpg";
 
 export default function Login() {
@@ -12,24 +14,41 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // For now, redirect to the login endpoint
-      // In a full implementation, this would be a custom email/password auth
-      window.location.href = '/api/login';
-    } catch (error) {
+      const response = await apiRequest("POST", "/api/auth/public-login", {
+        email,
+        password
+      });
+
+      if (response.success) {
+        // Login successful, redirect to home
+        window.location.href = '/';
+      }
+    } catch (error: any) {
       console.error('Sign in error:', error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "Please check your email and password.",
+        variant: "destructive",
+      });
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
     try {
-      window.location.href = '/api/login';
+      // For now, redirect to email login since we don't have Google OAuth set up
+      // In future, this would integrate with Google OAuth
+      toast({
+        title: "Google Sign In",
+        description: "Please use email and password for now.",
+      });
     } catch (error) {
       console.error('Google sign in error:', error);
     }
@@ -107,7 +126,7 @@ export default function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 py-3 rounded-full border-2 border-gray-200 focus:border-[#83CFCC] focus:ring-[#83CFCC]"
+                  className="pl-10 py-3 rounded-full border-2 border-gray-200 focus:border-[#83CFCC] focus:ring-[#83CFCC] bg-white text-gray-900 placeholder-gray-500"
                   placeholder="Enter your email"
                   required
                 />
@@ -124,7 +143,7 @@ export default function Login() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10 py-3 rounded-full border-2 border-gray-200 focus:border-[#83CFCC] focus:ring-[#83CFCC]"
+                  className="pr-10 py-3 rounded-full border-2 border-gray-200 focus:border-[#83CFCC] focus:ring-[#83CFCC] bg-white text-gray-900 placeholder-gray-500"
                   placeholder="Enter your password"
                   required
                 />
