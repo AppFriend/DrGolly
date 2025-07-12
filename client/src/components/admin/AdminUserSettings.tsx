@@ -46,15 +46,33 @@ export function AdminUserSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ["/api/admin/users"],
+  const { data: adminUsers, isLoading } = useQuery({
+    queryKey: ["/api/admin/admin-users"],
+  });
+
+  const createAdminUsersMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/create-admins"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/admin-users"] });
+      toast({
+        title: "Success",
+        description: "Admin users created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const updateUserMutation = useMutation({
     mutationFn: ({ userId, updates }: { userId: string; updates: Partial<AdminUser> }) =>
       apiRequest("PATCH", `/api/admin/users/${userId}`, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/admin-users"] });
       toast({
         title: "Success",
         description: "User permissions updated successfully",
@@ -116,8 +134,8 @@ export function AdminUserSettings() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const adminUsers = users?.filter((user: AdminUser) => user.isAdmin) || [];
-  const regularUsers = users?.filter((user: AdminUser) => !user.isAdmin) || [];
+  const displayAdminUsers = adminUsers?.filter((user: AdminUser) => user.isAdmin) || [];
+  const regularUsers = adminUsers?.filter((user: AdminUser) => !user.isAdmin) || [];
 
   return (
     <div className="space-y-4">
@@ -128,15 +146,29 @@ export function AdminUserSettings() {
             Manage admin permissions and user roles
           </p>
         </div>
-        {!showInviteForm && (
+        <div className="flex gap-2">
+          {!showInviteForm && (
+            <Button
+              onClick={() => setShowInviteForm(true)}
+              className="bg-[#095D66] hover:bg-[#83CFCC] text-white"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Invite Admin
+            </Button>
+          )}
           <Button
-            onClick={() => setShowInviteForm(true)}
-            className="bg-[#095D66] hover:bg-[#83CFCC] text-white"
+            onClick={() => createAdminUsersMutation.mutate()}
+            disabled={createAdminUsersMutation.isPending}
+            className="bg-green-700 hover:bg-green-800 text-white"
           >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Invite Admin
+            {createAdminUsersMutation.isPending ? (
+              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+            ) : (
+              <Shield className="mr-2 h-4 w-4" />
+            )}
+            Create Admin Users
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Admin Invite Form */}
@@ -220,7 +252,7 @@ export function AdminUserSettings() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Shield className="h-4 w-4 text-[#6B9CA3]" />
-            Admin Users ({adminUsers.length})
+            Admin Users ({displayAdminUsers.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -232,9 +264,13 @@ export function AdminUserSettings() {
                 </div>
               ))}
             </div>
+          ) : displayAdminUsers.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              No admin users found. Click "Create Admin Users" to create the default admin accounts.
+            </div>
           ) : (
             <div className="space-y-3">
-              {adminUsers.map((user: AdminUser) => (
+              {displayAdminUsers.map((user: AdminUser) => (
                 <div
                   key={user.id}
                   className="border rounded-lg p-3 bg-[#6B9CA3]/5"
