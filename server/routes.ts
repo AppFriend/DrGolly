@@ -1004,16 +1004,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         includeUnpublished === 'true'
       );
       
-      // Enhance courses with dynamic pricing from Stripe products
-      const coursesWithPricing = await Promise.all(
-        courses.map(async (course) => {
-          const price = await storage.getCoursePricing(course.id);
-          return {
-            ...course,
-            price: price || 12000 // Default to $120 (in cents) if no Stripe product found
-          };
-        })
-      );
+      // Use database course pricing instead of Stripe products
+      const coursesWithPricing = courses.map(course => ({
+        ...course,
+        // Keep the database price as-is since it's already in dollars
+        price: course.price
+      }));
       
       res.json(coursesWithPricing);
     } catch (error) {
