@@ -2,10 +2,10 @@ import { db } from "../server/db";
 import { 
   courses, 
   courseChapters, 
-  courseModules,
+  courseLessons,
   insertCourseSchema,
   insertCourseChapterSchema,
-  insertCourseModuleSchema
+  insertCourseLessonSchema
 } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import * as fs from "fs";

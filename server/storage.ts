@@ -340,17 +340,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(userId: string, userData: Partial<User>): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({
-        ...userData,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
-  }
+
 
   async updateUserPersonalization(userId: string, personalizationData: {
     primaryConcerns?: string;
@@ -1691,53 +1681,7 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.count || 0;
   }
 
-  async createOrUpdateAdminUser(email: string, firstName: string, lastName: string): Promise<User> {
-    try {
-      // First check if user exists
-      const existingUser = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
 
-      if (existingUser.length > 0) {
-        // Update existing user to be admin and Gold tier
-        const [updatedUser] = await db
-          .update(users)
-          .set({
-            firstName,
-            lastName,
-            isAdmin: true,
-            subscriptionTier: 'gold',
-            subscriptionStatus: 'active',
-            updatedAt: new Date(),
-          })
-          .where(eq(users.email, email))
-          .returning();
-        return updatedUser;
-      } else {
-        // Create new admin user
-        const [newUser] = await db
-          .insert(users)
-          .values({
-            id: `admin_${Date.now()}`,
-            email,
-            firstName,
-            lastName,
-            isAdmin: true,
-            subscriptionTier: 'gold',
-            subscriptionStatus: 'active',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-        return newUser;
-      }
-    } catch (error) {
-      console.error('Error creating/updating admin user:', error);
-      throw error;
-    }
-  }
 
   async getUserMetrics(): Promise<{
     totalUsers: number;
@@ -2074,14 +2018,6 @@ export class DatabaseStorage implements IStorage {
       .update(familyInvites)
       .set({ status })
       .where(eq(familyInvites.id, inviteId));
-  }
-
-  async createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember> {
-    const [result] = await db
-      .insert(familyMembers)
-      .values(member)
-      .returning();
-    return result;
   }
 
   async acceptFamilyInvite(inviteId: number, memberId: string): Promise<void> {
