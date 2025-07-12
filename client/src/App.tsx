@@ -34,6 +34,7 @@ import CheckoutSubscription from "@/pages/checkout-subscription";
 import Admin from "@/pages/admin";
 import Profile from "@/pages/profile";
 import KlaviyoTest from "@/pages/klaviyo-test";
+import NotificationTest from "@/pages/notification-test";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
 import Refunds from "@/pages/refunds";
@@ -82,6 +83,7 @@ function AuthenticatedApp() {
         <Route path="/contact" component={Contact} />
         <Route path="/shipping" component={Shipping} />
         <Route path="/klaviyo-test" component={KlaviyoTest} />
+        <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/share/:slug" component={Share} />
         
