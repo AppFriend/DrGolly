@@ -235,12 +235,23 @@ function PaymentForm({
         
         <TabsContent value="link" className="space-y-4">
           <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center justify-center mb-4">
-              <img src={linkLogo} alt="Link" className="h-16 w-auto" />
+            <div className="flex items-center justify-between mb-4">
+              <img src={linkLogo} alt="Link" className="h-6 w-auto" />
+              <div className="flex items-center text-gray-600 text-sm">
+                <span>frazeradnam@gmail.com</span>
+                <span className="ml-1">▼</span>
+                <span className="ml-2">✕</span>
+              </div>
             </div>
-            <p className="text-sm text-gray-600 text-center">
-              Use your saved payment information for a faster checkout
-            </p>
+            <div className="flex space-x-2">
+              <Button variant="outline" className="flex-1 text-sm">
+                <span className="mr-2">💳</span>
+                Use •••• 0796
+              </Button>
+              <Button variant="outline" className="flex-1 text-sm">
+                Pay another way
+              </Button>
+            </div>
           </div>
         </TabsContent>
         
