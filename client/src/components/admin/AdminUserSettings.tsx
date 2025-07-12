@@ -134,8 +134,7 @@ export function AdminUserSettings() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const displayAdminUsers = adminUsers?.filter((user: AdminUser) => user.isAdmin) || [];
-  const regularUsers = adminUsers?.filter((user: AdminUser) => !user.isAdmin) || [];
+  const displayAdminUsers = adminUsers || [];
 
   return (
     <div className="space-y-4">
@@ -146,27 +145,29 @@ export function AdminUserSettings() {
             Manage admin permissions and user roles
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {!showInviteForm && (
             <Button
               onClick={() => setShowInviteForm(true)}
-              className="bg-[#095D66] hover:bg-[#83CFCC] text-white"
+              className="bg-[#095D66] hover:bg-[#83CFCC] text-white text-sm px-3 py-2"
             >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Invite Admin
+              <UserPlus className="mr-1 h-4 w-4" />
+              <span className="hidden sm:inline">Invite Admin</span>
+              <span className="sm:hidden">Invite</span>
             </Button>
           )}
           <Button
             onClick={() => createAdminUsersMutation.mutate()}
             disabled={createAdminUsersMutation.isPending}
-            className="bg-green-700 hover:bg-green-800 text-white"
+            className="bg-green-700 hover:bg-green-800 text-white text-sm px-3 py-2"
           >
             {createAdminUsersMutation.isPending ? (
-              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-1" />
             ) : (
-              <Shield className="mr-2 h-4 w-4" />
+              <Shield className="mr-1 h-4 w-4" />
             )}
-            Create Admin Users
+            <span className="hidden sm:inline">Create Admin Users</span>
+            <span className="sm:hidden">Create</span>
           </Button>
         </div>
       </div>
@@ -289,20 +290,20 @@ export function AdminUserSettings() {
                           size="sm"
                           onClick={() => handleToggleAdmin(user.id, false)}
                           disabled={updateUserMutation.isPending}
-                          className="h-7 w-7 p-0 flex-shrink-0"
+                          className="h-6 w-6 p-0 flex-shrink-0 border-red-200 hover:bg-red-50"
                         >
-                          <UserX className="h-3 w-3" />
+                          <UserX className="h-3 w-3 text-red-500" />
                         </Button>
                       </div>
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <Badge className="bg-[#6B9CA3] text-white text-xs px-2 py-0.5">
                           Admin
                         </Badge>
-                        <Badge variant="outline" className="text-yellow-600 text-xs px-2 py-0.5">
+                        <Badge variant="outline" className="text-yellow-600 text-xs px-2 py-0.5 capitalize">
                           {user.subscriptionTier}
                         </Badge>
                       </div>
-                      <div className="text-xs text-gray-600 truncate">
+                      <div className="text-xs text-gray-600 truncate break-all">
                         {user.email} • Joined {formatDate(user.createdAt)}
                       </div>
                     </div>
