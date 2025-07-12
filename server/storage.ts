@@ -21,6 +21,8 @@ import {
   coursePurchases,
   featureFlags,
   adminNotifications,
+  notifications,
+  userNotifications,
   familyMembers,
   familyInvites,
   stripeProducts,
@@ -69,6 +71,10 @@ import {
   type InsertCoursePurchase,
   type AdminNotification,
   type InsertAdminNotification,
+  type Notification,
+  type InsertNotification,
+  type UserNotification,
+  type InsertUserNotification,
   temporaryPasswords,
   type TemporaryPassword,
   type InsertTemporaryPassword,
@@ -85,7 +91,7 @@ import {
   type InsertLeadCapture,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, gte, or, ilike, sql, isNotNull, gt } from "drizzle-orm";
+import { eq, desc, and, count, gte, or, ilike, sql, isNotNull, isNull, gt } from "drizzle-orm";
 import { AuthUtils } from "./auth-utils";
 import Stripe from "stripe";
 
@@ -306,6 +312,14 @@ export interface IStorage {
   updateRegionalPricing(id: number, updates: Partial<RegionalPricing>): Promise<RegionalPricing>;
   getCoursePricing(courseId: number): Promise<number | null>;
   getSubscriptionPricing(): Promise<{ monthly: number | null; yearly: number | null; }>;
+
+  // Notification operations
+  getUserNotifications(userId: string): Promise<Array<Notification & { isRead: boolean; readAt: Date | null }>>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationAsRead(userId: string, notificationId: number): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  createUserNotification(userNotification: InsertUserNotification): Promise<UserNotification>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1884,6 +1898,153 @@ export class DatabaseStorage implements IStorage {
       .update(adminNotifications)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(adminNotifications.id, id));
+  }
+
+  // USER NOTIFICATION METHODS
+  async getUserNotifications(userId: string): Promise<Array<Notification & { isRead: boolean; readAt: Date | null }>> {
+    const userNotifs = await db
+      .select({
+        id: notifications.id,
+        title: notifications.title,
+        message: notifications.message,
+        type: notifications.type,
+        category: notifications.category,
+        priority: notifications.priority,
+        actionText: notifications.actionText,
+        actionUrl: notifications.actionUrl,
+        createdAt: notifications.createdAt,
+        isRead: userNotifications.isRead ?? false,
+        readAt: userNotifications.readAt,
+        // Include all other notification fields
+        targetType: notifications.targetType,
+        targetUsers: notifications.targetUsers,
+        targetTiers: notifications.targetTiers,
+        isScheduled: notifications.isScheduled,
+        scheduledFor: notifications.scheduledFor,
+        isAutomated: notifications.isAutomated,
+        automationTrigger: notifications.automationTrigger,
+        isActive: notifications.isActive,
+        isPublished: notifications.isPublished,
+        publishedAt: notifications.publishedAt,
+        expiresAt: notifications.expiresAt,
+        totalSent: notifications.totalSent,
+        totalRead: notifications.totalRead,
+        createdBy: notifications.createdBy,
+        updatedAt: notifications.updatedAt,
+      })
+      .from(notifications)
+      .leftJoin(userNotifications, and(
+        eq(notifications.id, userNotifications.notificationId),
+        eq(userNotifications.userId, userId)
+      ))
+      .where(
+        or(
+          eq(notifications.targetType, 'global'),
+          and(
+            eq(notifications.targetType, 'user'),
+            sql`${notifications.targetUsers} @> ARRAY[${userId}]`
+          )
+        )
+      )
+      .orderBy(desc(notifications.createdAt));
+    
+    return userNotifs;
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .leftJoin(userNotifications, and(
+        eq(notifications.id, userNotifications.notificationId),
+        eq(userNotifications.userId, userId)
+      ))
+      .where(and(
+        or(
+          eq(notifications.targetType, 'global'),
+          and(
+            eq(notifications.targetType, 'user'),
+            sql`${notifications.targetUsers} @> ARRAY[${userId}]`
+          )
+        ),
+        or(
+          eq(userNotifications.isRead, false),
+          isNull(userNotifications.isRead)
+        )
+      ));
+    
+    return result.count;
+  }
+
+  async markNotificationAsRead(userId: string, notificationId: number): Promise<void> {
+    await db
+      .insert(userNotifications)
+      .values({
+        userId,
+        notificationId,
+        isRead: true,
+        readAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [userNotifications.userId, userNotifications.notificationId],
+        set: {
+          isRead: true,
+          readAt: new Date(),
+          updatedAt: new Date(),
+        }
+      });
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    // Get all notifications for this user
+    const notifs = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(
+        or(
+          eq(notifications.targetType, 'global'),
+          and(
+            eq(notifications.targetType, 'user'),
+            sql`${notifications.targetUsers} @> ARRAY[${userId}]`
+          )
+        )
+      );
+
+    // Mark all as read
+    for (const notif of notifs) {
+      await db
+        .insert(userNotifications)
+        .values({
+          userId,
+          notificationId: notif.id,
+          isRead: true,
+          readAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [userNotifications.userId, userNotifications.notificationId],
+          set: {
+            isRead: true,
+            readAt: new Date(),
+            updatedAt: new Date(),
+          }
+        });
+    }
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
+    return newNotification;
+  }
+
+  async createUserNotification(userNotification: InsertUserNotification): Promise<UserNotification> {
+    const [newUserNotification] = await db
+      .insert(userNotifications)
+      .values(userNotification)
+      .returning();
+    return newUserNotification;
   }
 
   // Temporary password system for bulk imports
