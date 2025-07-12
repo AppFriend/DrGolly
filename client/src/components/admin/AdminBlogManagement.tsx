@@ -21,6 +21,8 @@ import {
   Calendar,
   Eye,
   Heart,
+  Pin,
+  PinOff,
 } from "lucide-react";
 
 interface BlogPost {
@@ -37,6 +39,8 @@ interface BlogPost {
   slug: string;
   views: number;
   likes: number;
+  isPinned: boolean;
+  pinnedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -135,6 +139,30 @@ export default function AdminBlogManagement() {
       toast({
         title: "Error",
         description: `Failed to delete blog post: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Pin/Unpin blog post mutation
+  const pinPostMutation = useMutation({
+    mutationFn: async ({ postId, isPinned }: { postId: number; isPinned: boolean }) => {
+      return await apiRequest(`/api/blog-posts/${postId}`, {
+        method: "PUT",
+        body: JSON.stringify({ isPinned }),
+      });
+    },
+    onSuccess: (_, { isPinned }) => {
+      toast({
+        title: "Success",
+        description: `Blog post ${isPinned ? 'pinned' : 'unpinned'} successfully`,
+      });
+      invalidateQueries();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to ${error.message}`,
         variant: "destructive",
       });
     },
@@ -273,6 +301,12 @@ export default function AdminBlogManagement() {
                             Published
                           </Badge>
                         )}
+                        {post.isPinned && (
+                          <Badge variant="outline" className="text-yellow-600">
+                            <Pin className="h-3 w-3 mr-1" />
+                            Pinned
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-gray-600 mb-2 line-clamp-2">
                         {post.excerpt || post.content.substring(0, 150) + "..."}
@@ -297,6 +331,16 @@ export default function AdminBlogManagement() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        pinPostMutation.mutate({ postId: post.id, isPinned: !post.isPinned });
+                      }}
+                      className={post.isPinned ? "text-yellow-600 hover:text-yellow-700" : "text-gray-600 hover:text-gray-700"}
+                    >
+                      {post.isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                    </Button>
                     <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -360,13 +404,19 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
     author: post?.author || "Daniel Golshevsky",
     readTime: post?.readTime || 5,
     isDraft: !post?.isPublished,
+    isPinned: post?.isPinned || false,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Generate slug from title
     const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-    onSubmit({ ...formData, slug });
+    onSubmit({ 
+      ...formData, 
+      slug,
+      isPublished: !formData.isDraft,
+      isPinned: formData.isPinned
+    });
   };
 
   return (
@@ -456,7 +506,7 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
       <div>
         <Label htmlFor="content">Content</Label>
         <RichTextEditor
-          value={formData.content}
+          content={formData.content}
           onChange={(value) => setFormData({ ...formData, content: value })}
           placeholder="Write your blog post content here..."
         />
@@ -470,6 +520,14 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
             onCheckedChange={(checked) => setFormData({ ...formData, isDraft: checked })}
           />
           <Label htmlFor="isDraft">Save as draft</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="isPinned"
+            checked={formData.isPinned}
+            onCheckedChange={(checked) => setFormData({ ...formData, isPinned: checked })}
+          />
+          <Label htmlFor="isPinned">Pin to top of home page</Label>
         </div>
       </div>
 
