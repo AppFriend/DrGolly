@@ -821,14 +821,23 @@ export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
 // Notification system tables
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
-  title: varchar("title", { length: 200 }).notNull(),
+  userId: text("user_id").notNull(), // User ID for specific targeting
+  title: text("title").notNull(),
   message: text("message").notNull(),
-  type: varchar("type", { length: 50 }).notNull(), // welcome, birthday, discount, manual, system
-  category: varchar("category", { length: 50 }).default("general"), // general, birthday, discount, welcome, system
-  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high
+  type: text("type").notNull().default("info"), // welcome, birthday, discount, manual, system
+  category: text("category").notNull().default("system"), // general, birthday, discount, welcome, system
+  priority: text("priority").notNull().default("normal"), // low, normal, high
   
-  // Targeting options
-  targetType: varchar("target_type", { length: 20 }).notNull(), // global, user, tier
+  // Read tracking
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  
+  // Action buttons (optional)
+  actionText: text("action_text"),
+  actionUrl: text("action_url"),
+  
+  // Targeting options (kept for backward compatibility)
+  targetType: varchar("target_type", { length: 20 }).default("global"), // global, user, tier
   targetUsers: text("target_users").array(), // Array of user IDs for specific targeting
   targetTiers: text("target_tiers").array(), // Array of tiers (free, gold, platinum)
   
@@ -840,13 +849,9 @@ export const notifications = pgTable("notifications", {
   
   // Status and metadata
   isActive: boolean("is_active").default(true),
-  isPublished: boolean("is_published").default(false),
-  publishedAt: timestamp("published_at"),
+  isPublished: boolean("is_published").default(true),
+  publishedAt: timestamp("published_at").defaultNow(),
   expiresAt: timestamp("expires_at"),
-  
-  // Action buttons (optional)
-  actionText: varchar("action_text", { length: 100 }),
-  actionUrl: varchar("action_url", { length: 500 }),
   
   // Tracking
   totalSent: integer("total_sent").default(0),
