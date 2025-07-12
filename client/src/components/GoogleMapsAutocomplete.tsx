@@ -1,79 +1,84 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
+import { Input } from './ui/input';
 
 interface GoogleMapsAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
-  onPlaceSelect?: (place: google.maps.places.PlaceResult) => void;
+  onPlaceSelected?: (place: google.maps.places.PlaceResult) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   value,
   onChange,
-  onPlaceSelect,
+  onPlaceSelected,
   placeholder = "Enter your address",
-  className = ""
+  className = "",
+  disabled = false
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const initializeAutocomplete = async () => {
+    const loadGoogleMaps = async () => {
       try {
         const loader = new Loader({
-          apiKey: "AIzaSyA4Gi5BbGccEo-x8vm7jmWqwQ6tOEaqHYY",
-          version: "weekly",
-          libraries: ["places"]
+          apiKey: 'AIzaSyA4Gi5BbGccEo-x8vm7jmWqwQ6tOEaqHYY',
+          version: 'weekly',
+          libraries: ['places'],
         });
 
         await loader.load();
         setIsLoaded(true);
-
-        if (inputRef.current) {
-          const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-            types: ['address'],
-            fields: ['formatted_address', 'address_components', 'geometry']
-          });
-
-          autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace();
-            if (place.formatted_address) {
-              onChange(place.formatted_address);
-              onPlaceSelect?.(place);
-            }
-          });
-
-          autocompleteRef.current = autocomplete;
-        }
       } catch (error) {
-        console.error('Error loading Google Maps:', error);
+        console.error('Error loading Google Maps API:', error);
       }
     };
 
-    initializeAutocomplete();
+    if (!isLoaded) {
+      loadGoogleMaps();
+    }
+  }, [isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded && inputRef.current && !autocompleteRef.current) {
+      // Initialize autocomplete
+      autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+        types: ['address'],
+        fields: ['formatted_address', 'address_components', 'geometry'],
+      });
+
+      // Add place selection listener
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        if (place && place.formatted_address) {
+          onChange(place.formatted_address);
+          if (onPlaceSelected) {
+            onPlaceSelected(place);
+          }
+        }
+      });
+    }
 
     return () => {
       if (autocompleteRef.current) {
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
-  }, []);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
-  };
+  }, [isLoaded, onChange, onPlaceSelected]);
 
   return (
-    <input
+    <Input
       ref={inputRef}
-      type="text"
       value={value}
-      onChange={handleInputChange}
+      onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-teal focus:border-transparent ${className}`}
+      className={className}
+      disabled={disabled}
     />
   );
 };
