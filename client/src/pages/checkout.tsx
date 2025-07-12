@@ -66,7 +66,7 @@ function PaymentForm({
 
   // Initialize Apple Pay / Payment Request
   useEffect(() => {
-    if (!stripe || !elements || coursePrice <= 0) return;
+    if (!stripe || !elements || coursePrice <= 0 || !course?.title) return;
 
     const pr = stripe.paymentRequest({
       country: 'AU',
@@ -537,7 +537,7 @@ export default function Checkout() {
         </div>
 
         {/* Payment Section */}
-        {canProceedToPayment ? (
+        {canProceedToPayment && course ? (
           <div className="bg-white rounded-lg p-4 mb-4">
             <h2 className="text-lg font-semibold mb-4">Payment</h2>
             <Elements stripe={stripePromise}>
