@@ -665,6 +665,15 @@ Changelog:
   * Both checkout flows now have identical structure and user experience
   * Payment methods positioned above scroll line on mobile for better conversion
   * Updated all brand colors to match Dr. Golly branding (#6B9CA3 and #095D66)
+- July 12, 2025. ENHANCED: Checkout page user experience improvements:
+  * Fixed runtime errors by removing invalid FacebookPixel component and external image URLs
+  * Updated order section to be automatically expanded when page loads for better UX
+  * Fixed CouponInput component props to properly handle coupon application and removal
+  * Redesigned payment methods from tabs to individual buttons (Apple Pay, Link, PayPal, Card)
+  * Created sliding testimonial carousel with 4 customer reviews that auto-advance every 4 seconds
+  * Added clickable dot indicators for manual testimonial navigation
+  * Fixed Stripe payment request validation to prevent "total.label" errors
+  * Enhanced payment button styling with proper brand colors and hover states
 ```
 
 ## User Preferences

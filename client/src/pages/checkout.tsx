@@ -355,7 +355,7 @@ export default function Checkout() {
     email: user?.email || "",
     dueDate: "",
   });
-  const [orderExpanded, setOrderExpanded] = useState(false);
+  const [orderExpanded, setOrderExpanded] = useState(true);
 
   // Fetch regional pricing
   const { data: regionalPricing } = useQuery({
@@ -522,7 +522,8 @@ export default function Checkout() {
                 </div>
                 <CouponInput
                   onCouponApplied={setAppliedCoupon}
-                  originalPrice={originalPrice}
+                  onCouponRemoved={() => setAppliedCoupon(null)}
+                  appliedCoupon={appliedCoupon}
                 />
               </div>
               
