@@ -536,8 +536,8 @@ export default function BigBabyPublic() {
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
   
   const finalPrice = appliedCoupon ? 
-    appliedCoupon.amountOff ? originalPrice - appliedCoupon.amountOff :
-    appliedCoupon.percentOff ? originalPrice * (1 - appliedCoupon.percentOff / 100) :
+    appliedCoupon.amount_off ? originalPrice - (appliedCoupon.amount_off / 100) :
+    appliedCoupon.percent_off ? originalPrice * (1 - appliedCoupon.percent_off / 100) :
     originalPrice : originalPrice;
 
   const handleDetailsChange = (field: string, value: string) => {
@@ -569,6 +569,14 @@ export default function BigBabyPublic() {
   };
 
   const canProceedToPayment = customerDetails.email && customerDetails.firstName;
+  
+  // Email validation
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
+  const shouldShowEmailWarning = customerDetails.email && !isValidEmail(customerDetails.email);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -583,124 +591,107 @@ export default function BigBabyPublic() {
         <p className="font-medium">You're one step closer to better sleep for your baby!</p>
       </div>
 
-      <div className="p-4 max-w-md mx-auto">
-        {/* Your Details Section */}
-        <div className="bg-white rounded-lg p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-4">Your Details</h2>
-          
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={customerDetails.email}
-                onChange={(e) => handleDetailsChange("email", e.target.value)}
-                placeholder="Enter your email"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                type="text"
-                value={customerDetails.firstName}
-                onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                placeholder="Enter your first name"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="dueDate">Due Date/Baby Birthday</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={customerDetails.dueDate}
-                onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Your Order Section */}
-        <div className="bg-white rounded-lg p-4 mb-4">
-          <div 
-            className="flex items-center justify-between cursor-pointer"
-            onClick={() => setOrderExpanded(!orderExpanded)}
-          >
-            <div className="flex items-center space-x-2">
-              <h2 className="text-lg font-semibold">Your Order - {currencySymbol}{finalPrice}</h2>
-            </div>
-            {orderExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-          </div>
-          
-          {orderExpanded && (
-            <div className="mt-4 space-y-4">
-              <div className="flex items-start space-x-3">
-                <img 
-                  src={BIG_BABY_COURSE.thumbnailUrl} 
-                  alt={BIG_BABY_COURSE.title}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">{BIG_BABY_COURSE.title}</h3>
-                  <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
-                  <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
+      <div className="p-4 max-w-6xl mx-auto">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-8">
+          {/* Left Column - Your Details & Payment */}
+          <div className="space-y-4">
+            {/* Your Details Section */}
+            <div className="bg-white rounded-lg p-4">
+              <h2 className="text-lg font-semibold mb-4">Your Details</h2>
+              
+              <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-3 lg:space-y-0">
+                <div>
+                  <Label htmlFor="email">Email address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={customerDetails.email}
+                    onChange={(e) => handleDetailsChange("email", e.target.value)}
+                    placeholder="Enter your email"
+                    className="mt-1"
+                  />
+                  {shouldShowEmailWarning && (
+                    <p className="text-red-500 text-sm mt-1">Is this correct?</p>
+                  )}
                 </div>
+                
+                <div>
+                  <Label htmlFor="dueDate">Due Date/Baby Birthday</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={customerDetails.dueDate}
+                    onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Section - Always show */}
+            <div className="bg-white rounded-lg p-4">
+              <h2 className="text-lg font-semibold mb-4">Payment</h2>
+              <Elements stripe={stripePromise}>
+                <PaymentForm
+                  onSuccess={handlePaymentSuccess}
+                  coursePrice={finalPrice}
+                  currencySymbol={currencySymbol}
+                  currency={currency}
+                  customerDetails={customerDetails}
+                  appliedCoupon={appliedCoupon}
+                />
+              </Elements>
+            </div>
+          </div>
+
+          {/* Right Column - Order Details */}
+          <div className="space-y-4">
+            {/* Your Order Section */}
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Your Order</h2>
                 <Button variant="ghost" size="sm" className="text-gray-400">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
               
-              {/* Coupon Input */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Have a coupon or gift card?</span>
-                  <ChevronDown className="h-4 w-4" />
+              <div className="mt-4 space-y-4">
+                <div className="flex items-start space-x-3">
+                  <img 
+                    src={BIG_BABY_COURSE.thumbnailUrl} 
+                    alt={BIG_BABY_COURSE.title}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{BIG_BABY_COURSE.title}</h3>
+                    <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
+                    <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
+                  </div>
                 </div>
-                <CouponInput
-                  onCouponApplied={setAppliedCoupon}
-                  onCouponRemoved={() => setAppliedCoupon(null)}
-                  appliedCoupon={appliedCoupon}
-                />
-              </div>
-              
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">Total (incl. GST)</span>
-                  <span className="text-lg font-semibold">{currencySymbol}{finalPrice}</span>
+                
+                {/* Coupon Input */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Have a coupon or gift card?</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                  <CouponInput
+                    onCouponApplied={setAppliedCoupon}
+                    onCouponRemoved={() => setAppliedCoupon(null)}
+                    appliedCoupon={appliedCoupon}
+                  />
+                </div>
+                
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold">Total (incl. GST)</span>
+                    <span className="text-lg font-semibold">{currencySymbol}{finalPrice}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
-
-        {/* Payment Section */}
-        {canProceedToPayment ? (
-          <div className="bg-white rounded-lg p-4 mb-4">
-            <h2 className="text-lg font-semibold mb-4">Payment</h2>
-            <Elements stripe={stripePromise}>
-              <PaymentForm
-                onSuccess={handlePaymentSuccess}
-                coursePrice={finalPrice}
-                currencySymbol={currencySymbol}
-                currency={currency}
-                customerDetails={customerDetails}
-                appliedCoupon={appliedCoupon}
-              />
-            </Elements>
-          </div>
-        ) : (
-          <div className="bg-gray-100 rounded-lg p-4 mb-4">
-            <p className="text-gray-600 text-center">
-              Please enter your email and first name to continue to payment
-            </p>
-          </div>
-        )}
 
         {/* Money Back Guarantee */}
         <div className="bg-white rounded-lg p-4 mb-4">
