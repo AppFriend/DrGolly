@@ -3845,6 +3845,74 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Create loyalty notification for authenticated user
+  app.post('/api/create-loyalty-notification', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const notification = await storage.createNotification({
+        userId,
+        title: "Gold Member Loyalty Reward",
+        message: "Thanks for your first month as a gold member, you've unlocked a free sleep review valued at $250 - book now!",
+        type: "loyalty",
+        category: "reward",
+        priority: "high",
+        actionText: "Book Now",
+        actionUrl: "/track?section=review",
+        isRead: false,
+        isActive: true,
+        isPublished: true
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Loyalty notification created successfully', 
+        notification 
+      });
+    } catch (error) {
+      console.error('Error creating loyalty notification:', error);
+      res.status(500).json({ success: false, message: 'Failed to create notification' });
+    }
+  });
+
+  // Test endpoint to create notification for admin user (frazer.adnam@cq-partners.com.au)
+  app.post('/api/test-create-notification', async (req, res) => {
+    try {
+      // Find the admin user
+      const adminUser = await storage.getUserByEmail('frazer.adnam@cq-partners.com.au');
+      if (!adminUser) {
+        return res.status(404).json({ message: "Admin user not found" });
+      }
+
+      const notification = await storage.createNotification({
+        userId: adminUser.id,
+        title: "Gold Member Loyalty Reward",
+        message: "Thanks for your first month as a gold member, you've unlocked a free sleep review valued at $250 - book now!",
+        type: "loyalty",
+        category: "reward",
+        priority: "high",
+        actionText: "Book Now",
+        actionUrl: "/track?section=review",
+        isRead: false,
+        isActive: true,
+        isPublished: true
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Test loyalty notification created successfully', 
+        notification,
+        userId: adminUser.id
+      });
+    } catch (error) {
+      console.error('Error creating test notification:', error);
+      res.status(500).json({ success: false, message: 'Failed to create test notification' });
+    }
+  });
+
   // Create subscription using regional pricing
   app.post("/api/create-subscription", isAuthenticated, async (req, res) => {
     try {
