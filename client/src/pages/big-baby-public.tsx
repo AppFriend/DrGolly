@@ -539,14 +539,12 @@ export default function BigBabyPublic() {
   return (
     <div className="min-h-screen bg-gray-50">
       
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-center">
-        <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
-      </div>
-
-      {/* Success Banner */}
-      <div className="bg-[#6B9CA3] text-white px-4 py-3 text-center">
-        <p className="font-medium">You're one step closer to better sleep for your baby!</p>
+      {/* Header Banner */}
+      <div className="bg-white border-b-2 border-[#095D66] px-4 py-4">
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
+          <p className="text-black font-medium text-lg">You're one step closer to better sleep for your baby!</p>
+        </div>
       </div>
 
       <div className="p-4 max-w-6xl mx-auto">
