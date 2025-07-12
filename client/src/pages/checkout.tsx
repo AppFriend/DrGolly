@@ -369,7 +369,44 @@ export default function Checkout() {
     firstName: user?.firstName || "",
     email: user?.email || "",
     dueDate: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "",
   });
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+
+  const testimonials = [
+    {
+      name: "Kristiana E",
+      rating: 5,
+      text: "Dr Golly's program has helped me get my baby to have much more quality and long lasting sleeps. I'm so happy that I stumbled across this program especially as a new parents."
+    },
+    {
+      name: "Sarah M",
+      rating: 5,
+      text: "Amazing results! My little one went from waking up every 2 hours to sleeping through the night in just 2 weeks. The gentle approach really worked for us."
+    },
+    {
+      name: "Emma L",
+      rating: 5,
+      text: "I was skeptical at first, but Dr Golly's methods are evidence-based and really work. My baby is now sleeping 10-12 hours straight!"
+    },
+    {
+      name: "Rachel K",
+      rating: 5,
+      text: "The step-by-step approach made it so easy to follow. Within days we saw improvements in our baby's sleep patterns. Highly recommend!"
+    }
+  ];
+
+  // Auto-advance testimonials every 4 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [testimonials.length]);
   const [orderExpanded, setOrderExpanded] = useState(true);
 
   // Fetch regional pricing
@@ -441,150 +478,183 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center">
-          <button onClick={handleBack} className="mr-3">
-            <ArrowLeft className="h-6 w-6" />
-          </button>
+      
+      {/* Header Banner */}
+      <div className="bg-white border-b border-[#095D66] px-4 py-4" style={{ borderBottomWidth: '0.5px' }}>
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
           <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
+          <p className="text-black font-medium text-lg ml-1" style={{ paddingLeft: '5px' }}>You're one step closer to better sleep for your baby!</p>
         </div>
       </div>
 
-      {/* Success Banner */}
-      <div className="bg-[#6B9CA3] text-white px-4 py-3 text-center">
-        <p className="font-medium">You're one step closer to better sleep for your baby!</p>
-      </div>
-
-      <div className="p-4 max-w-md mx-auto">
-        {/* Your Details Section */}
-        <div className="bg-white rounded-lg p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-4">Your Details</h2>
-          
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={customerDetails.email}
-                onChange={(e) => handleDetailsChange("email", e.target.value)}
-                placeholder="Enter your email"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                type="text"
-                value={customerDetails.firstName}
-                onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                placeholder="Enter your first name"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="dueDate">Due Date/Baby Birthday</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={customerDetails.dueDate}
-                onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Your Order Section */}
-        <div className="bg-white rounded-lg p-4 mb-4">
-          <div 
-            className="flex items-center justify-between cursor-pointer"
-            onClick={() => setOrderExpanded(!orderExpanded)}
-          >
-            <div className="flex items-center space-x-2">
-              <h2 className="text-lg font-semibold">Your Order - {currencySymbol}{finalPrice}</h2>
-            </div>
-            {orderExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-          </div>
-          
-          {orderExpanded && (
-            <div className="mt-4 space-y-4">
-              <div className="flex items-start space-x-3">
-                <img 
-                  src={course.thumbnailUrl || "https://via.placeholder.com/64x64"} 
-                  alt={course.title}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">{course.title}</h3>
-                  <p className="text-sm text-gray-600">{course.description}</p>
-                  <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
+      <div className="p-4 max-w-6xl mx-auto">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-8">
+          {/* Left Column - Your Details & Payment */}
+          <div className="space-y-4">
+            {/* Your Details Section */}
+            <div className="bg-white rounded-lg p-4">
+              <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">CONFIRM YOUR DETAILS</h2>
+              
+              <div className="space-y-3">
+                <div>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={customerDetails.email}
+                    onChange={(e) => handleDetailsChange("email", e.target.value)}
+                    placeholder="Enter your email"
+                    className="h-12"
+                  />
                 </div>
-                <Button variant="ghost" size="sm" className="text-gray-400">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                
+                <div>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    value={customerDetails.firstName}
+                    onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                    placeholder="Enter your first name"
+                    className="h-12"
+                  />
+                </div>
+                
+                <div>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={customerDetails.dueDate}
+                    onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Your Order Section */}
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[#6B9CA3]">YOUR ORDER - {currencySymbol}{finalPrice.toFixed(2)}</h2>
+                <ChevronUp className="h-5 w-5" />
               </div>
               
-              {/* Coupon Input */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Have a coupon or gift card?</span>
-                  <ChevronDown className="h-4 w-4" />
-                </div>
-                <CouponInput
-                  onCouponApplied={setAppliedCoupon}
-                  onCouponRemoved={() => setAppliedCoupon(null)}
-                  appliedCoupon={appliedCoupon}
-                />
-              </div>
-              
-              <div className="border-t pt-4">
-                {appliedCoupon && (
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
-                    <span className="text-sm text-green-600">
-                      -{currencySymbol}{(appliedCoupon.amount_off ? 
-                        (appliedCoupon.amount_off / 100).toFixed(2) : 
-                        (originalPrice * appliedCoupon.percent_off / 100).toFixed(2))}
-                    </span>
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <img 
+                    src={course.thumbnailUrl || "https://via.placeholder.com/64x64"} 
+                    alt={course.title}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{course.title}</h3>
+                    <p className="text-sm text-gray-600">{course.description}</p>
+                    <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
                   </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">Total (incl. GST)</span>
-                  <span className="text-lg font-semibold">{currencySymbol}{finalPrice}</span>
+                  <Button variant="ghost" size="sm" className="text-gray-400">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {/* Coupon Input */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Have a coupon or gift card?</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                  <CouponInput
+                    onCouponApplied={setAppliedCoupon}
+                    onCouponRemoved={() => setAppliedCoupon(null)}
+                    appliedCoupon={appliedCoupon}
+                  />
+                </div>
+                
+                <div className="border-t pt-4">
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
+                      <span className="text-sm text-green-600">
+                        -{currencySymbol}{(appliedCoupon.amount_off ? 
+                          (appliedCoupon.amount_off / 100).toFixed(2) : 
+                          (originalPrice * appliedCoupon.percent_off / 100).toFixed(2))}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold">Total (incl. GST)</span>
+                    <span className="text-lg font-semibold">{currencySymbol}{finalPrice.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Payment Section */}
-        {canProceedToPayment && course ? (
-          <div className="bg-white rounded-lg p-4 mb-4">
-            <h2 className="text-lg font-semibold mb-4">Payment</h2>
-            <Elements stripe={stripePromise}>
-              <PaymentForm
-                coursePrice={finalPrice}
-                currencySymbol={currencySymbol}
-                currency={currency}
-                customerDetails={customerDetails}
-                appliedCoupon={appliedCoupon}
-                course={course}
-                onSuccess={handlePaymentSuccess}
-              />
-            </Elements>
+            {/* Payment Section - Always show */}
+            <div className="bg-white rounded-lg p-4">
+              <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
+              <Elements stripe={stripePromise}>
+                <PaymentForm
+                  coursePrice={finalPrice}
+                  currencySymbol={currencySymbol}
+                  currency={currency}
+                  customerDetails={customerDetails}
+                  appliedCoupon={appliedCoupon}
+                  course={course}
+                  onSuccess={handlePaymentSuccess}
+                />
+              </Elements>
+            </div>
+
+            {/* Billing Address Section */}
+            <div className="bg-white rounded-lg p-4">
+              <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING ADDRESS</h2>
+              <div className="space-y-3">
+                <div>
+                  <GoogleMapsAutocomplete
+                    value={customerDetails.address}
+                    onChange={(value) => handleDetailsChange("address", value)}
+                    placeholder="Enter your address"
+                    className="h-12"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="text"
+                    value={customerDetails.city}
+                    onChange={(e) => handleDetailsChange("city", e.target.value)}
+                    placeholder="City"
+                    className="h-12"
+                  />
+                  <Input
+                    type="text"
+                    value={customerDetails.state}
+                    onChange={(e) => handleDetailsChange("state", e.target.value)}
+                    placeholder="State"
+                    className="h-12"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="text"
+                    value={customerDetails.zipCode}
+                    onChange={(e) => handleDetailsChange("zipCode", e.target.value)}
+                    placeholder="Zip Code"
+                    className="h-12"
+                  />
+                  <Input
+                    type="text"
+                    value={customerDetails.country}
+                    onChange={(e) => handleDetailsChange("country", e.target.value)}
+                    placeholder="Country"
+                    className="h-12"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="bg-gray-100 rounded-lg p-4 mb-4">
-            <p className="text-gray-600 text-center">
-              Please enter your email and first name to continue to payment
-            </p>
+
+          {/* Right Column - Empty on desktop or additional content */}
+          <div className="space-y-4 hidden lg:block">
+            {/* This column can be used for additional content or left empty */}
           </div>
-        )}
+        </div>
 
         {/* Money Back Guarantee */}
         <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 mb-4 border border-teal-100">
@@ -616,12 +686,13 @@ export default function Checkout() {
             </div>
           </div>
 
-          <div className="space-y-4">
+          {/* Testimonial Carousel */}
+          <div className="relative min-h-[150px]">
             <div className="border-b pb-4">
               <div className="flex items-center space-x-1 mb-2">
-                <span className="font-medium">Kristiana E</span>
+                <span className="font-medium">{testimonials[currentTestimonial].name}</span>
                 <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
+                  {[...Array(testimonials[currentTestimonial].rating)].map((_, i) => (
                     <Star key={i} className="h-3 w-3 fill-current" />
                   ))}
                 </div>
@@ -631,9 +702,22 @@ export default function Checkout() {
                 <span className="text-sm text-gray-600">Verified Customer</span>
               </div>
               <p className="text-sm">
-                Dr Golly's program has helped me get my baby to have much more quality and long lasting sleeps. I'm so happy that I stumbled across this program especially as a new parents.
+                {testimonials[currentTestimonial].text}
               </p>
             </div>
+          </div>
+          
+          {/* Testimonial Dots */}
+          <div className="flex justify-center space-x-2 mt-4">
+            {testimonials.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentTestimonial(index)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index === currentTestimonial ? 'bg-[#6B9CA3]' : 'bg-gray-300'
+                }`}
+              />
+            ))}
           </div>
         </div>
 
