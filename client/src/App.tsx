@@ -228,7 +228,9 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Router />
+        <div className="App">
+          <Router />
+        </div>
       </QueryClientProvider>
     </ErrorBoundary>
   );
