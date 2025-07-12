@@ -320,190 +320,148 @@ function PaymentForm({
 
   return (
     <div className="space-y-6">
+      {/* Credit/Debit Card Option */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center">
+            <div className="w-3 h-3 bg-white rounded-full"></div>
+          </div>
+          <span className="font-medium">Credit / Debit Card</span>
+          <div className="flex space-x-2 ml-auto">
+            <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" className="h-6" />
+            <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" className="h-6" />
+            <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a0aae7eba.svg" alt="Amex" className="h-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* Link Payment Option */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center">
+            <div className="w-3 h-3 bg-white rounded-full"></div>
+          </div>
+          <span className="text-lg font-bold">🔗 link</span>
+          <div className="ml-auto text-sm text-gray-600">frazeradnam@gmail.com ▼</div>
+        </div>
+        <div className="mt-3 flex space-x-2">
+          <Button variant="outline" className="flex-1 text-sm">
+            <span className="mr-2">💳</span>
+            Use •••• 0796
+          </Button>
+          <Button variant="outline" className="flex-1 text-sm">
+            Pay another way
+          </Button>
+        </div>
+      </div>
+
+      {/* PayPal Option */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center">
+            <div className="w-3 h-3 bg-white rounded-full"></div>
+          </div>
+          <span className="font-medium">Express Checkout</span>
+          <div className="ml-auto">
+            <img src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-100px.png" alt="PayPal" className="h-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* Afterpay Option */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center">
+            <div className="w-3 h-3 bg-white rounded-full"></div>
+          </div>
+          <span className="font-medium">Afterpay</span>
+          <div className="ml-auto">
+            <span className="bg-black text-white px-2 py-1 rounded text-sm font-bold">afterpay</span>
+          </div>
+        </div>
+      </div>
+
       {/* Express Payment Buttons */}
       <div className="space-y-3">
         {/* Apple Pay Button */}
-        {isMobile && paymentRequest && (
-          <div className="w-full">
-            <PaymentRequestButtonElement
-              options={{ 
-                paymentRequest,
-                style: {
-                  paymentRequestButton: {
-                    height: '48px',
-                    theme: 'dark',
-                    type: 'default',
-                  },
-                },
-              }}
-              className="w-full"
-            />
-          </div>
-        )}
+        <Button className="w-full h-12 bg-black text-white hover:bg-gray-800 rounded-lg">
+          <span className="text-lg mr-2">📱</span>
+          Buy with Pay
+        </Button>
+
+        {/* Google Pay Button */}
+        <Button className="w-full h-12 bg-black text-white hover:bg-gray-800 rounded-lg">
+          <span className="text-lg mr-2">G</span>
+          Pay
+          <span className="ml-auto text-sm">💳 •••• 0796</span>
+        </Button>
 
         {/* Link Button */}
-        <Button
-          onClick={() => setActiveTab('link')}
-          className={`w-full h-12 flex items-center justify-center space-x-2 ${
-            activeTab === 'link' 
-              ? 'bg-[#095D66] text-white' 
-              : 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <span className="text-lg">🔗</span>
-          <span className="font-medium">Link</span>
-        </Button>
-
-        {/* PayPal Button */}
-        <Button
-          onClick={() => setActiveTab('paypal')}
-          className={`w-full h-12 flex items-center justify-center space-x-2 ${
-            activeTab === 'paypal' 
-              ? 'bg-[#0070ba] text-white' 
-              : 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <span className="text-lg font-bold text-[#0070ba]">PayPal</span>
-        </Button>
-
-        {/* Card Button */}
-        <Button
-          onClick={() => setActiveTab('card')}
-          className={`w-full h-12 flex items-center justify-center space-x-2 ${
-            activeTab === 'card' 
-              ? 'bg-[#095D66] text-white' 
-              : 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <CreditCard className="h-5 w-5" />
-          <span className="font-medium">Credit / Debit Card</span>
+        <Button className="w-full h-12 bg-green-500 text-white hover:bg-green-600 rounded-lg">
+          <span className="text-lg mr-2">🔗</span>
+          link
+          <span className="ml-auto text-sm">💳 0796</span>
         </Button>
       </div>
 
-      {/* Payment Method Content */}
-      {activeTab === 'link' && (
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="bg-green-500 text-white rounded-full p-2">
-              <Check className="h-4 w-4" />
-            </div>
-            <span className="font-medium">Link - Pay with saved details</span>
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Use your saved payment information for a faster checkout
-          </p>
-        </div>
-      )}
-      
-      {activeTab === 'paypal' && (
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="bg-[#0070ba] text-white rounded-full p-2">
-              <Check className="h-4 w-4" />
-            </div>
-            <span className="font-medium">PayPal - Pay with your PayPal account</span>
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            You'll be redirected to PayPal to complete your payment
-          </p>
-        </div>
-      )}
-      
-      {activeTab === 'card' && (
-        <div className="p-4 border rounded-lg">
-          <div className="flex items-center space-x-2 mb-4">
-            <CreditCard className="h-5 w-5 text-gray-600" />
-            <span className="font-medium">Credit / Debit Card</span>
-            <div className="flex space-x-1 text-xs text-gray-500">
-              <span>Visa</span>
-              <span>•</span>
-              <span>Mastercard</span>
-              <span>•</span>
-              <span>Amex</span>
-            </div>
-          </div>
-          
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#424770',
-                  '::placeholder': {
-                    color: '#aab7c4',
-                  },
-                },
-              },
-            }}
-          />
-        </div>
-      )}
+      {/* OR Divider */}
+      <div className="flex items-center space-x-4">
+        <div className="flex-1 h-px bg-gray-200"></div>
+        <span className="text-gray-500 text-sm">— OR —</span>
+        <div className="flex-1 h-px bg-gray-200"></div>
+      </div>
 
       {/* Billing Details */}
       <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <span className="text-lg font-semibold">Billing Details</span>
-          <div className="h-px bg-gray-200 flex-1" />
-        </div>
+        <h3 className="text-lg font-semibold text-[#6B9CA3]">BILLING DETAILS</h3>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="firstName">First Name</Label>
             <Input
               id="firstName"
               value={billingDetails.firstName}
               onChange={(e) => handleBillingChange('firstName', e.target.value)}
               placeholder="First Name"
+              className="h-12"
             />
           </div>
           <div>
-            <Label htmlFor="lastName">Last Name</Label>
             <Input
               id="lastName"
               value={billingDetails.lastName}
               onChange={(e) => handleBillingChange('lastName', e.target.value)}
               placeholder="Last Name"
+              className="h-12"
             />
           </div>
         </div>
         
         <div>
-          <Label htmlFor="phone">Phone</Label>
           <Input
             id="phone"
             value={billingDetails.phone}
             onChange={(e) => handleBillingChange('phone', e.target.value)}
             placeholder="Phone number"
+            className="h-12"
           />
         </div>
         
         <div>
-          <Label htmlFor="address">Address</Label>
           <Input
             id="address"
             value={billingDetails.address}
             onChange={(e) => handleBillingChange('address', e.target.value)}
             placeholder="Start typing your address"
+            className="h-12"
           />
         </div>
-      </div>
-
-      {/* Privacy Policy Statement */}
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <p className="text-sm text-gray-700">
-          Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our{' '}
-          <a href="/privacy" className="text-[#095D66] underline">privacy policy</a>.
-        </p>
-        <p className="text-sm text-gray-700 mt-2">
-          You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.
-        </p>
       </div>
 
       {/* Place Order Button */}
       <Button
         onClick={handleCardPayment}
         disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName}
-        className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg"
+        className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg h-12"
       >
         {isProcessing ? 'Processing...' : 'Place order'}
       </Button>
@@ -597,18 +555,17 @@ export default function BigBabyPublic() {
           <div className="space-y-4">
             {/* Your Details Section */}
             <div className="bg-white rounded-lg p-4">
-              <h2 className="text-lg font-semibold mb-4">Your Details</h2>
+              <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">YOUR DETAILS</h2>
               
-              <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-3 lg:space-y-0">
+              <div className="space-y-3">
                 <div>
-                  <Label htmlFor="email">Email address</Label>
                   <Input
                     id="email"
                     type="email"
                     value={customerDetails.email}
                     onChange={(e) => handleDetailsChange("email", e.target.value)}
                     placeholder="Enter your email"
-                    className="mt-1"
+                    className="h-12"
                   />
                   {shouldShowEmailWarning && (
                     <p className="text-red-500 text-sm mt-1">Is this correct?</p>
@@ -616,46 +573,25 @@ export default function BigBabyPublic() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="dueDate">Due Date/Baby Birthday</Label>
                   <Input
                     id="dueDate"
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    className="mt-1"
+                    className="h-12"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Payment Section - Always show */}
-            <div className="bg-white rounded-lg p-4">
-              <h2 className="text-lg font-semibold mb-4">Payment</h2>
-              <Elements stripe={stripePromise}>
-                <PaymentForm
-                  onSuccess={handlePaymentSuccess}
-                  coursePrice={finalPrice}
-                  currencySymbol={currencySymbol}
-                  currency={currency}
-                  customerDetails={customerDetails}
-                  appliedCoupon={appliedCoupon}
-                />
-              </Elements>
-            </div>
-          </div>
-
-          {/* Right Column - Order Details */}
-          <div className="space-y-4">
             {/* Your Order Section */}
             <div className="bg-white rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Your Order</h2>
-                <Button variant="ghost" size="sm" className="text-gray-400">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[#6B9CA3]">YOUR ORDER - {currencySymbol}{finalPrice}</h2>
+                <ChevronUp className="h-5 w-5" />
               </div>
               
-              <div className="mt-4 space-y-4">
+              <div className="space-y-4">
                 <div className="flex items-start space-x-3">
                   <img 
                     src={BIG_BABY_COURSE.thumbnailUrl} 
@@ -667,6 +603,9 @@ export default function BigBabyPublic() {
                     <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
                     <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
                   </div>
+                  <Button variant="ghost" size="sm" className="text-gray-400">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
                 
                 {/* Coupon Input */}
@@ -690,6 +629,26 @@ export default function BigBabyPublic() {
                 </div>
               </div>
             </div>
+
+            {/* Payment Section - Always show */}
+            <div className="bg-white rounded-lg p-4">
+              <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
+              <Elements stripe={stripePromise}>
+                <PaymentForm
+                  onSuccess={handlePaymentSuccess}
+                  coursePrice={finalPrice}
+                  currencySymbol={currencySymbol}
+                  currency={currency}
+                  customerDetails={customerDetails}
+                  appliedCoupon={appliedCoupon}
+                />
+              </Elements>
+            </div>
+          </div>
+
+          {/* Right Column - Empty on desktop or additional content */}
+          <div className="space-y-4 hidden lg:block">
+            {/* This column can be used for additional content or left empty */}
           </div>
         </div>
 
