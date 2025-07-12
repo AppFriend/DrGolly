@@ -86,19 +86,19 @@ export default function AdminPanel() {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center min-w-0">
               <img 
                 src={drGollyLogo} 
                 alt="Dr. Golly" 
-                className="h-8 w-auto object-contain mr-3"
+                className="h-8 w-auto object-contain mr-3 flex-shrink-0"
               />
-              <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Admin Panel</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-[#6B9CA3] text-white">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Badge variant="secondary" className="bg-[#6B9CA3] text-white text-xs sm:text-sm">
                 Admin
               </Badge>
-              <span className="text-sm text-gray-600">
+              <span className="text-xs sm:text-sm text-gray-600 truncate max-w-[100px] sm:max-w-none">
                 {user.firstName} {user.lastName}
               </span>
             </div>
@@ -109,7 +109,7 @@ export default function AdminPanel() {
       {/* Admin Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6 overflow-x-auto">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
