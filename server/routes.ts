@@ -57,14 +57,26 @@ const COURSE_STRIPE_MAPPING = {
   10: { productId: "prod_course_10", priceId: "price_testing_allergens" },
 };
 
-// Admin middleware
-const isAdmin: RequestHandler = async (req, res, next) => {
-  // Use the same authentication check as isAuthenticated middleware
-  if (!req.isAuthenticated()) {
+// Custom authentication middleware that works with Dr. Golly sessions
+const isAppAuthenticated: RequestHandler = async (req, res, next) => {
+  // Check if user is authenticated via session
+  if (!req.session?.passport?.user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   
-  const userId = req.user?.claims?.sub;
+  // Set user data on request object for consistency
+  req.user = req.session.passport.user;
+  next();
+};
+
+// Admin middleware for Dr. Golly app admins
+const isAdmin: RequestHandler = async (req, res, next) => {
+  // Use app authentication check
+  if (!req.session?.passport?.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  const userId = req.session.passport.user.claims.sub;
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -74,6 +86,8 @@ const isAdmin: RequestHandler = async (req, res, next) => {
     return res.status(403).json({ message: "Forbidden: Admin access required" });
   }
   
+  // Set user data on request object for consistency
+  req.user = req.session.passport.user;
   next();
 };
 
@@ -212,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/courses/:courseId/lesson-content', isAuthenticated, async (req: any, res) => {
+  app.get('/api/courses/:courseId/lesson-content', isAppAuthenticated, async (req: any, res) => {
     try {
       const { courseId } = req.params;
       const userId = req.user.claims.sub;
@@ -269,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -370,6 +384,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update last login
       await storage.updateUserLastLogin(user.id);
 
+      // Create session manually (similar to how Replit auth works)
+      const sessionData = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName
+        }
+      };
+      
+      // Store session data in req.session
+      req.session.passport = { user: sessionData };
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+        }
+      });
+
       // Return user data for session creation
       res.json({
         success: true,
@@ -383,6 +415,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in public login:", error);
       res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Dr. Golly signup endpoint
+  app.post('/api/auth/signup', async (req, res) => {
+    try {
+      const { firstName, lastName, email, password, personalization } = req.body;
+      
+      if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists with this email" });
+      }
+
+      // Generate user ID
+      const userId = AuthUtils.generateUserId();
+
+      // Hash password
+      const passwordHash = await AuthUtils.hashPassword(password);
+
+      // Create user
+      const userData = {
+        id: userId,
+        email,
+        firstName,
+        lastName,
+        passwordHash,
+        hasSetPassword: true,
+        subscriptionTier: 'free',
+        planTier: 'free',
+        lastLoginAt: new Date(),
+        ...personalization
+      };
+
+      const user = await storage.createUser(userData);
+
+      // Create session for immediate login
+      const sessionData = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName
+        }
+      };
+      
+      req.session.passport = { user: sessionData };
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+        }
+      });
+
+      // Sync to Klaviyo
+      try {
+        await klaviyoService.syncUserToKlaviyo(user);
+      } catch (error) {
+        console.error("Failed to sync user to Klaviyo:", error);
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error("Error in signup:", error);
+      res.status(500).json({ message: "Signup failed" });
     }
   });
 
@@ -418,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Personalization routes
-  app.post('/api/personalization', isAuthenticated, async (req: any, res) => {
+  app.post('/api/personalization', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const personalizationData = req.body;
@@ -453,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/personalization', isAuthenticated, async (req: any, res) => {
+  app.get('/api/personalization', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -480,7 +588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User personalization routes
-  app.post('/api/user/personalization', isAuthenticated, async (req: any, res) => {
+  app.post('/api/user/personalization', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const personalizationData = req.body;
@@ -495,7 +603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/user/personalization', isAuthenticated, async (req: any, res) => {
+  app.get('/api/user/personalization', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -525,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Profile routes
-  app.get('/api/profile', isAuthenticated, async (req: any, res) => {
+  app.get('/api/profile', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -555,7 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/profile', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/profile', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { firstName, lastName, email, phone, profileImageUrl } = req.body;
@@ -575,7 +683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/profile/marketing-preferences', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/profile/marketing-preferences', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { emailMarketing, smsMarketing } = req.body;
@@ -607,7 +715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/profile/invoices', isAuthenticated, async (req: any, res) => {
+  app.get('/api/profile/invoices', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -677,7 +785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/profile/payment-methods', isAuthenticated, async (req: any, res) => {
+  app.get('/api/profile/payment-methods', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -717,7 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/profile/payment-methods', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/profile/payment-methods', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { paymentMethodId } = req.body;
@@ -741,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/profile/payment-methods/setup-intent', isAuthenticated, async (req: any, res) => {
+  app.post('/api/profile/payment-methods/setup-intent', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       let user = await storage.getUser(userId);
@@ -4692,7 +4800,7 @@ Please contact the customer to confirm the appointment.
 
   // USER NOTIFICATION ROUTES
   // Get user notifications
-  app.get('/api/notifications', isAuthenticated, async (req, res) => {
+  app.get('/api/notifications', isAppAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
@@ -4707,7 +4815,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Get unread notification count
-  app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => {
+  app.get('/api/notifications/unread-count', isAppAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
@@ -4722,7 +4830,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Mark notification as read
-  app.post('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+  app.post('/api/notifications/:id/read', isAppAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
@@ -4738,7 +4846,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Mark all notifications as read
-  app.post('/api/notifications/mark-all-read', isAuthenticated, async (req, res) => {
+  app.post('/api/notifications/mark-all-read', isAppAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
