@@ -4520,6 +4520,58 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Create admin users (Admin only)
+  app.post('/api/admin/create-admins', isAdmin, async (req, res) => {
+    try {
+      const adminUsers = [
+        { email: "alannah@drgolly.com", firstName: "Alannah", lastName: "O'Kane" },
+        { email: "alex@drgolly.com", firstName: "Alex", lastName: "Dawkins" },
+        { email: "tech@drgolly.com", firstName: "Tech", lastName: "DrGolly" },
+      ];
+
+      const createdUsers = [];
+      for (const adminUser of adminUsers) {
+        const user = await storage.createOrUpdateAdminUser(
+          adminUser.email,
+          adminUser.firstName,
+          adminUser.lastName
+        );
+        createdUsers.push(user);
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Created/updated ${createdUsers.length} admin users`,
+        users: createdUsers 
+      });
+    } catch (error) {
+      console.error("Error creating admin users:", error);
+      res.status(500).json({ message: "Failed to create admin users" });
+    }
+  });
+
+  // Get all admin users (Admin only)
+  app.get('/api/admin/admin-users', isAdmin, async (req, res) => {
+    try {
+      const adminUsers = await storage.getAllAdminUsers();
+      res.json(adminUsers);
+    } catch (error) {
+      console.error("Error fetching admin users:", error);
+      res.status(500).json({ message: "Failed to fetch admin users" });
+    }
+  });
+
+  // Get total user count (Admin only)
+  app.get('/api/admin/users/count', isAdmin, async (req, res) => {
+    try {
+      const totalCount = await storage.getTotalUserCount();
+      res.json({ totalCount });
+    } catch (error) {
+      console.error("Error fetching user count:", error);
+      res.status(500).json({ message: "Failed to fetch user count" });
+    }
+  });
+
   app.get('/api/admin/notifications', isAdmin, async (req, res) => {
     try {
       const notifications = await storage.getAdminNotifications();

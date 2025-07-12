@@ -48,21 +48,31 @@ export function AdminUserManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUserForCourses, setSelectedUserForCourses] = useState<User | null>(null);
   const [isCourseManagementOpen, setIsCourseManagementOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(20);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: users, isLoading, error: usersError, refetch } = useQuery({
-    queryKey: ["/api/admin/users"],
+    queryKey: ["/api/admin/users", { page: currentPage, limit: usersPerPage }],
+    queryFn: () => apiRequest("GET", `/api/admin/users?page=${currentPage}&limit=${usersPerPage}`),
     staleTime: 0, // Force refresh
     refetchOnMount: true,
-    // Use default query function to handle authentication properly
   });
+
+  const { data: totalUsersData } = useQuery({
+    queryKey: ["/api/admin/users/count"],
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
+  const totalUsers = totalUsersData?.totalCount || 0;
+  const totalPages = Math.ceil(totalUsers / usersPerPage);
 
   // Force refetch on component mount
   useEffect(() => {
     refetch();
-  }, [refetch]);
+  }, [refetch, currentPage]);
 
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: [`/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`],
@@ -110,6 +120,7 @@ export function AdminUserManagement() {
   };
 
   const displayUsers = searchQuery.length > 2 ? (searchResults || []) : (users || []);
+  const displayCount = searchQuery.length > 2 ? (searchResults?.length || 0) : totalUsers;
   
   // Debug logging to see what's happening with the data
   console.log('Admin User Management Debug:', {
@@ -172,7 +183,7 @@ export function AdminUserManagement() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Users className="h-4 w-4" />
-            Users ({displayUsers?.length || 0})
+            Users ({displayCount.toLocaleString()})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -276,6 +287,36 @@ export function AdminUserManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination Controls */}
+      {!searchQuery && totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            Showing {(currentPage - 1) * usersPerPage + 1} to {Math.min(currentPage * usersPerPage, totalUsers)} of {totalUsers.toLocaleString()} users
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
       
       {/* Course Management Modal */}
       {isCourseManagementOpen && selectedUserForCourses && (

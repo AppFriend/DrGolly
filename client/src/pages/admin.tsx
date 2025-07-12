@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 import { 
   Shield, 
   BarChart3, 
@@ -87,11 +88,13 @@ export default function AdminPanel() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center min-w-0">
-              <img 
-                src={drGollyLogo} 
-                alt="Dr. Golly" 
-                className="h-8 w-auto object-contain mr-3 flex-shrink-0"
-              />
+              <Link href="/">
+                <img 
+                  src={drGollyLogo} 
+                  alt="Dr. Golly" 
+                  className="h-8 w-auto object-contain mr-3 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                />
+              </Link>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Admin Panel</h1>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">

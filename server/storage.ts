@@ -1595,7 +1595,7 @@ export class DatabaseStorage implements IStorage {
     return user?.isAdmin || false;
   }
 
-  async getAllUsers(page: number = 1, limit: number = 50): Promise<User[]> {
+  async getAllUsers(page: number = 1, limit: number = 20): Promise<User[]> {
     const offset = (page - 1) * limit;
     const allUsers = await db
       .select()
@@ -1629,6 +1629,114 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return updatedUser;
+  }
+
+  async createOrUpdateAdminUser(email: string, firstName: string, lastName: string): Promise<User> {
+    try {
+      // Check if user already exists
+      const existingUser = await this.getUserByEmail(email);
+      
+      if (existingUser) {
+        // Update existing user to admin with Gold access
+        const [updatedUser] = await db
+          .update(users)
+          .set({
+            isAdmin: true,
+            subscriptionTier: 'gold',
+            subscriptionStatus: 'active',
+            firstName: firstName,
+            lastName: lastName,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.email, email))
+          .returning();
+        return updatedUser;
+      } else {
+        // Create new admin user
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            isAdmin: true,
+            subscriptionTier: 'gold',
+            subscriptionStatus: 'active',
+            migrated: false,
+            signupSource: 'admin_created',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+        return newUser;
+      }
+    } catch (error) {
+      console.error('Error creating/updating admin user:', error);
+      throw error;
+    }
+  }
+
+  async getAllAdminUsers(): Promise<User[]> {
+    const adminUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.isAdmin, true))
+      .orderBy(desc(users.createdAt));
+    return adminUsers;
+  }
+
+  async getTotalUserCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(users);
+    return result[0]?.count || 0;
+  }
+
+  async createOrUpdateAdminUser(email: string, firstName: string, lastName: string): Promise<User> {
+    try {
+      // First check if user exists
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        // Update existing user to be admin and Gold tier
+        const [updatedUser] = await db
+          .update(users)
+          .set({
+            firstName,
+            lastName,
+            isAdmin: true,
+            subscriptionTier: 'gold',
+            subscriptionStatus: 'active',
+            updatedAt: new Date(),
+          })
+          .where(eq(users.email, email))
+          .returning();
+        return updatedUser;
+      } else {
+        // Create new admin user
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            id: `admin_${Date.now()}`,
+            email,
+            firstName,
+            lastName,
+            isAdmin: true,
+            subscriptionTier: 'gold',
+            subscriptionStatus: 'active',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+        return newUser;
+      }
+    } catch (error) {
+      console.error('Error creating/updating admin user:', error);
+      throw error;
+    }
   }
 
   async getUserMetrics(): Promise<{
