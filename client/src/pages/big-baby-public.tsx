@@ -20,6 +20,7 @@ import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
 import linkLogo from "@assets/Link_1752294500139.png";
 import afterpayLogo from "@assets/Afterpay_Badge_BlackonMint_1752294624500.png";
+import moneyBackGuarantee from "@assets/money-back-guarantee.png";
 
 
 // Initialize Stripe
@@ -669,9 +670,7 @@ export default function BigBabyPublic() {
         {/* Money Back Guarantee */}
         <div className="bg-white rounded-lg p-4 mb-4">
           <div className="flex items-center space-x-3">
-            <div className="bg-[#6B9CA3] text-white rounded-full p-2">
-              <span className="text-sm font-bold">30 DAYS</span>
-            </div>
+            <img src={moneyBackGuarantee} alt="30 Days Money Back Guarantee" className="h-12 w-12" />
             <div>
               <p className="font-semibold">No results after completing the program?</p>
               <p className="text-sm text-gray-600">Get a full refund within 30 days! <Info className="h-4 w-4 inline ml-1" /></p>
