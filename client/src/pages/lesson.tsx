@@ -145,40 +145,20 @@ export default function LessonPage() {
   });
 
   const handleMarkComplete = async () => {
+    if (isCompleted) return;
+    
+    // Start mutation but don't wait for it to complete navigation
     markProgressMutation.mutate({ completed: true, watchTime });
     
-    // Check if this completes the chapter
-    if (lessonData?.lesson.chapterIndex && lessonData?.lesson.courseId) {
-      try {
-        const response = await fetch(`/api/courses/${lessonData.lesson.courseId}/chapters/${lessonData.lesson.chapterIndex}/completion`);
-        const { isCompleted } = await response.json();
-        
-        if (isCompleted) {
-          // Show confetti for chapter completion
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-          });
-          
-          toast({
-            title: "Chapter Completed! 🎉",
-            description: `You've completed Chapter ${lessonData.lesson.chapterIndex}!`,
-          });
-          
-          // Navigate back to course overview after confetti
-          setTimeout(() => {
-            setLocation(`/courses/${lessonData.lesson.courseId}`);
-          }, 2000);
-        } else if (lessonData.nextLesson) {
-          // Navigate to next lesson
-          setTimeout(() => {
-            setLocation(`/lesson/${lessonData.nextLesson!.id}`);
-          }, 1000);
-        }
-      } catch (error) {
-        console.error('Error checking chapter completion:', error);
-      }
+    // If there's a next lesson, navigate immediately for fast UX
+    if (lessonData?.nextLesson) {
+      setLocation(`/lesson/${lessonData.nextLesson.id}`);
+      return;
+    }
+    
+    // For last lesson in course, navigate back to course overview
+    if (lessonData?.lesson.courseId) {
+      setLocation(`/courses/${lessonData.lesson.courseId}`);
     }
   };
 
@@ -459,26 +439,7 @@ export default function LessonPage() {
         </div>
       </div>
 
-      {/* Mobile Floating Button */}
-      <div className="fixed bottom-4 left-4 right-4 lg:hidden">
-        <Button
-          onClick={handleMarkComplete}
-          disabled={isCompleted || markProgressMutation.isPending}
-          className="w-full bg-green-700 hover:bg-green-800 text-white"
-        >
-          {isCompleted ? (
-            <>
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Completed
-            </>
-          ) : (
-            <>
-              <Circle className="w-4 h-4 mr-2" />
-              Mark Complete
-            </>
-          )}
-        </Button>
-      </div>
+
     </div>
   );
 }
