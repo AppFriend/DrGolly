@@ -389,6 +389,8 @@ export const blogPosts = pgTable("blog_posts", {
   likes: integer("likes").default(0),
   isPublished: boolean("is_published").default(false), // Default to draft
   status: varchar("status").default("draft").notNull(), // draft, published, archived
+  isPinned: boolean("is_pinned").default(false), // Pin posts to top of home page
+  pinnedAt: timestamp("pinned_at"), // When post was pinned for ordering
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

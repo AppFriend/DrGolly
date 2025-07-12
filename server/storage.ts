@@ -1180,7 +1180,11 @@ export class DatabaseStorage implements IStorage {
     
     return await db.select().from(blogPosts)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(blogPosts.publishedAt));
+      .orderBy(
+        desc(blogPosts.isPinned), // Pinned posts first
+        desc(blogPosts.pinnedAt), // Then by pinned date
+        desc(blogPosts.publishedAt) // Then by published date
+      );
   }
 
   async getBlogPost(id: number): Promise<BlogPost | undefined> {
@@ -1199,9 +1203,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBlogPost(id: number, postData: Partial<BlogPost>): Promise<BlogPost> {
+    const updateData = { ...postData, updatedAt: new Date() };
+    
+    // If pinning the post, set pinnedAt timestamp
+    if (postData.isPinned === true) {
+      updateData.pinnedAt = new Date();
+    }
+    
+    // If unpinning the post, clear pinnedAt timestamp
+    if (postData.isPinned === false) {
+      updateData.pinnedAt = null;
+    }
+    
     const [updatedPost] = await db
       .update(blogPosts)
-      .set({ ...postData, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(blogPosts.id, id))
       .returning();
     return updatedPost;
