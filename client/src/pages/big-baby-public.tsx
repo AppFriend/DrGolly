@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartphone } from "lucide-react";
+import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartphone, Trash2, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, CardElement } from "@stripe/react-stripe-js";
@@ -21,7 +22,7 @@ import { FacebookPixel } from "@/lib/facebook-pixel";
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
-// Big Baby course details (hardcoded for marketing page)
+// Big Baby course details
 const BIG_BABY_COURSE = {
   id: 6,
   title: "Big baby sleep program",
@@ -35,24 +36,39 @@ const BIG_BABY_COURSE = {
   tier: "platinum"
 };
 
-// Enhanced payment form component with Apple Pay support
-function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, customerDetails, appliedCoupon }: { 
-  onSuccess: () => void,
-  coursePrice: number,
-  currencySymbol: string,
-  currency: string,
-  customerDetails: any,
-  appliedCoupon: any
+// PaymentForm component
+function PaymentForm({ 
+  onSuccess, 
+  coursePrice, 
+  currencySymbol, 
+  currency, 
+  customerDetails, 
+  appliedCoupon 
+}: { 
+  onSuccess: (paymentIntentId: string) => void;
+  coursePrice: number;
+  currencySymbol: string;
+  currency: string;
+  customerDetails: any;
+  appliedCoupon: any;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
-  const [showCardPayment, setShowCardPayment] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState("card");
+  const [billingDetails, setBillingDetails] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    address: '',
+    country: 'Australia',
+    city: '',
+    postcode: ''
+  });
 
-  // Check if device is mobile
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
@@ -67,19 +83,18 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
     if (!stripe || !elements || coursePrice <= 0) return;
 
     const pr = stripe.paymentRequest({
-      country: 'US',
+      country: 'AU',
       currency: currency.toLowerCase(),
       total: {
         label: BIG_BABY_COURSE.title,
-        amount: Math.round(coursePrice * 100), // Convert to cents with proper rounding
+        amount: Math.round(coursePrice * 100),
       },
       requestPayerName: true,
       requestPayerEmail: true,
     });
 
-    // Check if Payment Request is available (Apple Pay, Google Pay, etc.)
     pr.canMakePayment().then((result) => {
-      if (result) {
+      if (result && isMobile) {
         setPaymentRequest(pr);
       }
     });
@@ -88,33 +103,13 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
       setIsProcessing(true);
       
       try {
-        // Get customer details from payment request
-        const customerDetails = {
+        const paymentData = await handleCreatePayment({
           email: ev.payerEmail,
           firstName: ev.payerName?.split(' ')[0] || '',
           lastName: ev.payerName?.split(' ').slice(1).join(' ') || '',
-          dueDate: ''
-        };
-
-        // Create payment intent only when user is ready to pay (Apple Pay/Google Pay button clicked)
-        const paymentResponse = await fetch('/api/create-big-baby-payment', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            customerDetails,
-            couponId: appliedCoupon?.id
-          }),
+          dueDate: customerDetails.dueDate || ''
         });
 
-        const paymentData = await paymentResponse.json();
-        
-        if (!paymentResponse.ok) {
-          throw new Error(paymentData.message || 'Failed to create payment');
-        }
-
-        // Confirm payment with the payment method from Apple Pay/Google Pay
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
           clientSecret: paymentData.clientSecret,
@@ -125,120 +120,101 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
         });
 
         if (error) {
-          console.error('Payment Request API error:', error);
-          ev.complete('fail');
-          toast({
-            title: "Payment Failed",
-            description: error.message || "Please try again.",
-            variant: "destructive",
-          });
-        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-          // Track Facebook Pixel Purchase conversion
-          const finalAmount = paymentData.finalAmount ? paymentData.finalAmount / 100 : coursePrice;
-          FacebookPixel.trackPurchase(6, BIG_BABY_COURSE.title, finalAmount, currency);
-          
-          ev.complete('success');
+          throw error;
+        }
+
+        if (paymentIntent.status === 'succeeded') {
+          await handleAccountCreation(paymentIntent.id);
           onSuccess(paymentIntent.id);
         }
-      } catch (err) {
-        console.error('Payment Request API exception:', err);
-        ev.complete('fail');
+      } catch (error: any) {
+        console.error('Payment error:', error);
         toast({
           title: "Payment Error",
-          description: "An unexpected error occurred. Please try again.",
+          description: error.message || "Payment failed. Please try again.",
           variant: "destructive",
         });
       } finally {
         setIsProcessing(false);
       }
     });
-  }, [stripe, elements, onSuccess, toast, coursePrice, currency, appliedCoupon]);
+  }, [stripe, elements, coursePrice, currency, isMobile, customerDetails]);
 
-  // Update payment request when price changes
-  useEffect(() => {
-    if (paymentRequest && coursePrice > 0) {
-      paymentRequest.update({
-        total: {
-          label: BIG_BABY_COURSE.title,
-          amount: Math.round(coursePrice * 100), // Convert to cents with proper rounding
-        },
-      });
+  const handleCreatePayment = async (customerInfo: any) => {
+    const response = await fetch('/api/create-big-baby-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerDetails: customerInfo,
+        couponId: appliedCoupon?.id
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to create payment');
+    return data;
+  };
+
+  const handleAccountCreation = async (paymentIntentId: string) => {
+    const response = await fetch('/api/big-baby-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paymentIntentId,
+        customerDetails: {
+          ...customerDetails,
+          ...billingDetails
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to create account');
     }
-  }, [paymentRequest, coursePrice]);
+    return response.json();
+  };
 
-  const handleCardSubmit = async (event: React.FormEvent, customerDetails: any) => {
-    event.preventDefault();
-
-    if (!stripe || !elements) {
-      console.error('Stripe or Elements not available');
-      return;
-    }
+  const handleCardPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements || isProcessing) return;
 
     setIsProcessing(true);
-
+    
     try {
-      // Track initiate checkout
-      FacebookPixel.trackInitiatePurchase(6, BIG_BABY_COURSE.title, coursePrice, currency);
+      const paymentData = await handleCreatePayment(customerDetails);
       
-      // Get card element
       const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        throw new Error('Card element not found');
-      }
+      if (!cardElement) throw new Error('Card element not found');
 
-      // Create payment intent when user clicks submit
-      const paymentResponse = await fetch('/api/create-big-baby-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customerDetails,
-          couponId: appliedCoupon?.id
-        }),
+      const { error, paymentIntent } = await stripe.confirmCardPayment(paymentData.clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: `${billingDetails.firstName} ${billingDetails.lastName}`,
+            email: customerDetails.email,
+            phone: billingDetails.phone,
+            address: {
+              line1: billingDetails.address,
+              city: billingDetails.city,
+              postal_code: billingDetails.postcode,
+              country: billingDetails.country === 'Australia' ? 'AU' : 'US'
+            }
+          }
+        }
       });
 
-      const paymentData = await paymentResponse.json();
-      
-      if (!paymentResponse.ok) {
-        throw new Error(paymentData.message || 'Failed to create payment');
-      }
+      if (error) throw error;
 
-      // Confirm payment with card element
-      const { error, paymentIntent } = await stripe.confirmCardPayment(
-        paymentData.clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-            billing_details: {
-              name: `${customerDetails.firstName} ${customerDetails.lastName}`,
-              email: customerDetails.email,
-            },
-          },
-        }
-      );
-
-      if (error) {
-        console.error('Payment confirmation error:', error);
-        toast({
-          title: "Payment Failed",
-          description: error.message || "Please try again.",
-          variant: "destructive",
-        });
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        console.log('Payment succeeded:', paymentIntent.id);
-        
-        // Track Facebook Pixel Purchase conversion
-        const finalAmount = paymentData.finalAmount ? paymentData.finalAmount / 100 : coursePrice;
-        FacebookPixel.trackPurchase(6, BIG_BABY_COURSE.title, finalAmount, currency);
-        
+      if (paymentIntent.status === 'succeeded') {
+        await handleAccountCreation(paymentIntent.id);
         onSuccess(paymentIntent.id);
       }
-    } catch (err) {
-      console.error('Payment exception:', err);
+    } catch (error: any) {
+      console.error('Payment error:', error);
       toast({
         title: "Payment Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "Payment failed. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -246,883 +222,424 @@ function BigBabyPaymentForm({ onSuccess, coursePrice, currencySymbol, currency, 
     }
   };
 
-  return (
-    <div className="space-y-6 relative">
-      {/* Payment Processing Overlay */}
-      {isProcessing && (
-        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-lg">
-          <div className="text-center">
-            <img
-              src={paymentLoaderGif}
-              alt="Processing payment..."
-              className="w-24 h-24 mx-auto mb-4"
-            />
-            <p className="text-lg font-semibold text-gray-700">Processing Payment...</p>
-            <p className="text-sm text-gray-500 mt-1">Please wait while we process your payment</p>
-          </div>
+  const handleBillingChange = (field: string, value: string) => {
+    setBillingDetails(prev => ({ ...prev, [field]: value }));
+  };
+
+  if (isProcessing) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-8 rounded-lg text-center">
+          <img src={paymentLoaderGif} alt="Processing payment" className="w-16 h-16 mx-auto mb-4" />
+          <p className="text-lg font-semibold">Processing your payment...</p>
+          <p className="text-gray-600">Please don't close this window</p>
         </div>
-      )}
-      
-      {/* Express Payment Methods Row - Only show if mobile for Apple Pay */}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Express Payment Buttons (Mobile Only) */}
       {isMobile && paymentRequest && (
-        <div className="space-y-4">
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-4">Complete your payment fast with</p>
+        <div className="space-y-3">
+          <div className="bg-black text-white rounded-lg p-4 flex items-center justify-center">
+            <Smartphone className="h-5 w-5 mr-2" />
+            <span className="font-medium">Pay with Apple Pay</span>
           </div>
-          
-          <div className="w-full">
-            {/* Apple Pay - only show on mobile */}
-            <div className="bg-black rounded-lg p-3 hover:bg-gray-800 transition-colors">
-              <PaymentRequestButtonElement 
-                options={{ paymentRequest }}
-                className="w-full h-8"
-              />
-            </div>
-          </div>
-          
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Or</span>
-            </div>
-          </div>
+          <PaymentRequestButtonElement
+            options={{ paymentRequest }}
+            className="StripeElement"
+          />
         </div>
       )}
 
-      {/* Payment Form with Card */}
-      <form onSubmit={(e) => handleCardSubmit(e, customerDetails)} className="space-y-4">
-        <div className="p-4 border rounded-lg bg-white">
-          <CardElement 
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#424770',
-                  '::placeholder': {
-                    color: '#aab7c4',
+      {/* Payment Method Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="link">🔗 Link</TabsTrigger>
+          <TabsTrigger value="card">💳 Card</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="link" className="space-y-4">
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="bg-green-500 text-white rounded-full p-2">
+                <Check className="h-4 w-4" />
+              </div>
+              <span className="font-medium">Link - Pay with saved details</span>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Use your saved payment information for a faster checkout
+            </p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="card" className="space-y-4">
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center space-x-2 mb-4">
+              <CreditCard className="h-5 w-5 text-gray-600" />
+              <span className="font-medium">Credit / Debit Card</span>
+              <div className="flex space-x-1">
+                <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4.svg" alt="Visa" className="h-6" />
+                <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130.svg" alt="Mastercard" className="h-6" />
+                <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5c.svg" alt="American Express" className="h-6" />
+              </div>
+            </div>
+            
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    fontSize: '16px',
+                    color: '#424770',
+                    '::placeholder': {
+                      color: '#aab7c4',
+                    },
                   },
                 },
-                invalid: {
-                  color: '#9e2146',
-                },
-              },
-            }}
+              }}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Billing Details */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-lg font-semibold">Billing Details</span>
+          <div className="h-px bg-gray-200 flex-1" />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="firstName">First Name</Label>
+            <Input
+              id="firstName"
+              value={billingDetails.firstName}
+              onChange={(e) => handleBillingChange('firstName', e.target.value)}
+              placeholder="First Name"
+            />
+          </div>
+          <div>
+            <Label htmlFor="lastName">Last Name</Label>
+            <Input
+              id="lastName"
+              value={billingDetails.lastName}
+              onChange={(e) => handleBillingChange('lastName', e.target.value)}
+              placeholder="Last Name"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            value={billingDetails.phone}
+            onChange={(e) => handleBillingChange('phone', e.target.value)}
+            placeholder="Phone number"
           />
         </div>
-        <Button
-          type="submit"
-          disabled={!stripe || isProcessing}
-          className="w-full bg-dr-teal hover:bg-dr-teal/90 h-12 text-base font-semibold"
-        >
-          {isProcessing ? "Processing..." : `Pay ${currencySymbol}${coursePrice}`}
-        </Button>
-      </form>
+        
+        <div>
+          <Label htmlFor="address">Address</Label>
+          <Input
+            id="address"
+            value={billingDetails.address}
+            onChange={(e) => handleBillingChange('address', e.target.value)}
+            placeholder="Start typing your address"
+          />
+        </div>
+      </div>
+
+      {/* Privacy Policy Statement */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <p className="text-sm text-gray-700">
+          Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our{' '}
+          <a href="/privacy" className="text-[#095D66] underline">privacy policy</a>.
+        </p>
+        <p className="text-sm text-gray-700 mt-2">
+          You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.
+        </p>
+      </div>
+
+      {/* Place Order Button */}
+      <Button
+        onClick={handleCardPayment}
+        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName}
+        className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg"
+      >
+        {isProcessing ? 'Processing...' : 'Place order'}
+      </Button>
     </div>
   );
 }
 
+// Main component
 export default function BigBabyPublic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<'checkout' | 'success' | 'signup'>('checkout');
-  const [clientSecret, setClientSecret] = useState("");
-  const [paymentIntentId, setPaymentIntentId] = useState("");
   const [customerDetails, setCustomerDetails] = useState({
-    firstName: "",
-    lastName: "",
     email: "",
+    firstName: "",
     dueDate: "",
   });
-  const [regionalPricing, setRegionalPricing] = useState<any>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
-  const [finalPrice, setFinalPrice] = useState<number>(0);
-  const [showWelcomeBackPopup, setShowWelcomeBackPopup] = useState(false);
-  const [existingUserEmail, setExistingUserEmail] = useState("");
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  const [orderExpanded, setOrderExpanded] = useState(false);
 
   // Fetch regional pricing
-  const { data: pricingData } = useQuery({
-    queryKey: ['/api/regional-pricing'],
+  const { data: regionalPricing } = useQuery({
+    queryKey: ["/api/regional-pricing"],
+    retry: false,
   });
 
-  useEffect(() => {
-    if (pricingData) {
-      setRegionalPricing(pricingData);
-    }
-  }, [pricingData]);
-
-  // Get pricing details
   const originalPrice = regionalPricing?.coursePrice || 120;
   const currency = regionalPricing?.currency || 'USD';
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
   
-  // Calculate final price with coupon discount
-  useEffect(() => {
-    let calculatedPrice = originalPrice;
-    
-    if (appliedCoupon) {
-      if (appliedCoupon.percent_off) {
-        calculatedPrice = originalPrice * (1 - appliedCoupon.percent_off / 100);
-      } else if (appliedCoupon.amount_off) {
-        calculatedPrice = Math.max(0, originalPrice - (appliedCoupon.amount_off / 100));
-      }
-    }
-    
-    // Round to 2 decimal places to avoid floating point precision issues
-    setFinalPrice(Math.round(calculatedPrice * 100) / 100);
-  }, [originalPrice, appliedCoupon]);
-
-  // Removed automatic payment intent creation to prevent incomplete transactions in Stripe
-
-  const completeSignupMutation = useMutation({
-    mutationFn: async ({ customerDetails, interests, password, paymentIntentId }: { 
-      customerDetails: any, 
-      interests: string[], 
-      password: string,
-      paymentIntentId: string 
-    }) => {
-      console.log('Starting account creation with payment intent:', paymentIntentId);
-      console.log('Customer details:', customerDetails);
-      console.log('Selected interests:', interests);
-      
-      const response = await apiRequest('POST', '/api/create-account-with-purchase', {
-        customerDetails,
-        interests,
-        password,
-        paymentIntentId
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Account creation failed:', errorData);
-        throw new Error(errorData.message || 'Account creation failed');
-      }
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      console.log('Account processed successfully:', data);
-      const toastTitle = data.isExistingUser ? "Course Added Successfully!" : "Account Created Successfully!";
-      const toastDescription = data.isExistingUser ? 
-        "The course has been added to your existing account. Welcome back!" : 
-        "Welcome to Dr. Golly! Your course is ready to access.";
-      
-      toast({
-        title: toastTitle,
-        description: toastDescription,
-      });
-      
-      // Invalidate auth cache to refresh user state
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      
-      // Redirect to home page since user is now logged in
-      setTimeout(() => {
-        setLocation("/");
-      }, 2000);
-    },
-    onError: (error) => {
-      console.error('Account creation error:', error);
-      toast({
-        title: "Account Creation Failed",
-        description: error.message || "Please try again or contact support.",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Handle post-payment account setup
-  const handleAccountSetup = () => {
-    toast({
-      title: "Payment Successful!",
-      description: "Check your email for login instructions. Your course is ready!",
-    });
-    // Redirect to login page after short delay
-    setTimeout(() => {
-      setLocation("/login");
-    }, 3000);
-  };
+  const finalPrice = appliedCoupon ? 
+    appliedCoupon.amountOff ? originalPrice - appliedCoupon.amountOff :
+    appliedCoupon.percentOff ? originalPrice * (1 - appliedCoupon.percentOff / 100) :
+    originalPrice : originalPrice;
 
   const handleDetailsChange = (field: string, value: string) => {
-    setCustomerDetails(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Check if email exists when user types email
-    if (field === 'email' && value.includes('@')) {
-      checkEmailExists(value);
-    }
+    setCustomerDetails(prev => ({ ...prev, [field]: value }));
   };
 
-  const checkEmailExists = async (email: string) => {
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
     try {
-      const response = await apiRequest('POST', '/api/auth/check-existing-account', { email });
-      const data = await response.json();
-      
-      if (data.exists) {
-        setExistingUserEmail(email);
-        setShowWelcomeBackPopup(true);
+      // Track Facebook Pixel purchase event
+      if (typeof window !== 'undefined' && window.fbq) {
+        window.fbq('track', 'Purchase', {
+          value: finalPrice,
+          currency: currency,
+          content_ids: [BIG_BABY_COURSE.id],
+          content_type: 'product',
+        });
       }
-    } catch (error) {
-      // Email doesn't exist, continue with signup
-    }
-  };
 
-  const handleWelcomeBackLogin = () => {
-    setShowWelcomeBackPopup(false);
-    setLocation("/checkout");
-  };
-
-  const handleWelcomeBackReset = () => {
-    setShowWelcomeBackPopup(false);
-    setLocation("/reset-password?from=checkout");
-  };
-
-  const handleWelcomeBackClose = () => {
-    setShowWelcomeBackPopup(false);
-  };
-
-  // Email validation
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handlePaymentSuccess = (successfulPaymentIntentId?: string) => {
-    // Update payment intent ID with the successful one
-    if (successfulPaymentIntentId) {
-      setPaymentIntentId(successfulPaymentIntentId);
-    }
-    setStep('success');
-  };
-
-  const handleCreateAccount = (interests: string[], password: string, phoneNumber: string, role: string) => {
-    // Complete signup by creating account with phone number and role
-    const updatedCustomerDetails = {
-      ...customerDetails,
-      phone: phoneNumber,
-      role: role
-    };
-    
-    completeSignupMutation.mutate({ 
-      customerDetails: updatedCustomerDetails, 
-      interests,
-      password,
-      paymentIntentId: paymentIntentId 
-    });
-  };
-
-  const isDetailsComplete = customerDetails.firstName && customerDetails.email && isValidEmail(customerDetails.email);
-  
-  // Check individual validation states for better user feedback
-  const hasValidFirstName = customerDetails.firstName.trim().length > 0;
-  const hasValidEmail = customerDetails.email.trim().length > 0 && isValidEmail(customerDetails.email);
-
-  // Only create payment intent when user is ready to pay, not when details are complete
-  const createPaymentIntentForPayment = async () => {
-    if (!isDetailsComplete) return null;
-    
-    try {
-      const response = await apiRequest("POST", "/api/create-big-baby-payment", {
-        courseId: BIG_BABY_COURSE.id,
-        customerDetails,
-        couponId: appliedCoupon?.id
+      toast({
+        title: "Payment Successful!",
+        description: "Your account has been created and you're now logged in.",
       });
-      const data = await response.json();
-      
-      setClientSecret(data.clientSecret);
-      setPaymentIntentId(data.paymentIntentId);
-      
-      if (data.finalAmount) {
-        setFinalPrice(data.finalAmount / 100);
-      }
-      
-      return data;
+
+      // Redirect to home page
+      setLocation("/");
     } catch (error) {
-      console.error('Failed to create payment intent:', error);
-      return null;
+      console.error('Post-payment error:', error);
     }
   };
 
-  if (step === 'success') {
-    return <SuccessPage onContinue={() => setStep('signup')} />;
-  }
-
-  if (step === 'signup') {
-    return <SignupFlow onComplete={handleCreateAccount} customerDetails={customerDetails} />;
-  }
+  const canProceedToPayment = customerDetails.email && customerDetails.firstName;
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <FacebookPixel />
+      
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img 
-                src={drGollyLogo} 
-                alt="Dr. Golly" 
-                className="h-10 w-auto object-contain"
-              />
-            </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
-              <Shield className="h-3 w-3 mr-1" />
-              30-Day Money Back Guarantee
-            </Badge>
-          </div>
-        </div>
+      <div className="bg-white border-b px-4 py-3 flex items-center justify-center">
+        <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Left Column - Course Details */}
-          <div className="space-y-6">
+      {/* Success Banner */}
+      <div className="bg-[#6B9CA3] text-white px-4 py-3 text-center">
+        <p className="font-medium">You're one step closer to better sleep for your baby!</p>
+      </div>
+
+      <div className="p-4 max-w-md mx-auto">
+        {/* Your Details Section */}
+        <div className="bg-white rounded-lg p-4 mb-4">
+          <h2 className="text-lg font-semibold mb-4">Your Details</h2>
+          
+          <div className="space-y-3">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {BIG_BABY_COURSE.title}
-              </h1>
-              <p className="text-lg text-gray-600 mb-4">
-                {BIG_BABY_COURSE.description}
-              </p>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <div className="flex items-center gap-1">
-                  <div className="flex">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  </div>
-                  <span className="font-medium">{BIG_BABY_COURSE.rating}</span>
-                  <span>({BIG_BABY_COURSE.reviewCount} reviews)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>{BIG_BABY_COURSE.duration} minutes</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  <span>{BIG_BABY_COURSE.ageRange}</span>
-                </div>
-              </div>
+              <Label htmlFor="email">Email address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={customerDetails.email}
+                onChange={(e) => handleDetailsChange("email", e.target.value)}
+                placeholder="Enter your email"
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                type="text"
+                value={customerDetails.firstName}
+                onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                placeholder="Enter your first name"
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="dueDate">Due Date/Baby Birthday</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={customerDetails.dueDate}
+                onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
+                className="mt-1"
+              />
             </div>
           </div>
+        </div>
 
-          {/* Right Column - Checkout */}
-          <div className="space-y-6">
-            {/* 1. Complete Your Purchase */}
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle>Complete Your Purchase</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName" className="text-sm text-gray-600">First Name *</Label>
-                      <Input
-                        id="firstName"
-                        value={customerDetails.firstName}
-                        onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                        className="mt-1"
-                        placeholder="First Name"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="lastName" className="text-sm text-gray-600">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={customerDetails.lastName}
-                        onChange={(e) => handleDetailsChange("lastName", e.target.value)}
-                        className="mt-1"
-                        placeholder="Last Name"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="email" className="text-sm text-gray-600">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={customerDetails.email}
-                      onChange={(e) => handleDetailsChange("email", e.target.value)}
-                      className="mt-1"
-                      placeholder="your@email.com"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="dueDate" className="text-sm text-gray-600">Baby's Birthday / Due Date</Label>
-                    <Input
-                      id="dueDate"
-                      type="date"
-                      value={customerDetails.dueDate}
-                      onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
+        {/* Your Order Section */}
+        <div className="bg-white rounded-lg p-4 mb-4">
+          <div 
+            className="flex items-center justify-between cursor-pointer"
+            onClick={() => setOrderExpanded(!orderExpanded)}
+          >
+            <div className="flex items-center space-x-2">
+              <h2 className="text-lg font-semibold">Your Order - {currencySymbol}{finalPrice}</h2>
+            </div>
+            {orderExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </div>
+          
+          {orderExpanded && (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-start space-x-3">
+                <img 
+                  src={BIG_BABY_COURSE.thumbnailUrl} 
+                  alt={BIG_BABY_COURSE.title}
+                  className="w-16 h-16 rounded-lg object-cover"
+                />
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900">{BIG_BABY_COURSE.title}</h3>
+                  <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
+                  <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* 2. Order Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-3 mb-4">
-                  <img
-                    src={BIG_BABY_COURSE.thumbnailUrl}
-                    alt={BIG_BABY_COURSE.title}
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{BIG_BABY_COURSE.title}</h3>
-                    <p className="text-sm text-gray-600">Digital Course</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span className="text-xs text-gray-500">{BIG_BABY_COURSE.rating} ({BIG_BABY_COURSE.reviewCount} reviews)</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    {appliedCoupon && (
-                      <div className="text-sm text-gray-500 line-through">
-                        {currencySymbol}{originalPrice}
-                      </div>
-                    )}
-                    <span className="text-lg font-semibold">{currencySymbol}{finalPrice || originalPrice}</span>
-                  </div>
+                <Button variant="ghost" size="sm" className="text-gray-400">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Coupon Input */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Have a coupon or gift card?</span>
+                  <ChevronDown className="h-4 w-4" />
                 </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm">Subtotal</span>
-                    <span className="text-sm">{currencySymbol}{originalPrice}</span>
-                  </div>
-                  {appliedCoupon && (
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-green-600">
-                        Discount ({appliedCoupon.name})
-                      </span>
-                      <span className="text-sm text-green-600">
-                        -{currencySymbol}{(originalPrice - (finalPrice || originalPrice)).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-sm">Tax</span>
-                    <span className="text-sm">$0</span>
-                  </div>
-                  <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
-                    <span>Total</span>
-                    <span>{currencySymbol}{finalPrice || originalPrice}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 3. Coupon Code */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Coupon Code</CardTitle>
-              </CardHeader>
-              <CardContent>
                 <CouponInput
                   onCouponApplied={setAppliedCoupon}
-                  onCouponRemoved={() => setAppliedCoupon(null)}
-                  appliedCoupon={appliedCoupon}
-                  disabled={false}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Payment Section */}
-            {isDetailsComplete ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payment Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Elements 
-                    stripe={stripePromise} 
-                    options={{ 
-                      appearance: {
-                        theme: 'stripe',
-                        variables: {
-                          colorPrimary: '#0891b2', // dr-teal
-                        }
-                      }
-                    }}
-                  >
-                    <BigBabyPaymentForm 
-                      onSuccess={handlePaymentSuccess} 
-                      coursePrice={finalPrice || originalPrice}
-                      currencySymbol={currencySymbol}
-                      currency={currency}
-                      customerDetails={customerDetails}
-                      appliedCoupon={appliedCoupon}
-                    />
-                  </Elements>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center text-gray-500">
-                    <p className="text-sm font-medium mb-2">Complete your details above to continue to payment</p>
-                    <div className="text-xs space-y-1">
-                      <div className={`flex items-center justify-center gap-1 ${hasValidFirstName ? 'text-green-600' : 'text-gray-400'}`}>
-                        {hasValidFirstName ? '✓' : '○'} First name required
-                      </div>
-                      <div className={`flex items-center justify-center gap-1 ${hasValidEmail ? 'text-green-600' : 'text-gray-400'}`}>
-                        {hasValidEmail ? '✓' : '○'} Valid email address required
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* 3. 30-Day Money Back Guarantee */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 text-center">
-                  <Shield className="h-6 w-6 text-green-500" />
-                  <div>
-                    <p className="text-sm font-medium">30-Day Money Back Guarantee</p>
-                    <p className="text-xs text-gray-500">If you're not satisfied, get a full refund within 30 days</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* 4. Customer Reviews */}
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Reviews</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <img
-                    src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=50&h=50"
-                    alt="Sarah M"
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm">Sarah M</span>
-                      <div className="flex text-yellow-400">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <Star key={i} className="h-3 w-3 fill-current" />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      "This program transformed our nights! My 5-month-old went from waking every 2 hours to sleeping through the night in just one week."
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <img
-                    src="https://images.unsplash.com/photo-1494790108755-2616b9c42d68?ixlib=rb-4.0.3&auto=format&fit=crop&w=50&h=50"
-                    alt="Emma R"
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm">Emma R</span>
-                      <div className="flex text-yellow-400">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <Star key={i} className="h-3 w-3 fill-current" />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      "Dr. Golly's approach is so gentle yet effective. Finally, a sleep program that actually works!"
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 5. What You'll Learn */}
-        <div className="max-w-4xl mx-auto px-4 pb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-dr-teal" />
-                What You'll Learn
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Tried and tested sleep training techniques for 4-8 month olds</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Understanding your baby's sleep patterns and cycles</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">How to handle sleep regressions and disruptions</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Creating the optimal sleep environment for your baby</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Gentle approaches to sleep training that work</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                  <span className="text-sm">Troubleshooting common sleep problems</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-      
-      {/* Welcome Back Popup */}
-      <WelcomeBackPopup
-        isOpen={showWelcomeBackPopup}
-        onClose={handleWelcomeBackClose}
-        userEmail={existingUserEmail}
-        firstName={customerDetails.firstName}
-        onLoginSuccess={handleWelcomeBackLogin}
-        onPasswordReset={handleWelcomeBackReset}
-      />
-    </div>
-  );
-}
-
-// Success Page Component
-function SuccessPage({ onContinue }: { onContinue: () => void }) {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Check className="h-8 w-8 text-green-600" />
-        </div>
-        
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
-        <p className="text-gray-600 mb-6">
-          Welcome to Dr. Golly! Your Big Baby Sleep Program is ready for you.
-        </p>
-        
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-blue-800">
-            Complete your profile setup to access your course and start your sleep journey!
-          </p>
-        </div>
-        
-        <Button 
-          onClick={onContinue}
-          className="w-full bg-dr-teal hover:bg-dr-teal/90"
-        >
-          Complete Your Profile
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Signup Flow Component
-function SignupFlow({ onComplete, customerDetails }: { 
-  onComplete: (interests: string[], password: string, phoneNumber: string, role: string) => void; 
-  customerDetails: any;
-}) {
-  const [interests, setInterests] = useState<string[]>([]);
-  const [phone, setPhone] = useState("");
-  const [countryCode, setCountryCode] = useState("+61");
-  const [role, setRole] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
-
-  const interestOptions = [
-    "Baby Sleep",
-    "Toddler Sleep", 
-    "Toddler Behaviour",
-    "Partner Discounts"
-  ];
-
-  const handleInterestToggle = (interest: string) => {
-    setInterests(prev => 
-      prev.includes(interest) 
-        ? prev.filter(i => i !== interest)
-        : [...prev, interest]
-    );
-  };
-
-  const handleComplete = () => {
-    if (interests.length > 0 && role && agreedToTerms && password && password === confirmPassword) {
-      // Pass phone number in proper format
-      const phoneNumber = countryCode + phone;
-      onComplete(interests, password, phoneNumber, role);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img 
-                src={drGollyLogo} 
-                alt="Dr. Golly" 
-                className="h-10 w-auto object-contain"
-              />
-            </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
-              <Shield className="h-3 w-3 mr-1" />
-              30-Day Money Back Guarantee
-            </Badge>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Profile</h1>
-            <p className="text-gray-600">Just a few more details to access your course</p>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <Label className="text-sm text-gray-600 mb-3 block">What are you interested in? *</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {interestOptions.map((interest) => (
-                  <Button
-                    key={interest}
-                    variant={interests.includes(interest) ? "default" : "outline"}
-                    onClick={() => handleInterestToggle(interest)}
-                    className={`h-auto py-3 px-4 text-sm ${
-                      interests.includes(interest) 
-                        ? "bg-[#095D66] hover:bg-[#095D66]/90 text-white" 
-                        : "border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    {interest}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm text-gray-600 mb-2 block">Phone Number</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="w-20"
-                  placeholder="+61"
-                />
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="flex-1"
-                  placeholder="Your phone number"
+                  originalPrice={originalPrice}
                 />
               </div>
-            </div>
-
-            <div>
-              <Label className="text-sm text-gray-600 mb-2 block">I am a *</Label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {["Parent", "Grandparent", "Caregiver", "Professional"].map((roleOption) => (
-                  <Button
-                    key={roleOption}
-                    variant={role === roleOption ? "default" : "outline"}
-                    onClick={() => setRole(roleOption)}
-                    className={`h-auto py-3 px-4 text-sm ${
-                      role === roleOption 
-                        ? "bg-[#095D66] hover:bg-[#095D66]/90 text-white" 
-                        : "border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    {roleOption}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm text-gray-600 mb-2 block">Create Password *</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a secure password"
-                />
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  className={confirmPassword && password !== confirmPassword ? "border-red-500" : ""}
-                />
-              </div>
-              {confirmPassword && password !== confirmPassword && (
-                <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <label className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="mt-1"
-                />
-                <span className="text-sm text-gray-600">
-                  I agree to the <a href="/terms" target="_blank" className="text-[#095D66] hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-[#095D66] hover:underline">Privacy Policy</a> *
-                </span>
-              </label>
               
-              <label className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  checked={marketingOptIn}
-                  onChange={(e) => setMarketingOptIn(e.target.checked)}
-                  className="mt-1"
-                />
-                <span className="text-sm text-gray-600">
-                  I'd like to receive marketing emails and updates
-                </span>
-              </label>
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold">Total (incl. GST)</span>
+                  <span className="text-lg font-semibold">{currencySymbol}{finalPrice}</span>
+                </div>
+              </div>
             </div>
+          )}
+        </div>
 
-            <Button 
-              onClick={handleComplete}
-              disabled={interests.length === 0 || !role || !agreedToTerms || !password || password !== confirmPassword}
-              className="w-full bg-[#095D66] hover:bg-[#095D66]/90 text-white"
-            >
-              Complete Setup & Access Course
-            </Button>
+        {/* Payment Section */}
+        {canProceedToPayment ? (
+          <div className="bg-white rounded-lg p-4 mb-4">
+            <h2 className="text-lg font-semibold mb-4">Payment</h2>
+            <Elements stripe={stripePromise}>
+              <PaymentForm
+                onSuccess={handlePaymentSuccess}
+                coursePrice={finalPrice}
+                currencySymbol={currencySymbol}
+                currency={currency}
+                customerDetails={customerDetails}
+                appliedCoupon={appliedCoupon}
+              />
+            </Elements>
+          </div>
+        ) : (
+          <div className="bg-gray-100 rounded-lg p-4 mb-4">
+            <p className="text-gray-600 text-center">
+              Please enter your email and first name to continue to payment
+            </p>
+          </div>
+        )}
+
+        {/* Money Back Guarantee */}
+        <div className="bg-white rounded-lg p-4 mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="bg-[#6B9CA3] text-white rounded-full p-2">
+              <span className="text-sm font-bold">30 DAYS</span>
+            </div>
+            <div>
+              <p className="font-semibold">No results after completing the program?</p>
+              <p className="text-sm text-gray-600">Get a full refund within 30 days! <Info className="h-4 w-4 inline ml-1" /></p>
+            </div>
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="bg-white rounded-lg p-4 mb-4">
+          <h3 className="text-xl font-semibold mb-4 text-center">Let customers speak for us</h3>
+          
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="bg-[#6B9CA3] text-white p-6 rounded-lg">
+              <div className="text-4xl font-bold">4.85</div>
+              <div className="flex text-yellow-400 mt-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-current" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="font-semibold">Based on 775 reviews</p>
+              <p className="text-sm text-gray-600">Excellent on Reviews</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="border-b pb-4">
+              <div className="flex items-center space-x-1 mb-2">
+                <span className="font-medium">Sigourney S</span>
+                <div className="flex text-yellow-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-3 w-3 fill-current" />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center space-x-1 mb-2">
+                <Check className="h-4 w-4 text-green-500" />
+                <span className="text-sm text-gray-600">Verified Customer</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-1">Toddler sleep program</p>
+              <p className="text-sm">
+                Toddler sleep felt impossible, bedtime battles, night wakes, early starts... we were all exhausted. The Dr Golly Toddler Program gave us the tools (and confidence) to create calm, consistent routines that actually work. No crying it out, no power struggles, just simple, evidence...
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Links */}
+        <div className="bg-white rounded-lg p-4 mb-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <a href="/contact" className="text-[#6B9CA3] hover:underline block">Contact & Support</a>
+              <a href="/shipping" className="text-[#6B9CA3] hover:underline block">Shipping Policy</a>
+              <a href="/terms" className="text-[#6B9CA3] hover:underline block">Terms of Service</a>
+            </div>
+            <div className="space-y-2">
+              <a href="/privacy" className="text-[#6B9CA3] hover:underline block">Privacy Policy</a>
+              <a href="/refunds" className="text-[#6B9CA3] hover:underline block">Refund Policy</a>
+            </div>
           </div>
         </div>
       </div>
+
+      {showWelcomePopup && (
+        <WelcomeBackPopup onClose={() => setShowWelcomePopup(false)} />
+      )}
     </div>
   );
 }
