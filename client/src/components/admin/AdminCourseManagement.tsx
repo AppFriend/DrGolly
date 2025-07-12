@@ -988,8 +988,16 @@ function CourseAccordionView({ course, onUpdateCourse }: CourseAccordionViewProp
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              ${course.price}
+              ${typeof course.price === 'number' ? course.price.toFixed(2) : course.price}
             </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPreviewCourse(course)}
+              className="h-8 w-8 p-0"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
