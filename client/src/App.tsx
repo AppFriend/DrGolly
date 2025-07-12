@@ -36,6 +36,9 @@ import Profile from "@/pages/profile";
 import KlaviyoTest from "@/pages/klaviyo-test";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
+import Refunds from "@/pages/refunds";
+import Contact from "@/pages/contact";
+import Shipping from "@/pages/shipping";
 import ResetPassword from "@/pages/reset-password";
 import Share from "@/pages/share";
 
@@ -75,6 +78,9 @@ function AuthenticatedApp() {
         <Route path="/admin" component={Admin} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
+        <Route path="/refunds" component={Refunds} />
+        <Route path="/contact" component={Contact} />
+        <Route path="/shipping" component={Shipping} />
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/share/:slug" component={Share} />

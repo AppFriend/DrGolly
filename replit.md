@@ -651,6 +651,20 @@ Changelog:
   * Added missing useCallback import to AdminBlogManagement component
   * Corrected migration script imports to use courseLessons instead of deprecated courseModules
   * Application now builds and deploys successfully with no TypeScript compilation errors
+- July 12, 2025. COMPLETED: Comprehensive checkout page redesign matching reference layout:
+  * Redesigned both Big Baby public checkout (/Big-baby-public) and authenticated checkout (/checkout) pages
+  * Implemented exact layout structure: banner, email/first name fields, order details with coupon, payment methods, billing details, reviews
+  * Added Apple Pay and Google Pay express payment buttons for mobile devices
+  * Created tabbed payment interface with Link and Card payment options
+  * Enhanced billing details section with comprehensive address fields
+  * Added money-back guarantee section with 30-day refund policy
+  * Integrated customer reviews section with star ratings and testimonials
+  * Created comprehensive footer with policy links (contact, shipping, refunds, terms, privacy)
+  * Added new policy pages: /refunds, /contact, /shipping with professional content
+  * Enhanced order summary with expandable details and coupon input
+  * Both checkout flows now have identical structure and user experience
+  * Payment methods positioned above scroll line on mobile for better conversion
+  * Updated all brand colors to match Dr. Golly branding (#6B9CA3 and #095D66)
 ```
 
 ## User Preferences
