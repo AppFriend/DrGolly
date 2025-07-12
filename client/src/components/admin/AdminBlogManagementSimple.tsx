@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Plus, Edit, Eye, Heart, Calendar, Tag, Trash2, Save, X } from "lucide-react";
@@ -351,18 +352,27 @@ export function AdminBlogManagementSimple() {
               {/* Content - Rich Text Editor */}
               <div className="space-y-2">
                 <Label htmlFor="content">Content</Label>
-                <div className="border rounded-md">
-                  <Textarea
-                    id="content"
-                    value={editingPost.content}
-                    onChange={(e) => setEditingPost(prev => prev ? {...prev, content: e.target.value} : null)}
-                    placeholder="Enter blog post content (HTML supported)"
-                    rows={15}
-                    className="min-h-[400px] border-0 resize-none"
+                <RichTextEditor
+                  content={editingPost.content}
+                  onChange={(content) => setEditingPost(prev => prev ? {...prev, content} : null)}
+                  placeholder="Start writing your blog post content..."
+                />
+                <p className="text-sm text-gray-500">
+                  Use the toolbar above to format your content. Changes will be saved exactly as they appear and will immediately be visible to users on the /home page.
+                </p>
+              </div>
+
+              {/* Content Preview */}
+              <div className="space-y-2">
+                <Label>Content Preview</Label>
+                <div className="border rounded-md p-4 bg-gray-50 max-h-60 overflow-y-auto">
+                  <div 
+                    className="prose-content" 
+                    dangerouslySetInnerHTML={{ __html: editingPost.content || '<p class="text-gray-500">Content preview will appear here...</p>' }}
                   />
                 </div>
                 <p className="text-sm text-gray-500">
-                  You can use HTML tags for formatting. Common tags: &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;strong&gt;, &lt;em&gt;
+                  This is how your content will appear to users on the /home page.
                 </p>
               </div>
 
