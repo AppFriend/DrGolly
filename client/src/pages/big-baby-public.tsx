@@ -668,7 +668,7 @@ export default function BigBabyPublic() {
         </div>
 
         {/* Money Back Guarantee */}
-        <div className="bg-white rounded-lg p-4 mb-4">
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 mb-4 border border-teal-100">
           <div className="flex items-center space-x-3">
             <img src={moneyBackGuarantee} alt="30 Days Money Back Guarantee" className="h-12 w-12" />
             <div>
