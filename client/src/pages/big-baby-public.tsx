@@ -17,6 +17,9 @@ import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
+import appleLogo from "@assets/apple_1752294500140.png";
+import linkLogo from "@assets/Link_1752294500139.png";
+import afterpayLogo from "@assets/Afterpay_Badge_BlackonMint_1752294624500.png";
 
 
 // Initialize Stripe
@@ -338,7 +341,7 @@ function PaymentForm({
         {/* Link Payment Section - White container within gray */}
         <div className="bg-white p-4 rounded-lg border">
           <div className="flex items-center space-x-3 mb-3">
-            <img src="/attached_assets/Link_1752294500139.png" alt="Link" className="h-6 w-6" />
+            <img src={linkLogo} alt="Link" className="h-6 w-6" />
             <span className="text-lg font-bold">link</span>
             <div className="ml-auto text-sm text-gray-600">frazeradnam@gmail.com ▼ ✕</div>
           </div>
@@ -375,7 +378,7 @@ function PaymentForm({
           </div>
           <span className="font-medium">Afterpay</span>
           <div className="ml-auto">
-            <span className="bg-black text-white px-2 py-1 rounded text-sm font-bold">afterpay</span>
+            <img src={afterpayLogo} alt="Afterpay" className="h-6" />
           </div>
         </div>
       </div>
@@ -385,7 +388,7 @@ function PaymentForm({
         {/* Apple Pay Button */}
         <Button className="w-full h-12 bg-black text-white hover:bg-gray-800 rounded-lg flex items-center justify-center">
           <span className="text-white text-lg font-medium">Buy with </span>
-          <img src="/attached_assets/apple_1752294500140.png" alt="Apple" className="ml-2 h-6 w-6" />
+          <img src={appleLogo} alt="Apple" className="ml-2 h-6 w-6" />
           <span className="text-white text-lg font-medium">Pay</span>
         </Button>
 
@@ -406,7 +409,7 @@ function PaymentForm({
 
         {/* Link Button */}
         <Button className="w-full h-12 bg-green-500 text-white hover:bg-green-600 rounded-lg flex items-center justify-center">
-          <img src="/attached_assets/Link_1752294500139.png" alt="Link" className="h-6 w-6 mr-2" />
+          <img src={linkLogo} alt="Link" className="h-6 w-6 mr-2" />
           <span className="text-white text-lg font-bold">link</span>
           <div className="ml-auto flex items-center text-sm">
             <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium mr-1">VISA</span>
