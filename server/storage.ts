@@ -699,7 +699,29 @@ export class DatabaseStorage implements IStorage {
       
       query += ` ORDER BY created_at`;
       
-      const result = await sql([query]);
+      // Use tagged template syntax for Neon serverless driver
+      let result;
+      if (category) {
+        result = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                  duration, age_range, is_published, likes, views, created_at, updated_at,
+                                  price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                  status, detailed_description, website_content, key_features, whats_covered,
+                                  rating, review_count, overview_description, learning_objectives,
+                                  completion_criteria, course_structure_notes
+                           FROM courses 
+                           WHERE is_published = true AND category = ${category}
+                           ORDER BY created_at`;
+      } else {
+        result = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                  duration, age_range, is_published, likes, views, created_at, updated_at,
+                                  price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                  status, detailed_description, website_content, key_features, whats_covered,
+                                  rating, review_count, overview_description, learning_objectives,
+                                  completion_criteria, course_structure_notes
+                           FROM courses 
+                           WHERE is_published = true 
+                           ORDER BY created_at`;
+      }
       
       // Convert price from string to number if needed
       return result.map((course: any) => ({
