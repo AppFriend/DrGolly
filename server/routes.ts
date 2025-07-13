@@ -2565,12 +2565,16 @@ Please contact the customer to confirm the appointment.
       const nextLesson = await storage.getNextLesson(lesson.courseId, lesson.chapterId, lesson.orderIndex);
       console.log(`Next lesson: ${nextLesson ? nextLesson.title : 'none'}`);
       
+      // Check if this is the last lesson in the current chapter
+      const isLastInChapter = !nextLesson || (nextLesson && nextLesson.chapterId !== lesson.chapterId);
+      
       res.json({
         lesson,
         course,
         content,
         progress,
-        nextLesson
+        nextLesson,
+        isLastInChapter
       });
     } catch (error) {
       console.error('Error fetching lesson:', error);
@@ -6472,6 +6476,108 @@ Please contact the customer to confirm the appointment.
         message: 'Course migration failed', 
         error: error.message 
       });
+    }
+  });
+
+  // Service routes
+  app.get('/api/services', async (req, res) => {
+    try {
+      const services = await storage.getServices();
+      res.json(services);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      res.status(500).json({ message: "Failed to fetch services" });
+    }
+  });
+
+  app.get('/api/services/:id', async (req, res) => {
+    try {
+      const serviceId = parseInt(req.params.id);
+      const service = await storage.getService(serviceId);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      console.error("Error fetching service:", error);
+      res.status(500).json({ message: "Failed to fetch service" });
+    }
+  });
+
+  app.post('/api/services', isAdmin, async (req, res) => {
+    try {
+      const serviceData = insertServiceSchema.parse(req.body);
+      const service = await storage.createService(serviceData);
+      res.status(201).json(service);
+    } catch (error) {
+      console.error("Error creating service:", error);
+      res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  // Service booking routes
+  app.get('/api/service-bookings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookings = await storage.getUserServiceBookings(userId);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching service bookings:", error);
+      res.status(500).json({ message: "Failed to fetch bookings" });
+    }
+  });
+
+  app.post('/api/service-bookings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookingData = insertServiceBookingSchema.parse({
+        ...req.body,
+        userId,
+        preferredDate: new Date(req.body.preferredDate)
+      });
+      
+      const booking = await storage.createServiceBooking(bookingData);
+      res.status(201).json(booking);
+    } catch (error) {
+      console.error("Error creating service booking:", error);
+      res.status(500).json({ message: "Failed to create booking" });
+    }
+  });
+
+  app.patch('/api/service-bookings/:id/status', isAdmin, async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      const booking = await storage.updateServiceBookingStatus(bookingId, status);
+      res.json(booking);
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      res.status(500).json({ message: "Failed to update booking status" });
+    }
+  });
+
+  // User activated services routes
+  app.get('/api/user/activated-services', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const activatedServices = await storage.getUserActivatedServices(userId);
+      res.json(activatedServices);
+    } catch (error) {
+      console.error("Error fetching activated services:", error);
+      res.status(500).json({ message: "Failed to fetch activated services" });
+    }
+  });
+
+  // Seed services endpoint
+  app.post('/api/seed-services', isAdmin, async (req, res) => {
+    try {
+      const { seedServices } = await import('./seed-services');
+      await seedServices();
+      res.json({ message: 'Services seeded successfully' });
+    } catch (error) {
+      console.error("Error seeding services:", error);
+      res.status(500).json({ message: "Failed to seed services" });
     }
   });
 

@@ -42,6 +42,8 @@ import Contact from "@/pages/contact";
 import Shipping from "@/pages/shipping";
 import ResetPassword from "@/pages/reset-password";
 import Share from "@/pages/share";
+import ServicesPage from "@/pages/services";
+import ServiceDetailPage from "@/pages/service-detail";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -141,6 +143,20 @@ function AuthenticatedApp() {
             </div>
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/services">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <ServicesPage />
+            </div>
+          </DesktopLayout>
+        </Route>
+        <Route path="/services/:id">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <ServiceDetailPage />
+            </div>
+          </DesktopLayout>
         </Route>
         <Route path="/profile">
           <DesktopLayout>

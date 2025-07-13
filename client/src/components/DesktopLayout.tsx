@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Home, GraduationCap, TrendingUp, Percent, Users, Settings, User, LogOut, Bell, HelpCircle } from "lucide-react";
+import { Home, GraduationCap, TrendingUp, Percent, Users, Settings, User, LogOut, Bell, HelpCircle, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
   const navigationItems = [
     { id: "home", label: "Home", icon: Home, path: "/home" },
     { id: "courses", label: "Courses", icon: GraduationCap, path: "/courses" },
+    { id: "services", label: "Services", icon: Calendar, path: "/services" },
     { id: "discounts", label: "Partner Deals", icon: Percent, path: "/discounts" },
     { id: "tracking", label: "Growth Tracking", icon: TrendingUp, path: "/track" },
     { id: "family", label: "Family Sharing", icon: Users, path: "/family" },

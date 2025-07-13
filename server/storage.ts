@@ -27,10 +27,16 @@ import {
   familyInvites,
   stripeProducts,
   regionalPricing,
+  services,
+  serviceBookings,
   type User,
   type UpsertUser,
   type FeatureFlag,
   type InsertFeatureFlag,
+  type Service,
+  type InsertService,
+  type ServiceBooking,
+  type InsertServiceBooking,
   type Course,
   type CourseChapter,
   type CourseLesson,
@@ -321,6 +327,24 @@ export interface IStorage {
   createNotification(notification: InsertNotification): Promise<Notification>;
   createUserNotification(userNotification: InsertUserNotification): Promise<UserNotification>;
   seedLoyaltyNotification(): Promise<void>;
+  
+  // Service operations
+  getServices(): Promise<Service[]>;
+  getService(id: number): Promise<Service | undefined>;
+  getServiceByType(serviceType: string): Promise<Service[]>;
+  createService(service: InsertService): Promise<Service>;
+  updateService(id: number, service: Partial<InsertService>): Promise<Service>;
+  
+  // Service booking operations
+  getServiceBookings(): Promise<ServiceBooking[]>;
+  getUserServiceBookings(userId: string): Promise<ServiceBooking[]>;
+  getServiceBooking(id: number): Promise<ServiceBooking | undefined>;
+  createServiceBooking(booking: InsertServiceBooking): Promise<ServiceBooking>;
+  updateServiceBookingStatus(id: number, status: string): Promise<ServiceBooking>;
+  
+  // User service activation tracking
+  addUserActivatedService(userId: string, serviceId: string): Promise<User>;
+  getUserActivatedServices(userId: string): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2465,6 +2489,135 @@ export class DatabaseStorage implements IStorage {
 
   async getAllLeadCaptures(): Promise<LeadCapture[]> {
     return await db.select().from(leadCaptures).orderBy(desc(leadCaptures.createdAt));
+  }
+
+  // Service operations
+  async getServices(): Promise<Service[]> {
+    return await db
+      .select()
+      .from(services)
+      .where(eq(services.isActive, true))
+      .orderBy(services.serviceType);
+  }
+
+  async getService(id: number): Promise<Service | undefined> {
+    const [service] = await db
+      .select()
+      .from(services)
+      .where(eq(services.id, id));
+    return service;
+  }
+
+  async getServiceByType(serviceType: string): Promise<Service[]> {
+    return await db
+      .select()
+      .from(services)
+      .where(and(
+        eq(services.serviceType, serviceType),
+        eq(services.isActive, true)
+      ));
+  }
+
+  async createService(service: InsertService): Promise<Service> {
+    const [result] = await db
+      .insert(services)
+      .values(service)
+      .returning();
+    return result;
+  }
+
+  async updateService(id: number, service: Partial<InsertService>): Promise<Service> {
+    const [result] = await db
+      .update(services)
+      .set({
+        ...service,
+        updatedAt: new Date()
+      })
+      .where(eq(services.id, id))
+      .returning();
+    return result;
+  }
+
+  // Service booking operations
+  async getServiceBookings(): Promise<ServiceBooking[]> {
+    return await db
+      .select()
+      .from(serviceBookings)
+      .orderBy(desc(serviceBookings.createdAt));
+  }
+
+  async getUserServiceBookings(userId: string): Promise<ServiceBooking[]> {
+    return await db
+      .select()
+      .from(serviceBookings)
+      .where(eq(serviceBookings.userId, userId))
+      .orderBy(desc(serviceBookings.createdAt));
+  }
+
+  async getServiceBooking(id: number): Promise<ServiceBooking | undefined> {
+    const [booking] = await db
+      .select()
+      .from(serviceBookings)
+      .where(eq(serviceBookings.id, id));
+    return booking;
+  }
+
+  async createServiceBooking(booking: InsertServiceBooking): Promise<ServiceBooking> {
+    const [result] = await db
+      .insert(serviceBookings)
+      .values(booking)
+      .returning();
+    
+    // Add service to user's activated services
+    await this.addUserActivatedService(booking.userId, booking.serviceId.toString());
+    
+    return result;
+  }
+
+  async addUserActivatedService(userId: string, serviceId: string): Promise<User> {
+    // Get current user
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Get current activated services array
+    const currentServices = user.activatedServices || [];
+    
+    // Add service if not already present
+    if (!currentServices.includes(serviceId)) {
+      const updatedServices = [...currentServices, serviceId];
+      
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          activatedServices: updatedServices,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      return updatedUser;
+    }
+    
+    return user;
+  }
+
+  async getUserActivatedServices(userId: string): Promise<string[]> {
+    const user = await this.getUser(userId);
+    return user?.activatedServices || [];
+  }
+
+  async updateServiceBookingStatus(id: number, status: string): Promise<ServiceBooking> {
+    const [result] = await db
+      .update(serviceBookings)
+      .set({
+        status,
+        updatedAt: new Date()
+      })
+      .where(eq(serviceBookings.id, id))
+      .returning();
+    return result;
   }
 }
 
