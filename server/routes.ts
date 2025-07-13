@@ -1498,13 +1498,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User progress routes
   app.get('/api/user/progress', async (req: any, res) => {
     try {
-      // Use Dr. Golly auth system instead of Replit Auth
-      const userId = req.session?.userId;
-      if (!userId) {
+      // Use consistent authentication method
+      const user = await getUserFromSession(req);
+      if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const progress = await storage.getUserProgress(userId);
+      const progress = await storage.getUserProgress(user.id);
       res.json(progress);
     } catch (error) {
       console.error("Error fetching user progress:", error);
