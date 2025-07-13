@@ -383,8 +383,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth routes with better session handling
-  app.get('/api/auth/user', async (req: any, res) => {
+  // MAIN AUTH ENDPOINT - Critical for frontend authentication
+  app.get('/api/user', async (req: any, res) => {
     try {
       // Check if we have a valid session and user ID
       let userId = null;
@@ -396,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If no user in session, check if user is authenticated via other means
       if (!userId) {
-        console.log('No authenticated user found, checking session data:', req.session);
+        console.log('No authenticated user found in session');
         return res.status(401).json({ message: "Unauthorized" });
       }
       
@@ -419,43 +419,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Update sign-in count and last login timestamp (try to update, but don't fail if it doesn't work)
-      try {
-        await storage.updateUserProfile(userId, {
-          signInCount: (user.signInCount || 0) + 1,
-          lastSignIn: new Date(),
-          lastLoginAt: new Date()
-        });
-      } catch (error) {
-        console.log('Failed to update user profile, continuing with auth');
-      }
-
-      // Comprehensive Klaviyo sync with all sophisticated data points on login
-      setImmediate(async () => {
-        try {
-          console.log(`Starting comprehensive login-based Klaviyo sync for user: ${user.email}`);
-          
-          // Get comprehensive user data including children and course purchases
-          const { user: fullUser, children, coursePurchases } = await storage.getUserWithChildren(userId);
-          
-          // Sync with all sophisticated data to Klaviyo:
-          // - 25+ custom properties (subscription_tier, plan_tier, phone_number, signup_source, etc.)
-          // - Children birth dates (child_1_birthdate, child_2_birthdate, child_3_birthdate)
-          // - Course purchase history and counts
-          // - Stripe customer data (billing dates, payment methods, subscription status)
-          // - Marketing preferences (marketing_opt_in, sms_marketing_opt_in)
-          // - User behavior data (sign_in_count, last_login_at, onboarding_completed)
-          // - Profile data (user_role, primary_concerns, accepted_terms)
-          await klaviyoService.syncUserToKlaviyo(fullUser, children, coursePurchases);
-          
-          console.log(`Comprehensive Klaviyo sync completed for user: ${user.email}`);
-        } catch (error) {
-          console.error("Failed to sync comprehensive user data to Klaviyo:", error);
-          // Don't fail the auth check if sync fails
-        }
+      // Convert to frontend-expected format
+      const userData = {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name || user.firstName,
+        lastName: user.last_name || user.lastName,
+        first_name: user.first_name || user.firstName,
+        last_name: user.last_name || user.lastName,
+        subscriptionTier: user.subscription_tier || user.subscriptionTier,
+        subscriptionStatus: user.subscription_status || user.subscriptionStatus,
+        nextBillingDate: user.next_billing_date || user.nextBillingDate,
+        billingPeriod: user.billing_period || user.billingPeriod,
+        isAdmin: user.is_admin || user.isAdmin,
+        profileImageUrl: user.profile_picture_url || user.profileImageUrl || user.profile_image_url,
+        profilePictureUrl: user.profile_picture_url || user.profileImageUrl || user.profile_image_url,
+        phoneNumber: user.phone_number || user.phoneNumber,
+        country: user.country,
+        signupSource: user.signup_source || user.signupSource,
+        migrated: user.migrated,
+        stripeCustomerId: user.stripe_customer_id || user.stripeCustomerId,
+        stripeSubscriptionId: user.stripe_subscription_id || user.stripeSubscriptionId,
+        marketingOptIn: user.marketing_opt_in || user.marketingOptIn,
+        firstChildDob: user.first_child_dob || user.firstChildDob,
+        first_child_dob: user.first_child_dob || user.firstChildDob,
+        accountActivated: user.account_activated || user.accountActivated,
+        activatedServices: user.activated_services || user.activatedServices,
+        createdAt: user.created_at || user.createdAt,
+        updatedAt: user.updated_at || user.updatedAt
+      };
+      
+      console.log('User found:', { 
+        id: userData.id, 
+        firstName: userData.firstName, 
+        email: userData.email,
+        subscriptionTier: userData.subscriptionTier,
+        profileImageUrl: userData.profileImageUrl,
+        firstChildDob: userData.firstChildDob
       });
       
-      res.json(user);
+      res.json(userData);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
