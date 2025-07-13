@@ -6960,8 +6960,48 @@ Please contact the customer to confirm the appointment.
   // Shopping product routes
   app.get('/api/shopping-products', async (req, res) => {
     try {
-      const products = await storage.getShoppingProducts();
-      res.json(products);
+      // Use raw SQL directly - bypass Drizzle ORM completely
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const products = await sql`SELECT id, title, author, description, category, stripe_product_id, 
+                                        stripe_price_aud_id, stripe_price_usd_id, stripe_price_eur_id, 
+                                        price_field, rating, review_count, image_url, amazon_url, 
+                                        is_active, is_featured, in_stock, created_at, updated_at
+                                 FROM shopping_products 
+                                 WHERE is_active = true AND in_stock = true
+                                 ORDER BY title`;
+      
+      // Get dynamic pricing from regional pricing table
+      const pricing = await sql`SELECT book1_price, book2_price, currency 
+                                FROM regional_pricing 
+                                WHERE region = 'AU' AND is_active = true 
+                                LIMIT 1`;
+      
+      const priceData = pricing[0] || { book1_price: 30, book2_price: 30, currency: 'AUD' };
+      
+      // Add dynamic pricing for books
+      const productsWithPricing = products.map((product: any) => {
+        const price = product.price_field === 'book1Price' ? priceData.book1_price : priceData.book2_price;
+        return {
+          ...product,
+          price: parseFloat(price),
+          currency: priceData.currency,
+          // Map fields for frontend compatibility
+          priceField: product.price_field,
+          stripeProductId: product.stripe_product_id,
+          stripePriceUsdId: product.stripe_price_usd_id,
+          stripePriceEurId: product.stripe_price_eur_id,
+          imageUrl: product.image_url,
+          amazonUrl: product.amazon_url,
+          isActive: product.is_active,
+          isFeatured: product.is_featured,
+          inStock: product.in_stock,
+          reviewCount: product.review_count
+        };
+      });
+      
+      res.json(productsWithPricing);
     } catch (error) {
       console.error("Error fetching shopping products:", error);
       res.status(500).json({ message: "Failed to fetch shopping products" });
