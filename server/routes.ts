@@ -27,6 +27,8 @@ import {
   insertBlogPostSchema,
   insertCoursePurchaseSchema,
   insertStripeProductSchema,
+  insertServiceSchema,
+  insertServiceBookingSchema,
   courses,
   courseLessons,
   courseChapters,
@@ -6536,7 +6538,42 @@ Please contact the customer to confirm the appointment.
         preferredDate: new Date(req.body.preferredDate)
       });
       
+      // Create the booking
       const booking = await storage.createServiceBooking(bookingData);
+      
+      // Get service details for Klaviyo integration
+      const service = await storage.getService(booking.serviceId);
+      
+      // Add service to user's activated services
+      if (service) {
+        await storage.addUserActivatedService(userId, service.id.toString());
+      }
+      
+      // Get user details for Klaviyo integration
+      const user = await storage.getUser(userId);
+      
+      // Send service booking event to Klaviyo
+      if (user && service) {
+        try {
+          await klaviyoService.sendServiceBookingEvent(user.email, {
+            service_name: service.title,
+            service_type: service.serviceType,
+            booking_date: booking.preferredDate.toISOString(),
+            booking_time: booking.preferredTime,
+            service_duration: service.duration,
+            service_price: service.price,
+            booking_status: booking.bookingStatus,
+            booking_notes: booking.notes || '',
+            customer_name: `${user.firstName} ${user.lastName}`,
+            customer_id: userId,
+            booking_id: booking.id
+          });
+        } catch (klaviyoError) {
+          console.error("Failed to send service booking event to Klaviyo:", klaviyoError);
+          // Continue with booking creation even if Klaviyo fails
+        }
+      }
+      
       res.status(201).json(booking);
     } catch (error) {
       console.error("Error creating service booking:", error);
@@ -6570,7 +6607,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Seed services endpoint
-  app.post('/api/seed-services', isAdmin, async (req, res) => {
+  app.post('/api/seed-services', isAuthenticated, async (req, res) => {
     try {
       const { seedServices } = await import('./seed-services');
       await seedServices();

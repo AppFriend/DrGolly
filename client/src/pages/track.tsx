@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import type { Child, GrowthEntry, DevelopmentMilestone, DevelopmentTracking, FeedEntry, SleepEntry, ConsultationBooking } from "@shared/schema";
+import type { Child, GrowthEntry, DevelopmentMilestone, DevelopmentTracking, FeedEntry, SleepEntry, ServiceBooking } from "@shared/schema";
 
 export default function Track() {
   const { toast } = useToast();
@@ -1128,29 +1128,42 @@ function ConsultationBooking() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const [selectedService, setSelectedService] = useState<any>(null);
+  const [showBookingForm, setShowBookingForm] = useState(false);
   const [formData, setFormData] = useState({
-    consultationType: "sleep-review" as "sleep-review" | "development",
     preferredDate: "",
     preferredTime: "",
     concerns: ""
   });
 
+  // Fetch available services
+  const { data: services = [], isLoading: isServicesLoading } = useQuery({
+    queryKey: ["/api/services"],
+  });
+
   // Fetch consultation bookings
-  const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ["/api/consultations"],
+  const { data: bookings = [], isLoading: isBookingsLoading } = useQuery({
+    queryKey: ["/api/service-bookings"],
   });
 
   // Book consultation mutation
   const bookConsultationMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      return await apiRequest('POST', '/api/consultations', data);
+    mutationFn: async (data: any) => {
+      return await apiRequest('POST', '/api/service-bookings', {
+        serviceId: selectedService.id,
+        preferredDate: data.preferredDate,
+        preferredTime: data.preferredTime,
+        notes: data.concerns
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultations"] });
-      setFormData({ consultationType: "sleep-review", preferredDate: "", preferredTime: "", concerns: "" });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-bookings"] });
+      setFormData({ preferredDate: "", preferredTime: "", concerns: "" });
+      setShowBookingForm(false);
+      setSelectedService(null);
       toast({
         title: "Success",
-        description: "Consultation booked successfully!",
+        description: "Service booked successfully!",
       });
     },
     onError: (error) => {
@@ -1167,7 +1180,7 @@ function ConsultationBooking() {
       }
       toast({
         title: "Error",
-        description: "Failed to book consultation.",
+        description: "Failed to book service.",
         variant: "destructive",
       });
     },
@@ -1186,127 +1199,192 @@ function ConsultationBooking() {
     bookConsultationMutation.mutate(formData);
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Gold Member Loyalty Benefits - Only show for Gold/Platinum users */}
-      {(user?.subscriptionTier === 'gold' || user?.subscriptionTier === 'platinum') && (
-        <Card className="border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3 mb-2">
-              <Crown className="h-5 w-5 text-yellow-600" />
-              <h3 className="font-semibold text-yellow-800 font-heading">Gold Member Benefits</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Gift className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm text-yellow-700">FREE Sleep Review valued at $250</span>
-              </div>
-              <p className="text-xs text-yellow-600">
-                Thanks for your first month as a Gold member! You've unlocked exclusive benefits including complimentary sleep consultations.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  const handleServiceSelect = (service: any) => {
+    setSelectedService(service);
+    setShowBookingForm(true);
+  };
 
-      {/* Book Consultation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">Book Sleep Review</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="consultationType">Consultation Type</Label>
-              <select
-                id="consultationType"
-                value={formData.consultationType}
-                onChange={(e) => setFormData(prev => ({ ...prev, consultationType: e.target.value as any }))}
-                className="w-full p-2 border border-gray-300 rounded-md mt-1"
+  const isGoldOrPlatinum = user?.subscriptionTier === 'gold' || user?.subscriptionTier === 'platinum';
+
+  // Booking popup modal
+  const BookingModal = () => {
+    if (!showBookingForm || !selectedService) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Book {selectedService.title}</h3>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowBookingForm(false)}
+                className="text-gray-500 hover:text-gray-700"
               >
-                <option value="sleep-review">Sleep Review</option>
-                <option value="development">Development Consultation</option>
-              </select>
+                ✕
+              </Button>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="preferredDate">Preferred Date</Label>
-                <Input
-                  id="preferredDate"
-                  type="date"
-                  value={formData.preferredDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, preferredDate: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="preferredTime">Preferred Time</Label>
-                <Input
-                  id="preferredTime"
-                  type="time"
-                  value={formData.preferredTime}
-                  onChange={(e) => setFormData(prev => ({ ...prev, preferredTime: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="concerns">Concerns/Questions</Label>
-              <textarea
-                id="concerns"
-                value={formData.concerns}
-                onChange={(e) => setFormData(prev => ({ ...prev, concerns: e.target.value }))}
-                placeholder="What would you like to discuss during the consultation?"
-                className="w-full p-2 border border-gray-300 rounded-md mt-1 h-20 resize-none"
-              />
-            </div>
-            
-            <Button 
-              type="submit" 
-              disabled={bookConsultationMutation.isPending}
-              className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
-            >
-              {bookConsultationMutation.isPending ? "Booking..." : "Book Consultation"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Booked Consultations */}
-      <div className="space-y-2">
-        <h3 className="font-semibold font-heading">Your Consultations</h3>
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
-            ))}
-          </div>
-        ) : bookings.length > 0 ? (
-          bookings.map((booking: ConsultationBooking) => (
-            <Card key={booking.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold font-heading capitalize">
-                      {booking.consultationType.replace('-', ' ')}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(booking.preferredDate).toLocaleDateString()} at {booking.preferredTime}
-                    </p>
-                    <p className="text-xs text-gray-500 capitalize">Status: {booking.status}</p>
-                    {booking.concerns && <p className="text-xs text-gray-500 mt-1">{booking.concerns}</p>}
-                  </div>
-                  <Calendar className="h-5 w-5 text-[#83CFCC]" />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="preferredDate">Preferred Date</Label>
+                  <Input
+                    id="preferredDate"
+                    type="date"
+                    value={formData.preferredDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, preferredDate: e.target.value }))}
+                    required
+                    className="mt-1"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <p className="text-gray-500 text-center py-8">No consultations booked yet</p>
-        )}
+                <div>
+                  <Label htmlFor="preferredTime">Preferred Time</Label>
+                  <Input
+                    id="preferredTime"
+                    type="time"
+                    value={formData.preferredTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, preferredTime: e.target.value }))}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="concerns">Concerns/Questions</Label>
+                <textarea
+                  id="concerns"
+                  value={formData.concerns}
+                  onChange={(e) => setFormData(prev => ({ ...prev, concerns: e.target.value }))}
+                  placeholder="What would you like to discuss during the consultation?"
+                  className="w-full p-2 border border-gray-300 rounded-md mt-1 h-20 resize-none"
+                />
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowBookingForm(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={bookConsultationMutation.isPending}
+                  className="flex-1 bg-[#83CFCC] hover:bg-[#095D66]"
+                >
+                  {bookConsultationMutation.isPending ? "Booking..." : "Book Consultation"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
-    </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="space-y-6">
+        {/* Gold Member Loyalty Benefits - Only show for Gold/Platinum users */}
+        {isGoldOrPlatinum && (
+          <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Crown className="h-6 w-6 text-yellow-600" />
+                <h2 className="text-lg font-semibold text-yellow-800">Welcome, {user?.subscriptionTier === 'gold' ? 'Gold' : 'Platinum'} Member!</h2>
+              </div>
+              <p className="text-yellow-700 mb-4">
+                As a valued {user?.subscriptionTier === 'gold' ? 'Gold' : 'Platinum'} member, you have access to our FREE professional services.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Service Cards */}
+        <div className="space-y-4">
+          {isServicesLoading ? (
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded-lg animate-pulse"></div>
+              ))}
+            </div>
+          ) : (
+            services.map((service: any) => (
+              <Card key={service.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{service.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                    </div>
+                    <div className="text-right">
+                      {isGoldOrPlatinum ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500 line-through">$250</span>
+                          <span className="text-lg font-bold text-green-600">FREE</span>
+                        </div>
+                      ) : (
+                        <span className="text-lg font-bold text-gray-800">$250</span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleServiceSelect(service)}
+                    className="w-full bg-[#83CFCC] hover:bg-[#095D66]"
+                  >
+                    Book Now
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Booked Consultations */}
+        <div className="space-y-2">
+          <h3 className="font-semibold font-heading">Your Consultations</h3>
+          {isBookingsLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+              ))}
+            </div>
+          ) : bookings.length > 0 ? (
+            bookings.map((booking: ServiceBooking) => {
+              const service = services.find(s => s.id === booking.serviceId);
+              return (
+                <Card key={booking.id}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold font-heading">
+                          {service?.title || 'Service'}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {new Date(booking.preferredDate).toLocaleDateString()} at {booking.preferredTime}
+                        </p>
+                        <p className="text-xs text-gray-500 capitalize">Status: {booking.status}</p>
+                        {booking.concerns && <p className="text-xs text-gray-500 mt-1">{booking.concerns}</p>}
+                      </div>
+                      <Calendar className="h-5 w-5 text-[#83CFCC]" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <p className="text-gray-500 text-center py-8">No consultations booked yet</p>
+          )}
+        </div>
+      </div>
+      
+      {/* Booking Modal */}
+      <BookingModal />
+    </>
   );
 }

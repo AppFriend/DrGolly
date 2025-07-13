@@ -513,6 +513,69 @@ export class KlaviyoService {
     }
   }
 
+  async sendServiceBookingEvent(email: string, bookingData: any): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !email) {
+      console.error("Klaviyo API key not configured or email missing");
+      return false;
+    }
+
+    try {
+      // Send service booking event to Klaviyo
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            data: {
+              type: "profile",
+              attributes: {
+                email: email
+              }
+            }
+          },
+          metric: {
+            data: {
+              type: "metric",
+              attributes: {
+                name: "Service Booking"
+              }
+            }
+          },
+          properties: {
+            service_name: bookingData.service_name,
+            service_type: bookingData.service_type,
+            booking_date: bookingData.booking_date,
+            booking_time: bookingData.booking_time,
+            service_duration: bookingData.service_duration,
+            service_price: bookingData.service_price,
+            booking_status: bookingData.booking_status,
+            booking_notes: bookingData.booking_notes,
+            customer_name: bookingData.customer_name,
+            customer_id: bookingData.customer_id,
+            booking_id: bookingData.booking_id
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to send service booking event to Klaviyo:", response.status, errorText);
+        return false;
+      }
+
+      console.log("Service booking event sent successfully to Klaviyo");
+      return true;
+    } catch (error) {
+      console.error("Error sending service booking event to Klaviyo:", error);
+      return false;
+    }
+  }
+
   async sendPasswordResetEmail(user: User, resetToken: string): Promise<boolean> {
     if (!KLAVIYO_API_KEY || !user.email) {
       console.error("Klaviyo API key not configured or user email missing");

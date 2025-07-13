@@ -6,16 +6,16 @@ const serviceData: InsertService[] = [
     title: "Sleep Review",
     description: "Professional sleep assessment and personalized plan for your baby. Get expert guidance on sleep patterns, bedtime routines, and proven strategies for better rest.",
     serviceType: "sleep_review",
-    price: 250.00,
-    durationMinutes: 60,
+    price: "250.00",
+    duration: 60,
     isActive: true
   },
   {
     title: "Lactation Consultant",
     description: "Expert breastfeeding support and guidance from certified lactation consultants. Comprehensive assessment, latch assistance, and troubleshooting for feeding challenges.",
     serviceType: "lactation",
-    price: 150.00,
-    durationMinutes: 45,
+    price: "150.00",
+    duration: 45,
     isActive: true
   }
 ];

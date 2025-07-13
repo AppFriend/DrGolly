@@ -58,6 +58,14 @@ app.use((req, res, next) => {
   // Initialize regional pricing service
   await regionalPricingService.initializeRegionalPricing();
   
+  // Initialize services
+  try {
+    const { seedServices } = await import('./seed-services');
+    await seedServices();
+  } catch (error) {
+    console.error('Failed to seed services:', error);
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
