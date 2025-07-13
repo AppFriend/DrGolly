@@ -639,30 +639,70 @@ export class DatabaseStorage implements IStorage {
 
   // Course operations
   async getCourses(category?: string, tier?: string, includeUnpublished?: boolean): Promise<Course[]> {
-    let conditions = [];
-    
-    if (!includeUnpublished) {
-      conditions.push(eq(courses.isPublished, true));
+    try {
+      let conditions = [];
+      
+      if (!includeUnpublished) {
+        conditions.push(eq(courses.isPublished, true));
+      }
+      
+      if (category) {
+        conditions.push(eq(courses.category, category));
+      }
+      
+      if (tier) {
+        conditions.push(eq(courses.tier, tier));
+      }
+      
+      const result = await db.select().from(courses)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(courses.createdAt);
+      
+      // Convert price from string to number if needed
+      return result.map(course => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
+      }));
+    } catch (error) {
+      console.error('Drizzle ORM failed for courses, using raw SQL fallback');
+      // Use raw SQL as fallback
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      let query = `SELECT id, title, description, category, thumbnail_url, video_url, 
+                          duration, age_range, is_published, likes, views, created_at, updated_at,
+                          price, discounted_price, skill_level, stripe_product_id, unique_id,
+                          status, detailed_description, website_content, key_features, whats_covered,
+                          rating, review_count, overview_description, learning_objectives,
+                          completion_criteria, course_structure_notes
+                   FROM courses`;
+      
+      let whereConditions = [];
+      
+      if (!includeUnpublished) {
+        whereConditions.push("is_published = true");
+      }
+      
+      if (category) {
+        whereConditions.push(`category = '${category}'`);
+      }
+      
+      if (whereConditions.length > 0) {
+        query += ` WHERE ${whereConditions.join(' AND ')}`;
+      }
+      
+      query += ` ORDER BY created_at`;
+      
+      const result = await sql([query]);
+      
+      // Convert price from string to number if needed
+      return result.map((course: any) => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discounted_price
+      }));
     }
-    
-    if (category) {
-      conditions.push(eq(courses.category, category));
-    }
-    
-    if (tier) {
-      conditions.push(eq(courses.tier, tier));
-    }
-    
-    const result = await db.select().from(courses)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(courses.createdAt);
-    
-    // Convert price from string to number if needed
-    return result.map(course => ({
-      ...course,
-      price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
-      discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
-    }));
   }
 
   async getCourse(id: number): Promise<Course | undefined> {
