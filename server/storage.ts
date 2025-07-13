@@ -373,13 +373,41 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    } catch (error) {
+      console.error('Database error in getUser:', error);
+      // Fallback to raw SQL query
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE id = ${id} LIMIT 1`;
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        throw error;
+      }
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user;
+    } catch (error) {
+      console.error('Database error in getUserByEmail:', error);
+      // Fallback to raw SQL query
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        throw error;
+      }
+    }
   }
 
   async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
@@ -388,18 +416,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            ...userData,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    } catch (error) {
+      console.error('Database error in upsertUser:', error);
+      // Fallback to raw SQL query
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`
+          INSERT INTO users (id, email, first_name, last_name, profile_image_url, subscription_tier, subscription_status, signup_source, account_activated, onboarding_completed, sign_in_count, last_sign_in, last_login_at, created_at, updated_at)
+          VALUES (${userData.id}, ${userData.email}, ${userData.firstName}, ${userData.lastName}, ${userData.profileImageUrl}, ${userData.subscriptionTier || 'free'}, ${userData.subscriptionStatus || 'active'}, ${userData.signupSource || 'web'}, ${userData.accountActivated || true}, ${userData.onboardingCompleted || false}, ${userData.signInCount || 1}, ${userData.lastSignIn || new Date()}, ${userData.lastLoginAt || new Date()}, ${new Date()}, ${new Date()})
+          ON CONFLICT (id) DO UPDATE SET
+            email = EXCLUDED.email,
+            first_name = EXCLUDED.first_name,
+            last_name = EXCLUDED.last_name,
+            profile_image_url = EXCLUDED.profile_image_url,
+            subscription_tier = EXCLUDED.subscription_tier,
+            subscription_status = EXCLUDED.subscription_status,
+            signup_source = EXCLUDED.signup_source,
+            account_activated = EXCLUDED.account_activated,
+            onboarding_completed = EXCLUDED.onboarding_completed,
+            sign_in_count = EXCLUDED.sign_in_count,
+            last_sign_in = EXCLUDED.last_sign_in,
+            last_login_at = EXCLUDED.last_login_at,
+            updated_at = EXCLUDED.updated_at
+          RETURNING *
+        `;
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        throw error;
+      }
+    }
   }
 
 
@@ -615,7 +675,21 @@ export class DatabaseStorage implements IStorage {
 
   // Children operations
   async getUserChildren(userId: string): Promise<Child[]> {
-    return await db.select().from(children).where(eq(children.userId, userId));
+    try {
+      return await db.select().from(children).where(eq(children.userId, userId));
+    } catch (error) {
+      console.error('Database error in getUserChildren:', error);
+      // Fallback to raw SQL query
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM children WHERE user_id = ${userId}`;
+        return result as Child[];
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        return [];
+      }
+    }
   }
 
   async createChild(child: InsertChild): Promise<Child> {

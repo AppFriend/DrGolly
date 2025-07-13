@@ -64,18 +64,33 @@ async function upsertUser(
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    subscriptionTier: "free",
+    subscriptionStatus: "active",
+    signupSource: "replit_auth",
+    accountActivated: true,
+    onboardingCompleted: false,
+    signInCount: 1,
+    lastSignIn: new Date(),
+    lastLoginAt: new Date(),
   };
 
-  const user = await storage.upsertUser(userData);
-  
-  // Sync user to Klaviyo after successful signup
-  if (user) {
-    try {
-      await klaviyoService.syncUserToKlaviyo(user);
-    } catch (error) {
-      console.error("Failed to sync user to Klaviyo:", error);
-      // Don't fail the signup process if Klaviyo sync fails
+  try {
+    const user = await storage.upsertUser(userData);
+    
+    // Sync user to Klaviyo after successful signup
+    if (user) {
+      try {
+        await klaviyoService.syncUserToKlaviyo(user);
+      } catch (error) {
+        console.error("Failed to sync user to Klaviyo:", error);
+        // Don't fail the signup process if Klaviyo sync fails
+      }
     }
+    
+    return user;
+  } catch (error) {
+    console.error("Failed to upsert user:", error);
+    throw error;
   }
 }
 

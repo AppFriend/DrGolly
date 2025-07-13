@@ -93,23 +93,10 @@ const isAdmin: RequestHandler = async (req, res, next) => {
   next();
 };
 
-// Global admin bypass middleware - admins get full access to everything
+// Global admin bypass middleware - temporarily disabled due to database connection issues
 const adminBypass: RequestHandler = async (req, res, next) => {
   try {
-    // Check if user is authenticated and is admin
-    if (req.isAuthenticated()) {
-      const userId = req.user?.claims?.sub;
-      if (userId) {
-        const isUserAdmin = await storage.isUserAdmin(userId);
-        if (isUserAdmin) {
-          // Admin gets full access - skip all other auth checks
-          req.adminBypass = true;
-          return next();
-        }
-      }
-    }
-    
-    // Not an admin, continue with normal auth flow
+    // Temporarily skip admin bypass check due to database connection issues
     next();
   } catch (error) {
     console.error("Error in admin bypass check:", error);
@@ -134,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: 'Test endpoint working' });
   });
 
-  // Auth middleware
+  // Auth middleware - restore Dr. Golly authentication
   await setupAuth(app);
   
   // Apply admin bypass middleware globally after auth setup
