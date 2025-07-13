@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Checkout Flow</title>
+</head>
+<body>
+    <h1>Test Checkout Flow</h1>
+    
+    <h2>1. Login and Update Stripe Products</h2>
+    <button onclick="updateStripeProducts()">Update Stripe Products</button>
+    <div id="stripe-results"></div>
+    
+    <h2>2. Test Checkout URLs</h2>
+    <p><a href="/checkout/5" target="_blank">Checkout for Course ID 5 (Little baby sleep program)</a></p>
+    <p><a href="/checkout/6" target="_blank">Checkout for Course ID 6 (Big baby sleep program)</a></p>
+    
+    <h2>3. Test Course API</h2>
+    <button onclick="testCourseAPI()">Test Course API</button>
+    <div id="course-results"></div>
+    
+    <script>
+        async function updateStripeProducts() {
+            const resultsDiv = document.getElementById('stripe-results');
+            resultsDiv.innerHTML = 'Updating Stripe products...';
+            
+            try {
+                const response = await fetch('/api/admin/update-stripe-products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultsDiv.innerHTML = `<div style="color: red;">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testCourseAPI() {
+            const resultsDiv = document.getElementById('course-results');
+            resultsDiv.innerHTML = 'Testing course API...';
+            
+            try {
+                const response = await fetch('/api/courses/5');
+                const data = await response.json();
+                
+                const courseData = {
+                    id: data.id,
+                    title: data.title,
+                    thumbnailUrl: data.thumbnailUrl,
+                    price: data.price,
+                    stripe_product_id: data.stripe_product_id
+                };
+                
+                resultsDiv.innerHTML = `<pre>${JSON.stringify(courseData, null, 2)}</pre>`;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

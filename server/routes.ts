@@ -45,6 +45,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2023-10-16",
 });
 
+// Helper function to get current domain
+function getCurrentDomain() {
+  return process.env.REPLIT_DOMAINS ? 
+    'https://' + process.env.REPLIT_DOMAINS.split(',')[0] : 
+    'https://localhost:5000';
+}
+
 // Course Product ID mapping (from your Bubble export)
 const COURSE_STRIPE_MAPPING = {
   1: { productId: "prod_course_1", priceId: "price_little_baby_sleep" },
@@ -7278,6 +7285,62 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error creating book payment:", error);
       res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  // Admin endpoint to update Stripe products with course images
+  app.post('/api/admin/update-stripe-products', async (req, res) => {
+    if (!req.session?.passport?.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Get all courses with Stripe product IDs
+      const courses = await sql`
+        SELECT id, title, thumbnail_url, price, stripe_product_id 
+        FROM courses 
+        WHERE stripe_product_id IS NOT NULL AND price > 0
+      `;
+
+      const domain = getCurrentDomain();
+      const results = [];
+
+      for (const course of courses) {
+        try {
+          const product = await stripe.products.update(course.stripe_product_id, {
+            name: course.title,
+            images: [domain + course.thumbnail_url],
+            metadata: {
+              course_id: course.id.toString(),
+              price: course.price.toString(),
+              thumbnail_url: course.thumbnail_url
+            }
+          });
+
+          results.push({
+            courseId: course.id,
+            productId: product.id,
+            name: product.name,
+            imageUrl: product.images[0],
+            success: true
+          });
+        } catch (error) {
+          results.push({
+            courseId: course.id,
+            productId: course.stripe_product_id,
+            error: error.message,
+            success: false
+          });
+        }
+      }
+
+      res.json({ results, domain });
+    } catch (error) {
+      console.error('Error updating Stripe products:', error);
+      res.status(500).json({ error: 'Failed to update Stripe products' });
     }
   });
 
