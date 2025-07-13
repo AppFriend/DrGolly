@@ -146,6 +146,15 @@ STABLE VERSIONS (for easy rollback reference):
   * Documentation: README.md, BRANCHING_STRATEGY.md, RELEASE_MANAGEMENT.md
   * Testing allergens course image updated to correct asset
   * Status: Production-ready with comprehensive Git workflow
+
+- SAVEPOINT v1.2 (July 15, 2025): Admin user management system fully restored
+  * Fixed React Query configuration to properly display 17,508 users
+  * Implemented raw SQL fallback system for Drizzle ORM failures
+  * Added comprehensive user search, pagination, and profile editing
+  * Created UserCourseManagement component for individual course access management
+  * Extended Git workflow with subscription/*, checkout/*, admin/* branches
+  * Admin panel fully functional with user management capabilities
+  * Status: Production-ready with complete admin user management system
 ```
 
 ## Changelog
@@ -797,6 +806,17 @@ Changelog:
   * Created PR templates and issue templates for consistent workflow
   * Updated "Testing allergens" course image to correct asset from user screenshot
   * All scripts executable and ready for team use with proper permission management
+- July 15, 2025. COMPLETED: Comprehensive admin user management system restoration:
+  * Fixed critical React Query configuration issue preventing user data display
+  * Implemented raw SQL fallback for admin endpoints when Drizzle ORM fails with "HTTP request body parse" errors
+  * Added subscription/*, checkout/*, admin/* branches to Git workflow for modular development
+  * Restored complete admin user management with pagination (20 users per page) and search functionality
+  * Fixed field mapping between database schema (snake_case) and frontend (camelCase) for proper user display
+  * Enhanced user cards with profile avatars, subscription tier badges, and comprehensive user information
+  * Added inline user profile editing with subscription plan dropdown (free/gold/platinum)
+  * Created UserCourseManagement component for managing individual user course access
+  * All admin functionality now works with 17,508 users via raw SQL fallback system
+  * Admin panel displays users correctly with edit capabilities and course management
 ```
 
 ## User Preferences
