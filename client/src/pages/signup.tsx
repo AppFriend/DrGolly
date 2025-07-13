@@ -60,9 +60,12 @@ export default function SignupPage() {
           <div className="text-center">
             <p className="text-xs text-gray-500">
               Already have an account?{' '}
-              <a href="/login" className="text-brand-teal hover:text-brand-teal/80">
+              <button 
+                onClick={() => setLocation('/login')}
+                className="text-brand-teal hover:text-brand-teal/80 underline"
+              >
                 Sign in here
-              </a>
+              </button>
             </p>
           </div>
         </CardContent>

@@ -54,9 +54,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Temporarily disable database initialization to fix connection issues
-  console.log('Skipping database initialization due to connection issues');
-  
+  // Temporarily disable initialization to fix connection issues
   // Initialize regional pricing service
   // try {
   //   await regionalPricingService.initializeRegionalPricing();
