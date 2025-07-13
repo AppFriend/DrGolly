@@ -113,6 +113,15 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
                   src={user.profileImageUrl || user.profilePictureUrl || user.profile_picture_url} 
                   alt="Profile" 
                   className="w-full h-full object-cover rounded-full"
+                  onError={(e) => {
+                    console.error('Desktop profile image failed to load:', e.currentTarget.src);
+                    // Hide the broken image and show User icon instead
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      parent.innerHTML = '<svg class="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                    }
+                  }}
                 />
               ) : (
                 <User className="h-5 w-5 text-gray-400" />

@@ -59,6 +59,20 @@ const COURSE_STRIPE_MAPPING = {
   10: { productId: "prod_course_10", priceId: "price_testing_allergens" },
 };
 
+// Helper function to get user from session
+async function getUserFromSession(req: any) {
+  if (!req.session?.passport?.user) {
+    return null;
+  }
+  
+  return {
+    id: req.session.passport.user.claims.sub,
+    email: req.session.passport.user.claims.email,
+    firstName: req.session.passport.user.claims.first_name,
+    lastName: req.session.passport.user.claims.last_name
+  };
+}
+
 // Custom authentication middleware that works with Dr. Golly sessions
 const isAppAuthenticated: RequestHandler = async (req, res, next) => {
   // Check if user is authenticated via session
@@ -4703,8 +4717,33 @@ Please contact the customer to confirm the appointment.
   });
 
   // Admin routes
-  app.get('/api/admin/check', isAdmin, async (req, res) => {
-    res.json({ isAdmin: true });
+  app.get('/api/admin/check', async (req, res) => {
+    try {
+      const user = await getUserFromSession(req);
+      if (!user) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Use raw SQL fallback for admin check
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT is_admin FROM users WHERE id = ${user.id} LIMIT 1`;
+        const userRecord = result[0] as any;
+        
+        const isAdmin = userRecord?.is_admin || false;
+        res.json({ isAdmin });
+      } catch (dbError) {
+        console.error('Database error in admin check:', dbError);
+        // Fallback: check if user email is in admin list
+        const adminEmails = ['frazer.adnam@cq-partners.com.au', 'alannah@drgolly.com', 'alex@drgolly.com', 'tech@drgolly.com'];
+        const isAdmin = adminEmails.includes(user.email);
+        res.json({ isAdmin });
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      res.status(403).json({ message: 'Forbidden: Admin access required' });
+    }
   });
 
   // Admin course management API endpoints
