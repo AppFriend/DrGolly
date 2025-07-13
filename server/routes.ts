@@ -189,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const user = result[0];
       
-      // Convert to expected format
+      // Convert to expected format with proper field mapping
       const userData = {
         id: user.id,
         email: user.email,
@@ -203,6 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingPeriod: user.billing_period,
         isAdmin: user.is_admin,
         profilePictureUrl: user.profile_picture_url,
+        profile_picture_url: user.profile_picture_url, // Add both formats
         phoneNumber: user.phone_number,
         country: user.country,
         signupSource: user.signup_source,
@@ -211,13 +212,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripeSubscriptionId: user.stripe_subscription_id,
         marketingOptIn: user.marketing_opt_in,
         firstChildDob: user.first_child_dob,
+        first_child_dob: user.first_child_dob, // Add both formats
         accountActivated: user.account_activated,
         activatedServices: user.activated_services,
         createdAt: user.created_at,
         updatedAt: user.updated_at
       };
       
-      console.log('User found:', { id: userData.id, firstName: userData.firstName, email: userData.email });
+      console.log('User found:', { 
+        id: userData.id, 
+        firstName: userData.firstName, 
+        email: userData.email,
+        profilePictureUrl: userData.profilePictureUrl,
+        firstChildDob: userData.firstChildDob
+      });
       res.json(userData);
     } catch (error) {
       console.error("Error fetching user:", error);
