@@ -31,6 +31,19 @@ export default function Courses() {
     enabled: !!user,
   });
 
+  // Debug: Log the courses data when it loads
+  useEffect(() => {
+    if (courses && courses.length > 0) {
+      console.log('Courses data loaded:', courses.slice(0, 3));
+      courses.slice(0, 3).forEach((course: any) => {
+        console.log(`Course ${course.id}: ${course.title}`, {
+          thumbnailUrl: course.thumbnailUrl,
+          thumbnail_url: course.thumbnail_url
+        });
+      });
+    }
+  }, [courses]);
+
   const { data: userProgress } = useQuery({
     queryKey: ["/api/user/progress"],
     enabled: !!user,
@@ -305,15 +318,16 @@ export default function Courses() {
                 src={course.thumbnailUrl || course.thumbnail_url || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
                 alt={course.title}
                 className="w-full h-48 object-cover"
-                crossOrigin="anonymous"
-                loading="lazy"
                 onLoad={() => {
-                  console.log('Course page image loaded:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
+                  console.log('Course page image loaded successfully:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
                 }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  console.log('Course page image failed:', target.src, 'for course:', course.title);
-                  // Don't fallback automatically - let the original image show
+                  console.log('Course page image failed to load:', target.src, 'for course:', course.title);
+                  console.log('Full course object:', course);
+                  // Try loading without the CORS/lazy loading attributes
+                  target.crossOrigin = "";
+                  target.loading = "eager";
                 }}
               />
               <div className="p-4">
