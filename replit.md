@@ -820,6 +820,16 @@ Changelog:
   * Fixed historical course purchase data display for 17,000+ migrated users using courses_purchased_previously field
   * Implemented course name mapping system to display historical purchases from CSV migration
   * Fixed admin user display to show proper first and last names instead of email addresses only
+
+- July 15, 2025. COMPLETED: Enhanced blog management system with image upload functionality:
+  * Implemented ImageUploadButton component with React useRef for reliable file input handling
+  * Added image upload functionality to blog management form with 5MB file size limit and image validation
+  * Integrated upload button below image URL field with brand teal styling and proper hover states
+  * Connected to existing `/api/admin/upload-image` endpoint for secure file uploads to `/attached_assets/`
+  * Enhanced rich text editor (TipTap) to display properly formatted content with bold, headings, and styling
+  * Added comprehensive error handling and success notifications for image upload process
+  * Upload button automatically updates image URL field when file is successfully uploaded
+  * Maintained consistent Dr. Golly brand colors (#095D66) throughout upload interface
 ```
 
 ## User Preferences
