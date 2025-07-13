@@ -72,6 +72,8 @@ export const users = pgTable("users", {
   // New fields for CSV migration
   firstChildDob: timestamp("first_child_dob"), // Date of birth of first child
   accountActivated: boolean("account_activated").default(false), // Whether user has activated their account
+  // Service activations tracking
+  activatedServices: text("activated_services").array().default([]), // Array of service IDs user has purchased/activated
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -967,6 +969,101 @@ export const insertAdminNotificationSchema = createInsertSchema(adminNotificatio
 
 export type AdminNotification = typeof adminNotifications.$inferSelect;
 export type InsertAdminNotification = z.infer<typeof insertAdminNotificationSchema>;
+
+// Services table for sleep review and lactation consultant
+export const services = pgTable("services", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  serviceType: varchar("service_type", { length: 100 }).notNull(), // 'sleep-review', 'lactation-consultant'
+  duration: integer("duration").notNull(), // Duration in minutes
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  
+  // Service details
+  whatToExpect: text("what_to_expect"), // Detailed description of what happens during the service
+  whoIsItFor: text("who_is_it_for"), // Target audience description
+  benefits: text("benefits").array(), // Array of benefit points
+  includes: text("includes").array(), // What's included in the service
+  
+  // Booking configuration
+  isActive: boolean("is_active").default(true),
+  maxAdvanceBookingDays: integer("max_advance_booking_days").default(30), // How far in advance can be booked
+  minAdvanceBookingHours: integer("min_advance_booking_hours").default(24), // Minimum hours before booking
+  
+  // Availability
+  availableDays: text("available_days").array(), // ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+  availableTimeSlots: text("available_time_slots").array(), // ['09:00', '10:00', '11:00', '14:00', '15:00']
+  
+  // Metadata
+  imageUrl: varchar("image_url"),
+  iconName: varchar("icon_name"), // Lucide icon name
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Service bookings table
+export const serviceBookings = pgTable("service_bookings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  serviceId: integer("service_id").notNull(),
+  
+  // Booking details
+  preferredDate: timestamp("preferred_date").notNull(),
+  preferredTime: varchar("preferred_time", { length: 10 }).notNull(), // '09:00', '10:00', etc.
+  concerns: text("concerns"), // User's concerns/questions
+  
+  // Status tracking
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, confirmed, completed, cancelled
+  confirmationCode: varchar("confirmation_code", { length: 50 }),
+  
+  // Meeting details
+  meetingLink: varchar("meeting_link"),
+  meetingNotes: text("meeting_notes"), // Admin notes after consultation
+  
+  // Notification tracking
+  reminderSent: boolean("reminder_sent").default(false),
+  reminderSentAt: timestamp("reminder_sent_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Service relations
+export const serviceRelations = relations(services, ({ many }) => ({
+  bookings: many(serviceBookings),
+}));
+
+export const serviceBookingRelations = relations(serviceBookings, ({ one }) => ({
+  service: one(services, {
+    fields: [serviceBookings.serviceId],
+    references: [services.id],
+  }),
+  user: one(users, {
+    fields: [serviceBookings.userId],
+    references: [users.id],
+  }),
+}));
+
+// Service schemas
+export const insertServiceSchema = createInsertSchema(services).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertServiceBookingSchema = createInsertSchema(serviceBookings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Service types
+export type Service = typeof services.$inferSelect;
+export type InsertService = z.infer<typeof insertServiceSchema>;
+export type ServiceBooking = typeof serviceBookings.$inferSelect;
+export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
 
 // Stripe product types
 export type StripeProduct = typeof stripeProducts.$inferSelect;

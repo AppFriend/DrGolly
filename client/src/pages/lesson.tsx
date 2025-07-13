@@ -56,6 +56,7 @@ interface LessonData {
     chapterIndex: number;
     moduleIndex: number;
   } | null;
+  isLastInChapter?: boolean;
 }
 
 export default function LessonPage() {
@@ -121,10 +122,9 @@ export default function LessonPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/lessons', id] });
       queryClient.invalidateQueries({ queryKey: ['/api/user/progress'] });
-      toast({
-        title: "Progress Updated",
-        description: "Your lesson progress has been saved",
-      });
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${lessonData?.lesson.courseId}/chapters`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${lessonData?.lesson.courseId}/lessons`] });
+      // Remove completion toast notification
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -145,10 +145,35 @@ export default function LessonPage() {
   });
 
   const handleMarkComplete = async () => {
-    if (isCompleted) return;
-    
-    // Start mutation but don't wait for it to complete navigation
-    markProgressMutation.mutate({ completed: true, watchTime });
+    if (!isCompleted) {
+      // Mark lesson as complete first
+      markProgressMutation.mutate({ completed: true, watchTime });
+      
+      // Check if this is the last lesson in the chapter
+      if (lessonData && lessonData.isLastInChapter) {
+        // Show chapter completion celebration
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        
+        // Show chapter completion modal/toast
+        toast({
+          title: "🎉 Awesome work on completing the chapter!",
+          description: "You're doing great! Keep going with the next chapter.",
+          duration: 3000,
+        });
+        
+        // Navigate back to course overview after celebration
+        setTimeout(() => {
+          if (lessonData.lesson.courseId) {
+            setLocation(`/courses/${lessonData.lesson.courseId}`);
+          }
+        }, 2000);
+        return;
+      }
+    }
     
     // If there's a next lesson, navigate immediately for fast UX
     if (lessonData?.nextLesson) {
@@ -367,18 +392,18 @@ export default function LessonPage() {
                   <div className="space-y-3">
                     <Button
                       onClick={handleMarkComplete}
-                      disabled={isCompleted || markProgressMutation.isPending}
+                      disabled={markProgressMutation.isPending}
                       className="w-full bg-green-700 hover:bg-green-800 text-white"
                     >
                       {isCompleted ? (
                         <>
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Lesson Completed
+                          <ArrowRight className="w-4 h-4 mr-2" />
+                          Next
                         </>
                       ) : (
                         <>
                           <Circle className="w-4 h-4 mr-2" />
-                          {lessonData.nextLesson ? 'Complete & Continue' : 'Mark as Complete'}
+                          {lessonData.nextLesson ? 'Complete and Next' : 'Complete and Next'}
                         </>
                       )}
                     </Button>

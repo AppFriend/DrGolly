@@ -295,9 +295,28 @@ export default function CourseOverview() {
                       >
                         {/* Chapter Circle */}
                         <div className="flex-shrink-0">
-                          <div className="w-5 h-5 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center">
-                            <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                          </div>
+                          {(() => {
+                            const chapterLessons = getLessonsForChapter(chapter.id);
+                            const completedInChapter = chapterLessons.filter(lesson => {
+                              const progress = getLessonProgress(lesson.id);
+                              return progress?.completedAt;
+                            });
+                            const isChapterCompleted = chapterLessons.length > 0 && completedInChapter.length === chapterLessons.length;
+                            
+                            if (isChapterCompleted) {
+                              return (
+                                <div className="w-5 h-5 rounded-full bg-green-700 flex items-center justify-center">
+                                  <CheckCircle className="w-3 h-3 text-white" />
+                                </div>
+                              );
+                            }
+                            
+                            return (
+                              <div className="w-5 h-5 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center">
+                                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                              </div>
+                            );
+                          })()}
                         </div>
                         
                         {/* Chapter Content */}
@@ -359,10 +378,17 @@ export default function CourseOverview() {
                                     
                                     if (isCompleted) {
                                       return (
-                                        <div className="flex items-center gap-1 text-green-600">
-                                          <CheckCircle className="w-4 h-4" />
-                                          <span className="text-xs font-medium">Complete</span>
-                                        </div>
+                                        <Button
+                                          size="sm"
+                                          className="bg-green-700 hover:bg-green-800 text-white text-xs px-3 py-1 h-7"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleStartLesson(lesson.id);
+                                          }}
+                                        >
+                                          <CheckCircle className="w-3 h-3 mr-1" />
+                                          ✓
+                                        </Button>
                                       );
                                     }
                                     
