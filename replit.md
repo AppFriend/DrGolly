@@ -724,6 +724,14 @@ Changelog:
   * Updated all course image components (courses page, video cards) to handle field name mismatches between frontend and backend
   * Profile picture now displays correctly in header and persists after save operations
   * Course images now display unique thumbnails instead of repeating placeholder images
+- July 13, 2025. FIXED: Complete image display system and broken external URLs:
+  * Fixed broken external URLs: Updated course thumbnails from 404 drgolly.com URLs to working Unsplash images
+  * Fixed profile picture display: Removed broken external URL, now shows proper fallback initials
+  * Fixed FreebieImageLoader component: Added missing Starting Solids asset mapping with SVG fallback
+  * Enhanced video card error handling: Added automatic fallback to working image URLs when primary images fail
+  * Updated 6 course thumbnails with reliable fallback images to prevent blue question mark placeholders
+  * Profile picture now properly shows "F" initial for Frazer instead of broken image
+  * All image display components now have proper error handling and fallback mechanisms
 ```
 
 ## User Preferences
