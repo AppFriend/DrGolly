@@ -153,16 +153,16 @@ export default function Home() {
             onClick={() => setLocation("/profile")}
             className="transition-transform hover:scale-105"
           >
-            {user?.profileImageUrl ? (
+            {(user?.profileImageUrl || user?.profilePictureUrl || user?.profile_picture_url) ? (
               <img
-                src={user.profileImageUrl}
+                src={user.profileImageUrl || user.profilePictureUrl || user.profile_picture_url}
                 alt="Profile"
                 className="w-8 h-8 rounded-full object-cover border-2 border-white"
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center">
                 <span className="text-[#095D66] text-xs font-bold">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  {(user?.firstName || user?.first_name)?.[0]}{(user?.lastName || user?.last_name)?.[0]}
                 </span>
               </div>
             )}
@@ -198,7 +198,7 @@ export default function Home() {
                 ? "text-black" 
                 : "text-[#095D66]"
             )}>
-              Welcome {user?.first_name || user?.firstName || "there"}!
+              Welcome {user?.firstName || user?.first_name || "there"}!
             </h1>
             {user?.subscriptionTier === "free" && (
               <div className="flex flex-col items-start">
