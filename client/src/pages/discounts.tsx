@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { PartnerDiscount, ShoppingProduct } from "@shared/schema";
 import book1Image from "@assets/IMG_5430_1752370946458.jpeg";
 import book2Image from "@assets/IMG_5431_1752370946459.jpeg";
@@ -120,6 +121,49 @@ export default function Discounts() {
     const price = getProductPrice(product);
     const symbol = getCurrencySymbol(regionalPricing.currency);
     return `${symbol}${price.toFixed(2)}`;
+  };
+
+  const queryClient = useQueryClient();
+
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ productId, quantity = 1 }: { productId: number; quantity?: number }) => {
+      const response = await apiRequest('POST', '/api/cart', {
+        itemType: 'book',
+        itemId: productId.toString(),
+        quantity,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart/count'] });
+      toast({
+        title: "Added to Cart",
+        description: "Item has been added to your cart.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddToCart = (product: ShoppingProduct) => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to add items to your cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    addToCartMutation.mutate({ productId: product.id });
   };
 
   const handlePurchaseProduct = async (product: ShoppingProduct) => {
@@ -249,11 +293,29 @@ export default function Discounts() {
                   {/* Description */}
                   <p className="text-xs text-gray-600 mb-3 line-clamp-2">{product.description}</p>
                   
-                  {/* Price and Buy Button */}
+                  {/* Price and Buttons */}
                   <div className="space-y-2">
                     <div className="text-center">
                       <span className="text-sm font-bold text-gray-900">{formatPrice(product)}</span>
                     </div>
+                    
+                    {/* Cart Button */}
+                    <Button
+                      onClick={() => handleAddToCart(product)}
+                      disabled={addToCartMutation.isPending}
+                      className="w-full bg-[#095D66] hover:bg-[#095D66]/90 text-white text-xs py-2 rounded-full flex items-center justify-center gap-1"
+                    >
+                      {addToCartMutation.isPending ? (
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-3 w-3" />
+                          Add to Cart
+                        </>
+                      )}
+                    </Button>
+                    
+                    {/* Buy Now Button */}
                     <Button
                       onClick={() => handlePurchaseProduct(product)}
                       disabled={!product.inStock || paymentLoading === product.id}

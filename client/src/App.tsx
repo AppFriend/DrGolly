@@ -33,6 +33,7 @@ import Manage from "@/pages/manage";
 import CheckoutSubscription from "@/pages/checkout-subscription";
 import Admin from "@/pages/admin";
 import Profile from "@/pages/profile";
+import Cart from "@/pages/cart";
 import KlaviyoTest from "@/pages/klaviyo-test";
 import NotificationTest from "@/pages/notification-test";
 import Terms from "@/pages/terms";
@@ -165,6 +166,13 @@ function AuthenticatedApp() {
             </div>
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
+        </Route>
+        <Route path="/cart">
+          <DesktopLayout>
+            <div className="max-w-md mx-auto lg:max-w-full lg:mx-0">
+              <Cart />
+            </div>
+          </DesktopLayout>
         </Route>
         <Route path="/home">
           <DesktopLayout>

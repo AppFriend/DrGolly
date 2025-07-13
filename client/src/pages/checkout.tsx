@@ -20,7 +20,15 @@ import appleLogo from "@assets/apple_1752294500140.png";
 import linkLogo from "@assets/Link_1752294500139.png";
 import afterpayLogo from "@assets/Afterpay_Badge_BlackonMint_1752294624500.png";
 import moneyBackGuarantee from "@assets/money-back-guarantee.png";
-import type { Course } from "@shared/schema";
+import book1Image from "@assets/IMG_5430_1752370946458.jpeg";
+import book2Image from "@assets/IMG_5431_1752370946459.jpeg";
+import type { Course, CartItem, ShoppingProduct } from "@shared/schema";
+
+// Product images mapping
+const productImages: Record<number, string> = {
+  1: book1Image,
+  2: book2Image,
+};
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
@@ -415,14 +423,78 @@ export default function Checkout() {
     retry: false,
   });
 
+  // Fetch cart items
+  const { data: cartItems = [] } = useQuery<CartItem[]>({
+    queryKey: ['/api/cart'],
+    enabled: !!user && !params?.courseId, // Only fetch if not purchasing a specific course
+  });
+
+  // Fetch shopping products for cart items
+  const { data: shoppingProducts = [] } = useQuery<ShoppingProduct[]>({
+    queryKey: ['/api/shopping-products'],
+    enabled: cartItems.length > 0,
+  });
+
+  // Fetch courses for cart items
+  const { data: courses = [] } = useQuery<Course[]>({
+    queryKey: ['/api/courses'],
+    enabled: cartItems.length > 0,
+  });
+
   const courseId = params?.courseId ? parseInt(params.courseId) : null;
   const originalPrice = regionalPricing?.coursePrice || 120;
   const currency = regionalPricing?.currency || 'USD';
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
   
+  // Calculate total for cart items
+  const calculateCartTotal = () => {
+    return cartItems.reduce((total, item) => {
+      if (item.itemType === 'book') {
+        const product = shoppingProducts.find(p => p.id === parseInt(item.itemId));
+        if (product && regionalPricing) {
+          const priceField = product.priceField as keyof typeof regionalPricing;
+          const price = regionalPricing[priceField] || 0;
+          return total + (price * item.quantity);
+        }
+      } else if (item.itemType === 'course') {
+        return total + (originalPrice * item.quantity);
+      }
+      return total;
+    }, 0);
+  };
+
+  // Helper function to get item details
+  const getItemDetails = (item: CartItem) => {
+    if (item.itemType === 'book') {
+      const product = shoppingProducts.find(p => p.id === parseInt(item.itemId));
+      if (product && regionalPricing) {
+        const priceField = product.priceField as keyof typeof regionalPricing;
+        const price = regionalPricing[priceField] || 0;
+        return {
+          title: product.title,
+          image: productImages[product.id] || null,
+          price: price,
+          author: product.author,
+        };
+      }
+    } else if (item.itemType === 'course') {
+      const course = courses.find(c => c.id === parseInt(item.itemId));
+      return course ? {
+        title: course.title,
+        image: null,
+        price: originalPrice,
+        author: 'Dr. Golly',
+      } : null;
+    }
+    return null;
+  };
+
+  // Use cart total if there are cart items, otherwise use course price
+  const basePrice = cartItems.length > 0 ? calculateCartTotal() : originalPrice;
+  
   // Calculate final price with coupon
   const finalPrice = appliedCoupon ? 
-    appliedCoupon.amountOff ? originalPrice - (appliedCoupon.amountOff / 100) :
+    appliedCoupon.amountOff ? basePrice - (appliedCoupon.amountOff / 100) :
     appliedCoupon.percentOff ? originalPrice * (1 - appliedCoupon.percentOff / 100) :
     originalPrice : originalPrice;
 
@@ -451,13 +523,13 @@ export default function Checkout() {
     setLocation("/courses");
   };
 
-  // Handle case where no courseId is provided
-  if (!courseId) {
+  // Handle case where no courseId is provided and no cart items
+  if (!courseId && cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Course</h1>
-          <p className="text-gray-600 mb-6">No course specified for checkout.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Nothing to Checkout</h1>
+          <p className="text-gray-600 mb-6">Your cart is empty and no course was specified for checkout.</p>
           <Button onClick={() => setLocation("/courses")} className="bg-[#095D66] hover:bg-[#074952]">
             Browse Courses
           </Button>
@@ -466,7 +538,8 @@ export default function Checkout() {
     );
   }
 
-  if (courseLoading || !course) {
+  // Show loading state for course checkout or while cart data is loading
+  if ((courseId && (courseLoading || !course)) || (!courseId && cartItems.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -538,21 +611,61 @@ export default function Checkout() {
               </div>
               
               <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <img 
-                    src={course.thumbnailUrl || "https://via.placeholder.com/64x64"} 
-                    alt={course.title}
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{course.title}</h3>
-                    <p className="text-sm text-gray-600">{course.description}</p>
-                    <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
-                  </div>
-                  <Button variant="ghost" size="sm" className="text-gray-400">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {/* Display cart items if available */}
+                {cartItems.length > 0 ? (
+                  cartItems.map((item) => {
+                    const itemDetails = getItemDetails(item);
+                    if (!itemDetails) return null;
+                    
+                    return (
+                      <div key={item.id} className="flex items-start space-x-3">
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0">
+                          {itemDetails.image ? (
+                            <img 
+                              src={itemDetails.image} 
+                              alt={itemDetails.title}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-[#83CFCC] rounded-lg flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">COURSE</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">{itemDetails.title}</h3>
+                          <p className="text-sm text-gray-600">by {itemDetails.author}</p>
+                          <p className="text-sm font-medium">{currencySymbol}{itemDetails.price.toFixed(2)}</p>
+                          {item.quantity > 1 && (
+                            <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="sm" className="text-gray-400">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  // Display single course if no cart items
+                  course && (
+                    <div className="flex items-start space-x-3">
+                      <img 
+                        src={course.thumbnailUrl || "https://via.placeholder.com/64x64"} 
+                        alt={course.title}
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">{course.title}</h3>
+                        <p className="text-sm text-gray-600">{course.description}</p>
+                        <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
+                      </div>
+                      <Button variant="ghost" size="sm" className="text-gray-400">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )
+                )}
                 
                 {/* Coupon Input */}
                 <div className="border-t pt-4">
@@ -574,7 +687,7 @@ export default function Checkout() {
                       <span className="text-sm text-green-600">
                         -{currencySymbol}{(appliedCoupon.amount_off ? 
                           (appliedCoupon.amount_off / 100).toFixed(2) : 
-                          (originalPrice * appliedCoupon.percent_off / 100).toFixed(2))}
+                          (basePrice * appliedCoupon.percent_off / 100).toFixed(2))}
                       </span>
                     </div>
                   )}

@@ -30,6 +30,7 @@ import {
   services,
   serviceBookings,
   shoppingProducts,
+  cartItems,
   type User,
   type UpsertUser,
   type FeatureFlag,
@@ -40,6 +41,8 @@ import {
   type InsertServiceBooking,
   type ShoppingProduct,
   type InsertShoppingProduct,
+  type CartItem,
+  type InsertCartItem,
   type RegionalPricing,
   type Course,
   type CourseChapter,
@@ -357,6 +360,14 @@ export interface IStorage {
   createShoppingProduct(product: InsertShoppingProduct): Promise<ShoppingProduct>;
   updateShoppingProduct(id: number, updates: Partial<InsertShoppingProduct>): Promise<ShoppingProduct>;
   deleteShoppingProduct(id: number): Promise<void>;
+
+  // Cart operations
+  getUserCart(userId: string): Promise<CartItem[]>;
+  addToCart(cartItem: InsertCartItem): Promise<CartItem>;
+  updateCartItem(id: number, quantity: number): Promise<CartItem>;
+  removeFromCart(id: number): Promise<void>;
+  clearUserCart(userId: string): Promise<void>;
+  getCartItemCount(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2681,6 +2692,55 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(shoppingProducts)
       .where(eq(shoppingProducts.id, id));
+  }
+
+  // Cart operations
+  async getUserCart(userId: string): Promise<CartItem[]> {
+    return await db.select().from(cartItems).where(eq(cartItems.userId, userId));
+  }
+
+  async addToCart(cartItem: InsertCartItem): Promise<CartItem> {
+    // Check if item already exists in cart
+    const existingItem = await db.select().from(cartItems)
+      .where(eq(cartItems.userId, cartItem.userId))
+      .where(eq(cartItems.itemType, cartItem.itemType))
+      .where(eq(cartItems.itemId, cartItem.itemId));
+
+    if (existingItem.length > 0) {
+      // Update quantity if item exists
+      const [updatedItem] = await db.update(cartItems)
+        .set({ quantity: existingItem[0].quantity + (cartItem.quantity || 1) })
+        .where(eq(cartItems.id, existingItem[0].id))
+        .returning();
+      return updatedItem;
+    } else {
+      // Add new item
+      const [newItem] = await db.insert(cartItems).values(cartItem).returning();
+      return newItem;
+    }
+  }
+
+  async updateCartItem(id: number, quantity: number): Promise<CartItem> {
+    const [updatedItem] = await db.update(cartItems)
+      .set({ quantity })
+      .where(eq(cartItems.id, id))
+      .returning();
+    return updatedItem;
+  }
+
+  async removeFromCart(id: number): Promise<void> {
+    await db.delete(cartItems).where(eq(cartItems.id, id));
+  }
+
+  async clearUserCart(userId: string): Promise<void> {
+    await db.delete(cartItems).where(eq(cartItems.userId, userId));
+  }
+
+  async getCartItemCount(userId: string): Promise<number> {
+    const result = await db.select()
+      .from(cartItems)
+      .where(eq(cartItems.userId, userId));
+    return result.reduce((total, item) => total + item.quantity, 0);
   }
 }
 
