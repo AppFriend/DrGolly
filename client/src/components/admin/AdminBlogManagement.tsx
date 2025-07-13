@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +55,7 @@ interface ImageUploadButtonProps {
 function ImageUploadButton({ onImageUploaded }: ImageUploadButtonProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -108,24 +109,30 @@ function ImageUploadButton({ onImageUploaded }: ImageUploadButtonProps) {
     } finally {
       setIsUploading(false);
       // Reset file input
-      if (event.target) {
-        event.target.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
     <div className="flex items-center gap-2">
       <input
+        ref={fileInputRef}
         type="file"
         accept="image/*"
         onChange={handleFileUpload}
         className="hidden"
-        id="image-upload"
       />
-      <label
-        htmlFor="image-upload"
+      <button
+        type="button"
+        onClick={handleButtonClick}
         className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={isUploading}
       >
         {isUploading ? (
           <>
@@ -138,7 +145,7 @@ function ImageUploadButton({ onImageUploaded }: ImageUploadButtonProps) {
             Upload Image
           </>
         )}
-      </label>
+      </button>
     </div>
   );
 }
