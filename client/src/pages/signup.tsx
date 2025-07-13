@@ -15,8 +15,8 @@ export default function SignupPage() {
   }, [user, setLocation]);
 
   const handleSignup = () => {
-    // Redirect to the Dr. Golly authentication URL
-    window.location.href = '/api/auth/login';
+    // Redirect to the Dr. Golly signup URL
+    window.location.href = '/api/signup';
   };
 
   if (isLoading) {
