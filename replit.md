@@ -817,6 +817,9 @@ Changelog:
   * Created UserCourseManagement component for managing individual user course access
   * All admin functionality now works with 17,508 users via raw SQL fallback system
   * Admin panel displays users correctly with edit capabilities and course management
+  * Fixed historical course purchase data display for 17,000+ migrated users using courses_purchased_previously field
+  * Implemented course name mapping system to display historical purchases from CSV migration
+  * Fixed admin user display to show proper first and last names instead of email addresses only
 ```
 
 ## User Preferences

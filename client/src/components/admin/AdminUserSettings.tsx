@@ -26,12 +26,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface AdminUser {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
   isAdmin: boolean;
-  subscriptionTier: string;
-  createdAt: string;
-  lastSignIn: string;
+  subscriptionTier?: string;
+  subscription_tier?: string;
+  createdAt?: string;
+  created_at?: string;
+  lastSignIn?: string;
+  last_sign_in?: string;
 }
 
 export function AdminUserSettings() {
@@ -283,7 +288,7 @@ export function AdminUserSettings() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="font-semibold text-sm truncate mr-2">
-                          {user.firstName} {user.lastName}
+                          {user.firstName || user.first_name} {user.lastName || user.last_name}
                         </h3>
                         <Button
                           variant="outline"
@@ -300,11 +305,11 @@ export function AdminUserSettings() {
                           Admin
                         </Badge>
                         <Badge variant="outline" className="text-yellow-600 text-xs px-2 py-0.5 capitalize">
-                          {user.subscriptionTier}
+                          {user.subscriptionTier || user.subscription_tier}
                         </Badge>
                       </div>
                       <div className="text-xs text-gray-600 truncate break-all">
-                        {user.email} • Joined {formatDate(user.createdAt)}
+                        {user.email} • Joined {formatDate(user.createdAt || user.created_at)}
                       </div>
                     </div>
                   </div>
