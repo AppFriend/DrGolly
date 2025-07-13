@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { FacebookPixel } from '@/lib/facebook-pixel';
+import { useLocation } from 'wouter';
 
 interface CourseDetailProps {
   courseId: number;
@@ -16,6 +16,7 @@ interface CourseDetailProps {
 export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   // Fetch course details
   const { data: course, isLoading: courseLoading } = useQuery({
@@ -25,21 +26,30 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
 
   // Check if user has purchased this course
   const { data: coursePurchases } = useQuery({
-    queryKey: ['/api/user/course-purchases'],
+    queryKey: ['/api/user/courses'],
     retry: false,
   });
 
-  // Track course view with Facebook Pixel
-  useEffect(() => {
-    if (course) {
-      FacebookPixel.trackViewContent(course.id, course.title);
-    }
-  }, [course]);
+  // Track course view with Facebook Pixel (disabled for now)
+  // useEffect(() => {
+  //   if (course) {
+  //     FacebookPixel.trackViewContent(course.id, course.title);
+  //   }
+  // }, [course]);
 
   // Check user's access to this course
   const hasAccess = () => {
-    const hasPurchased = coursePurchases?.some((purchase: any) => purchase.courseId === course?.id);
+    const hasPurchased = coursePurchases?.some((purchase: any) => 
+      purchase.courseId === course?.id && purchase.status === 'completed'
+    );
     const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+    console.log('Course access check:', {
+      courseId: course?.id,
+      hasPurchased,
+      hasGoldAccess,
+      userTier: user?.subscriptionTier,
+      totalAccess: hasPurchased || hasGoldAccess
+    });
     return hasPurchased || hasGoldAccess;
   };
 
@@ -65,15 +75,16 @@ export default function CourseDetail({ courseId, onClose }: CourseDetailProps) {
     }
     
     // Navigate directly to course overview page
-    window.location.href = `/courses/${course.id}`;
+    setLocation(`/courses/${course.id}`);
   };
 
   // Redirect users who have access directly to course overview
   useEffect(() => {
     if (course && hasAccess()) {
+      console.log('User has access to course, redirecting to course overview...');
       // Redirect immediately if user has access
       const timer = setTimeout(() => {
-        window.location.href = `/courses/${course.id}`;
+        setLocation(`/courses/${course.id}`);
       }, 100);
       return () => clearTimeout(timer);
     }
