@@ -56,6 +56,8 @@ function ImageUploadButton({ onImageUploaded }: ImageUploadButtonProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  console.log('ImageUploadButton rendered');
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -131,12 +133,12 @@ function ImageUploadButton({ onImageUploaded }: ImageUploadButtonProps) {
       <button
         type="button"
         onClick={handleButtonClick}
-        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md border-2 border-brand-teal bg-brand-teal text-white hover:bg-brand-teal/90 hover:border-brand-teal/90 focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         disabled={isUploading}
       >
         {isUploading ? (
           <>
-            <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-brand-teal rounded-full" />
+            <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
             Uploading...
           </>
         ) : (
@@ -588,7 +590,10 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
             placeholder="https://example.com/image.jpg"
             className="flex-1"
           />
-          <ImageUploadButton onImageUploaded={(imageUrl) => setFormData({ ...formData, imageUrl })} />
+          <div className="flex items-center gap-2">
+            <ImageUploadButton onImageUploaded={(imageUrl) => setFormData({ ...formData, imageUrl })} />
+            <span className="text-sm text-gray-500">Or paste URL above</span>
+          </div>
         </div>
       </div>
 
