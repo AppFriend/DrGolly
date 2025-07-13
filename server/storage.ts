@@ -811,18 +811,31 @@ export class DatabaseStorage implements IStorage {
 
   // Children operations
   async getUserChildren(userId: string): Promise<Child[]> {
+    console.log('Fetching children for user ID:', userId);
     try {
-      return await db.select().from(children).where(eq(children.userId, userId));
+      const userChildren = await db.select().from(children).where(eq(children.userId, userId));
+      console.log('Children found:', userChildren.length);
+      return userChildren;
     } catch (error) {
       console.error('Database error in getUserChildren:', error);
-      // Fallback to raw SQL query
+      // Fallback to raw SQL
       try {
         const { neon } = await import('@neondatabase/serverless');
         const sql = neon(process.env.DATABASE_URL!);
-        const result = await sql`SELECT * FROM children WHERE user_id = ${userId}`;
-        return result as Child[];
+        const result = await sql`SELECT id, user_id, name, date_of_birth, gender, profile_picture, created_at, updated_at FROM children WHERE user_id = ${userId}`;
+        console.log('Children found via raw SQL:', result.length);
+        return result.map((child: any) => ({
+          id: child.id,
+          userId: child.user_id,
+          name: child.name,
+          dateOfBirth: child.date_of_birth,
+          gender: child.gender,
+          profilePicture: child.profile_picture,
+          createdAt: child.created_at,
+          updatedAt: child.updated_at
+        }));
       } catch (fallbackError) {
-        console.error('Fallback query also failed:', fallbackError);
+        console.error('Fallback children query failed:', fallbackError);
         return [];
       }
     }

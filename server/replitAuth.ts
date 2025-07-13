@@ -35,12 +35,14 @@ export function getSession() {
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Force session save even if not modified
+    saveUninitialized: true, // Save uninitialized sessions
+    rolling: true, // Reset expiration on each request
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
+      sameSite: 'lax', // Help with CSRF protection
     },
   });
 }
