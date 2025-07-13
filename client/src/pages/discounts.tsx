@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, Tag, Lock } from "lucide-react";
+import { Sparkles, Tag, Lock, ExternalLink, Star, ShoppingCart } from "lucide-react";
 import { DiscountCard } from "@/components/ui/discount-card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,25 @@ import type { PartnerDiscount } from "@shared/schema";
 const discountTabs = [
   { id: "partner", label: "Partner Deals", active: true },
   { id: "shopping", label: "Shopping", active: false },
+];
+
+// Product data for shopping section
+const shoppingProducts = [
+  {
+    id: 1,
+    title: "Your Baby Doesn't Come with a Book",
+    author: "Dr. Daniel Golshevsky",
+    price: "AU$24.99",
+    rating: 4.8,
+    reviewCount: 127,
+    image: "/api/placeholder/200/300", // Placeholder for book cover
+    description: "A comprehensive guide to navigating the first year with your baby, written by sleep expert Dr. Daniel Golshevsky.",
+    amazonUrl: "https://www.amazon.com.au/Your-Baby-Doesnt-Come-Book/dp/1761212885/ref=asc_df_1761212885?mcid=3fad30ed30f63eaea899eb454e9764d0&tag=googleshopmob-22&linkCode=df0&hvadid=712358788289&hvpos=&hvnetw=g&hvrand=15313830547994388509&hvpone=&hvptwo=&hvqmt=&hvdev=m&hvdvcmdl=&hvlocint=&hvlocphy=9112781&hvtargid=pla-2201729947671&psc=1&gad_source=1&dplnkId=a7c77b94-6a4b-4378-8e30-979046fdf615&nodl=1",
+    category: "Book",
+    inStock: true,
+    featured: true
+  },
+  // Future products can be added here
 ];
 
 export default function Discounts() {
@@ -59,6 +79,97 @@ export default function Discounts() {
       description: `${discount.discountCode} has been copied to your clipboard.`,
     });
   };
+
+  const handlePurchaseProduct = (product: typeof shoppingProducts[0]) => {
+    // Open Amazon link in new tab
+    window.open(product.amazonUrl, '_blank');
+    
+    // Track purchase attempt
+    toast({
+      title: "Redirecting to Amazon",
+      description: "Opening Amazon page in new tab...",
+    });
+  };
+
+  const ShoppingSection = () => (
+    <div className="space-y-6">
+      {/* Featured Products */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {shoppingProducts.map((product) => (
+          <Card key={product.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <CardContent className="p-0">
+              {/* Product Image */}
+              <div className="aspect-[4/5] bg-gray-100 relative">
+                <img 
+                  src={product.image} 
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to book placeholder
+                    e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'%3E%3Crect width='200' height='300' fill='%23f3f4f6'/%3E%3Cpath d='M70 120h60v60H70z' fill='%2383CFCC'/%3E%3Ctext x='100' y='200' font-family='Arial' font-size='14' text-anchor='middle' fill='%23374151'%3EBook Cover%3C/text%3E%3C/svg%3E";
+                  }}
+                />
+                {product.featured && (
+                  <div className="absolute top-2 left-2 bg-[#83CFCC] text-white text-xs px-2 py-1 rounded-full">
+                    Featured
+                  </div>
+                )}
+              </div>
+              
+              {/* Product Details */}
+              <div className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{product.title}</h3>
+                <p className="text-sm text-gray-600 mb-2">by {product.author}</p>
+                
+                {/* Rating */}
+                <div className="flex items-center gap-1 mb-2">
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i}
+                        className={`h-3 w-3 ${i < Math.floor(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-gray-600">
+                    {product.rating} ({product.reviewCount} reviews)
+                  </span>
+                </div>
+                
+                {/* Description */}
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+                
+                {/* Price and Buy Button */}
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-gray-900">{product.price}</span>
+                  <Button
+                    onClick={() => handlePurchaseProduct(product)}
+                    className="bg-[#83CFCC] hover:bg-[#095D66] text-white px-4 py-2 rounded-full flex items-center gap-2"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Buy on Amazon
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      
+      {/* Coming Soon Section */}
+      <div className="bg-gradient-to-r from-[#83CFCC]/10 to-[#095D66]/10 rounded-2xl p-6 text-center">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">More Products Coming Soon</h3>
+        <p className="text-gray-600 mb-4">
+          We're working on bringing you more helpful products for your parenting journey.
+        </p>
+        <div className="flex items-center justify-center gap-2 text-sm text-[#095D66]">
+          <Sparkles className="h-4 w-4" />
+          Stay tuned for updates!
+        </div>
+      </div>
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -107,90 +218,96 @@ export default function Discounts() {
         </div>
       </div>
 
-      {/* Discount Content */}
+      {/* Content */}
       <div className="p-4">
-        {!hasDiscountAccess ? (
-          <div className="space-y-6">
-            {/* Upgrade Card */}
-            <div className="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center">
-              <div className="w-12 h-12 bg-dr-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="h-6 w-6 text-dr-teal" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Unlock Partner Discounts
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Upgrade to Gold or Platinum to access exclusive partner discounts and save on trusted brands.
-              </p>
-              <Button
-                onClick={() => openUpgradeModal("discounts")}
-                className="bg-dr-teal hover:bg-dr-teal/90 text-white px-8 py-2 rounded-full"
-              >
-                Upgrade Now
-              </Button>
-            </div>
-
-            {/* Sample Discounts (Locked) */}
-            <div className="space-y-4 opacity-50">
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 relative overflow-hidden">
-                <div className="absolute inset-0 bg-white/80 z-10"></div>
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gray-200 rounded-xl flex items-center justify-center">
-                    <div className="w-8 h-8 bg-gray-300 rounded"></div>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">20% Off - Code: SYM-AXL</h4>
-                    <p className="text-sm text-gray-600">20% Off with Your Code: SYM-AXL</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-dr-teal text-white border-dr-teal rounded-full px-4"
-                    disabled
-                  >
-                    Claim Offer
-                  </Button>
+        {activeTab === "partner" ? (
+          // Partner Deals Tab
+          !hasDiscountAccess ? (
+            <div className="space-y-6">
+              {/* Upgrade Card */}
+              <div className="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center">
+                <div className="w-12 h-12 bg-dr-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Lock className="h-6 w-6 text-dr-teal" />
                 </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Unlock Partner Discounts
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Upgrade to Gold or Platinum to access exclusive partner discounts and save on trusted brands.
+                </p>
+                <Button
+                  onClick={() => openUpgradeModal("discounts")}
+                  className="bg-dr-teal hover:bg-dr-teal/90 text-white px-8 py-2 rounded-full"
+                >
+                  Upgrade Now
+                </Button>
               </div>
 
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 relative overflow-hidden">
-                <div className="absolute inset-0 bg-white/80 z-10"></div>
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gray-200 rounded-xl flex items-center justify-center">
-                    <div className="w-8 h-8 bg-gray-300 rounded"></div>
+              {/* Sample Discounts (Locked) */}
+              <div className="space-y-4 opacity-50">
+                <div className="bg-white rounded-2xl p-4 border border-gray-200 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-white/80 z-10"></div>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-gray-200 rounded-xl flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-1">20% Off - Code: SYM-AXL</h4>
+                      <p className="text-sm text-gray-600">20% Off with Your Code: SYM-AXL</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-dr-teal text-white border-dr-teal rounded-full px-4"
+                      disabled
+                    >
+                      Claim Offer
+                    </Button>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">$20.00 Off - Code: GOLLY-PLATINUM-NX7K</h4>
-                    <p className="text-sm text-gray-600">$20 Off Your First Order. Your Code: GOLLY-PLATINUM-NX7K</p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-gray-200 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-white/80 z-10"></div>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-gray-200 rounded-xl flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-1">$20.00 Off - Code: GOLLY-PLATINUM-NX7K</h4>
+                      <p className="text-sm text-gray-600">$20 Off Your First Order. Your Code: GOLLY-PLATINUM-NX7K</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-dr-teal text-white border-dr-teal rounded-full px-4"
+                      disabled
+                    >
+                      Claim Offer
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-dr-teal text-white border-dr-teal rounded-full px-4"
-                    disabled
-                  >
-                    Claim Offer
-                  </Button>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-6">
+              {discounts?.map((discount) => (
+                <DiscountCard
+                  key={discount.id}
+                  discount={discount}
+                  onClaim={() => handleClaimDiscount(discount)}
+                />
+              ))}
+
+              {discounts?.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No discounts available at this time.</p>
+                </div>
+              )}
+            </div>
+          )
         ) : (
-          <div className="space-y-6">
-            {discounts?.map((discount) => (
-              <DiscountCard
-                key={discount.id}
-                discount={discount}
-                onClaim={() => handleClaimDiscount(discount)}
-              />
-            ))}
-
-            {discounts?.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-500">No discounts available at this time.</p>
-              </div>
-            )}
-          </div>
+          // Shopping Tab
+          <ShoppingSection />
         )}
       </div>
     </div>
