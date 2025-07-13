@@ -108,9 +108,9 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
               className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
               onClick={() => navigate("/profile")}
             >
-              {user?.profileImageUrl ? (
+              {(user?.profileImageUrl || user?.profilePictureUrl || user?.profile_picture_url) ? (
                 <img 
-                  src={user.profileImageUrl} 
+                  src={user.profileImageUrl || user.profilePictureUrl || user.profile_picture_url} 
                   alt="Profile" 
                   className="w-full h-full object-cover rounded-full"
                 />

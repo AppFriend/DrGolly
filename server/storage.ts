@@ -2895,11 +2895,44 @@ export class DatabaseStorage implements IStorage {
 
   // Shopping product operations
   async getShoppingProducts(): Promise<ShoppingProduct[]> {
-    return await db
-      .select()
-      .from(shoppingProducts)
-      .where(eq(shoppingProducts.inStock, true))
-      .orderBy(shoppingProducts.title);
+    try {
+      // Use raw SQL to avoid Drizzle ORM connection issues
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const products = await sql`SELECT id, title, author, description, category, stripe_product_id, 
+                                        stripe_price_aud_id, stripe_price_usd_id, stripe_price_eur_id, 
+                                        price_field, rating, review_count, image_url, amazon_url, 
+                                        is_active, is_featured, in_stock, created_at, updated_at
+                                 FROM shopping_products 
+                                 WHERE is_active = true AND in_stock = true
+                                 ORDER BY title`;
+      
+      return products.map((product: any) => ({
+        id: product.id,
+        title: product.title,
+        author: product.author,
+        description: product.description,
+        category: product.category,
+        stripeProductId: product.stripe_product_id,
+        stripePriceAudId: product.stripe_price_aud_id,
+        stripePriceUsdId: product.stripe_price_usd_id,
+        stripePriceEurId: product.stripe_price_eur_id,
+        priceField: product.price_field,
+        rating: product.rating,
+        reviewCount: product.review_count,
+        imageUrl: product.image_url,
+        amazonUrl: product.amazon_url,
+        isActive: product.is_active,
+        isFeatured: product.is_featured,
+        inStock: product.in_stock,
+        createdAt: product.created_at,
+        updatedAt: product.updated_at
+      }));
+    } catch (error) {
+      console.error('Error fetching shopping products:', error);
+      return [];
+    }
   }
 
   async getShoppingProduct(id: number): Promise<ShoppingProduct | undefined> {
