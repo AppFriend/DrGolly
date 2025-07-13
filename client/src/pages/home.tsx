@@ -197,7 +197,7 @@ export default function Home() {
 
       {/* Welcome Hero */}
       <section className={cn(
-        "p-6 rounded-b-3xl relative overflow-hidden",
+        "p-6 rounded-b-3xl relative overflow-hidden min-h-[180px]",
         user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" 
           ? "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black" 
           : "text-white"
@@ -223,7 +223,7 @@ export default function Home() {
                 ? "text-black" 
                 : "text-[#095D66]"
             )}>
-              Welcome {user?.firstName || "there"}!
+              Welcome {user?.first_name || user?.firstName || "there"}!
             </h1>
             {user?.subscriptionTier === "free" && (
               <div className="flex flex-col items-start">

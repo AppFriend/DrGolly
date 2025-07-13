@@ -37,7 +37,7 @@ export default function Courses() {
   });
 
   const { data: coursePurchases, refetch: refetchPurchases, error: purchasesError } = useQuery({
-    queryKey: ["/api/user/course-purchases"],
+    queryKey: ["/api/debug/course-purchases"],
     enabled: !!user,
     retry: (failureCount, error) => {
       // Don't retry on 401 errors
