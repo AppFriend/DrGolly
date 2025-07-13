@@ -928,8 +928,34 @@ export const regionalPricing = pgTable("regional_pricing", {
   goldYearly: decimal("gold_yearly", { precision: 10, scale: 2 }).notNull(), // Gold yearly price
   platinumMonthly: decimal("platinum_monthly", { precision: 10, scale: 2 }).notNull(), // Platinum monthly price
   platinumYearly: decimal("platinum_yearly", { precision: 10, scale: 2 }).notNull(), // Platinum yearly price
+  // Book pricing
+  book1Price: decimal("book1_price", { precision: 10, scale: 2 }).notNull(), // Your Baby Doesn't Come with a Book
+  book2Price: decimal("book2_price", { precision: 10, scale: 2 }).notNull(), // Dr Golly's Guide to Family Illness
   countryList: text("country_list").array(), // Countries for this region
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Shopping products table for books and other products
+export const shoppingProducts = pgTable("shopping_products", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  author: varchar("author"),
+  description: text("description"),
+  category: varchar("category").notNull(), // book, product, etc.
+  stripeProductId: varchar("stripe_product_id").unique().notNull(),
+  stripePriceAudId: varchar("stripe_price_aud_id").unique().notNull(), // AUD price ID
+  stripePriceUsdId: varchar("stripe_price_usd_id").unique().notNull(), // USD price ID
+  stripePriceEurId: varchar("stripe_price_eur_id").unique(), // EUR price ID (optional)
+  priceField: varchar("price_field").notNull(), // book1Price, book2Price - maps to regionalPricing table
+  rating: decimal("rating", { precision: 2, scale: 1 }),
+  reviewCount: integer("review_count").default(0),
+  imageUrl: varchar("image_url"),
+  amazonUrl: varchar("amazon_url"),
+  isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false),
+  inStock: boolean("in_stock").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1064,6 +1090,17 @@ export type Service = typeof services.$inferSelect;
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type ServiceBooking = typeof serviceBookings.$inferSelect;
 export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
+
+// Shopping product schemas
+export const insertShoppingProductSchema = createInsertSchema(shoppingProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Shopping product types
+export type ShoppingProduct = typeof shoppingProducts.$inferSelect;
+export type InsertShoppingProduct = z.infer<typeof insertShoppingProductSchema>;
 
 // Stripe product types
 export type StripeProduct = typeof stripeProducts.$inferSelect;

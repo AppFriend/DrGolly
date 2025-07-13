@@ -29,6 +29,7 @@ import {
   regionalPricing,
   services,
   serviceBookings,
+  shoppingProducts,
   type User,
   type UpsertUser,
   type FeatureFlag,
@@ -37,6 +38,9 @@ import {
   type InsertService,
   type ServiceBooking,
   type InsertServiceBooking,
+  type ShoppingProduct,
+  type InsertShoppingProduct,
+  type RegionalPricing,
   type Course,
   type CourseChapter,
   type CourseLesson,
@@ -345,6 +349,14 @@ export interface IStorage {
   // User service activation tracking
   addUserActivatedService(userId: string, serviceId: string): Promise<User>;
   getUserActivatedServices(userId: string): Promise<string[]>;
+  
+  // Shopping product operations
+  getShoppingProducts(): Promise<ShoppingProduct[]>;
+  getShoppingProduct(id: number): Promise<ShoppingProduct | undefined>;
+  getShoppingProductByStripeProductId(stripeProductId: string): Promise<ShoppingProduct | undefined>;
+  createShoppingProduct(product: InsertShoppingProduct): Promise<ShoppingProduct>;
+  updateShoppingProduct(id: number, updates: Partial<InsertShoppingProduct>): Promise<ShoppingProduct>;
+  deleteShoppingProduct(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2618,6 +2630,57 @@ export class DatabaseStorage implements IStorage {
       .where(eq(serviceBookings.id, id))
       .returning();
     return result;
+  }
+
+  // Shopping product operations
+  async getShoppingProducts(): Promise<ShoppingProduct[]> {
+    return await db
+      .select()
+      .from(shoppingProducts)
+      .where(eq(shoppingProducts.isActive, true))
+      .orderBy(shoppingProducts.title);
+  }
+
+  async getShoppingProduct(id: number): Promise<ShoppingProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(shoppingProducts)
+      .where(eq(shoppingProducts.id, id));
+    return product;
+  }
+
+  async getShoppingProductByStripeProductId(stripeProductId: string): Promise<ShoppingProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(shoppingProducts)
+      .where(eq(shoppingProducts.stripeProductId, stripeProductId));
+    return product;
+  }
+
+  async createShoppingProduct(product: InsertShoppingProduct): Promise<ShoppingProduct> {
+    const [result] = await db
+      .insert(shoppingProducts)
+      .values(product)
+      .returning();
+    return result;
+  }
+
+  async updateShoppingProduct(id: number, updates: Partial<InsertShoppingProduct>): Promise<ShoppingProduct> {
+    const [result] = await db
+      .update(shoppingProducts)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(shoppingProducts.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteShoppingProduct(id: number): Promise<void> {
+    await db
+      .delete(shoppingProducts)
+      .where(eq(shoppingProducts.id, id));
   }
 }
 

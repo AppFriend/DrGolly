@@ -6618,6 +6618,190 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Seed shopping products endpoint
+  app.post('/api/seed-shopping-products', async (req, res) => {
+    try {
+      // Check if products already exist
+      const existingProducts = await storage.getShoppingProducts();
+      if (existingProducts.length > 0) {
+        return res.json({ message: 'Shopping products already exist, skipping seed.' });
+      }
+
+      const products = [
+        {
+          title: "Your Baby Doesn't Come with a Book",
+          author: "Dr. Daniel Golshevsky",
+          description: "A comprehensive guide to navigating the first year with your baby, written by sleep expert Dr. Daniel Golshevsky.",
+          priceField: "book1Price",
+          stripePriceAudId: "price_book1_aud",
+          stripePriceUsdId: "price_book1_usd",
+          stripePriceEurId: "price_book1_eur",
+          amazonUrl: "https://www.amazon.com.au/Your-Baby-Doesnt-Come-Book/dp/1761212885/ref=asc_df_1761212885?mcid=3fad30ed30f63eaea899eb454e9764d0&tag=googleshopmob-22&linkCode=df0&hvadid=712358788289&hvpos=&hvnetw=g&hvrand=15313830547994388509&hvpone=&hvptwo=&hvqmt=&hvdev=m&hvdvcmdl=&hvlocint=&hvlocphy=9112781&hvtargid=pla-2201729947671&psc=1&gad_source=1&dplnkId=a7c77b94-6a4b-4378-8e30-979046fdf615&nodl=1",
+          category: "Book",
+          inStock: true,
+          isFeatured: true,
+          rating: 4.8,
+          reviewCount: 127,
+        },
+        {
+          title: "Dr Golly's Guide to Family Illness",
+          author: "Dr. Daniel Golshevsky",
+          description: "Essential guide for managing family health and illness, providing practical advice for parents and caregivers.",
+          priceField: "book2Price",
+          stripePriceAudId: "price_book2_aud",
+          stripePriceUsdId: "price_book2_usd",
+          stripePriceEurId: "price_book2_eur",
+          amazonUrl: "https://www.amazon.com.au/Dr-Gollys-Guide-Family-Illness/dp/1761215337/ref=asc_df_1761215337?mcid=5fa13d733a113d21bba7852ac1616b4e&tag=googleshopmob-22&linkCode=df0&hvadid=712379283545&hvpos=&hvnetw=g&hvrand=15313830547994388509&hvpone=&hvptwo=&hvqmt=&hvdev=m&hvdvcmdl=&hvlocint=&hvlocphy=9112781&hvtargid=pla-2422313977118&psc=1&gad_source=1&dplnkId=209a3a52-d644-40ef-a3d7-50f9fc92116d&nodl=1",
+          category: "Book",
+          inStock: true,
+          isFeatured: false,
+          rating: 4.7,
+          reviewCount: 89,
+        },
+      ];
+
+      // Create products in database
+      for (const product of products) {
+        await storage.createShoppingProduct(product);
+      }
+
+      res.json({ message: 'Shopping products seeded successfully!' });
+    } catch (error) {
+      console.error("Error seeding shopping products:", error);
+      res.status(500).json({ message: "Failed to seed shopping products" });
+    }
+  });
+
+  // Shopping product routes
+  app.get('/api/shopping-products', async (req, res) => {
+    try {
+      const products = await storage.getShoppingProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching shopping products:", error);
+      res.status(500).json({ message: "Failed to fetch shopping products" });
+    }
+  });
+
+  app.get('/api/shopping-products/:id', async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const product = await storage.getShoppingProduct(productId);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching shopping product:", error);
+      res.status(500).json({ message: "Failed to fetch shopping product" });
+    }
+  });
+
+  app.post('/api/shopping-products', isAdmin, async (req, res) => {
+    try {
+      const product = await storage.createShoppingProduct(req.body);
+      res.status(201).json(product);
+    } catch (error) {
+      console.error("Error creating shopping product:", error);
+      res.status(500).json({ message: "Failed to create shopping product" });
+    }
+  });
+
+  app.put('/api/shopping-products/:id', isAdmin, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const product = await storage.updateShoppingProduct(productId, req.body);
+      res.json(product);
+    } catch (error) {
+      console.error("Error updating shopping product:", error);
+      res.status(500).json({ message: "Failed to update shopping product" });
+    }
+  });
+
+  app.delete('/api/shopping-products/:id', isAdmin, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      await storage.deleteShoppingProduct(productId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting shopping product:", error);
+      res.status(500).json({ message: "Failed to delete shopping product" });
+    }
+  });
+
+  // Get regional pricing for products
+  app.get('/api/regional-pricing', async (req, res) => {
+    try {
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      res.json(regionalPricing);
+    } catch (error) {
+      console.error("Error fetching regional pricing:", error);
+      res.status(500).json({ message: "Failed to fetch regional pricing" });
+    }
+  });
+
+  // Book purchase endpoints
+  app.post('/api/create-book-payment', async (req, res) => {
+    try {
+      const { productId, customerDetails } = req.body;
+      
+      // Get product details
+      const product = await storage.getShoppingProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Get regional pricing
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+
+      // Get the appropriate price based on region
+      const priceAmount = regionalPricing[product.priceField as keyof typeof regionalPricing];
+      if (!priceAmount) {
+        return res.status(500).json({ message: "Price not available for this region" });
+      }
+
+      // Get the appropriate Stripe price ID
+      let stripePriceId;
+      if (regionalPricing.currency === 'AUD') {
+        stripePriceId = product.stripePriceAudId;
+      } else if (regionalPricing.currency === 'USD') {
+        stripePriceId = product.stripePriceUsdId;
+      } else if (regionalPricing.currency === 'EUR') {
+        stripePriceId = product.stripePriceEurId;
+      } else {
+        return res.status(500).json({ message: "Currency not supported" });
+      }
+
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(parseFloat(priceAmount.toString()) * 100), // Convert to cents
+        currency: regionalPricing.currency.toLowerCase(),
+        metadata: {
+          type: 'book',
+          productId: product.id.toString(),
+          productName: product.title,
+          customerEmail: customerDetails.email,
+          customerName: customerDetails.firstName,
+          region: regionalPricing.region,
+        },
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        amount: priceAmount,
+        currency: regionalPricing.currency,
+        product: product
+      });
+    } catch (error) {
+      console.error("Error creating book payment:", error);
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
