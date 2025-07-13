@@ -3877,10 +3877,21 @@ Please contact the customer to confirm the appointment.
         purchases = await storage.getUserCoursePurchases(userId);
       } catch (error) {
         console.log('Drizzle ORM failed for course purchases, using raw SQL fallback');
-        // Use raw SQL as fallback
+        // Use raw SQL as fallback with course data
         const { neon } = await import('@neondatabase/serverless');
         const sql = neon(process.env.DATABASE_URL!);
-        purchases = await sql`SELECT * FROM course_purchases WHERE user_id = ${userId} AND status = 'completed' ORDER BY created_at DESC`;
+        purchases = await sql`
+          SELECT 
+            cp.*,
+            c.title as course_title,
+            c.description as course_description,
+            c.thumbnail_url as course_thumbnail,
+            c.skill_level as course_skill_level
+          FROM course_purchases cp
+          LEFT JOIN courses c ON cp.course_id = c.id
+          WHERE cp.user_id = ${userId} AND cp.status = 'completed' 
+          ORDER BY cp.created_at DESC
+        `;
       }
       
       console.log('Course purchases found:', purchases.length);
