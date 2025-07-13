@@ -32,6 +32,16 @@ const categories = [
 export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Debug user data
+  console.log('Home - User data:', user);
+  if (user) {
+    console.log('Home - Profile picture URLs:', {
+      profilePictureUrl: user.profilePictureUrl,
+      profile_picture_url: user.profile_picture_url,
+      profileImageUrl: user.profileImageUrl
+    });
+  }
   const [, setLocation] = useLocation();
   const [activeCategory, setActiveCategory] = useState("all");
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
@@ -158,6 +168,10 @@ export default function Home() {
                 src={user.profilePictureUrl || user.profile_picture_url || user.profileImageUrl}
                 alt="Profile"
                 className="w-8 h-8 rounded-full object-cover border-2 border-white"
+                onError={(e) => {
+                  console.error('Profile image failed to load:', e.currentTarget.src);
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center">

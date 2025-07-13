@@ -433,7 +433,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingPeriod: user.billing_period || user.billingPeriod,
         isAdmin: user.is_admin || user.isAdmin,
         profileImageUrl: user.profile_picture_url || user.profileImageUrl || user.profile_image_url,
-        profilePictureUrl: user.profile_picture_url || user.profileImageUrl || user.profile_image_url,
+        profilePictureUrl: user.profile_picture_url || user.profilePictureUrl || user.profile_image_url,
+        profile_picture_url: user.profile_picture_url || user.profilePictureUrl || user.profile_image_url,
         phoneNumber: user.phone_number || user.phoneNumber,
         country: user.country,
         signupSource: user.signup_source || user.signupSource,
@@ -455,6 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: userData.email,
         subscriptionTier: userData.subscriptionTier,
         profileImageUrl: userData.profileImageUrl,
+        profilePictureUrl: userData.profilePictureUrl,
         firstChildDob: userData.firstChildDob
       });
       
