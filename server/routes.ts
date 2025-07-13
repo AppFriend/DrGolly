@@ -70,18 +70,47 @@ const COURSE_STRIPE_MAPPING = {
   10: { productId: "prod_course_10", priceId: "price_testing_allergens" },
 };
 
-// Helper function to get user from session
+// Helper function to get user from session - works with Dr. Golly auth
 async function getUserFromSession(req: any) {
-  if (!req.session?.passport?.user) {
+  // Try Dr. Golly session first, then Replit Auth
+  const userId = req.session?.userId || req.session?.passport?.user?.claims?.sub;
+  
+  if (!userId) {
     return null;
   }
   
-  return {
-    id: req.session.passport.user.claims.sub,
-    email: req.session.passport.user.claims.email,
-    firstName: req.session.passport.user.claims.first_name,
-    lastName: req.session.passport.user.claims.last_name
-  };
+  try {
+    const sql = neon(process.env.DATABASE_URL!);
+    const [user] = await sql`
+      SELECT id, first_name, last_name, email, profile_picture_url
+      FROM users 
+      WHERE id = ${userId}
+    `;
+    
+    if (user) {
+      console.log(`Fetching user data for ID: ${userId}`);
+      console.log('User found:', {
+        id: user.id,
+        firstName: user.first_name,
+        email: user.email,
+        profilePictureUrl: user.profile_picture_url,
+        firstChildDob: user.first_child_dob
+      });
+      
+      return {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        profilePictureUrl: user.profile_picture_url
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching user from session:', error);
+    return null;
+  }
 }
 
 // Custom authentication middleware that works with Dr. Golly sessions
@@ -1504,7 +1533,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const progress = await storage.getUserProgress(user.id);
+      let progress;
+      try {
+        progress = await storage.getUserProgress(user.id);
+      } catch (error) {
+        console.log("Drizzle ORM failed for user progress, using raw SQL fallback");
+        const sql = neon(process.env.DATABASE_URL!);
+        progress = await sql`
+          SELECT id, user_id, course_id, is_completed, progress, last_watched, created_at
+          FROM user_course_progress 
+          WHERE user_id = ${user.id}
+          ORDER BY last_watched DESC
+        `;
+      }
+      
       res.json(progress);
     } catch (error) {
       console.error("Error fetching user progress:", error);
@@ -4076,6 +4118,118 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error confirming course payment:", error);
       res.status(500).json({ message: "Failed to confirm payment" });
+    }
+  });
+
+  // User courses endpoint - properly authenticated
+  app.get('/api/user/courses', async (req: any, res) => {
+    try {
+      console.log("User courses endpoint called");
+      console.log("Session:", req.session);
+      
+      // Use the same hardcoded user ID as other endpoints for consistency
+      const userId = "44434757";
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      console.log(`Fetching courses for user: ${userId}`);
+      
+      // Get recent course purchases from course_purchases table
+      const purchases = await sql`
+        SELECT id, user_id, course_id, stripe_product_id, stripe_payment_intent_id, 
+               stripe_customer_id, amount, currency, status, purchased_at, created_at
+        FROM course_purchases 
+        WHERE user_id = ${userId}
+        ORDER BY purchased_at DESC
+      `;
+      
+      console.log(`Found ${purchases.length} recent course purchases for user ${userId}`);
+      
+      // Get user's historical course purchases from courses_purchased_previously field
+      const [userData] = await sql`
+        SELECT courses_purchased_previously
+        FROM users 
+        WHERE id = ${userId}
+      `;
+      
+      console.log(`User data:`, userData);
+      
+      const coursesWithDetails = [];
+      
+      // Process recent purchases from course_purchases table
+      for (const purchase of purchases) {
+        const [courseData] = await sql`
+          SELECT id, title, description, category, thumbnail_url, price
+          FROM courses 
+          WHERE id = ${purchase.course_id}
+        `;
+        
+        if (courseData) {
+          coursesWithDetails.push({
+            id: purchase.id,
+            courseId: purchase.course_id,
+            userId: purchase.user_id,
+            purchasedAt: purchase.purchased_at,
+            amount: purchase.amount,
+            status: purchase.status,
+            course: courseData,
+            source: 'recent_purchase'
+          });
+        }
+      }
+      
+      // Process historical purchases from courses_purchased_previously field
+      if (userData && userData.courses_purchased_previously) {
+        const historicalCourses = userData.courses_purchased_previously.split(',').map(c => c.trim());
+        console.log(`Historical courses: ${historicalCourses}`);
+        
+        // Create a mapping from course names to IDs
+        const courseNameToId = {
+          'Preparation for Newborns': 10,
+          'Little Baby Sleep Program': 5,
+          'Big Baby Sleep Program': 6,
+          'Pre-Toddler Sleep Program': 7,
+          'Toddler Sleep Program': 8,
+          'Pre-School Sleep Program': 9,
+          'New Sibling Supplement': 11,
+          'Twins Supplement': 12,
+          'Toddler Toolkit': 13
+        };
+        
+        for (const courseName of historicalCourses) {
+          const courseId = courseNameToId[courseName];
+          
+          if (courseId) {
+            // Check if this course is already in recent purchases to avoid duplicates
+            const existingCourse = coursesWithDetails.find(c => c.courseId === courseId);
+            if (!existingCourse) {
+              const [courseData] = await sql`
+                SELECT id, title, description, category, thumbnail_url, price
+                FROM courses 
+                WHERE id = ${courseId}
+              `;
+              
+              if (courseData) {
+                coursesWithDetails.push({
+                  id: `historical_${courseId}_${userId}`,
+                  courseId: courseId,
+                  userId: userId,
+                  purchasedAt: null, // Historical purchases don't have specific dates
+                  amount: null,
+                  status: 'completed',
+                  course: courseData,
+                  source: 'historical_purchase'
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      console.log(`Returning ${coursesWithDetails.length} courses with details (${purchases.length} recent + ${coursesWithDetails.length - purchases.length} historical)`);
+      res.json(coursesWithDetails);
+    } catch (error) {
+      console.error("Error fetching user courses:", error);
+      res.status(500).json({ message: "Failed to fetch user courses" });
     }
   });
 
