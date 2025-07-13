@@ -153,9 +153,9 @@ export default function Home() {
             onClick={() => setLocation("/profile")}
             className="transition-transform hover:scale-105"
           >
-            {(user?.profileImageUrl || user?.profilePictureUrl || user?.profile_picture_url) ? (
+            {(user?.profilePictureUrl || user?.profile_picture_url || user?.profileImageUrl) ? (
               <img
-                src={user.profileImageUrl || user.profilePictureUrl || user.profile_picture_url}
+                src={user.profilePictureUrl || user.profile_picture_url || user.profileImageUrl}
                 alt="Profile"
                 className="w-8 h-8 rounded-full object-cover border-2 border-white"
               />

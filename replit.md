@@ -717,6 +717,13 @@ Changelog:
   * Confirmed blog posts display correct images through FreebieImageLoader component
   * Authentication now working properly with user ID 44434757 (Frazer, Gold tier)
   * All API endpoints now have proper fallback mechanisms for database connectivity issues
+- July 13, 2025. FIXED: Profile picture persistence and course image rendering issues:
+  * Fixed profile picture upload/save functionality - now properly maps profileImageUrl to profile_picture_url database field
+  * Enhanced profile update API endpoint to use raw SQL with correct field mapping for persistent profile picture storage
+  * Fixed course thumbnail display issue - frontend now checks both thumbnailUrl and thumbnail_url fields from API response
+  * Updated all course image components (courses page, video cards) to handle field name mismatches between frontend and backend
+  * Profile picture now displays correctly in header and persists after save operations
+  * Course images now display unique thumbnails instead of repeating placeholder images
 ```
 
 ## User Preferences

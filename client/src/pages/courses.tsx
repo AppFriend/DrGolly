@@ -302,7 +302,7 @@ export default function Courses() {
           {filteredCourses?.map((course: Course) => (
             <div key={course.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
               <img
-                src={course.thumbnailUrl || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
+                src={course.thumbnailUrl || course.thumbnail_url || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
                 alt={course.title}
                 className="w-full h-48 object-cover"
               />
@@ -356,7 +356,7 @@ export default function Courses() {
           {filteredCourses?.map((course: Course) => (
             <div key={course.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
               <img
-                src={course.thumbnailUrl || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
+                src={course.thumbnailUrl || course.thumbnail_url || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
                 alt={course.title}
                 className="w-full h-48 object-cover"
               />

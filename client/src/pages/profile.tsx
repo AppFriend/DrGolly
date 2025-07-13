@@ -153,7 +153,7 @@ export default function Profile() {
     lastName: user?.lastName || user?.last_name,
     email: user?.email,
     phone: user?.phoneNumber || user?.phone_number,
-    profileImageUrl: user?.profileImageUrl || user?.profilePictureUrl || user?.profile_picture_url,
+    profileImageUrl: user?.profilePictureUrl || user?.profile_picture_url || user?.profileImageUrl,
     subscriptionTier: user?.subscriptionTier || user?.subscription_tier,
     subscriptionStatus: user?.subscriptionStatus || user?.subscription_status,
     subscriptionEndDate: user?.subscriptionEndDate,

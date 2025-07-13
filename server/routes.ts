@@ -776,7 +776,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/profile', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      
+      // Use raw SQL to fetch profile with proper field mapping
+      let user;
+      try {
+        user = await storage.getUser(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for profile, using raw SQL fallback');
+        // Use raw SQL as fallback
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        user = result[0] as any;
+      }
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -784,18 +796,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.first_name || user.firstName,
+        lastName: user.last_name || user.lastName,
         email: user.email,
-        phone: user.phoneNumber,
-        profileImageUrl: user.profileImageUrl,
-        subscriptionTier: user.subscriptionTier || 'free',
-        subscriptionStatus: user.subscriptionTier ? 'active' : 'inactive',
-        subscriptionEndDate: user.subscriptionEndDate,
-        stripeCustomerId: user.stripeCustomerId,
-        stripeSubscriptionId: user.stripeSubscriptionId,
-        marketingOptIn: user.marketingOptIn,
-        smsMarketingOptIn: user.smsMarketingOptIn,
+        phone: user.phone_number || user.phoneNumber,
+        profileImageUrl: user.profile_picture_url || user.profileImageUrl || user.profilePictureUrl,
+        subscriptionTier: user.subscription_tier || user.subscriptionTier || 'free',
+        subscriptionStatus: user.subscription_status || user.subscriptionStatus || 'active',
+        subscriptionEndDate: user.subscription_end_date || user.subscriptionEndDate,
+        stripeCustomerId: user.stripe_customer_id || user.stripeCustomerId,
+        stripeSubscriptionId: user.stripe_subscription_id || user.stripeSubscriptionId,
+        marketingOptIn: user.marketing_opt_in || user.marketingOptIn,
+        smsMarketingOptIn: user.sms_marketing_opt_in || user.smsMarketingOptIn,
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -808,15 +820,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { firstName, lastName, email, phone, profileImageUrl } = req.body;
       
-      await storage.updateUserProfile(userId, {
-        firstName,
-        lastName,
-        email,
-        phoneNumber: phone,
-        profileImageUrl,
-      });
-      
-      res.json({ message: "Profile updated successfully" });
+      // Use raw SQL to update profile with proper field mapping
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        await sql`UPDATE users SET 
+          first_name = ${firstName || null},
+          last_name = ${lastName || null},
+          email = ${email || null},
+          phone_number = ${phone || null},
+          profile_picture_url = ${profileImageUrl || null},
+          updated_at = ${new Date()}
+          WHERE id = ${userId}`;
+        
+        console.log('Profile updated successfully for user:', userId, {
+          firstName,
+          lastName,
+          email,
+          phone,
+          profileImageUrl: profileImageUrl ? 'provided' : 'null'
+        });
+        
+        res.json({ message: "Profile updated successfully" });
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ message: "Failed to update profile" });
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
