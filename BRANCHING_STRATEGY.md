@@ -49,6 +49,9 @@ Branch naming convention: `<module>/<feature-description>`
 - `discounts/*` - Partner discounts, coupon system
 - `family/*` - Family management, children profiles
 - `settings/*` - User settings, profile management
+- `subscription/*` - Subscription management, /manage page, plan offerings
+- `checkout/*` - Checkout flow, payment processing, purchase completion
+- `admin/*` - Admin panel, user management, analytics, content management
 
 #### Special Branches:
 - `test/replit` - Replit development environment

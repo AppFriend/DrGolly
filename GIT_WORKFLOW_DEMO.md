@@ -147,6 +147,27 @@ git checkout -b settings/privacy-controls   # Privacy settings
 git checkout -b settings/theme-switcher     # Dark mode support
 ```
 
+### Subscription Module
+```bash
+git checkout -b subscription/plan-display   # Plan offerings page
+git checkout -b subscription/upgrade-flow   # Upgrade/downgrade flow
+git checkout -b subscription/billing-cycle  # Billing cycle management
+```
+
+### Checkout Module
+```bash
+git checkout -b checkout/payment-methods    # Payment method options
+git checkout -b checkout/apple-pay          # Apple Pay integration
+git checkout -b checkout/regional-pricing   # Regional pricing support
+```
+
+### Admin Module
+```bash
+git checkout -b admin/user-management       # User management interface
+git checkout -b admin/analytics-dashboard   # Analytics and metrics
+git checkout -b admin/course-management     # Course content management
+```
+
 ## 🚨 Emergency Rollback Demo
 
 ### Scenario: Production Issue
