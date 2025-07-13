@@ -1364,8 +1364,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'URL parameter is required' });
       }
       
-      // Only allow trusted image sources for security
-      if (!imageUrl.startsWith('https://images.unsplash.com/') && !imageUrl.startsWith('https://picsum.photos/') && !imageUrl.startsWith('/assets/')) {
+      // Handle /assets/ URLs by serving directly from attached_assets
+      if (imageUrl.startsWith('/assets/')) {
+        const filePath = imageUrl.replace('/assets/', '/attached_assets/');
+        return res.redirect(filePath);
+      }
+      
+      // Only allow trusted external image sources for security
+      if (!imageUrl.startsWith('https://images.unsplash.com/') && !imageUrl.startsWith('https://picsum.photos/')) {
         return res.status(403).json({ error: 'Only trusted image sources are allowed' });
       }
       
