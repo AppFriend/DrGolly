@@ -305,16 +305,15 @@ export default function Courses() {
                 src={course.thumbnailUrl || course.thumbnail_url || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
                 alt={course.title}
                 className="w-full h-48 object-cover"
+                crossOrigin="anonymous"
+                loading="lazy"
                 onLoad={() => {
                   console.log('Course page image loaded:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
                 }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   console.log('Course page image failed:', target.src, 'for course:', course.title);
-                  console.log('Course data:', course);
-                  if (target.src !== "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200") {
-                    target.src = "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200";
-                  }
+                  // Don't fallback automatically - let the original image show
                 }}
               />
               <div className="p-4">

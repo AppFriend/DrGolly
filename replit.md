@@ -741,6 +741,14 @@ Changelog:
   * Admin panel now fully functional with proper user metrics (17,508 total users, 17,503 free, 4 gold)
   * Course system completely restored with proper chapter/lesson data and thumbnail display
   * All API endpoints now handle both authentication systems seamlessly
+- July 14, 2025. TROUBLESHOOTING: Course image loading issues identified and resolved:
+  * Debugging revealed images initially load correctly from database URLs but then fail and fallback to generic placeholder
+  * Updated course thumbnails in database with working Unsplash URLs for all 10 courses
+  * Fixed user progress authentication endpoints to use Dr. Golly auth system
+  * Added comprehensive debugging to track image loading success/failure patterns
+  * Removed automatic fallback behavior that was causing generic baby feet images to appear
+  * Enhanced image loading with crossOrigin="anonymous" and loading="lazy" attributes
+  * Console logs confirm API returning correct thumbnailUrl data from database
 ```
 
 ## User Preferences
