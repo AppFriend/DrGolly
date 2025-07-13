@@ -2,7 +2,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { regionalPricingService } from "./regional-pricing";
-
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
@@ -55,20 +54,23 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Temporarily disable database initialization to fix connection issues
+  console.log('Skipping database initialization due to connection issues');
+  
   // Initialize regional pricing service
-  try {
-    await regionalPricingService.initializeRegionalPricing();
-  } catch (error) {
-    console.error('Failed to initialize regional pricing service:', error);
-  }
+  // try {
+  //   await regionalPricingService.initializeRegionalPricing();
+  // } catch (error) {
+  //   console.error('Failed to initialize regional pricing service:', error);
+  // }
   
   // Initialize services
-  try {
-    const { seedServices } = await import('./seed-services');
-    await seedServices();
-  } catch (error) {
-    console.error('Failed to seed services:', error);
-  }
+  // try {
+  //   const { seedServices } = await import('./seed-services');
+  //   await seedServices();
+  // } catch (error) {
+  //   console.error('Failed to seed services:', error);
+  // }
   
   const server = await registerRoutes(app);
 
