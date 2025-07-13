@@ -8,14 +8,10 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create neon client with connection timeout and retry settings
-const sql = neon(process.env.DATABASE_URL, {
-  fullResults: false,
-  arrayMode: false,
-});
+// Create neon client with simplified configuration to fix connection issues
+const sql = neon(process.env.DATABASE_URL);
 
-// Create drizzle instance with proper configuration
+// Create drizzle instance with minimal configuration
 export const db = drizzle(sql, { 
-  schema,
-  logger: false
+  schema
 });
