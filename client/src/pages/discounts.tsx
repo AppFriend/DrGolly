@@ -93,6 +93,12 @@ export default function Discounts() {
     if (!regionalPricing) return 0;
     
     const priceField = product.priceField as keyof RegionalPricing;
+    console.log('Debug pricing:', {
+      productId: product.id,
+      priceField,
+      regionalPricing: regionalPricing,
+      price: regionalPricing[priceField]
+    });
     return regionalPricing[priceField] || 0;
   };
 
