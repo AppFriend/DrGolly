@@ -141,10 +141,20 @@ export default function Profile() {
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null);
 
   // Fetch profile data - use user data as fallback
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  const { data: profile, isLoading: profileLoading, error: profileError } = useQuery({
     queryKey: ["/api/profile"],
     enabled: !!user,
   });
+
+  // Debug profile loading
+  useEffect(() => {
+    if (profileError) {
+      console.log('Profile API error:', profileError);
+    }
+    if (profile) {
+      console.log('Profile API response:', profile);
+    }
+  }, [profile, profileError]);
 
   // Use user data as fallback if profile isn't available
   const effectiveProfile = profile || {
@@ -363,9 +373,17 @@ export default function Profile() {
   // Initialize profile data when loaded
   useEffect(() => {
     if (effectiveProfile && !profileData) {
+      console.log('Initializing profile data:', effectiveProfile);
       setProfileData(effectiveProfile);
     }
   }, [effectiveProfile, profileData]);
+
+  // Debug: log current profile data
+  useEffect(() => {
+    console.log('Current profileData:', profileData);
+    console.log('Current effectiveProfile:', effectiveProfile);
+    console.log('Current user:', user);
+  }, [profileData, effectiveProfile, user]);
 
   if (authLoading || profileLoading) {
     return (
