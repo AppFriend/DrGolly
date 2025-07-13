@@ -4978,6 +4978,8 @@ Please contact the customer to confirm the appointment.
       // Use raw SQL directly since Drizzle ORM is failing
       console.log("Using raw SQL for user courses due to Drizzle ORM issues");
       const sql = neon(process.env.DATABASE_URL!);
+      
+      // Get recent course purchases from course_purchases table
       const purchases = await sql`
         SELECT id, user_id, course_id, stripe_product_id, stripe_payment_intent_id, 
                stripe_customer_id, amount, currency, status, purchased_at, created_at
@@ -4986,31 +4988,85 @@ Please contact the customer to confirm the appointment.
         ORDER BY purchased_at DESC
       `;
       
-      console.log(`Found ${purchases.length} course purchases for user ${userId}`);
+      console.log(`Found ${purchases.length} recent course purchases for user ${userId}`);
       
-      // Get course details for each purchase using raw SQL
-      const coursesWithDetails = await Promise.all(
-        purchases.map(async (purchase) => {
-          console.log(`Fetching course details for course_id: ${purchase.course_id}`);
-          const [courseData] = await sql`
-            SELECT id, title, description, category, thumbnail_url, price
-            FROM courses 
-            WHERE id = ${purchase.course_id}
-          `;
+      // Get user's historical course purchases from courses_purchased_previously field
+      const [userData] = await sql`
+        SELECT courses_purchased_previously
+        FROM users 
+        WHERE id = ${userId}
+      `;
+      
+      const coursesWithDetails = [];
+      
+      // Process recent purchases from course_purchases table
+      for (const purchase of purchases) {
+        const [courseData] = await sql`
+          SELECT id, title, description, category, thumbnail_url, price
+          FROM courses 
+          WHERE id = ${purchase.course_id}
+        `;
+        
+        coursesWithDetails.push({
+          id: purchase.id,
+          courseId: purchase.course_id,
+          userId: purchase.user_id,
+          purchasedAt: purchase.purchased_at,
+          amount: purchase.amount,
+          status: purchase.status,
+          course: courseData,
+          source: 'recent_purchase'
+        });
+      }
+      
+      // Process historical purchases from courses_purchased_previously field
+      if (userData && userData.courses_purchased_previously) {
+        const historicalCourses = userData.courses_purchased_previously.split(',').map(c => c.trim());
+        
+        // Create a mapping from course names to IDs
+        const courseNameToId = {
+          'Preparation for Newborns': 10,
+          'Little Baby Sleep Program': 5,
+          'Big Baby Sleep Program': 6,
+          'Pre-Toddler Sleep Program': 7,
+          'Toddler Sleep Program': 8,
+          'Pre-School Sleep Program': 9,
+          'New Sibling Supplement': 11,
+          'Twins Supplement': 12,
+          'Toddler Toolkit': 13
+        };
+        
+        for (const courseName of historicalCourses) {
+          const courseId = courseNameToId[courseName];
           
-          return {
-            id: purchase.id,
-            courseId: purchase.course_id,
-            userId: purchase.user_id,
-            purchasedAt: purchase.purchased_at,
-            amount: purchase.amount,
-            status: purchase.status,
-            course: courseData
-          };
-        })
-      );
+          if (courseId) {
+            // Check if this course is already in recent purchases to avoid duplicates
+            const existingCourse = coursesWithDetails.find(c => c.courseId === courseId);
+            if (!existingCourse) {
+              const [courseData] = await sql`
+                SELECT id, title, description, category, thumbnail_url, price
+                FROM courses 
+                WHERE id = ${courseId}
+              `;
+              
+              if (courseData) {
+                coursesWithDetails.push({
+                  id: `historical_${courseId}_${userId}`,
+                  courseId: courseId,
+                  userId: userId,
+                  purchasedAt: null, // Historical purchases don't have specific dates
+                  amount: null,
+                  status: 'completed',
+                  course: courseData,
+                  source: 'historical_purchase'
+                });
+              }
+            }
+          }
+        }
+      }
       
-      console.log(`Returning ${coursesWithDetails.length} courses with details`);
+      console.log(`Returning ${coursesWithDetails.length} courses with details (${purchases.length} recent + ${coursesWithDetails.length - purchases.length} historical)`);
       res.json(coursesWithDetails);
     } catch (error) {
       console.error("Error fetching user courses:", error);
