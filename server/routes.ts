@@ -2,11 +2,14 @@ import type { Express, RequestHandler } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { regionalPricingService } from "./regional-pricing";
 import { z } from "zod";
 import Stripe from "stripe";
+import multer from "multer";
+import { nanoid } from "nanoid";
 
 // Extend Express Request interface to include adminBypass property
 declare global {
@@ -153,6 +156,60 @@ const isAuthenticatedOrAdmin: RequestHandler = async (req, res, next) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure multer for file uploads
+  const upload = multer({
+    storage: multer.diskStorage({
+      destination: function (req, file, cb) {
+        const uploadPath = path.join(process.cwd(), 'attached_assets');
+        if (!fs.existsSync(uploadPath)) {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+      },
+      filename: function (req, file, cb) {
+        // Generate unique filename with timestamp and random ID
+        const uniqueSuffix = Date.now() + '_' + nanoid(10);
+        const ext = path.extname(file.originalname);
+        const name = path.basename(file.originalname, ext);
+        cb(null, `${name}_${uniqueSuffix}${ext}`);
+      }
+    }),
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      // Accept only image files
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'), false);
+      }
+    }
+  });
+
+  // Image upload endpoint for blog posts
+  app.post('/api/admin/upload-image', isAdmin, upload.single('image'), (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No image file provided' });
+      }
+
+      // Return the asset path that can be used in the blog post
+      const assetPath = `/attached_assets/${req.file.filename}`;
+      
+      res.json({
+        message: 'Image uploaded successfully',
+        imageUrl: assetPath,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      });
+    } catch (error) {
+      console.error('Image upload error:', error);
+      res.status(500).json({ message: 'Failed to upload image' });
+    }
+  });
+
   // Test endpoint to verify routing
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Test endpoint working' });

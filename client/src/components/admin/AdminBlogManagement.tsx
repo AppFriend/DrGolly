@@ -23,6 +23,8 @@ import {
   Heart,
   Pin,
   PinOff,
+  Upload,
+  X,
 } from "lucide-react";
 
 interface BlogPost {
@@ -43,6 +45,102 @@ interface BlogPost {
   pinnedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Image Upload Button Component
+interface ImageUploadButtonProps {
+  onImageUploaded: (imageUrl: string) => void;
+}
+
+function ImageUploadButton({ onImageUploaded }: ImageUploadButtonProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error", 
+        description: "Image must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await apiRequest('/api/admin/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.imageUrl) {
+        onImageUploaded(response.imageUrl);
+        toast({
+          title: "Success",
+          description: "Image uploaded successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleFileUpload}
+        className="hidden"
+        id="image-upload"
+      />
+      <label
+        htmlFor="image-upload"
+        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isUploading ? (
+          <>
+            <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-brand-teal rounded-full" />
+            Uploading...
+          </>
+        ) : (
+          <>
+            <Upload className="w-4 h-4" />
+            Upload Image
+          </>
+        )}
+      </label>
+    </div>
+  );
 }
 
 export default function AdminBlogManagement() {
@@ -474,13 +572,17 @@ function BlogPostForm({ post, onSubmit, isLoading }: BlogPostFormProps) {
       </div>
 
       <div>
-        <Label htmlFor="imageUrl">Image URL</Label>
-        <Input
-          id="imageUrl"
-          value={formData.imageUrl}
-          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-          placeholder="https://example.com/image.jpg"
-        />
+        <Label htmlFor="imageUrl">Featured Image</Label>
+        <div className="space-y-2">
+          <Input
+            id="imageUrl"
+            value={formData.imageUrl}
+            onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+            placeholder="https://example.com/image.jpg"
+            className="flex-1"
+          />
+          <ImageUploadButton onImageUploaded={(imageUrl) => setFormData({ ...formData, imageUrl })} />
+        </div>
       </div>
 
       <div>
