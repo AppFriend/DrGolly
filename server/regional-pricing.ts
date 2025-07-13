@@ -9,6 +9,8 @@ export interface RegionInfo {
   goldYearly: number;
   platinumMonthly: number;
   platinumYearly: number;
+  book1Price: number;
+  book2Price: number;
 }
 
 export class RegionalPricingService {
@@ -49,6 +51,8 @@ export class RegionalPricingService {
         goldYearly: parseFloat(pricing.goldYearly),
         platinumMonthly: parseFloat(pricing.platinumMonthly),
         platinumYearly: parseFloat(pricing.platinumYearly),
+        book1Price: parseFloat(pricing.book1Price),
+        book2Price: parseFloat(pricing.book2Price),
       });
     }
   }
@@ -63,6 +67,8 @@ export class RegionalPricingService {
         goldYearly: '99.00',
         platinumMonthly: '499.00',
         platinumYearly: '249.00',
+        book1Price: '30.00',
+        book2Price: '30.00',
         countryList: ['AU', 'NZ', 'FJ', 'PG', 'SB', 'VU', 'NC', 'PF'],
         isActive: true,
       },
@@ -74,6 +80,8 @@ export class RegionalPricingService {
         goldYearly: '99.00',
         platinumMonthly: '499.00',
         platinumYearly: '249.00',
+        book1Price: '20.00',
+        book2Price: '20.00',
         countryList: ['US', 'CA', 'MX'],
         isActive: true,
       },
@@ -85,6 +93,8 @@ export class RegionalPricingService {
         goldYearly: '99.00',
         platinumMonthly: '499.00',
         platinumYearly: '249.00',
+        book1Price: '20.00',
+        book2Price: '20.00',
         countryList: ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'FI', 'SE', 'NO', 'DK', 'IE', 'LU', 'MT', 'CY', 'EE', 'LV', 'LT', 'SK', 'SI', 'BG', 'RO', 'HR', 'CZ', 'HU', 'PL', 'GR'],
         isActive: true,
       },
@@ -147,6 +157,8 @@ export class RegionalPricingService {
         goldYearly: 99,
         platinumMonthly: 499,
         platinumYearly: 249,
+        book1Price: 20,
+        book2Price: 20,
       };
     }
     
