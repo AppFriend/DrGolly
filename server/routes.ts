@@ -1277,34 +1277,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { category, tier, includeUnpublished } = req.query;
       
-      // Use raw SQL to bypass Drizzle ORM connection issues
+      // Use raw SQL directly - bypass Drizzle ORM completely
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
       let courses;
-      try {
-        courses = await storage.getCourses(
-          category as string | undefined,
-          tier as string | undefined,
-          includeUnpublished === 'true'
-        );
-      } catch (error) {
-        console.log('Drizzle ORM failed for courses, using raw SQL fallback');
-        // Use raw SQL as fallback
-        const { neon } = await import('@neondatabase/serverless');
-        const sql = neon(process.env.DATABASE_URL!);
-        
-        let query = `SELECT * FROM courses WHERE 1=1`;
-        if (category) query += ` AND category = '${category}'`;
-        if (tier) query += ` AND tier = '${tier}'`;
-        if (includeUnpublished !== 'true') query += ` AND is_published = true`;
-        query += ` ORDER BY created_at DESC`;
-        
-        courses = await sql`SELECT * FROM courses ORDER BY created_at DESC`;
+      // Use tagged template syntax for Neon serverless driver
+      if (category) {
+        courses = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                   duration, age_range, is_published, likes, views, created_at, updated_at,
+                                   price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                   status, detailed_description, website_content, key_features, whats_covered,
+                                   rating, review_count, overview_description, learning_objectives,
+                                   completion_criteria, course_structure_notes
+                            FROM courses 
+                            WHERE is_published = true AND category = ${category}
+                            ORDER BY created_at DESC`;
+      } else {
+        courses = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                   duration, age_range, is_published, likes, views, created_at, updated_at,
+                                   price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                   status, detailed_description, website_content, key_features, whats_covered,
+                                   rating, review_count, overview_description, learning_objectives,
+                                   completion_criteria, course_structure_notes
+                            FROM courses 
+                            WHERE is_published = true 
+                            ORDER BY created_at DESC`;
       }
       
-      // Use database course pricing instead of Stripe products
-      const coursesWithPricing = courses.map(course => ({
+      // Map fields to match frontend expectations and handle pricing
+      const coursesWithPricing = courses.map((course: any) => ({
         ...course,
-        // Keep the database price as-is since it's already in dollars
-        price: course.price
+        // Map thumbnail_url to thumbnailUrl for frontend compatibility
+        thumbnailUrl: course.thumbnail_url || course.thumbnailUrl,
+        // Convert price from string to number if needed
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice
       }));
       
       res.json(coursesWithPricing);
@@ -1317,11 +1325,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/courses/:id', async (req, res) => {
     try {
       const courseId = parseInt(req.params.id);
-      const course = await storage.getCourse(courseId);
+      let course;
+      try {
+        course = await storage.getCourse(courseId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for single course, using raw SQL fallback');
+        // Use raw SQL as fallback
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        const result = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                        duration, age_range, is_published, likes, views, created_at, updated_at,
+                                        price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                        status, detailed_description, website_content, key_features, whats_covered,
+                                        rating, review_count, overview_description, learning_objectives,
+                                        completion_criteria, course_structure_notes
+                                 FROM courses WHERE id = ${courseId} LIMIT 1`;
+        course = result[0];
+      }
+      
       if (!course) {
         return res.status(404).json({ message: "Course not found" });
       }
-      res.json(course);
+      
+      // Map fields to match frontend expectations
+      const courseWithMapping = {
+        ...course,
+        thumbnailUrl: course.thumbnail_url || course.thumbnailUrl,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice
+      };
+      
+      res.json(courseWithMapping);
     } catch (error) {
       console.error("Error fetching course:", error);
       res.status(500).json({ message: "Failed to fetch course" });
@@ -2872,7 +2907,21 @@ Please contact the customer to confirm the appointment.
         `;
       }
       
-      res.json(blogPosts);
+      // Map image_url to imageUrl for frontend compatibility
+      const blogPostsWithMapping = blogPosts.map((post: any) => ({
+        ...post,
+        imageUrl: post.image_url || post.imageUrl,
+        pdfUrl: post.pdf_url || post.pdfUrl,
+        readTime: post.read_time || post.readTime,
+        publishedAt: post.published_at || post.publishedAt,
+        isPublished: post.is_published || post.isPublished,
+        isPinned: post.is_pinned || post.isPinned,
+        pinnedAt: post.pinned_at || post.pinnedAt,
+        createdAt: post.created_at || post.createdAt,
+        updatedAt: post.updated_at || post.updatedAt
+      }));
+      
+      res.json(blogPostsWithMapping);
     } catch (error) {
       console.error("Error fetching blog posts:", error);
       res.status(500).json({ message: "Failed to fetch blog posts" });
