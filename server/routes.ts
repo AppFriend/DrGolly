@@ -39,6 +39,7 @@ import { stripeDataSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import { neon } from "@neondatabase/serverless";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -4972,19 +4973,44 @@ Please contact the customer to confirm the appointment.
   app.get('/api/admin/users/:userId/courses', isAdmin, async (req, res) => {
     try {
       const { userId } = req.params;
-      const purchases = await storage.getUserCoursePurchases(userId);
+      console.log(`Fetching courses for user: ${userId}`);
       
-      // Get course details for each purchase
+      // Use raw SQL directly since Drizzle ORM is failing
+      console.log("Using raw SQL for user courses due to Drizzle ORM issues");
+      const sql = neon(process.env.DATABASE_URL!);
+      const purchases = await sql`
+        SELECT id, user_id, course_id, stripe_product_id, stripe_payment_intent_id, 
+               stripe_customer_id, amount, currency, status, purchased_at, created_at
+        FROM course_purchases 
+        WHERE user_id = ${userId}
+        ORDER BY purchased_at DESC
+      `;
+      
+      console.log(`Found ${purchases.length} course purchases for user ${userId}`);
+      
+      // Get course details for each purchase using raw SQL
       const coursesWithDetails = await Promise.all(
         purchases.map(async (purchase) => {
-          const course = await storage.getCourse(purchase.courseId);
+          console.log(`Fetching course details for course_id: ${purchase.course_id}`);
+          const [courseData] = await sql`
+            SELECT id, title, description, category, thumbnail_url, price
+            FROM courses 
+            WHERE id = ${purchase.course_id}
+          `;
+          
           return {
-            ...purchase,
-            course: course
+            id: purchase.id,
+            courseId: purchase.course_id,
+            userId: purchase.user_id,
+            purchasedAt: purchase.purchased_at,
+            amount: purchase.amount,
+            status: purchase.status,
+            course: courseData
           };
         })
       );
       
+      console.log(`Returning ${coursesWithDetails.length} courses with details`);
       res.json(coursesWithDetails);
     } catch (error) {
       console.error("Error fetching user courses:", error);
@@ -4999,29 +5025,64 @@ Please contact the customer to confirm the appointment.
       const { courseId } = req.body;
       
       // Check if course exists
-      const course = await storage.getCourse(courseId);
+      let course;
+      try {
+        course = await storage.getCourse(courseId);
+      } catch (error) {
+        console.log("Drizzle ORM failed for course lookup, using raw SQL fallback");
+        const sql = neon(process.env.DATABASE_URL!);
+        const [courseData] = await sql`
+          SELECT id, title, price FROM courses WHERE id = ${courseId}
+        `;
+        course = courseData;
+      }
+      
       if (!course) {
         return res.status(404).json({ message: "Course not found" });
       }
       
       // Check if user already has this course
-      const existingPurchases = await storage.getUserCoursePurchases(userId);
-      const alreadyPurchased = existingPurchases.some(p => p.courseId === courseId && p.status === 'completed');
+      let existingPurchases;
+      try {
+        existingPurchases = await storage.getUserCoursePurchases(userId);
+      } catch (error) {
+        console.log("Drizzle ORM failed for existing purchases check, using raw SQL fallback");
+        const sql = neon(process.env.DATABASE_URL!);
+        existingPurchases = await sql`
+          SELECT course_id, status FROM course_purchases WHERE user_id = ${userId}
+        `;
+      }
+      
+      const alreadyPurchased = existingPurchases.some(p => 
+        (p.courseId === courseId || p.course_id === courseId) && p.status === 'completed'
+      );
       
       if (alreadyPurchased) {
         return res.status(400).json({ message: "User already has this course" });
       }
       
       // Add course purchase record
-      const purchase = await storage.createCoursePurchase({
-        userId: userId,
-        courseId: courseId,
-        stripePaymentIntentId: `admin_grant_${Date.now()}`,
-        stripeCustomerId: null,
-        amount: 0, // Free admin grant
-        currency: 'usd',
-        status: 'completed',
-      });
+      let purchase;
+      try {
+        purchase = await storage.createCoursePurchase({
+          userId: userId,
+          courseId: courseId,
+          stripePaymentIntentId: `admin_grant_${Date.now()}`,
+          stripeCustomerId: null,
+          amount: 0, // Free admin grant
+          currency: 'usd',
+          status: 'completed',
+        });
+      } catch (error) {
+        console.log("Drizzle ORM failed for course purchase creation, using raw SQL fallback");
+        const sql = neon(process.env.DATABASE_URL!);
+        const [newPurchase] = await sql`
+          INSERT INTO course_purchases (user_id, course_id, stripe_payment_intent_id, amount, currency, status, purchased_at, created_at)
+          VALUES (${userId}, ${courseId}, ${`admin_grant_${Date.now()}`}, 0, 'usd', 'completed', NOW(), NOW())
+          RETURNING *
+        `;
+        purchase = newPurchase;
+      }
       
       res.json({ success: true, purchase });
     } catch (error) {
@@ -5031,18 +5092,34 @@ Please contact the customer to confirm the appointment.
   });
 
   // Remove course from user (Admin only)
-  app.delete('/api/admin/users/:userId/courses/:purchaseId', isAdmin, async (req, res) => {
+  app.delete('/api/admin/users/:userId/courses/:courseId', isAdmin, async (req, res) => {
     try {
-      const { userId, purchaseId } = req.params;
+      const { userId, courseId } = req.params;
       
-      // Verify the purchase belongs to the user
-      const purchase = await storage.getCoursePurchase(parseInt(purchaseId));
-      if (!purchase || purchase.userId !== userId) {
-        return res.status(404).json({ message: "Purchase not found" });
+      // Find and remove the course purchase
+      let deleted = false;
+      try {
+        const existingPurchases = await storage.getUserCoursePurchases(userId);
+        const purchase = existingPurchases.find(p => p.courseId === courseId);
+        
+        if (purchase) {
+          await storage.deleteCoursePurchase(purchase.id);
+          deleted = true;
+        }
+      } catch (error) {
+        console.log("Drizzle ORM failed for course removal, using raw SQL fallback");
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`
+          DELETE FROM course_purchases 
+          WHERE user_id = ${userId} AND course_id = ${courseId}
+          RETURNING id
+        `;
+        deleted = result.length > 0;
       }
       
-      // Remove the course purchase
-      await storage.deleteCoursePurchase(parseInt(purchaseId));
+      if (!deleted) {
+        return res.status(404).json({ message: "Course purchase not found" });
+      }
       
       res.json({ success: true });
     } catch (error) {
@@ -5156,7 +5233,18 @@ Please contact the customer to confirm the appointment.
   // Get all admin users (Admin only)
   app.get('/api/admin/admin-users', isAdmin, async (req, res) => {
     try {
-      const adminUsers = await storage.getAllAdminUsers();
+      // Use raw SQL directly since Drizzle ORM is failing
+      console.log("Using raw SQL for admin users due to Drizzle ORM issues");
+      const sql = neon(process.env.DATABASE_URL!);
+      const adminUsers = await sql`
+        SELECT id, first_name, last_name, email, subscription_tier, 
+               subscription_status, is_admin, created_at, profile_picture_url
+        FROM users 
+        WHERE is_admin = true 
+        ORDER BY created_at DESC
+      `;
+      
+      console.log(`Found ${adminUsers.length} admin users`);
       res.json(adminUsers);
     } catch (error) {
       console.error("Error fetching admin users:", error);
