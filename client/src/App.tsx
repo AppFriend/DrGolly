@@ -45,6 +45,7 @@ import ResetPassword from "@/pages/reset-password";
 import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
+import AuthTestPage from "@/pages/auth-test";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -190,6 +191,7 @@ function AuthenticatedApp() {
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
+        <Route path="/auth-test" component={AuthTestPage} />
         <Route component={NotFound} />
       </Switch>
       <UpgradeModal

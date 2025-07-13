@@ -326,18 +326,67 @@ export class KlaviyoService {
 
   async syncUserToKlaviyo(user: User, children?: any[], coursePurchases?: any[]): Promise<boolean> {
     try {
+      console.log(`Syncing user to Klaviyo: ${user.email} with ${children?.length || 0} children and ${coursePurchases?.length || 0} course purchases`);
+      
       // First create or update the profile with comprehensive data
       const profileId = await this.createOrUpdateProfile(user, children, coursePurchases);
       
       // Then add to superapp list if profile was created successfully
       if (profileId && user.email) {
         await this.addToSuperAppList(user);
+        
+        // Update email subscription status based on marketing opt-in preference
+        await this.updateEmailSubscriptionStatus(user, profileId);
+        
+        console.log(`Klaviyo sync completed successfully for user: ${user.email}`);
         return true;
       }
 
       return false;
     } catch (error) {
       console.error("Error syncing user to Klaviyo:", error);
+      return false;
+    }
+  }
+
+  async updateEmailSubscriptionStatus(user: User, profileId: string): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !profileId) {
+      console.error("Klaviyo API key or profile ID missing");
+      return false;
+    }
+
+    try {
+      // Update subscription status based on user's marketing opt-in preference
+      const subscriptionData = {
+        type: "profile",
+        id: profileId,
+        attributes: {
+          subscriptions: {
+            email: {
+              marketing: {
+                consent: user.marketingOptIn ? "SUBSCRIBED" : "UNSUBSCRIBED"
+              }
+            }
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/profiles/${profileId}/`, {
+        method: "PATCH",
+        headers: this.headers,
+        body: JSON.stringify({ data: subscriptionData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to update email subscription status:", response.status, errorText);
+        return false;
+      }
+
+      console.log(`Email subscription status updated: ${user.marketingOptIn ? 'SUBSCRIBED' : 'UNSUBSCRIBED'} for ${user.email}`);
+      return true;
+    } catch (error) {
+      console.error("Error updating email subscription status:", error);
       return false;
     }
   }

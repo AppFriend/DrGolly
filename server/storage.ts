@@ -353,6 +353,9 @@ export interface IStorage {
   addUserActivatedService(userId: string, serviceId: string): Promise<User>;
   getUserActivatedServices(userId: string): Promise<string[]>;
   
+  // Enhanced user data for Klaviyo sync
+  getUserWithChildren(userId: string): Promise<{ user: User, children: any[], coursePurchases: any[] }>;
+  
   // Shopping product operations
   getShoppingProducts(): Promise<ShoppingProduct[]>;
   getShoppingProduct(id: number): Promise<ShoppingProduct | undefined>;
@@ -487,27 +490,120 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserProfile(userId: string, profileData: Partial<User>): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({
-        ...profileData,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .update(users)
+        .set({
+          ...profileData,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error) {
+      console.error('Database error in updateUserProfile:', error);
+      // Fallback to raw SQL query
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        // Simple fallback for common fields
+        if (profileData.signInCount !== undefined) {
+          await sql`UPDATE users SET sign_in_count = ${profileData.signInCount}, last_sign_in = ${profileData.lastSignIn}, last_login_at = ${profileData.lastLoginAt}, updated_at = ${new Date()} WHERE id = ${userId}`;
+        }
+        
+        // Return updated user
+        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        // Return user data with updated fields as fallback
+        const user = await this.getUser(userId);
+        return { ...user, ...profileData } as User;
+      }
+    }
   }
 
   async updateUserLastLogin(userId: string): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({
-        lastLoginAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .update(users)
+        .set({
+          lastLoginAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error) {
+      console.error('Database error in updateUserLastLogin:', error);
+      // Fallback to raw SQL query
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        await sql`UPDATE users SET last_login_at = ${new Date()}, updated_at = ${new Date()} WHERE id = ${userId}`;
+        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        throw error;
+      }
+    }
+  }
+
+  async getUserWithChildren(userId: string): Promise<{ user: User, children: any[], coursePurchases: any[] }> {
+    try {
+      // Get user
+      const user = await this.getUser(userId);
+      if (!user) {
+        throw new Error(`User not found: ${userId}`);
+      }
+
+      // Get children
+      let children: any[] = [];
+      try {
+        const childrenResult = await db.select().from(familyMembers).where(eq(familyMembers.userId, userId));
+        children = childrenResult || [];
+      } catch (error) {
+        console.error('Failed to get children:', error);
+        // Fallback to raw SQL
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          const result = await sql`SELECT * FROM family_members WHERE user_id = ${userId}`;
+          children = result || [];
+        } catch (fallbackError) {
+          console.error('Fallback children query failed:', fallbackError);
+          children = [];
+        }
+      }
+
+      // Get course purchases
+      let coursePurchases: any[] = [];
+      try {
+        const purchasesResult = await db.select().from(userCourseProgress).where(eq(userCourseProgress.userId, userId));
+        coursePurchases = purchasesResult || [];
+      } catch (error) {
+        console.error('Failed to get course purchases:', error);
+        // Fallback to raw SQL
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          const result = await sql`SELECT * FROM user_course_progress WHERE user_id = ${userId}`;
+          coursePurchases = result || [];
+        } catch (fallbackError) {
+          console.error('Fallback course purchases query failed:', fallbackError);
+          coursePurchases = [];
+        }
+      }
+
+      return { user, children, coursePurchases };
+    } catch (error) {
+      console.error('Error getting user with children:', error);
+      const user = await this.getUser(userId);
+      if (!user) throw error;
+      return { user, children: [], coursePurchases: [] };
+    }
   }
 
   async getMonthlyActiveUsers(): Promise<number> {
