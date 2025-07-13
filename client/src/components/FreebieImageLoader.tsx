@@ -7,6 +7,7 @@ import bedtimeRoutineChartHD from '@assets/App Freebies-Toddler bedtime chart_17
 import colicsVideoHD from '@assets/App Freebies-Colic and babies_1752112448277.png';
 import earlyMorningWakingHD from '@assets/App Freebies-Early morning waking_1752112448277.png';
 import breastmilkStorageHD from '@assets/App Freebies-Breast milk storage_1752112448278.png';
+// import startingSolidsHD from '@assets/App Freebies-Starting Solids_1752112448276.png';
 
 // Legacy SVG imports for fallback
 import sleepTips from '@/assets/freebies/sleep-tips.svg';
@@ -26,6 +27,7 @@ export const FREEBIE_ASSETS = {
   '@assets/App Freebies-Colic and babies_1752112448277.png': colicsVideoHD,
   '@assets/App Freebies-Early morning waking_1752112448277.png': earlyMorningWakingHD,
   '@assets/App Freebies-Breast milk storage_1752112448278.png': breastmilkStorageHD,
+  // '@assets/App Freebies-Starting Solids_1752112448276.png': startingSolidsHD,
   
   // Legacy SVG versions for fallback
   '@/assets/freebies/sleep-tips.svg': sleepTips,
