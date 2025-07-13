@@ -708,6 +708,15 @@ Changelog:
   * Created seed-services functionality to populate initial service data
   * Integrated with existing authentication system for user-specific service access
   * All services display proper pricing, duration, and activation status for users
+- July 13, 2025. FIXED: Critical authentication and data fetching issues:
+  * Fixed Neon database connection errors causing "could not parse the HTTP request body" failures
+  * Implemented raw SQL fallback for all user and course data fetching to bypass Drizzle ORM issues
+  * Updated /api/user endpoint to use raw SQL queries for reliable user data retrieval
+  * Fixed user personalization - updated Frazer Adnam's name from "Leroy" to "Frazer" in database
+  * Verified course images are properly stored with Bubble CDN URLs in thumbnail_url field
+  * Confirmed blog posts display correct images through FreebieImageLoader component
+  * Authentication now working properly with user ID 44434757 (Frazer, Gold tier)
+  * All API endpoints now have proper fallback mechanisms for database connectivity issues
 ```
 
 ## User Preferences

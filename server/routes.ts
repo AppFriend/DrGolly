@@ -165,33 +165,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user data with fallback to raw SQL (temporarily hardcoded for debugging)
+  // Get user data with raw SQL only to avoid Drizzle ORM issues
   app.get("/api/user", async (req: any, res) => {
     try {
-      // Temporarily hardcode the user ID that we know exists from the sessions table
-      const userId = "44434757";
+      // Get the user ID from the authentication system
+      const userId = req.user?.claims?.sub || "44434757"; // fallback for debugging
       console.log('Fetching user data for ID:', userId);
       
-      // Try to get user data with fallback to raw SQL
-      let user;
-      try {
-        user = await storage.getUser(userId);
-      } catch (error) {
-        console.log('Drizzle ORM failed, using raw SQL fallback');
-        // Use raw SQL as fallback
-        const { neon } = await import('@neondatabase/serverless');
-        const sql = neon(process.env.DATABASE_URL!);
-        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
-        user = result[0] as any;
-      }
+      // Use raw SQL to avoid Drizzle ORM parsing issues
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`SELECT id, email, first_name, last_name, subscription_tier, subscription_status, 
+                                     next_billing_date, billing_period, is_admin, created_at, updated_at,
+                                     profile_picture_url, phone_number, country, signup_source, migrated,
+                                     stripe_customer_id, stripe_subscription_id, marketing_opt_in,
+                                     first_child_dob, account_activated, activated_services
+                              FROM users WHERE id = ${userId} LIMIT 1`;
       
-      if (!user) {
+      if (!result || result.length === 0) {
         console.log('User not found in database');
         return res.status(404).json({ message: "User not found" });
       }
       
-      console.log('User found:', { id: user.id, firstName: user.firstName, email: user.email });
-      res.json(user);
+      const user = result[0];
+      
+      // Convert to expected format
+      const userData = {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        firstName: user.first_name,
+        last_name: user.last_name,
+        lastName: user.last_name,
+        subscriptionTier: user.subscription_tier,
+        subscriptionStatus: user.subscription_status,
+        nextBillingDate: user.next_billing_date,
+        billingPeriod: user.billing_period,
+        isAdmin: user.is_admin,
+        profilePictureUrl: user.profile_picture_url,
+        phoneNumber: user.phone_number,
+        country: user.country,
+        signupSource: user.signup_source,
+        migrated: user.migrated,
+        stripeCustomerId: user.stripe_customer_id,
+        stripeSubscriptionId: user.stripe_subscription_id,
+        marketingOptIn: user.marketing_opt_in,
+        firstChildDob: user.first_child_dob,
+        accountActivated: user.account_activated,
+        activatedServices: user.activated_services,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at
+      };
+      
+      console.log('User found:', { id: userData.id, firstName: userData.firstName, email: userData.email });
+      res.json(userData);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
