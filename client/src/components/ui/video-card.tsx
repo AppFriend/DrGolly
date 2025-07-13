@@ -45,6 +45,12 @@ export function VideoCard({ course, onClick, className }: VideoCardProps) {
           src={course.thumbnailUrl || course.thumbnail_url || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
           alt={course.title}
           className="w-full h-32 object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            if (target.src !== "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200") {
+              target.src = "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200";
+            }
+          }}
         />
         <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
           <button className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors">

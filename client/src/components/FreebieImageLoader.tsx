@@ -26,7 +26,7 @@ export const FREEBIE_ASSETS = {
   '@assets/App Freebies-Colic and babies_1752112448277.png': colicsVideoHD,
   '@assets/App Freebies-Early morning waking_1752112448277.png': earlyMorningWakingHD,
   '@assets/App Freebies-Breast milk storage_1752112448278.png': breastmilkStorageHD,
-  // '@assets/App Freebies-Starting Solids_1752112448276.png': startingSolidsHD,
+  '@assets/App Freebies-Starting Solids_1752112448276.png': startingSolids, // Use SVG fallback
   
   // Legacy SVG versions for fallback
   '@/assets/freebies/sleep-tips.svg': sleepTips,
