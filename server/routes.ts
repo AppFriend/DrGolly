@@ -1355,6 +1355,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Image proxy to resolve DNS issues
+  app.get('/api/image-proxy', async (req, res) => {
+    try {
+      const imageUrl = req.query.url as string;
+      
+      if (!imageUrl) {
+        return res.status(400).json({ error: 'URL parameter is required' });
+      }
+      
+      // Only allow trusted image sources for security
+      if (!imageUrl.startsWith('https://images.unsplash.com/') && !imageUrl.startsWith('https://picsum.photos/')) {
+        return res.status(403).json({ error: 'Only trusted image sources are allowed' });
+      }
+      
+      const response = await fetch(imageUrl);
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ error: 'Failed to fetch image' });
+      }
+      
+      // Set proper headers for image caching
+      res.setHeader('Content-Type', response.headers.get('Content-Type') || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      
+      // Pipe the image response to the client
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('Image proxy error:', error);
+      res.status(500).json({ error: 'Failed to proxy image' });
+    }
+  });
+
   app.post('/api/courses', isAuthenticated, async (req, res) => {
     try {
       const courseData = insertCourseSchema.parse(req.body);

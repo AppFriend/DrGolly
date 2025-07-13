@@ -42,19 +42,16 @@ export function VideoCard({ course, onClick, className }: VideoCardProps) {
     >
       <div className="relative">
         <img
-          src={course.thumbnailUrl || course.thumbnail_url || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
+          src={`/api/image-proxy?url=${encodeURIComponent(course.thumbnailUrl || course.thumbnail_url)}`}
           alt={course.title}
           className="w-full h-32 object-cover"
           onLoad={() => {
-            console.log('VideoCard image loaded successfully:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
+            console.log('VideoCard image loaded successfully via proxy:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
           }}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            console.log('VideoCard image failed to load:', target.src, 'for course:', course.title);
+            console.log('VideoCard image failed to load via proxy:', target.src, 'for course:', course.title);
             console.log('Full course object:', course);
-            // Try loading without the CORS/lazy loading attributes
-            target.crossOrigin = "";
-            target.loading = "eager";
           }}
         />
         <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
