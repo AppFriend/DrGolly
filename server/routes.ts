@@ -1392,9 +1392,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User progress routes
-  app.get('/api/user/progress', isAuthenticated, async (req: any, res) => {
+  app.get('/api/user/progress', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Use Dr. Golly auth system instead of Replit Auth
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const progress = await storage.getUserProgress(userId);
       res.json(progress);
     } catch (error) {
@@ -1415,9 +1420,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/user/progress', isAuthenticated, async (req: any, res) => {
+  app.post('/api/user/progress', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Use Dr. Golly auth system instead of Replit Auth
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const progressData = insertUserCourseProgressSchema.parse({
         ...req.body,
         userId,
