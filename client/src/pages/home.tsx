@@ -27,32 +27,7 @@ const categories = [
   { id: "parenting", label: "Parenting" },
 ];
 
-// Cart Icon Component
-const CartIcon = () => {
-  const [, setLocation] = useLocation();
-  
-  // Fetch cart count
-  const { data: cartCount } = useQuery({
-    queryKey: ['/api/cart/count'],
-    select: (data) => data.count,
-    refetchInterval: 10000, // Refresh every 10 seconds
-  });
 
-  return (
-    <button
-      onClick={() => setLocation("/cart")}
-      className="relative text-white hover:text-gray-200 transition-colors"
-      title="Shopping Cart"
-    >
-      <ShoppingCart className="h-5 w-5" />
-      {cartCount && cartCount > 0 && (
-        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-          {cartCount > 9 ? '9+' : cartCount}
-        </span>
-      )}
-    </button>
-  );
-};
 
 export default function Home() {
   const { user } = useAuth();
@@ -166,7 +141,7 @@ export default function Home() {
             </button>
           )}
           <NotificationBell />
-          <CartIcon />
+
           <button
             onClick={() => setShowSupportModal(true)}
             className="text-white hover:text-gray-200 transition-colors"
