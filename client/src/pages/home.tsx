@@ -33,15 +33,8 @@ export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Debug user data
-  console.log('Home - User data:', user);
-  if (user) {
-    console.log('Home - Profile picture URLs:', {
-      profilePictureUrl: user.profilePictureUrl,
-      profile_picture_url: user.profile_picture_url,
-      profileImageUrl: user.profileImageUrl
-    });
-  }
+  // Debug user data (remove in production)
+  // console.log('Home - User data:', user);
   const [, setLocation] = useLocation();
   const [activeCategory, setActiveCategory] = useState("all");
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);

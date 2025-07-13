@@ -7,7 +7,6 @@ import bedtimeRoutineChartHD from '@assets/App Freebies-Toddler bedtime chart_17
 import colicsVideoHD from '@assets/App Freebies-Colic and babies_1752112448277.png';
 import earlyMorningWakingHD from '@assets/App Freebies-Early morning waking_1752112448277.png';
 import breastmilkStorageHD from '@assets/App Freebies-Breast milk storage_1752112448278.png';
-// import startingSolidsHD from '@assets/App Freebies-Starting Solids_1752112448276.png';
 
 // Legacy SVG imports for fallback
 import sleepTips from '@/assets/freebies/sleep-tips.svg';
@@ -80,6 +79,15 @@ export function FreebieImage({ src, alt, className = '' }: FreebieImageProps) {
       alt={alt}
       className={className}
       loading="lazy"
+      onError={(e) => {
+        console.error('Freebie image failed to load:', e.currentTarget.src);
+        // Show a fallback placeholder with blue background
+        e.currentTarget.style.display = 'none';
+        const parent = e.currentTarget.parentElement;
+        if (parent) {
+          parent.innerHTML = '<div class="bg-blue-500 text-white flex items-center justify-center h-full w-full rounded-lg"><span class="text-2xl">📄</span></div>';
+        }
+      }}
     />
   );
 }
