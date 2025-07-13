@@ -49,6 +49,9 @@ tracking/*      # Growth, development, sleep tracking
 discounts/*     # Partner discounts, coupons
 family/*        # Family management, children
 settings/*      # User settings, profile
+subscription/*  # Subscription management, /manage page
+checkout/*      # Checkout flow, payment processing
+admin/*         # Admin panel, user management, analytics
 ```
 
 ### Quick Commands

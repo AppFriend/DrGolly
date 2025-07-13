@@ -4915,7 +4915,50 @@ Please contact the customer to confirm the appointment.
 
   app.get('/api/admin/users', isAdmin, async (req, res) => {
     try {
-      const users = await storage.getAllUsers();
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const search = req.query.search as string;
+      
+      // Use raw SQL fallback for reliable data fetching
+      let users;
+      try {
+        users = await storage.getAllUsers(page, limit, search);
+      } catch (drizzleError) {
+        console.log("Drizzle ORM failed for admin users, using raw SQL fallback");
+        
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        const offset = (page - 1) * limit;
+        
+        if (search) {
+          users = await sql`
+            SELECT id, first_name, last_name, email, subscription_tier, created_at, 
+                   stripe_customer_id, last_login_at, phone_number, user_role, 
+                   is_admin, stripe_subscription_id, marketing_opt_in, 
+                   count_courses, sign_in_count, subscription_status, country,
+                   signup_source, last_sign_in
+            FROM users 
+            WHERE email ILIKE ${'%' + search + '%'} 
+               OR first_name ILIKE ${'%' + search + '%'} 
+               OR last_name ILIKE ${'%' + search + '%'}
+            ORDER BY created_at DESC 
+            LIMIT ${limit} OFFSET ${offset}
+          `;
+        } else {
+          users = await sql`
+            SELECT id, first_name, last_name, email, subscription_tier, created_at, 
+                   stripe_customer_id, last_login_at, phone_number, user_role, 
+                   is_admin, stripe_subscription_id, marketing_opt_in, 
+                   count_courses, sign_in_count, subscription_status, country,
+                   signup_source, last_sign_in
+            FROM users 
+            ORDER BY created_at DESC 
+            LIMIT ${limit} OFFSET ${offset}
+          `;
+        }
+      }
+      
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -5124,7 +5167,19 @@ Please contact the customer to confirm the appointment.
   // Get total user count (Admin only)
   app.get('/api/admin/users/count', isAdmin, async (req, res) => {
     try {
-      const totalCount = await storage.getTotalUserCount();
+      let totalCount;
+      try {
+        totalCount = await storage.getTotalUserCount();
+      } catch (drizzleError) {
+        console.log("Drizzle ORM failed for user count, using raw SQL fallback");
+        
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        const result = await sql`SELECT COUNT(*) as count FROM users`;
+        totalCount = parseInt(result[0].count);
+      }
+      
       res.json({ totalCount });
     } catch (error) {
       console.error("Error fetching user count:", error);

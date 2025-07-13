@@ -29,17 +29,28 @@ import UserCourseManagement from "./UserCourseManagement";
 interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  subscriptionTier: string;
-  subscriptionStatus: string;
+  first_name: string;
+  last_name: string;
+  firstName?: string;
+  lastName?: string;
+  subscription_tier: string;
+  subscription_status: string;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
   country: string;
   phone: string;
-  signupSource: string;
-  signInCount: number;
-  lastSignIn: string;
-  createdAt: string;
-  stripeCustomerId: string;
+  phone_number: string;
+  signup_source: string;
+  signupSource?: string;
+  sign_in_count: number;
+  signInCount?: number;
+  last_sign_in: string;
+  last_login_at: string;
+  lastSignIn?: string;
+  created_at: string;
+  createdAt?: string;
+  stripe_customer_id: string;
+  stripeCustomerId?: string;
 }
 
 export function AdminUserManagement() {
@@ -55,8 +66,11 @@ export function AdminUserManagement() {
   const queryClient = useQueryClient();
 
   const { data: users, isLoading, error: usersError, refetch } = useQuery({
-    queryKey: ["/api/admin/users", { page: currentPage, limit: usersPerPage }],
-    queryFn: () => apiRequest("GET", `/api/admin/users?page=${currentPage}&limit=${usersPerPage}`),
+    queryKey: ["/api/admin/users", { page: currentPage, limit: usersPerPage, search: searchQuery }],
+    queryFn: () => {
+      const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
+      return apiRequest("GET", `/api/admin/users?page=${currentPage}&limit=${usersPerPage}${searchParam}`);
+    },
     staleTime: 0, // Force refresh
     refetchOnMount: true,
   });
@@ -69,16 +83,10 @@ export function AdminUserManagement() {
   const totalUsers = totalUsersData?.totalCount || 0;
   const totalPages = Math.ceil(totalUsers / usersPerPage);
 
-  // Force refetch on component mount
+  // Force refetch on component mount and search changes
   useEffect(() => {
     refetch();
-  }, [refetch, currentPage]);
-
-  const { data: searchResults, isLoading: isSearching } = useQuery({
-    queryKey: [`/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`],
-    enabled: searchQuery.length > 2,
-    // Use default query function to handle authentication properly
-  });
+  }, [refetch, currentPage, searchQuery]);
 
   const updateUserMutation = useMutation({
     mutationFn: ({ userId, updates }: { userId: string; updates: Partial<User> }) =>
@@ -119,18 +127,16 @@ export function AdminUserManagement() {
     setSelectedUserForCourses(null);
   };
 
-  const displayUsers = searchQuery.length > 2 ? (searchResults || []) : (users || []);
-  const displayCount = searchQuery.length > 2 ? (searchResults?.length || 0) : totalUsers;
+  const displayUsers = users || [];
+  const displayCount = searchQuery ? (users?.length || 0) : totalUsers;
   
   // Debug logging to see what's happening with the data
   console.log('Admin User Management Debug:', {
     searchQuery,
     searchQueryLength: searchQuery.length,
-    users: users,
-    searchResults: searchResults,
     displayUsers: displayUsers,
     isLoading: isLoading,
-    isSearching: isSearching,
+    isSearching: false,
     usersError: usersError
   });
 
@@ -171,7 +177,7 @@ export function AdminUserManagement() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 text-sm"
             />
-            {isSearching && (
+            {isLoading && (
               <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
             )}
           </div>
@@ -205,16 +211,16 @@ export function AdminUserManagement() {
                   >
                     <div className="flex items-start space-x-3">
                       <div className="w-8 h-8 bg-[#6B9CA3] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                        {user.firstName?.[0] || user.email[0].toUpperCase()}
+                        {(user.first_name || user.firstName)?.[0] || user.email[0].toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
                             <h3 className="font-semibold text-sm truncate">
-                              {user.firstName} {user.lastName}
+                              {user.first_name || user.firstName} {user.last_name || user.lastName}
                             </h3>
-                          <Badge className={`${getTierColor(user.subscriptionTier)} text-xs px-2 py-0.5`}>
-                            {user.subscriptionTier}
+                          <Badge className={`${getTierColor(user.subscription_tier || user.subscriptionTier)} text-xs px-2 py-0.5`}>
+                            {user.subscription_tier || user.subscriptionTier}
                           </Badge>
                         </div>
                         <div className="flex gap-1">
@@ -261,11 +267,11 @@ export function AdminUserManagement() {
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {formatDate(user.createdAt)}
+                            {formatDate(user.created_at || user.createdAt)}
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {user.signInCount} logins
+                            {user.sign_in_count || user.signInCount || 0} logins
                           </span>
                         </div>
                         {user.country && (
