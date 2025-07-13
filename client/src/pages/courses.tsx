@@ -26,6 +26,14 @@ export default function Courses() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
 
+  // Handle image URL conversion
+  const getDirectImageUrl = (thumbnailUrl: string) => {
+    if (thumbnailUrl?.startsWith('/assets/')) {
+      return thumbnailUrl.replace('/assets/', '/attached_assets/');
+    }
+    return thumbnailUrl;
+  };
+
   const { data: courses, isLoading, error } = useQuery({
     queryKey: ["/api/courses", searchQuery ? "all" : (activeTab === "all" ? undefined : activeTab)],
     enabled: !!user,
@@ -315,15 +323,15 @@ export default function Courses() {
           {filteredCourses?.map((course: Course) => (
             <div key={course.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
               <img
-                src={`/api/image-proxy?url=${encodeURIComponent(course.thumbnailUrl || course.thumbnail_url)}`}
+                src={getDirectImageUrl(course.thumbnailUrl || course.thumbnail_url)}
                 alt={course.title}
                 className="w-full h-48 object-cover"
                 onLoad={() => {
-                  console.log('Course page image loaded successfully via proxy:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
+                  console.log('Course page image loaded successfully:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
                 }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  console.log('Course page image failed to load via proxy:', target.src, 'for course:', course.title);
+                  console.log('Course page image failed to load:', target.src, 'for course:', course.title);
                   console.log('Full course object:', course);
                 }}
               />
@@ -377,7 +385,7 @@ export default function Courses() {
           {filteredCourses?.map((course: Course) => (
             <div key={course.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
               <img
-                src={course.thumbnailUrl || course.thumbnail_url || "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200"}
+                src={getDirectImageUrl(course.thumbnailUrl || course.thumbnail_url)}
                 alt={course.title}
                 className="w-full h-48 object-cover"
               />

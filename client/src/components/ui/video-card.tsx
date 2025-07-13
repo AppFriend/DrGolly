@@ -22,9 +22,6 @@ export function VideoCard({ course, onClick, className }: VideoCardProps) {
     if (thumbnailUrl?.startsWith('/assets/')) {
       return thumbnailUrl.replace('/assets/', '/attached_assets/');
     }
-    if (thumbnailUrl?.startsWith('http')) {
-      return `/api/image-proxy?url=${encodeURIComponent(thumbnailUrl)}`;
-    }
     return thumbnailUrl;
   };
   
