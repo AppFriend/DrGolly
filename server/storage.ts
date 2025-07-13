@@ -512,6 +512,11 @@ export class DatabaseStorage implements IStorage {
           await sql`UPDATE users SET sign_in_count = ${profileData.signInCount}, last_sign_in = ${profileData.lastSignIn}, last_login_at = ${profileData.lastLoginAt}, updated_at = ${new Date()} WHERE id = ${userId}`;
         }
         
+        // Handle profile image updates
+        if (profileData.profileImageUrl !== undefined) {
+          await sql`UPDATE users SET profile_picture_url = ${profileData.profileImageUrl}, updated_at = ${new Date()} WHERE id = ${userId}`;
+        }
+        
         // Return updated user
         const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
         return result[0] as User;
