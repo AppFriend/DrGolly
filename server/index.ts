@@ -56,7 +56,11 @@ app.use((req, res, next) => {
 
 (async () => {
   // Initialize regional pricing service
-  await regionalPricingService.initializeRegionalPricing();
+  try {
+    await regionalPricingService.initializeRegionalPricing();
+  } catch (error) {
+    console.error('Failed to initialize regional pricing service:', error);
+  }
   
   // Initialize services
   try {
