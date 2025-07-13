@@ -135,6 +135,17 @@ STABLE VERSIONS (for easy rollback reference):
   * Authentication: Dr. Golly auth system working
   * Admin panel: frazer.adnam@cq-partners.com.au has full access
   * Status: Ready for production deployment
+
+- SAVEPOINT v1.1 (July 15, 2025): Git workflow implementation complete
+  * Professional branching strategy with protected main/dev branches
+  * Feature branch structure: home/*, courses/*, tracking/*, discounts/*, family/*, settings/*
+  * Release management with stable-DD-MM-YYYY-feature naming convention
+  * Emergency rollback procedures and scripts
+  * GitHub Actions CI/CD pipeline
+  * Pull request templates and issue templates
+  * Documentation: README.md, BRANCHING_STRATEGY.md, RELEASE_MANAGEMENT.md
+  * Testing allergens course image updated to correct asset
+  * Status: Production-ready with comprehensive Git workflow
 ```
 
 ## Changelog
@@ -776,6 +787,16 @@ Changelog:
   * Eliminated external URL dependencies and proxy complications
   * All 9 course images now display correctly from user-provided screenshots
   * System confirmed stable and working - suitable for production deployment
+- July 15, 2025. IMPLEMENTED: World-class Git workflow with branch protection and release management:
+  * Created protected main/dev branches with PR requirements and status checks
+  * Implemented feature branch structure: home/*, courses/*, tracking/*, discounts/*, family/*, settings/*
+  * Added release naming convention: stable-DD-MM-YYYY-feature-name for clear version control
+  * Created automation scripts: create-release.sh, emergency-rollback.sh, switch-branch.sh
+  * Set up GitHub Actions CI/CD pipeline with automated testing and deployment
+  * Added comprehensive documentation: README.md, BRANCHING_STRATEGY.md, RELEASE_MANAGEMENT.md
+  * Created PR templates and issue templates for consistent workflow
+  * Updated "Testing allergens" course image to correct asset from user screenshot
+  * All scripts executable and ready for team use with proper permission management
 ```
 
 ## User Preferences
