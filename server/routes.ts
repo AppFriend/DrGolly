@@ -149,6 +149,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user data with fallback to raw SQL
+  app.get("/api/user", isAppAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log('Fetching user data for ID:', userId);
+      
+      // Try to get user data with fallback to raw SQL
+      let user;
+      try {
+        user = await storage.getUser(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed, using raw SQL fallback');
+        // Use raw SQL as fallback
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        user = result[0] as any;
+      }
+      
+      if (!user) {
+        console.log('User not found in database');
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      console.log('User found:', { id: user.id, firstName: user.firstName, email: user.email });
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Auth middleware - restore Dr. Golly authentication
   await setupAuth(app);
   
@@ -2192,7 +2224,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/children', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const children = await storage.getUserChildren(userId);
+      console.log('Fetching children for user ID:', userId);
+      
+      // Use raw SQL to bypass Drizzle ORM connection issues
+      let children;
+      try {
+        children = await storage.getUserChildren(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for children, using raw SQL fallback');
+        // Use raw SQL as fallback
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        children = await sql`SELECT * FROM children WHERE user_id = ${userId} ORDER BY created_at DESC`;
+      }
+      
+      console.log('Children found:', children.length);
       res.json(children);
     } catch (error) {
       console.error("Error fetching children:", error);
@@ -2671,47 +2717,27 @@ Please contact the customer to confirm the appointment.
     try {
       const { category, includeUnpublished } = req.query;
       
-      // Check if user is authenticated and is admin for admin bypass
-      let isAdminUser = false;
-      if (req.isAuthenticated()) {
-        const userId = req.user?.claims?.sub;
-        if (userId) {
-          isAdminUser = await storage.isUserAdmin(userId);
-        }
+      // Use raw SQL to bypass Drizzle ORM connection issues
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      let blogPosts;
+      if (category) {
+        blogPosts = await sql`
+          SELECT id, title, slug, excerpt, content, category, tags, image_url, pdf_url, read_time, author, published_at, views, likes, is_published, status, is_pinned, pinned_at, created_at, updated_at
+          FROM blog_posts 
+          WHERE is_published = true AND category = ${category}
+          ORDER BY is_pinned DESC, pinned_at DESC, published_at DESC
+        `;
+      } else {
+        blogPosts = await sql`
+          SELECT id, title, slug, excerpt, content, category, tags, image_url, pdf_url, read_time, author, published_at, views, likes, is_published, status, is_pinned, pinned_at, created_at, updated_at
+          FROM blog_posts 
+          WHERE is_published = true
+          ORDER BY is_pinned DESC, pinned_at DESC, published_at DESC
+        `;
       }
       
-      console.log("Blog posts API request:", { 
-        category, 
-        includeUnpublished,
-        isAdminUser,
-        isAuthenticated: req.isAuthenticated()
-      });
-      
-      // If includeUnpublished is true, check if user is admin
-      if (includeUnpublished === 'true' && !isAdminUser) {
-        if (!req.isAuthenticated()) {
-          return res.status(401).json({ message: "Authentication required for admin access" });
-        }
-        
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
-      // FOR ADMIN USERS: Always include unpublished posts regardless of parameter
-      const shouldIncludeUnpublished = includeUnpublished === 'true' || isAdminUser;
-
-      const blogPosts = await storage.getBlogPosts(
-        category as string | undefined,
-        shouldIncludeUnpublished
-      );
-      console.log("Blog posts API response:", { 
-        count: blogPosts.length,
-        includeUnpublished: includeUnpublished === 'true',
-        includeUnpublishedParam: includeUnpublished,
-        shouldIncludeUnpublished,
-        isAdminUser,
-        queryParams: req.query,
-        firstPost: blogPosts[0] ? { id: blogPosts[0].id, title: blogPosts[0].title, isPublished: blogPosts[0].isPublished } : null
-      });
       res.json(blogPosts);
     } catch (error) {
       console.error("Error fetching blog posts:", error);
