@@ -140,11 +140,28 @@ export default function Profile() {
   const [isAddPaymentMethodOpen, setIsAddPaymentMethodOpen] = useState(false);
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null);
 
-  // Fetch profile data
+  // Fetch profile data - use user data as fallback
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["/api/profile"],
     enabled: !!user,
   });
+
+  // Use user data as fallback if profile isn't available
+  const effectiveProfile = profile || {
+    id: user?.id,
+    firstName: user?.firstName || user?.first_name,
+    lastName: user?.lastName || user?.last_name,
+    email: user?.email,
+    phone: user?.phoneNumber || user?.phone_number,
+    profileImageUrl: user?.profileImageUrl || user?.profilePictureUrl || user?.profile_picture_url,
+    subscriptionTier: user?.subscriptionTier || user?.subscription_tier,
+    subscriptionStatus: user?.subscriptionStatus || user?.subscription_status,
+    subscriptionEndDate: user?.subscriptionEndDate,
+    stripeCustomerId: user?.stripeCustomerId,
+    stripeSubscriptionId: user?.stripeSubscriptionId,
+    marketingOptIn: user?.marketingOptIn,
+    smsMarketingOptIn: user?.smsMarketingOptIn,
+  };
 
   // Fetch invoices
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
@@ -345,10 +362,10 @@ export default function Profile() {
 
   // Initialize profile data when loaded
   useEffect(() => {
-    if (profile && !profileData) {
-      setProfileData(profile);
+    if (effectiveProfile && !profileData) {
+      setProfileData(effectiveProfile);
     }
-  }, [profile, profileData]);
+  }, [effectiveProfile, profileData]);
 
   if (authLoading || profileLoading) {
     return (
