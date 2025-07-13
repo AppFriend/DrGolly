@@ -77,14 +77,25 @@ async function upsertUser(
   try {
     const user = await storage.upsertUser(userData);
     
-    // Sync user to Klaviyo after successful signup
+    // Comprehensive Klaviyo sync with all user data during signup/login
     if (user) {
-      try {
-        await klaviyoService.syncUserToKlaviyo(user);
-      } catch (error) {
-        console.error("Failed to sync user to Klaviyo:", error);
-        // Don't fail the signup process if Klaviyo sync fails
-      }
+      // Use background sync to avoid blocking the login process
+      setImmediate(async () => {
+        try {
+          console.log(`Starting comprehensive Klaviyo sync for user: ${user.email}`);
+          
+          // Get comprehensive user data including children and course purchases
+          const { user: fullUser, children, coursePurchases } = await storage.getUserWithChildren(user.id);
+          
+          // Sync with comprehensive data to Klaviyo
+          await klaviyoService.syncUserToKlaviyo(fullUser, children, coursePurchases);
+          
+          console.log(`Klaviyo sync completed for user: ${user.email}`);
+        } catch (error) {
+          console.error("Failed to sync user to Klaviyo:", error);
+          // Don't fail the signup process if Klaviyo sync fails
+        }
+      });
     }
     
     return user;

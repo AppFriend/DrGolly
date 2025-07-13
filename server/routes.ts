@@ -121,6 +121,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: 'Test endpoint working' });
   });
 
+  // Test database connectivity with sample user
+  app.get('/api/test/user/:email', async (req, res) => {
+    try {
+      const { email } = req.params;
+      
+      // Get user from database using fallback methods
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.json({ 
+        message: 'User found successfully', 
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          subscriptionTier: user.subscriptionTier,
+          accountActivated: user.accountActivated
+        }
+      });
+    } catch (error) {
+      console.error('Test user fetch error:', error);
+      res.status(500).json({ message: 'Failed to fetch user' });
+    }
+  });
+
   // Auth middleware - restore Dr. Golly authentication
   await setupAuth(app);
   
@@ -277,40 +305,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Sync user login to Klaviyo with all custom properties
-      if (user) {
-        const children = await storage.getUserChildren(userId);
-        
-        // Update sign-in count and last login timestamp
-        await storage.updateUserProfile(userId, {
-          signInCount: (user.signInCount || 0) + 1,
-          lastSignIn: new Date(),
-          lastLoginAt: new Date()
-        });
-
-        // Get updated user data
-        const updatedUser = await storage.getUser(userId);
-        if (updatedUser) {
-          // Async sync to avoid blocking the login response
-          setImmediate(async () => {
-            try {
-              // Fetch latest Stripe data for user (only if they have a customer ID)
-              let stripeData = null;
-              if (updatedUser.stripeCustomerId) {
-                stripeData = await stripeDataSyncService.getStripeDataForUser(updatedUser);
-              }
-
-              // Fetch course purchase data for comprehensive profile sync
-              const coursePurchases = await storage.getUserCoursePurchases(userId);
-
-              // Sync to Klaviyo with comprehensive data including children, Stripe data, and course purchases
-              await klaviyoService.syncLoginToKlaviyo(updatedUser, children, stripeData, coursePurchases);
-            } catch (error) {
-              console.error("Background sync failed:", error);
-            }
-          });
-        }
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
+      
+      // Update sign-in count and last login timestamp
+      await storage.updateUserProfile(userId, {
+        signInCount: (user.signInCount || 0) + 1,
+        lastSignIn: new Date(),
+        lastLoginAt: new Date()
+      });
+
+      // Comprehensive Klaviyo sync with all sophisticated data points on login
+      setImmediate(async () => {
+        try {
+          console.log(`Starting comprehensive login-based Klaviyo sync for user: ${user.email}`);
+          
+          // Get comprehensive user data including children and course purchases
+          const { user: fullUser, children, coursePurchases } = await storage.getUserWithChildren(userId);
+          
+          // Sync with all sophisticated data to Klaviyo:
+          // - 25+ custom properties (subscription_tier, plan_tier, phone_number, signup_source, etc.)
+          // - Children birth dates (child_1_birthdate, child_2_birthdate, child_3_birthdate)
+          // - Course purchase history and counts
+          // - Stripe customer data (billing dates, payment methods, subscription status)
+          // - Marketing preferences (marketing_opt_in, sms_marketing_opt_in)
+          // - User behavior data (sign_in_count, last_login_at, onboarding_completed)
+          // - Profile data (user_role, primary_concerns, accepted_terms)
+          await klaviyoService.syncUserToKlaviyo(fullUser, children, coursePurchases);
+          
+          console.log(`Comprehensive Klaviyo sync completed for user: ${user.email}`);
+        } catch (error) {
+          console.error("Failed to sync comprehensive user data to Klaviyo:", error);
+          // Don't fail the auth check if sync fails
+        }
+      });
       
       res.json(user);
     } catch (error) {
@@ -5980,6 +6009,54 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Klaviyo status check error:", error);
       res.status(500).json({ message: "Klaviyo status check failed", error: error.message });
+    }
+  });
+
+  // Comprehensive Klaviyo sync test endpoint
+  app.get('/api/test/klaviyo/comprehensive-sync', isAppAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log(`Testing comprehensive Klaviyo sync for user: ${userId}`);
+      
+      // Get comprehensive user data including children and course purchases
+      const { user, children, coursePurchases } = await storage.getUserWithChildren(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Perform comprehensive sync
+      const result = await klaviyoService.syncUserToKlaviyo(user, children, coursePurchases);
+      
+      res.json({ 
+        success: result,
+        message: result ? 'Comprehensive Klaviyo sync completed successfully' : 'Failed to sync comprehensive data to Klaviyo',
+        syncedData: {
+          user: { 
+            email: user.email, 
+            id: user.id,
+            subscriptionTier: user.subscriptionTier,
+            marketingOptIn: user.marketingOptIn,
+            signInCount: user.signInCount,
+            phoneNumber: user.phoneNumber,
+            userRole: user.userRole,
+            primaryConcerns: user.primaryConcerns
+          },
+          children: children.map(child => ({
+            name: child.name,
+            dateOfBirth: child.dateOfBirth,
+            gender: child.gender
+          })),
+          coursePurchases: coursePurchases.map(purchase => ({
+            courseId: purchase.courseId,
+            purchasedAt: purchase.purchasedAt,
+            status: purchase.status
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('Comprehensive Klaviyo sync test error:', error);
+      res.status(500).json({ message: 'Test failed', error: error.message });
     }
   });
 
