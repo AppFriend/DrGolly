@@ -123,6 +123,20 @@ The application is designed as a mobile-first experience with:
 - **REPL_ID**: Replit environment identifier
 - **ISSUER_URL**: OpenID Connect issuer endpoint
 
+## Stable Savepoints
+
+```
+STABLE VERSIONS (for easy rollback reference):
+- SAVEPOINT v1.0 (July 14, 2025): Course image system complete
+  * All 9 course thumbnails display correctly from user screenshots
+  * Direct static file serving: `/attached_assets/` folder
+  * Database paths: `/assets/` converted to `/attached_assets/`
+  * Key files: server/index.ts (static middleware), client/src/pages/courses.tsx, client/src/components/ui/video-card.tsx
+  * Authentication: Dr. Golly auth system working
+  * Admin panel: frazer.adnam@cq-partners.com.au has full access
+  * Status: Ready for production deployment
+```
+
 ## Changelog
 
 ```
@@ -755,6 +769,13 @@ Changelog:
   * Modified VideoCard component to handle /assets/ URLs by replacing with /attached_assets/ paths
   * Updated image proxy security to allow /assets/ paths alongside Unsplash URLs
   * All course images now served from attached_assets folder as single source of truth
+- July 14, 2025. STABLE VERSION: Simplified image serving system - all course thumbnails working:
+  * Removed complex image proxy system and implemented direct static file serving
+  * Added Express static middleware: `app.use('/attached_assets', express.static('attached_assets'))`
+  * Updated all image components to serve /assets/ URLs directly from /attached_assets/ folder
+  * Eliminated external URL dependencies and proxy complications
+  * All 9 course images now display correctly from user-provided screenshots
+  * System confirmed stable and working - suitable for production deployment
 ```
 
 ## User Preferences
