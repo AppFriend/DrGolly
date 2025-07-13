@@ -208,7 +208,7 @@ export default function Home() {
                     ? "text-black/80" 
                     : "text-[#166534]"
                 )}>
-                  I'm here to help you navigate sleep, parenthood & beyond
+                  I'm here to help you navigate parenthood
                 </p>
                 <Button
                   variant="secondary"
@@ -227,7 +227,7 @@ export default function Home() {
                     ? "text-black/80" 
                     : "text-[#166534]"
                 )}>
-                  I'm here to help you navigate sleep, parenthood & beyond
+                  I'm here to help you navigate parenthood
                 </p>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-black rounded-full"></div>
