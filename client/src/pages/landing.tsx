@@ -49,7 +49,7 @@ export default function Landing() {
         </div>
 
         {/* Buttons Container - Moved higher into white space */}
-        <div className="px-6 pb-20 space-y-3 relative z-[60]">
+        <div className="px-6 pb-[6.5rem] space-y-3 relative z-[60]">
           <Button
             onClick={(e) => {
               e.preventDefault();
