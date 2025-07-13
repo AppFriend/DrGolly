@@ -481,7 +481,7 @@ export default function Checkout() {
       const course = courses.find(c => c.id === parseInt(item.itemId));
       return course ? {
         title: course.title,
-        image: null,
+        image: course.thumbnailUrl,
         price: originalPrice,
         author: 'Dr. Golly',
       } : null;
