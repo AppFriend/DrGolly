@@ -17,6 +17,17 @@ export function VideoCard({ course, onClick, className }: VideoCardProps) {
   // Check if user has access to unlimited courses
   const hasUnlimitedCourses = hasAccess("courses_unlimited");
   
+  // Handle different image URL formats
+  const getImageUrl = (thumbnailUrl: string) => {
+    if (thumbnailUrl?.startsWith('/assets/')) {
+      return thumbnailUrl.replace('/assets/', '/attached_assets/');
+    }
+    if (thumbnailUrl?.startsWith('http')) {
+      return `/api/image-proxy?url=${encodeURIComponent(thumbnailUrl)}`;
+    }
+    return thumbnailUrl;
+  };
+  
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "sleep":
@@ -42,15 +53,15 @@ export function VideoCard({ course, onClick, className }: VideoCardProps) {
     >
       <div className="relative">
         <img
-          src={`/api/image-proxy?url=${encodeURIComponent(course.thumbnailUrl || course.thumbnail_url)}`}
+          src={getImageUrl(course.thumbnailUrl || course.thumbnail_url)}
           alt={course.title}
           className="w-full h-32 object-cover"
           onLoad={() => {
-            console.log('VideoCard image loaded successfully via proxy:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
+            console.log('VideoCard image loaded successfully:', course.thumbnailUrl || course.thumbnail_url, 'for course:', course.title);
           }}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            console.log('VideoCard image failed to load via proxy:', target.src, 'for course:', course.title);
+            console.log('VideoCard image failed to load:', target.src, 'for course:', course.title);
             console.log('Full course object:', course);
           }}
         />

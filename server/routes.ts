@@ -1365,7 +1365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Only allow trusted image sources for security
-      if (!imageUrl.startsWith('https://images.unsplash.com/') && !imageUrl.startsWith('https://picsum.photos/')) {
+      if (!imageUrl.startsWith('https://images.unsplash.com/') && !imageUrl.startsWith('https://picsum.photos/') && !imageUrl.startsWith('/assets/')) {
         return res.status(403).json({ error: 'Only trusted image sources are allowed' });
       }
       
