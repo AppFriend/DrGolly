@@ -749,6 +749,12 @@ Changelog:
   * Removed automatic fallback behavior that was causing generic baby feet images to appear
   * Enhanced image loading with crossOrigin="anonymous" and loading="lazy" attributes
   * Console logs confirm API returning correct thumbnailUrl data from database
+- July 14, 2025. COMPLETED: Custom course image integration with user-provided screenshots:
+  * Updated database with specific course images from user screenshots stored as /assets/ paths
+  * Course image mapping: Preparation for newborns (baby in light blue), Little baby sleep program (baby in yellow), Big baby sleep program (baby in light blue on striped blanket), Pre-toddler sleep program (toddler in white crawling), Toddler sleep program (toddler in gray sweater in crib), Toddler toolkit (toddler with teal cup), New sibling supplement (older child with baby), Twins supplement (twin babies in blue and white)
+  * Modified VideoCard component to handle /assets/ URLs by replacing with /attached_assets/ paths
+  * Updated image proxy security to allow /assets/ paths alongside Unsplash URLs
+  * All course images now served from attached_assets folder as single source of truth
 ```
 
 ## User Preferences
