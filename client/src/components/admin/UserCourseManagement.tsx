@@ -1,274 +1,255 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Trash2, 
-  Plus, 
-  BookOpen, 
-  Calendar, 
-  DollarSign,
-  ShoppingCart,
-  X
-} from "lucide-react";
-import { Course } from "@shared/schema";
+import { BookOpen, X, Plus, DollarSign, Calendar, Eye } from "lucide-react";
 
-interface UserCourseManagementProps {
-  userId: string;
-  userName: string;
-  onClose: () => void;
+interface Course {
+  id: string;
+  title: string;
+  price: number;
+  category: string;
+  thumbnailUrl: string;
 }
 
-interface CoursePurchase {
-  id: number;
+interface UserCourse {
+  id: string;
+  courseId: string;
   userId: string;
-  courseId: number;
-  status: string;
-  amount: number;
-  currency: string;
   purchasedAt: string;
+  amount: number;
+  status: string;
   course: Course;
 }
 
-export default function UserCourseManagement({ userId, userName, onClose }: UserCourseManagementProps) {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+interface User {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+interface UserCourseManagementProps {
+  user: User;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function UserCourseManagement({ user, isOpen, onClose }: UserCourseManagementProps) {
+  const [selectedCourse, setSelectedCourse] = useState<UserCourse | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's purchased courses
-  const { data: userCourses = [], isLoading: coursesLoading } = useQuery({
-    queryKey: ["/api/admin/users", userId, "courses"],
-    queryFn: () => apiRequest("GET", `/api/admin/users/${userId}/courses`),
-    staleTime: 0,
+  const { data: userCourses, isLoading: coursesLoading } = useQuery({
+    queryKey: [`/api/admin/users/${user.id}/courses`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/admin/users/${user.id}/courses`);
+      return await response.json();
+    },
+    enabled: isOpen,
   });
 
-  // Fetch all available courses
-  const { data: allCourses = [], isLoading: allCoursesLoading } = useQuery({
-    queryKey: ["/api/admin/courses"],
-    queryFn: () => apiRequest("GET", "/api/admin/courses"),
-    staleTime: 0,
+  const { data: availableCourses } = useQuery({
+    queryKey: ["/api/courses"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/courses");
+      return await response.json();
+    },
+    enabled: isOpen,
   });
 
-  // Add course mutation
   const addCourseMutation = useMutation({
-    mutationFn: async (courseId: number) => {
-      return await apiRequest("POST", `/api/admin/users/${userId}/courses`, {
-        courseId
-      });
-    },
+    mutationFn: ({ courseId }: { courseId: string }) =>
+      apiRequest("POST", `/api/admin/users/${user.id}/courses`, { courseId }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/users/${user.id}/courses`] });
       toast({
-        title: "Course Added",
-        description: "Course successfully added to user.",
+        title: "Success",
+        description: "Course added successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users", userId, "courses"] });
-      setIsAddDialogOpen(false);
-      setSelectedCourseId(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: "Error Adding Course",
-        description: error.message || "Failed to add course to user.",
+        title: "Error",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Remove course mutation
   const removeCourseMutation = useMutation({
-    mutationFn: async (purchaseId: number) => {
-      return await apiRequest("DELETE", `/api/admin/users/${userId}/courses/${purchaseId}`);
-    },
+    mutationFn: ({ courseId }: { courseId: string }) =>
+      apiRequest("DELETE", `/api/admin/users/${user.id}/courses/${courseId}`),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/users/${user.id}/courses`] });
       toast({
-        title: "Course Removed",
-        description: "Course successfully removed from user.",
+        title: "Success",
+        description: "Course removed successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users", userId, "courses"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: "Error Removing Course",
-        description: error.message || "Failed to remove course from user.",
+        title: "Error",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Get available courses that user doesn't have
-  const availableCourses = allCourses.filter(course => 
-    !userCourses.some((purchase: CoursePurchase) => 
-      purchase.courseId === course.id && purchase.status === 'completed'
-    )
-  );
-
-  const handleAddCourse = () => {
-    if (selectedCourseId) {
-      addCourseMutation.mutate(selectedCourseId);
-    }
+  const handleAddCourse = (courseId: string) => {
+    addCourseMutation.mutate({ courseId });
   };
 
-  const handleRemoveCourse = (purchaseId: number) => {
-    removeCourseMutation.mutate(purchaseId);
+  const handleRemoveCourse = (courseId: string) => {
+    removeCourseMutation.mutate({ courseId });
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatPrice = (amount: number) => {
-    return amount === 0 ? "Free" : `$${(amount / 100).toFixed(2)}`;
+  const getCategoryColor = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "sleep":
+        return "bg-blue-100 text-blue-800";
+      case "nutrition":
+        return "bg-green-100 text-green-800";
+      case "health":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold">Course Management: {userName}</h2>
-          <Button variant="outline" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Course Management: {user.first_name || user.firstName} {user.last_name || user.lastName}
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-teal-600" />
-              <h3 className="text-lg font-medium">
-                Purchased Courses ({userCourses.length})
-              </h3>
-            </div>
-            
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-teal-600 hover:bg-teal-700 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Course
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Add Course to User</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Select Course
-                    </label>
-                    <Select 
-                      value={selectedCourseId?.toString() || ""} 
-                      onValueChange={(value) => setSelectedCourseId(parseInt(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a course to add" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableCourses.map((course) => (
-                          <SelectItem key={course.id} value={course.id.toString()}>
-                            {course.title} - {course.category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsAddDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={handleAddCourse}
-                      disabled={!selectedCourseId || addCourseMutation.isPending}
-                      className="bg-teal-600 hover:bg-teal-700"
-                    >
-                      {addCourseMutation.isPending ? "Adding..." : "Add Course"}
-                    </Button>
-                  </div>
+        <div className="space-y-6">
+          {/* User's Purchased Courses */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Purchased Courses ({userCourses?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {coursesLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-16 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {coursesLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full mx-auto" />
-              <p className="mt-2 text-sm text-gray-600">Loading courses...</p>
-            </div>
-          ) : userCourses.length === 0 ? (
-            <div className="text-center py-8">
-              <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No courses purchased yet.</p>
-              <p className="text-sm text-gray-400 mt-1">
-                Click "Add Course" to grant access to courses.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {userCourses.map((purchase: CoursePurchase) => (
-                <Card key={purchase.id} className="border-gray-200">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h4 className="font-medium text-lg">
-                            {purchase.course?.title || "Unknown Course"}
-                          </h4>
-                          <Badge 
-                            variant={purchase.status === 'completed' ? 'default' : 'secondary'}
-                            className={purchase.status === 'completed' ? 'bg-green-100 text-green-800' : ''}
-                          >
-                            {purchase.status}
-                          </Badge>
+              ) : userCourses?.length > 0 ? (
+                <div className="space-y-3">
+                  {userCourses.map((userCourse: UserCourse) => (
+                    <div
+                      key={userCourse.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                          <BookOpen className="h-6 w-6 text-gray-500" />
                         </div>
-                        
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                          <div className="flex items-center gap-1">
-                            <BookOpen className="h-4 w-4" />
-                            {purchase.course?.category || "Unknown"}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4" />
-                            {formatPrice(purchase.amount)}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {formatDate(purchase.purchasedAt)}
+                        <div>
+                          <h4 className="font-medium">{userCourse.course?.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <Badge className={getCategoryColor(userCourse.course?.category || "")}>
+                              {userCourse.course?.category}
+                            </Badge>
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="h-3 w-3" />
+                              ${userCourse.amount}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(userCourse.purchasedAt)}
+                            </span>
                           </div>
                         </div>
-                        
-                        {purchase.course?.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {purchase.course.description}
-                          </p>
-                        )}
                       </div>
-                      
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleRemoveCourse(purchase.id)}
+                        onClick={() => handleRemoveCourse(userCourse.courseId)}
                         disabled={removeCourseMutation.isPending}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-600 hover:text-red-800"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  No courses purchased yet
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Available Courses to Add */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add Course Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {availableCourses?.filter((course: Course) => 
+                  !userCourses?.some((uc: UserCourse) => uc.courseId === course.id)
+                ).map((course: Course) => (
+                  <div
+                    key={course.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-gray-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{course.title}</h4>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`${getCategoryColor(course.category)} text-xs`}>
+                            {course.category}
+                          </Badge>
+                          <span className="text-xs text-gray-500">${course.price}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAddCourse(course.id)}
+                      disabled={addCourseMutation.isPending}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
