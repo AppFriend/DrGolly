@@ -2637,7 +2637,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(shoppingProducts)
-      .where(eq(shoppingProducts.isActive, true))
+      .where(eq(shoppingProducts.inStock, true))
       .orderBy(shoppingProducts.title);
   }
 
