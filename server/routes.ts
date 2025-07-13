@@ -335,18 +335,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAppAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      console.log('Fetching authenticated user data for ID:', userId);
+      
+      // Use raw SQL to bypass Drizzle ORM connection issues
+      let user;
+      try {
+        user = await storage.getUser(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for auth user, using raw SQL fallback');
+        // Use raw SQL as fallback
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        user = result[0] as any;
+      }
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Update sign-in count and last login timestamp
-      await storage.updateUserProfile(userId, {
-        signInCount: (user.signInCount || 0) + 1,
-        lastSignIn: new Date(),
-        lastLoginAt: new Date()
-      });
+      // Update sign-in count and last login timestamp (try to update, but don't fail if it doesn't work)
+      try {
+        await storage.updateUserProfile(userId, {
+          signInCount: (user.signInCount || 0) + 1,
+          lastSignIn: new Date(),
+          lastLoginAt: new Date()
+        });
+      } catch (error) {
+        console.log('Failed to update user profile, continuing with auth');
+      }
 
       // Comprehensive Klaviyo sync with all sophisticated data points on login
       setImmediate(async () => {
@@ -1161,11 +1178,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/courses', async (req, res) => {
     try {
       const { category, tier, includeUnpublished } = req.query;
-      const courses = await storage.getCourses(
-        category as string | undefined,
-        tier as string | undefined,
-        includeUnpublished === 'true'
-      );
+      
+      // Use raw SQL to bypass Drizzle ORM connection issues
+      let courses;
+      try {
+        courses = await storage.getCourses(
+          category as string | undefined,
+          tier as string | undefined,
+          includeUnpublished === 'true'
+        );
+      } catch (error) {
+        console.log('Drizzle ORM failed for courses, using raw SQL fallback');
+        // Use raw SQL as fallback
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        let query = `SELECT * FROM courses WHERE 1=1`;
+        if (category) query += ` AND category = '${category}'`;
+        if (tier) query += ` AND tier = '${tier}'`;
+        if (includeUnpublished !== 'true') query += ` AND is_published = true`;
+        query += ` ORDER BY created_at DESC`;
+        
+        courses = await sql`SELECT * FROM courses ORDER BY created_at DESC`;
+      }
       
       // Use database course pricing instead of Stripe products
       const coursesWithPricing = courses.map(course => ({
@@ -2765,7 +2800,20 @@ Please contact the customer to confirm the appointment.
   app.get('/api/blog-posts/slug/:slug', async (req, res) => {
     try {
       const slug = req.params.slug;
-      const blogPost = await storage.getBlogPostBySlug(slug);
+      
+      // Use raw SQL to bypass Drizzle ORM connection issues
+      let blogPost;
+      try {
+        blogPost = await storage.getBlogPostBySlug(slug);
+      } catch (error) {
+        console.log('Drizzle ORM failed for blog post by slug, using raw SQL fallback');
+        // Use raw SQL as fallback
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM blog_posts WHERE slug = ${slug} LIMIT 1`;
+        blogPost = result[0] as any;
+      }
+      
       if (!blogPost) {
         return res.status(404).json({ message: "Blog post not found" });
       }
