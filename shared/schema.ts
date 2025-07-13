@@ -1102,6 +1102,26 @@ export const insertShoppingProductSchema = createInsertSchema(shoppingProducts).
 export type ShoppingProduct = typeof shoppingProducts.$inferSelect;
 export type InsertShoppingProduct = z.infer<typeof insertShoppingProductSchema>;
 
+// Shopping cart system
+export const cartItems = pgTable("cart_items", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  itemType: varchar("item_type").notNull(), // 'course' or 'book'
+  itemId: integer("item_id").notNull(), // course ID or book ID
+  quantity: integer("quantity").default(1),
+  addedAt: timestamp("added_at").defaultNow(),
+});
+
+// Cart schemas
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({
+  id: true,
+  addedAt: true,
+});
+
+// Cart types
+export type CartItem = typeof cartItems.$inferSelect;
+export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+
 // Stripe product types
 export type StripeProduct = typeof stripeProducts.$inferSelect;
 export type InsertStripeProduct = z.infer<typeof insertStripeProductSchema>;

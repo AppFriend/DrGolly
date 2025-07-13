@@ -6731,6 +6731,72 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Cart endpoints
+  app.get('/api/cart', isAppAuthenticated, async (req, res) => {
+    try {
+      const cart = await storage.getUserCart(req.user.id);
+      res.json(cart);
+    } catch (error: any) {
+      console.error("Error fetching cart:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/cart', isAppAuthenticated, async (req, res) => {
+    try {
+      const cartItem = await storage.addToCart({
+        userId: req.user.id,
+        itemType: req.body.itemType,
+        itemId: req.body.itemId,
+        quantity: req.body.quantity || 1
+      });
+      res.json(cartItem);
+    } catch (error: any) {
+      console.error("Error adding to cart:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/cart/:id', isAppAuthenticated, async (req, res) => {
+    try {
+      const cartItem = await storage.updateCartItem(parseInt(req.params.id), req.body.quantity);
+      res.json(cartItem);
+    } catch (error: any) {
+      console.error("Error updating cart item:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/cart/:id', isAppAuthenticated, async (req, res) => {
+    try {
+      await storage.removeFromCart(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error removing from cart:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/cart', isAppAuthenticated, async (req, res) => {
+    try {
+      await storage.clearUserCart(req.user.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error clearing cart:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/cart/count', isAppAuthenticated, async (req, res) => {
+    try {
+      const count = await storage.getCartItemCount(req.user.id);
+      res.json({ count });
+    } catch (error: any) {
+      console.error("Error getting cart count:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get regional pricing for products
   app.get('/api/regional-pricing', async (req, res) => {
     try {
