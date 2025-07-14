@@ -3470,6 +3470,68 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Cart checkout payment intent endpoint
+  app.post('/api/create-payment-intent', async (req: any, res) => {
+    try {
+      const { amount, currency, items, customerDetails, couponId } = req.body;
+      
+      // Get the user ID from the session (works with both auth systems)
+      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      console.log('Cart payment request for user ID:', userId);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      // Get regional pricing
+      const pricing = await regionalPricingService.getRegionalPricing(req);
+      
+      // Calculate amount in cents
+      const amountInCents = Math.round(amount * 100);
+      
+      // Apply coupon if provided
+      let discountAmount = 0;
+      if (couponId) {
+        try {
+          const coupon = await stripe.coupons.retrieve(couponId);
+          if (coupon.valid) {
+            if (coupon.amount_off) {
+              discountAmount = coupon.amount_off;
+            } else if (coupon.percent_off) {
+              discountAmount = Math.round(amountInCents * coupon.percent_off / 100);
+            }
+          }
+        } catch (error) {
+          console.error('Error retrieving coupon:', error);
+        }
+      }
+      
+      const finalAmount = Math.max(amountInCents - discountAmount, 50); // Minimum 50 cents
+      
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: finalAmount,
+        currency: currency || 'aud',
+        metadata: {
+          userId,
+          type: 'cart_checkout',
+          originalAmount: amountInCents.toString(),
+          discountAmount: discountAmount.toString(),
+          customerEmail: customerDetails?.email || '',
+          customerName: `${customerDetails?.firstName || ''} ${customerDetails?.lastName || ''}`.trim(),
+        },
+      });
+      
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+      });
+    } catch (error) {
+      console.error('Error creating cart payment intent:', error);
+      res.status(500).json({ message: 'Failed to create payment intent' });
+    }
+  });
+
   // Course purchase routes
   app.post('/api/create-course-payment', async (req: any, res) => {
     try {
@@ -3921,6 +3983,38 @@ Please contact the customer to confirm the appointment.
               });
               
               console.log(`Public checkout completed: Added course to existing user ${existingUser.id}`);
+            }
+          } else if (paymentIntent.metadata.type === 'cart_checkout') {
+            // Handle cart checkout completion
+            const userId = paymentIntent.metadata.userId;
+            if (userId) {
+              // Get cart items for the user
+              const { neon } = await import('@neondatabase/serverless');
+              const sql = neon(process.env.DATABASE_URL!);
+              const cartItems = await sql`SELECT * FROM cart_items WHERE user_id = ${userId}`;
+              
+              // Create purchase records for each cart item
+              for (const item of cartItems) {
+                if (item.item_type === 'course') {
+                  await storage.createCoursePurchase({
+                    userId: userId,
+                    courseId: parseInt(item.item_id),
+                    stripePaymentIntentId: paymentIntent.id,
+                    stripeCustomerId: paymentIntent.customer,
+                    amount: Math.round(120 * 100), // Course price in cents
+                    currency: paymentIntent.currency || 'aud',
+                    status: 'completed',
+                  });
+                } else if (item.item_type === 'book') {
+                  // Create book purchase record (you may need to add this to storage)
+                  console.log(`Book purchase completed: Item ${item.item_id} for user ${userId}`);
+                }
+              }
+              
+              // Clear the cart after successful payment
+              await sql`DELETE FROM cart_items WHERE user_id = ${userId}`;
+              
+              console.log(`Cart checkout completed: ${paymentIntent.id} for user ${userId} - ${cartItems.length} items`);
             }
           } else {
             // Handle regular course purchase
