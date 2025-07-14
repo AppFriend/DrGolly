@@ -225,6 +225,15 @@ export default function Courses() {
   });
 
   const handleAddToCart = (course: Course) => {
+    if (!course || !course.id) {
+      toast({
+        title: "Error",
+        description: "Course information is missing. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     addToCartMutation.mutate({
       itemType: 'course',
       itemId: course.id,
