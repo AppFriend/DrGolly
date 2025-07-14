@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Play, CheckCircle, Circle, Clock, BookOpen, ArrowRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ChevronLeft, Play, CheckCircle, Circle, Clock, BookOpen, ArrowRight, Trophy, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { isUnauthorizedError } from '@/lib/authUtils';
@@ -68,6 +69,7 @@ export default function LessonPage() {
   const queryClient = useQueryClient();
   const [watchTime, setWatchTime] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [showChapterCompleteModal, setShowChapterCompleteModal] = useState(false);
   
   // Extract contentId from query parameters
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
@@ -100,15 +102,7 @@ export default function LessonPage() {
     },
   });
 
-  // Debug lesson loading
-  useEffect(() => {
-    if (id) {
-      console.log(`Loading lesson ${id}, isAuthenticated: ${isAuthenticated}, isLoading: ${lessonLoading}, error:`, error);
-      if (lessonData) {
-        console.log('Lesson data loaded:', lessonData);
-      }
-    }
-  }, [id, isAuthenticated, lessonLoading, error, lessonData]);
+
 
   const markProgressMutation = useMutation({
     mutationFn: async (data: { completed: boolean; watchTime: number }) => {
@@ -159,19 +153,8 @@ export default function LessonPage() {
           origin: { y: 0.6 }
         });
         
-        // Show chapter completion modal/toast
-        toast({
-          title: "🎉 Awesome work on completing the chapter!",
-          description: "You're doing great! Keep going with the next chapter.",
-          duration: 3000,
-        });
-        
-        // Navigate back to course overview after celebration
-        setTimeout(() => {
-          if (lessonData.lesson.courseId) {
-            setLocation(`/courses/${lessonData.lesson.courseId}`);
-          }
-        }, 2000);
+        // Show chapter completion modal
+        setShowChapterCompleteModal(true);
         return;
       }
     }
@@ -188,11 +171,19 @@ export default function LessonPage() {
     }
   };
 
-  const handleBackToCourse = () => {
+  const handleBackToChapters = () => {
     if (lessonData?.lesson.courseId) {
       setLocation(`/courses/${lessonData.lesson.courseId}`);
     } else {
       setLocation('/courses');
+    }
+  };
+
+  const handleChapterCompleteModalClose = () => {
+    setShowChapterCompleteModal(false);
+    // Navigate back to course overview
+    if (lessonData?.lesson.courseId) {
+      setLocation(`/courses/${lessonData.lesson.courseId}`);
     }
   };
 
@@ -254,11 +245,11 @@ export default function LessonPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleBackToCourse}
+                onClick={handleBackToChapters}
                 className="text-gray-600 hover:text-gray-900"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
-                Back to Course
+                Back to Chapters
               </Button>
               <div className="text-sm text-gray-500">
                 {course.title}
@@ -464,6 +455,40 @@ export default function LessonPage() {
         </div>
       </div>
 
+      {/* Chapter Completion Modal */}
+      <Dialog open={showChapterCompleteModal} onOpenChange={setShowChapterCompleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <Trophy className="w-8 h-8 text-green-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-xl font-bold">
+              🎉 Awesome work on completing the chapter!
+            </DialogTitle>
+            <DialogDescription className="text-center text-gray-600 mt-2">
+              You're doing great! Keep going with the next chapter.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center space-y-4 mt-6">
+            <div className="flex items-center space-x-1">
+              <Star className="w-5 h-5 text-yellow-500 fill-current" />
+              <Star className="w-5 h-5 text-yellow-500 fill-current" />
+              <Star className="w-5 h-5 text-yellow-500 fill-current" />
+            </div>
+            
+            <Button
+              onClick={handleChapterCompleteModalClose}
+              className="w-full bg-green-700 hover:bg-green-800 text-white"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Head back to chapters
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
