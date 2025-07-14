@@ -818,6 +818,16 @@ Changelog:
   * Created PR templates and issue templates for consistent workflow
   * Updated "Testing allergens" course image to correct asset from user screenshot
   * All scripts executable and ready for team use with proper permission management
+
+- July 15, 2025. RECOMMENDED: Multi-environment deployment strategy for internal testing:
+  * Branch structure: main (production) → test (staging) → dev (development)
+  * Environment setup: Production app, staging app for internal testing, development app
+  * Database strategy: Separate staging database or prefixed tables for isolation
+  * Testing workflow: feature → dev → test → main with internal team approval
+  * Automated deployment: GitHub Actions triggers for test branch deployments
+  * Internal user testing: Staging environment with test users for pre-production validation
+  * Feedback collection: Integration with team communication tools for bug reports
+  * Status: Ready for implementation with separate Replit staging project
 - July 15, 2025. COMPLETED: Comprehensive admin user management system restoration:
   * Fixed critical React Query configuration issue preventing user data display
   * Implemented raw SQL fallback for admin endpoints when Drizzle ORM fails with "HTTP request body parse" errors
