@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useState } from "react";
+import { LoadingAnimation } from "@/components/ui/loading-animation";
 
 // Klaviyo Integration Test Component
 function KlaviyoTestSection() {
@@ -173,7 +174,7 @@ export default function AuthTestPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-brand-teal"></div>
+        <LoadingAnimation size="xl" />
       </div>
     );
   }

@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { Course } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
+import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import { FacebookPixel } from "@/lib/facebook-pixel";
 
 interface CheckoutFormProps {
@@ -225,7 +225,7 @@ export function CheckoutForm({ course, customerDetails, total }: CheckoutFormPro
             <img
               src={paymentLoaderGif}
               alt="Processing payment..."
-              className="w-24 h-24 mx-auto mb-4"
+              className="w-24 h-24 mx-auto mb-4 object-contain"
             />
             <p className="text-lg font-semibold text-gray-700">Processing Payment...</p>
             <p className="text-sm text-gray-500 mt-1">Please wait while we process your payment</p>

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { LoadingAnimation } from "@/components/ui/loading-animation";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 
@@ -22,7 +23,7 @@ export default function LoginPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-brand-teal"></div>
+        <LoadingAnimation size="xl" />
       </div>
     );
   }
