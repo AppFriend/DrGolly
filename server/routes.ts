@@ -2915,17 +2915,44 @@ Please contact the customer to confirm the appointment.
       console.log(`Found course: ${course.title}`);
       
       // Check if user has access to this lesson using the same logic as /api/user/courses
-      const user = await storage.getUser(userId);
-      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      let user;
+      try {
+        user = await storage.getUser(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for user, using raw SQL fallback');
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE id = ${userId}`;
+        user = result[0];
+      }
+      const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" || user?.subscription_tier === "gold" || user?.subscription_tier === "platinum";
       
-      // Check both recent purchases and historical courses
-      const coursePurchases = await storage.getUserCoursePurchases(userId);
-      const hasPurchased = coursePurchases.some(purchase => purchase.courseId === courseId && purchase.status === 'completed');
+      // Check both recent purchases and historical courses with raw SQL fallback
+      let coursePurchases;
+      try {
+        coursePurchases = await storage.getUserCoursePurchases(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for course purchases, using raw SQL fallback');
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        coursePurchases = await sql`
+          SELECT * FROM course_purchases 
+          WHERE user_id = ${userId} 
+          ORDER BY purchased_at DESC
+        `;
+      }
+      
+      // If still no course purchases, default to empty array
+      if (!coursePurchases) {
+        coursePurchases = [];
+      }
+      const hasPurchased = coursePurchases.some((purchase: any) => (purchase.courseId || purchase.course_id) === courseId && purchase.status === 'completed');
       
       // Check historical courses from courses_purchased_previously field
       let hasHistoricalAccess = false;
-      if (user?.courses_purchased_previously) {
-        const historicalCourses = user.courses_purchased_previously.split(',').map(name => name.trim());
+      const historicalCoursesField = user?.courses_purchased_previously || user?.courses_purchased_previously;
+      if (historicalCoursesField) {
+        const historicalCourses = historicalCoursesField.split(',').map(name => name.trim());
         hasHistoricalAccess = historicalCourses.some(courseName => {
           // Map course names to course IDs (same mapping as /api/user/courses)
           const courseMapping: { [key: string]: number } = {
@@ -2976,13 +3003,17 @@ Please contact the customer to confirm the appointment.
       const progress = await storage.getUserLessonProgress(userId, lessonId);
       console.log(`Progress: ${progress ? 'found' : 'not found'}`);
       
-      // Get next lesson in the course
-      console.log(`Getting next lesson after chapter ${lesson.chapterId}, order ${lesson.orderIndex}`);
-      const nextLesson = await storage.getNextLesson(lesson.courseId, lesson.chapterId, lesson.orderIndex);
+      // Get next lesson in the course (handle both field name conventions)
+      const lessonChapterId = lesson.chapterId || lesson.chapter_id;
+      const lessonOrderIndex = lesson.orderIndex || lesson.order_index;
+      const lessonCourseId = lesson.courseId || lesson.course_id;
+      
+      console.log(`Getting next lesson after chapter ${lessonChapterId}, order ${lessonOrderIndex}`);
+      const nextLesson = await storage.getNextLesson(lessonCourseId, lessonChapterId, lessonOrderIndex);
       console.log(`Next lesson: ${nextLesson ? nextLesson.title : 'none'}`);
       
       // Check if this is the last lesson in the current chapter
-      const isLastInChapter = !nextLesson || (nextLesson && nextLesson.chapterId !== lesson.chapterId);
+      const isLastInChapter = !nextLesson || (nextLesson && (nextLesson.chapterId || nextLesson.chapter_id) !== lessonChapterId);
       
       res.json({
         lesson,

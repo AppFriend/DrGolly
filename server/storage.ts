@@ -1234,11 +1234,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserLessonProgress(userId: string, lessonId: number): Promise<UserLessonProgress | undefined> {
-    const [progress] = await db
-      .select()
-      .from(userLessonProgress)
-      .where(and(eq(userLessonProgress.userId, userId), eq(userLessonProgress.lessonId, lessonId)));
-    return progress;
+    try {
+      const [progress] = await db
+        .select()
+        .from(userLessonProgress)
+        .where(and(eq(userLessonProgress.userId, userId), eq(userLessonProgress.lessonId, lessonId)));
+      return progress;
+    } catch (error) {
+      console.log('Drizzle ORM failed for getUserLessonProgress, using raw SQL fallback');
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`
+        SELECT * FROM user_lesson_progress 
+        WHERE user_id = ${userId} AND lesson_id = ${lessonId}
+      `;
+      if (result.length > 0) {
+        const row = result[0];
+        return {
+          id: row.id,
+          userId: row.user_id,
+          lessonId: row.lesson_id,
+          completed: row.completed,
+          watchTime: row.watch_time,
+          completedAt: row.completed_at,
+          createdAt: row.created_at
+        };
+      }
+      return undefined;
+    }
   }
 
   async getAllUserLessonProgress(userId: string): Promise<UserLessonProgress[]> {
@@ -1324,7 +1347,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLessonContent(lessonId: number): Promise<LessonContent[]> {
-    return await db.select().from(lessonContent).where(eq(lessonContent.lessonId, lessonId)).orderBy(lessonContent.orderIndex);
+    try {
+      return await db.select().from(lessonContent).where(eq(lessonContent.lessonId, lessonId)).orderBy(lessonContent.orderIndex);
+    } catch (error) {
+      console.log('Drizzle ORM failed for getLessonContent, using raw SQL fallback');
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`
+        SELECT * FROM lesson_content 
+        WHERE lesson_id = ${lessonId} 
+        ORDER BY order_index
+      `;
+      return result.map((row: any) => ({
+        id: row.id,
+        lessonId: row.lesson_id,
+        title: row.title,
+        description: row.description,
+        videoUrl: row.video_url,
+        content: row.content,
+        duration: row.duration,
+        orderIndex: row.order_index,
+        createdAt: row.created_at
+      }));
+    }
   }
 
   async getLessonContentByCourse(courseId: number): Promise<LessonContent[]> {
@@ -1379,51 +1424,110 @@ export class DatabaseStorage implements IStorage {
 
   // Get next lesson in course
   async getNextLesson(courseId: number, currentChapterId: number, currentOrderIndex: number): Promise<CourseLesson | null> {
-    // Handle null/undefined values by getting the first lesson in the course
-    if (currentChapterId === undefined || currentChapterId === null || 
-        currentOrderIndex === undefined || currentOrderIndex === null) {
-      const firstLesson = await db
+    try {
+      // Handle null/undefined values by getting the first lesson in the course
+      if (currentChapterId === undefined || currentChapterId === null || 
+          currentOrderIndex === undefined || currentOrderIndex === null) {
+        const firstLesson = await db
+          .select()
+          .from(courseLessons)
+          .where(eq(courseLessons.courseId, courseId))
+          .orderBy(courseLessons.chapterId, courseLessons.orderIndex)
+          .limit(1);
+        
+        return firstLesson.length > 0 ? firstLesson[0] : null;
+      }
+
+      // First try to find next lesson in the same chapter
+      const nextInChapter = await db
         .select()
         .from(courseLessons)
-        .where(eq(courseLessons.courseId, courseId))
+        .where(
+          and(
+            eq(courseLessons.courseId, courseId),
+            eq(courseLessons.chapterId, currentChapterId),
+            gt(courseLessons.orderIndex, currentOrderIndex)
+          )
+        )
+        .orderBy(courseLessons.orderIndex)
+        .limit(1);
+
+      if (nextInChapter.length > 0) {
+        return nextInChapter[0];
+      }
+
+      // If no next lesson in current chapter, find first lesson in next chapter
+      const nextChapter = await db
+        .select()
+        .from(courseLessons)
+        .where(
+          and(
+            eq(courseLessons.courseId, courseId),
+            gt(courseLessons.chapterId, currentChapterId)
+          )
+        )
         .orderBy(courseLessons.chapterId, courseLessons.orderIndex)
         .limit(1);
+
+      return nextChapter.length > 0 ? nextChapter[0] : null;
+    } catch (error) {
+      console.log('Drizzle ORM failed for getNextLesson, using raw SQL fallback');
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
       
-      return firstLesson.length > 0 ? firstLesson[0] : null;
+      // Handle null/undefined values by getting the first lesson in the course
+      if (currentChapterId === undefined || currentChapterId === null || 
+          currentOrderIndex === undefined || currentOrderIndex === null) {
+        const result = await sql`
+          SELECT * FROM course_lessons 
+          WHERE course_id = ${courseId} 
+          ORDER BY chapter_id, order_index 
+          LIMIT 1
+        `;
+        return result.length > 0 ? this.mapLessonRow(result[0]) : null;
+      }
+
+      // First try to find next lesson in the same chapter
+      const nextInChapter = await sql`
+        SELECT * FROM course_lessons 
+        WHERE course_id = ${courseId} AND chapter_id = ${currentChapterId} AND order_index > ${currentOrderIndex}
+        ORDER BY order_index 
+        LIMIT 1
+      `;
+
+      if (nextInChapter.length > 0) {
+        return this.mapLessonRow(nextInChapter[0]);
+      }
+
+      // If no next lesson in current chapter, find first lesson in next chapter
+      const nextChapter = await sql`
+        SELECT * FROM course_lessons 
+        WHERE course_id = ${courseId} AND chapter_id > ${currentChapterId}
+        ORDER BY chapter_id, order_index 
+        LIMIT 1
+      `;
+
+      return nextChapter.length > 0 ? this.mapLessonRow(nextChapter[0]) : null;
     }
+  }
 
-    // First try to find next lesson in the same chapter
-    const nextInChapter = await db
-      .select()
-      .from(courseLessons)
-      .where(
-        and(
-          eq(courseLessons.courseId, courseId),
-          eq(courseLessons.chapterId, currentChapterId),
-          gt(courseLessons.orderIndex, currentOrderIndex)
-        )
-      )
-      .orderBy(courseLessons.orderIndex)
-      .limit(1);
-
-    if (nextInChapter.length > 0) {
-      return nextInChapter[0];
-    }
-
-    // If no next lesson in current chapter, find first lesson in next chapter
-    const nextChapter = await db
-      .select()
-      .from(courseLessons)
-      .where(
-        and(
-          eq(courseLessons.courseId, courseId),
-          gt(courseLessons.chapterId, currentChapterId)
-        )
-      )
-      .orderBy(courseLessons.chapterId, courseLessons.orderIndex)
-      .limit(1);
-
-    return nextChapter.length > 0 ? nextChapter[0] : null;
+  private mapLessonRow(row: any): CourseLesson {
+    return {
+      id: row.id,
+      courseId: row.course_id,
+      chapterId: row.chapter_id,
+      title: row.title,
+      description: row.description,
+      content: row.content,
+      videoUrl: row.video_url,
+      thumbnailUrl: row.thumbnail_url,
+      orderIndex: row.order_index,
+      contentType: row.content_type,
+      duration: row.duration,
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
   }
 
   async isChapterCompleted(courseId: number, chapterIndex: number, userId: string): Promise<boolean> {
@@ -1628,9 +1732,33 @@ export class DatabaseStorage implements IStorage {
   // Course purchase operations
   async getUserCoursePurchases(userId: string): Promise<CoursePurchase[]> {
     // Return all purchases (not just completed) so frontend can filter appropriately
-    return await db.select().from(coursePurchases)
-      .where(eq(coursePurchases.userId, userId))
-      .orderBy(desc(coursePurchases.purchasedAt));
+    try {
+      return await db.select().from(coursePurchases)
+        .where(eq(coursePurchases.userId, userId))
+        .orderBy(desc(coursePurchases.purchasedAt));
+    } catch (error) {
+      console.log('Drizzle ORM failed for getUserCoursePurchases, using raw SQL fallback');
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`
+        SELECT * FROM course_purchases 
+        WHERE user_id = ${userId} 
+        ORDER BY purchased_at DESC
+      `;
+      return result.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        courseId: row.course_id,
+        stripeProductId: row.stripe_product_id,
+        stripePaymentIntentId: row.stripe_payment_intent_id,
+        stripeCustomerId: row.stripe_customer_id,
+        amount: row.amount,
+        currency: row.currency,
+        status: row.status,
+        purchasedAt: row.purchased_at,
+        createdAt: row.created_at
+      }));
+    }
   }
 
   async getCoursePurchase(id: number): Promise<CoursePurchase | undefined> {
