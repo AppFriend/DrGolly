@@ -5515,6 +5515,17 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Course engagement endpoint for admin dashboard
+  app.get('/api/admin/course-engagement', isAdmin, async (req, res) => {
+    try {
+      const courseEngagement = await storage.getCourseEngagement();
+      res.json(courseEngagement);
+    } catch (error) {
+      console.error("Error fetching course engagement:", error);
+      res.status(500).json({ message: "Failed to fetch course engagement" });
+    }
+  });
+
   app.get('/api/admin/users', isAdmin, async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;

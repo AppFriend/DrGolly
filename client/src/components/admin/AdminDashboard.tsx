@@ -242,7 +242,7 @@ export function AdminDashboard() {
         
         <MetricCard
           title="Avg Engagement"
-          value={`${calculateAverageEngagement(courseEngagement)}%`}
+          value={engagementLoading ? "Loading..." : `${calculateAverageEngagement(courseEngagement)}%`}
           icon={<BarChart3 className="h-4 w-4 text-blue-500" />}
           description="Course completion rate"
         />
