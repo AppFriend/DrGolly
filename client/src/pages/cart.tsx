@@ -123,19 +123,22 @@ export default function Cart() {
   });
 
   const getItemDetails = (item: CartItem) => {
-    if (item.itemType === 'book') {
-      const product = shoppingProducts.find(p => p.id === parseInt(item.itemId));
+    const itemType = item.itemType || (item as any).item_type;
+    const itemId = item.itemId || (item as any).item_id;
+    
+    if (itemType === 'book') {
+      const product = shoppingProducts.find(p => p.id === parseInt(itemId));
       return product ? {
         title: product.title,
         image: productImages[product.id],
         price: getProductPrice(product),
         author: product.author,
       } : null;
-    } else if (item.itemType === 'course') {
-      const course = courses.find(c => c.id === parseInt(item.itemId));
+    } else if (itemType === 'course') {
+      const course = courses.find(c => c.id === parseInt(itemId));
       return course ? {
         title: course.title,
-        image: null,
+        image: course.thumbnailUrl ? course.thumbnailUrl.replace('/assets/', '/attached_assets/') : null,
         price: regionalPricing?.amount || 120,
         author: 'Dr. Golly',
       } : null;
