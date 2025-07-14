@@ -152,7 +152,7 @@ function PaymentForm({
   }, [stripe, elements, coursePrice, currency, isMobile, customerDetails, course]);
 
   const handleCreatePayment = async (customerInfo: any) => {
-    const response = await apiRequest('POST', '/api/create-payment-intent', {
+    const response = await apiRequest('POST', '/api/create-course-payment', {
       courseId: course.id,
       customerDetails: customerInfo,
       couponId: appliedCoupon?.id
