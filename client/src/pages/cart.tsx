@@ -230,12 +230,17 @@ export default function Cart() {
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <img 
-              src={drGollyLogo} 
-              alt="Dr. Golly" 
-              className="h-8 w-auto object-contain"
-              style={{ filter: 'brightness(0) invert(1)' }}
-            />
+            <button
+              onClick={() => setLocation("/home")}
+              className="hover:opacity-80 transition-opacity"
+            >
+              <img 
+                src={drGollyLogo} 
+                alt="Dr. Golly" 
+                className="h-8 w-auto object-contain"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+            </button>
           </div>
           <div className="flex items-center space-x-2">
             <ShoppingCart className="h-5 w-5" />
