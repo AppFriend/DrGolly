@@ -64,12 +64,7 @@ export default function CourseOverview() {
     enabled: !!user,
   });
 
-  // Debug logging
-  React.useEffect(() => {
-    if (userProgress) {
-      console.log('User progress data:', userProgress);
-    }
-  }, [userProgress]);
+
 
   // Check user's access to this course
   const hasAccess = () => {
