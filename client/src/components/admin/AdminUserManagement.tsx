@@ -25,6 +25,7 @@ import {
   Shield
 } from "lucide-react";
 import UserCourseManagement from "./UserCourseManagement";
+import { UserTransactionHistory } from "./UserTransactionHistory";
 
 interface User {
   id: string;
@@ -59,6 +60,8 @@ export function AdminUserManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUserForCourses, setSelectedUserForCourses] = useState<User | null>(null);
   const [isCourseManagementOpen, setIsCourseManagementOpen] = useState(false);
+  const [selectedUserForTransactions, setSelectedUserForTransactions] = useState<User | null>(null);
+  const [isTransactionHistoryOpen, setIsTransactionHistoryOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(20);
 
@@ -132,6 +135,16 @@ export function AdminUserManagement() {
   const handleCloseCourseManagement = () => {
     setIsCourseManagementOpen(false);
     setSelectedUserForCourses(null);
+  };
+
+  const handleViewTransactions = (user: User) => {
+    setSelectedUserForTransactions(user);
+    setIsTransactionHistoryOpen(true);
+  };
+
+  const handleCloseTransactionHistory = () => {
+    setIsTransactionHistoryOpen(false);
+    setSelectedUserForTransactions(null);
   };
 
   const displayUsers = users || [];
@@ -232,6 +245,15 @@ export function AdminUserManagement() {
                             title="Manage Courses"
                           >
                             <BookOpen className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewTransactions(user)}
+                            className="h-7 w-7 p-0 flex-shrink-0"
+                            title="View Transactions"
+                          >
+                            <CreditCard className="h-3 w-3" />
                           </Button>
                           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                             <DialogTrigger asChild>
@@ -394,6 +416,21 @@ export function AdminUserManagement() {
           onClose={handleCloseCourseManagement}
         />
       )}
+
+      {/* Transaction History Modal */}
+      <Dialog open={isTransactionHistoryOpen} onOpenChange={setIsTransactionHistoryOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Transaction History</DialogTitle>
+          </DialogHeader>
+          {selectedUserForTransactions && (
+            <UserTransactionHistory 
+              userId={selectedUserForTransactions.id}
+              userName={`${selectedUserForTransactions.first_name || selectedUserForTransactions.firstName} ${selectedUserForTransactions.last_name || selectedUserForTransactions.lastName}`}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

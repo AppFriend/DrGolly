@@ -68,6 +68,11 @@ export function AdminDashboard() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  const { data: courseEngagement, isLoading: engagementLoading } = useQuery({
+    queryKey: ["/api/admin/courses/engagement"],
+    refetchInterval: 60000, // Refresh every minute
+  });
+
   const syncPendingTransactions = useMutation({
     mutationFn: async () => {
       return await apiRequest("POST", "/api/admin/sync-pending-transactions", {});
@@ -122,6 +127,19 @@ export function AdminDashboard() {
       currency: 'USD',
       minimumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const calculateAverageEngagement = (engagement: any[]) => {
+    if (!engagement || engagement.length === 0) return 0;
+    const total = engagement.reduce((sum, course) => sum + course.engagement_percentage, 0);
+    return Math.round(total / engagement.length);
+  };
+
+  const getMostEngagedCourse = (engagement: any[]) => {
+    if (!engagement || engagement.length === 0) return null;
+    return engagement.reduce((max, course) => 
+      course.engagement_percentage > max.engagement_percentage ? course : max
+    );
   };
 
   return (
@@ -218,6 +236,20 @@ export function AdminDashboard() {
         <MetricCard
           title="Courses Sold"
           value={metrics.totalCoursesSold.toLocaleString()}
+          icon={<ShoppingCart className="h-4 w-4 text-green-500" />}
+          description="Total course purchases"
+        />
+        
+        <MetricCard
+          title="Avg Engagement"
+          value={`${calculateAverageEngagement(courseEngagement)}%`}
+          icon={<BarChart3 className="h-4 w-4 text-blue-500" />}
+          description="Course completion rate"
+        />
+        
+        <MetricCard
+          title="Course Revenue"
+          value={formatCurrency(metrics.totalRevenue || 0)}
           icon={<ShoppingCart className="h-4 w-4 text-purple-500" />}
           description="Individual course purchases"
         />

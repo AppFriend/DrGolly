@@ -5807,6 +5807,40 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Get course engagement analytics (Admin only)
+  app.get('/api/admin/courses/engagement', isAdmin, async (req, res) => {
+    try {
+      const engagement = await storage.getCourseEngagement();
+      res.json(engagement);
+    } catch (error) {
+      console.error("Error fetching course engagement:", error);
+      res.status(500).json({ message: "Failed to fetch course engagement" });
+    }
+  });
+
+  // Get user transactions (Admin only)
+  app.get('/api/admin/users/:userId/transactions', isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const transactions = await storage.getUserTransactions(userId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching user transactions:", error);
+      res.status(500).json({ message: "Failed to fetch user transactions" });
+    }
+  });
+
+  // Get all courses with lesson counts (Admin only)
+  app.get('/api/admin/courses/detailed', isAdmin, async (req, res) => {
+    try {
+      const courses = await storage.getAllCoursesWithLessons();
+      res.json(courses);
+    } catch (error) {
+      console.error("Error fetching detailed courses:", error);
+      res.status(500).json({ message: "Failed to fetch detailed courses" });
+    }
+  });
+
   // Get daily orders with pagination (Admin only)
   app.get('/api/admin/orders/daily', isAdmin, async (req, res) => {
     try {
