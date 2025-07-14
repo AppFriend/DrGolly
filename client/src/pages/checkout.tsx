@@ -92,13 +92,13 @@ export function PaymentForm({
 
   // Initialize Apple Pay / Payment Request
   useEffect(() => {
-    if (!stripe || !elements || coursePrice <= 0 || !course?.title) return;
+    if (!stripe || !elements || coursePrice <= 0) return;
 
     const pr = stripe.paymentRequest({
       country: 'AU',
       currency: currency.toLowerCase(),
       total: {
-        label: course.title,
+        label: course?.title || 'Cart Purchase',
         amount: Math.round(coursePrice * 100),
       },
       requestPayerName: true,
@@ -126,7 +126,7 @@ export function PaymentForm({
           elements,
           clientSecret: paymentData.clientSecret,
           confirmParams: {
-            return_url: `${window.location.origin}/checkout/${course?.id || ''}`,
+            return_url: `${window.location.origin}/courses`,
           },
           redirect: 'if_required',
         });
@@ -152,21 +152,39 @@ export function PaymentForm({
   }, [stripe, elements, coursePrice, currency, isMobile, customerDetails, course]);
 
   const handleCreatePayment = async (customerInfo: any) => {
-    if (!course || !course.id) {
-      throw new Error('Course information is missing');
-    }
-    
-    const response = await apiRequest('POST', '/api/create-course-payment', {
-      courseId: course.id,
-      customerDetails: customerInfo,
-      couponId: appliedCoupon?.id
-    });
+    // Handle cart checkout vs direct purchase
+    if (course && course.id) {
+      // Direct course purchase
+      const response = await apiRequest('POST', '/api/create-course-payment', {
+        courseId: course.id,
+        customerDetails: customerInfo,
+        couponId: appliedCoupon?.id
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to create payment');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create payment');
+      }
+      return response.json();
+    } else {
+      // Cart checkout
+      const response = await apiRequest('POST', '/api/create-payment-intent', {
+        amount: coursePrice,
+        currency: currency.toLowerCase(),
+        items: [{
+          type: 'cart',
+          cartItems: [] // Cart items will be fetched on backend
+        }],
+        customerDetails: customerInfo,
+        couponId: appliedCoupon?.id
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create payment');
+      }
+      return response.json();
     }
-    return response.json();
   };
 
   const handleCardPayment = async (e: React.FormEvent) => {
