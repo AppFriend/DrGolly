@@ -1,21 +1,63 @@
-import { Play, Heart, Eye, ArrowRight } from "lucide-react";
+import { Play, Heart, Eye, ArrowRight, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Course } from "@shared/schema";
 
 interface VideoCardProps {
   course: Course;
   onClick?: () => void;
   className?: string;
+  showAddToCart?: boolean;
 }
 
-export function VideoCard({ course, onClick, className }: VideoCardProps) {
+export function VideoCard({ course, onClick, className, showAddToCart = false }: VideoCardProps) {
   const { user } = useAuth();
   const { hasAccess } = useFeatureAccess();
+  const { toast } = useToast();
   
   // Check if user has access to unlimited courses
   const hasUnlimitedCourses = hasAccess("courses_unlimited");
+  
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ itemType, itemId, quantity }: { itemType: string; itemId: number; quantity: number }) => {
+      const response = await apiRequest('POST', '/api/cart', {
+        itemType,
+        itemId,
+        quantity
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Added to Cart",
+        description: "Course has been added to your cart successfully!",
+      });
+      // Invalidate cart queries to update the count
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart/count'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add course to cart. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    addToCartMutation.mutate({
+      itemType: 'course',
+      itemId: course.id,
+      quantity: 1
+    });
+  };
   
   // Handle different image URL formats
   const getImageUrl = (thumbnailUrl: string) => {
@@ -73,6 +115,17 @@ export function VideoCard({ course, onClick, className }: VideoCardProps) {
         )}>
           {course.category === "freebies" ? "Free DL" : course.category}
         </span>
+        
+        {showAddToCart && (
+          <button
+            onClick={handleAddToCart}
+            disabled={addToCartMutation.isPending}
+            className="absolute top-2 left-2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+            title="Add to Cart"
+          >
+            <ShoppingCart className="h-4 w-4 text-brand-teal" />
+          </button>
+        )}
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{course.title}</h3>
