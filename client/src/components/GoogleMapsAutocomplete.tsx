@@ -26,8 +26,10 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   useEffect(() => {
     const loadGoogleMaps = async () => {
       try {
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyA4Gi5BbGccEo-x8vm7jmWqwQ6tOEaqHYY';
+        
         const loader = new Loader({
-          apiKey: 'AIzaSyA4Gi5BbGccEo-x8vm7jmWqwQ6tOEaqHYY',
+          apiKey: apiKey,
           version: 'weekly',
           libraries: ['places'],
         });
@@ -36,6 +38,8 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
         setIsLoaded(true);
       } catch (error) {
         console.error('Error loading Google Maps API:', error);
+        // If Google Maps fails to load, still allow the component to render as a regular input
+        // This is fine - the component will still work as a basic text input
       }
     };
 
