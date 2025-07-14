@@ -3359,6 +3359,7 @@ Please contact the customer to confirm the appointment.
   app.post('/api/create-course-payment', isAuthenticated, async (req: any, res) => {
     try {
       const { courseId, customerDetails, couponId } = req.body;
+      console.log('Payment request authenticated, user:', req.user);
       const userId = req.user.claims.sub;
       
       // Get course details
