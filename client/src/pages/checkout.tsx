@@ -442,7 +442,15 @@ export default function Checkout() {
   });
 
   const courseId = params?.courseId ? parseInt(params.courseId) : null;
-  const originalPrice = regionalPricing?.coursePrice || 120;
+  
+  // Fetch course details
+  const { data: course, isLoading: courseLoading } = useQuery({
+    queryKey: ["/api/courses", courseId],
+    enabled: !!courseId,
+  });
+  
+  // Use course price if available, otherwise use regional pricing
+  const originalPrice = course?.price || regionalPricing?.coursePrice || 120;
   const currency = regionalPricing?.currency || 'USD';
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
   
@@ -497,12 +505,6 @@ export default function Checkout() {
     appliedCoupon.amountOff ? basePrice - (appliedCoupon.amountOff / 100) :
     appliedCoupon.percentOff ? originalPrice * (1 - appliedCoupon.percentOff / 100) :
     originalPrice : originalPrice;
-
-  // Fetch course details
-  const { data: course, isLoading: courseLoading } = useQuery({
-    queryKey: ["/api/courses", courseId],
-    enabled: !!courseId,
-  });
 
   const handleBack = () => {
     setLocation("/courses");
