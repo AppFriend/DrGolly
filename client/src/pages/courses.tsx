@@ -407,7 +407,7 @@ export default function Courses() {
                   return (
                     <>
                       <Button
-                        onClick={() => setLocation("/manage")}
+                        onClick={() => window.location.href = "/manage"}
                         className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
                       >
                         Unlimited Access with Gold
@@ -416,7 +416,7 @@ export default function Courses() {
                         <Button
                           onClick={() => {
                             console.log('Buy Now clicked for course:', course.id);
-                            setLocation(`/checkout?courseId=${course.id}`);
+                            window.location.href = `/checkout?courseId=${course.id}`;
                           }}
                           className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white"
                         >
@@ -480,7 +480,7 @@ export default function Courses() {
                   return (
                     <>
                       <Button
-                        onClick={() => setLocation("/manage")}
+                        onClick={() => window.location.href = "/manage"}
                         className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
                       >
                         Unlimited Access with Gold
@@ -489,7 +489,7 @@ export default function Courses() {
                         <Button
                           onClick={() => {
                             console.log('Buy Now clicked for course:', course.id);
-                            setLocation(`/checkout?courseId=${course.id}`);
+                            window.location.href = `/checkout?courseId=${course.id}`;
                           }}
                           className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white"
                         >
