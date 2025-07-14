@@ -655,9 +655,13 @@ export default function Checkout() {
                   course && (
                     <div className="flex items-start space-x-3">
                       <img 
-                        src={course.thumbnailUrl || "https://via.placeholder.com/64x64"} 
+                        src={course.thumbnailUrl ? course.thumbnailUrl.replace('/assets/', '/attached_assets/') : "https://via.placeholder.com/64x64"} 
                         alt={course.title}
                         className="w-16 h-16 rounded-lg object-cover"
+                        onError={(e) => {
+                          console.log('Image failed to load:', course.thumbnailUrl);
+                          e.currentTarget.src = "https://via.placeholder.com/64x64";
+                        }}
                       />
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900">{course.title}</h3>
