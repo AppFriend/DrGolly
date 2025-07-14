@@ -108,7 +108,7 @@ export function AdminCourseManagement() {
   const queryClient = useQueryClient();
 
   const { data: courses, isLoading } = useQuery({
-    queryKey: ["/api/courses"],
+    queryKey: ["/api/admin/courses/detailed"],
   });
 
   const createCourseMutation = useMutation({
