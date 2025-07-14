@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { CartItem, ShoppingProduct, Course } from "@shared/schema";
 import book1Image from "@assets/IMG_5430_1752370946458.jpeg";
 import book2Image from "@assets/IMG_5431_1752370946459.jpeg";
-import drGollyLogo from "../assets/dr-golly-logo.png";
+import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png";
 
 // Product images mapping
 const productImages: Record<number, string> = {

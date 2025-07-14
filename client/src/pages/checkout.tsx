@@ -34,7 +34,7 @@ const productImages: Record<number, string> = {
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
 // PaymentForm component
-function PaymentForm({ 
+export function PaymentForm({ 
   coursePrice, 
   currencySymbol, 
   currency, 
@@ -48,7 +48,7 @@ function PaymentForm({
   currency: string;
   customerDetails: any;
   appliedCoupon: any;
-  course: Course;
+  course: Course | null;
   onSuccess: () => void;
 }) {
   const stripe = useStripe();
@@ -441,30 +441,34 @@ export default function Checkout() {
     retry: false,
   });
 
-  // Fetch cart items
+  const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
+  
+  // Determine if this is a direct purchase or cart checkout
+  const isDirectPurchase = !!courseId;
+  const isCartCheckout = !courseId;
+  
+  // Fetch cart items only for cart checkout
   const { data: cartItems = [] } = useQuery<CartItem[]>({
     queryKey: ['/api/cart'],
-    enabled: !!user, // Always fetch cart items to support mixed purchases
+    enabled: !!user && isCartCheckout, // Only fetch cart items for cart checkout
   });
 
   // Fetch shopping products for cart items
   const { data: shoppingProducts = [] } = useQuery<ShoppingProduct[]>({
     queryKey: ['/api/shopping-products'],
-    enabled: cartItems.length > 0,
+    enabled: cartItems.length > 0 && isCartCheckout,
   });
 
   // Fetch courses for cart items
   const { data: courses = [] } = useQuery<Course[]>({
     queryKey: ['/api/courses'],
-    enabled: cartItems.length > 0,
+    enabled: cartItems.length > 0 && isCartCheckout,
   });
-
-  const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
   
-  // Fetch course details
+  // Fetch course details only for direct purchase
   const { data: course, isLoading: courseLoading, error: courseError } = useQuery({
     queryKey: [`/api/courses/${courseId}`],
-    enabled: !!courseId,
+    enabled: isDirectPurchase,
   });
   
   // Use course price if available, otherwise use regional pricing
@@ -635,46 +639,11 @@ export default function Checkout() {
               <div className="space-y-4">
                 {/* Debug information */}
                 <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
-                  Debug: Cart items: {cartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
+                  Debug: {isDirectPurchase ? 'Direct Purchase' : 'Cart Checkout'} - Cart items: {cartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
                 </div>
                 
-                {/* Display cart items if available */}
-                {cartItems.length > 0 ? (
-                  cartItems.map((item) => {
-                    const itemDetails = getItemDetails(item);
-                    if (!itemDetails) return null;
-                    
-                    return (
-                      <div key={item.id} className="flex items-start space-x-3">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0">
-                          {itemDetails.image ? (
-                            <img 
-                              src={itemDetails.image} 
-                              alt={itemDetails.title}
-                              className="w-full h-full object-cover rounded-lg"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-[#83CFCC] rounded-lg flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">COURSE</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900">{itemDetails.title}</h3>
-                          <p className="text-sm text-gray-600">by {itemDetails.author}</p>
-                          <p className="text-sm font-medium">{currencySymbol}{itemDetails.price.toFixed(2)}</p>
-                          {item.quantity > 1 && (
-                            <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                          )}
-                        </div>
-                        <Button variant="ghost" size="sm" className="text-gray-400">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  // Display single course if no cart items or fallback message
+                {/* Direct Purchase Flow */}
+                {isDirectPurchase && (
                   course ? (
                     <div className="flex items-start space-x-3">
                       <img 
@@ -695,8 +664,16 @@ export default function Checkout() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                  ) : courseLoading ? (
+                    <div className="flex items-start space-x-3">
+                      <div className="w-16 h-16 bg-gray-100 rounded-lg animate-pulse"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse w-20"></div>
+                      </div>
+                    </div>
                   ) : (
-                    // Show fallback if no course and no cart items
                     <div className="flex items-start space-x-3">
                       <div className="w-16 h-16 bg-[#83CFCC] rounded-lg flex items-center justify-center">
                         <span className="text-white text-xs font-bold">COURSE</span>
@@ -706,6 +683,49 @@ export default function Checkout() {
                         <p className="text-sm text-gray-600">Digital Course</p>
                         <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
                       </div>
+                    </div>
+                  )
+                )}
+                
+                {/* Cart Checkout Flow */}
+                {isCartCheckout && (
+                  cartItems.length > 0 ? (
+                    cartItems.map((item) => {
+                      const itemDetails = getItemDetails(item);
+                      if (!itemDetails) return null;
+                      
+                      return (
+                        <div key={item.id} className="flex items-start space-x-3">
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0">
+                            {itemDetails.image ? (
+                              <img 
+                                src={itemDetails.image} 
+                                alt={itemDetails.title}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-[#83CFCC] rounded-lg flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">COURSE</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900">{itemDetails.title}</h3>
+                            <p className="text-sm text-gray-600">by {itemDetails.author}</p>
+                            <p className="text-sm font-medium">{currencySymbol}{itemDetails.price.toFixed(2)}</p>
+                            {item.quantity > 1 && (
+                              <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                            )}
+                          </div>
+                          <Button variant="ghost" size="sm" className="text-gray-400">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No items in cart</p>
                     </div>
                   )
                 )}
@@ -742,10 +762,11 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Payment Section - Show only when course data is loaded */}
+            {/* Payment Section */}
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
-              {courseLoading && courseId ? (
+              {/* Show loading only for direct purchase when course is loading */}
+              {isDirectPurchase && courseLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin w-8 h-8 border-4 border-gray-300 border-t-[#6B9CA3] rounded-full mx-auto mb-4"></div>
                   <p className="text-gray-600">Loading course information...</p>
