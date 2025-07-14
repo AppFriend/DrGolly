@@ -31,7 +31,7 @@ export default function CourseOverview() {
 
   // Check if user has purchased this course
   const { data: coursePurchases, isLoading: purchasesLoading } = useQuery({
-    queryKey: ['/api/user/course-purchases'],
+    queryKey: ['/api/user/courses'],
     enabled: !!user,
     retry: false,
   });
@@ -49,6 +49,12 @@ export default function CourseOverview() {
     enabled: !!courseId && !!user,
     retry: false,
   });
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('Chapters received:', chapters.length, chapters);
+    console.log('Lessons received:', lessons.length, lessons);
+  }, [chapters, lessons]);
 
 
 
@@ -103,15 +109,8 @@ export default function CourseOverview() {
   };
 
   const handleStartLessonContent = (contentId: number, contentTitle: string) => {
-    // Find the lesson ID that contains this content
-    const content = lessonContent.find((c: any) => c.id === contentId);
-    if (content && content.lessonId) {
-      // Navigate to lesson page with the correct lesson ID, and pass content ID as query param
-      setLocation(`/lesson/${content.lessonId}?contentId=${contentId}`);
-    } else {
-      // Fallback to content ID (legacy)
-      setLocation(`/lesson/${contentId}`);
-    }
+    // Navigate to lesson page with content ID
+    setLocation(`/lesson/${contentId}`);
   };
 
   const toggleChapter = (chapterId: number) => {
@@ -123,7 +122,9 @@ export default function CourseOverview() {
 
   // Get lessons for a specific chapter
   const getLessonsForChapter = (chapterId: number) => {
-    return lessons.filter((lesson: any) => lesson.chapterId === chapterId);
+    const filteredLessons = lessons.filter((lesson: any) => lesson.chapter_id === chapterId);
+    console.log(`Chapter ${chapterId} lessons:`, filteredLessons.length, filteredLessons);
+    return filteredLessons;
   };
 
   if (courseLoading || purchasesLoading || chaptersLoading || lessonsLoading) {
