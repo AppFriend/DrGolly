@@ -26,7 +26,12 @@ const GoogleMapsAutocomplete: React.FC<GoogleMapsAutocompleteProps> = ({
   useEffect(() => {
     const loadGoogleMaps = async () => {
       try {
-        const apiKey = 'AIzaSyA4Gi5BbGccEo-x8vm7jmWqwQ6tOEaqHYY';
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyA4Gi5BbGccEo-x8vm7jmWqwQ6tOEaqHYY';
+        
+        if (!apiKey) {
+          console.warn('Google Maps API key not found, using regular input');
+          return;
+        }
         
         const loader = new Loader({
           apiKey: apiKey,
