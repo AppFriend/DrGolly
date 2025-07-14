@@ -191,6 +191,25 @@ export function PaymentForm({
     e.preventDefault();
     if (!stripe || !elements || isProcessing) return;
 
+    // Validate required fields
+    if (!customerDetails.email || !customerDetails.firstName) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in your email and first name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!billingDetails.firstName || !billingDetails.lastName) {
+      toast({
+        title: "Missing Billing Details",
+        description: "Please fill in your billing first and last name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -198,6 +217,10 @@ export function PaymentForm({
       
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) throw new Error('Card element not found');
+
+      console.log('Payment data:', paymentData);
+      console.log('Customer details:', customerDetails);
+      console.log('Billing details:', billingDetails);
 
       const { error, paymentIntent } = await stripe.confirmCardPayment(paymentData.clientSecret, {
         payment_method: {
@@ -216,7 +239,10 @@ export function PaymentForm({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Stripe error:', error);
+        throw error;
+      }
 
       if (paymentIntent.status === 'succeeded') {
         onSuccess();
@@ -321,7 +347,11 @@ export function PaymentForm({
                       color: '#aab7c4',
                     },
                   },
+                  invalid: {
+                    color: '#9e2146',
+                  },
                 },
+                hidePostalCode: false,
               }}
             />
           </div>
