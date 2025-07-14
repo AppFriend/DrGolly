@@ -3368,14 +3368,51 @@ Please contact the customer to confirm the appointment.
         return res.status(401).json({ message: "User not authenticated" });
       }
       
-      // Get course details
-      const course = await storage.getCourse(courseId);
+      // Get course details with raw SQL fallback
+      let course;
+      try {
+        course = await storage.getCourse(courseId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for course payment, using raw SQL fallback');
+        // Use raw SQL to avoid Drizzle ORM parsing issues
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM courses WHERE id = ${courseId} LIMIT 1`;
+        
+        if (!result || result.length === 0) {
+          return res.status(404).json({ message: "Course not found" });
+        }
+        
+        course = result[0];
+      }
       if (!course) {
         return res.status(404).json({ message: "Course not found" });
       }
 
-      // Get user details
-      const user = await storage.getUser(userId);
+      // Get user details with raw SQL fallback
+      let user;
+      try {
+        user = await storage.getUser(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for user payment, using raw SQL fallback');
+        // Use raw SQL to avoid Drizzle ORM parsing issues
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        
+        if (!result || result.length === 0) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        
+        user = {
+          id: result[0].id,
+          email: result[0].email,
+          firstName: result[0].first_name,
+          lastName: result[0].last_name,
+          stripeCustomerId: result[0].stripe_customer_id,
+          signupSource: result[0].signup_source
+        };
+      }
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
