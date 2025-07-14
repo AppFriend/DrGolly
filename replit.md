@@ -122,6 +122,7 @@ The application is designed as a mobile-first experience with:
 - **SESSION_SECRET**: Session encryption key
 - **REPL_ID**: Replit environment identifier
 - **ISSUER_URL**: OpenID Connect issuer endpoint
+- **GOOGLE_MAPS_API_KEY**: AIzaSyA4Gi5BbGccEo-x8vm7jmWqwQ6tOEaqHYY (for address autocomplete)
 
 ## Stable Savepoints
 
