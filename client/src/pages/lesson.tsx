@@ -9,6 +9,7 @@ import { ChevronLeft, Play, CheckCircle, Circle, Clock, BookOpen, ArrowRight } f
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { isUnauthorizedError } from '@/lib/authUtils';
+import { LoadingAnimation } from '@/components/ui/loading-animation';
 import confetti from 'canvas-confetti';
 
 interface LessonContent {
@@ -220,8 +221,7 @@ export default function LessonPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-600">Loading lesson {id}...</p>
+          <LoadingAnimation size="lg" message={`Loading lesson ${id}...`} />
           {error && (
             <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
               <p className="text-red-700 font-medium">Error loading lesson:</p>

@@ -3041,10 +3041,14 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  app.post('/api/lessons/:lessonId/progress', isAuthenticated, async (req, res) => {
+  app.post('/api/lessons/:lessonId/progress', isAppAuthenticated, async (req, res) => {
     try {
       const { lessonId } = req.params;
       const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       const progressData = {
         userId,
@@ -3054,7 +3058,30 @@ Please contact the customer to confirm the appointment.
         completedAt: req.body.completed ? new Date() : null,
       };
 
-      const progress = await storage.updateUserLessonProgress(progressData);
+      // Try storage method first, fallback to raw SQL if needed
+      let progress;
+      try {
+        progress = await storage.updateUserLessonProgress(progressData);
+      } catch (error) {
+        console.error("Drizzle ORM failed for lesson progress, using raw SQL fallback");
+        const sqlConnection = neon(process.env.DATABASE_URL!);
+        
+        // Use upsert for lesson progress
+        const result = await sqlConnection.query(`
+          INSERT INTO user_lesson_progress (user_id, lesson_id, completed, watch_time, completed_at, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+          ON CONFLICT (user_id, lesson_id) 
+          DO UPDATE SET 
+            completed = EXCLUDED.completed,
+            watch_time = EXCLUDED.watch_time,
+            completed_at = EXCLUDED.completed_at,
+            updated_at = NOW()
+          RETURNING *
+        `, [userId, parseInt(lessonId), progressData.completed, progressData.watchTime, progressData.completedAt]);
+        
+        progress = result[0];
+      }
+      
       res.json(progress);
     } catch (error) {
       console.error("Error updating lesson progress:", error);
@@ -3093,6 +3120,93 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error updating lesson content progress:", error);
       res.status(500).json({ message: "Failed to update progress" });
+    }
+  });
+
+  // Get comprehensive user course engagement data for admin
+  app.get('/api/admin/users/:userId/course-engagement', adminBypass, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const sqlConnection = neon(process.env.DATABASE_URL!);
+      
+      // Get course engagement data with comprehensive metrics
+      const engagementData = await sqlConnection.query(`
+        SELECT 
+          c.id as course_id,
+          c.title as course_title,
+          c.thumbnail_url,
+          
+          -- Course access tracking
+          CASE 
+            WHEN ucp.id IS NOT NULL THEN true 
+            WHEN up.courses_purchased_previously LIKE '%' || c.title || '%' THEN true 
+            ELSE false 
+          END as has_access,
+          
+          -- Started tracking (has any lesson progress)
+          CASE 
+            WHEN EXISTS (
+              SELECT 1 FROM user_lesson_progress ulp 
+              JOIN course_lessons cl ON ulp.lesson_id = cl.id 
+              WHERE ulp.user_id = $1 AND cl.course_id = c.id
+            ) THEN true 
+            ELSE false 
+          END as has_started,
+          
+          -- Completion percentage
+          COALESCE(
+            (SELECT 
+              ROUND(
+                (COUNT(CASE WHEN ulp.completed = true THEN 1 END) * 100.0 / COUNT(*)), 2
+              )
+              FROM course_lessons cl
+              LEFT JOIN user_lesson_progress ulp ON cl.id = ulp.lesson_id AND ulp.user_id = $1
+              WHERE cl.course_id = c.id
+            ), 0
+          ) as completion_percentage,
+          
+          -- Total lessons in course
+          (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id) as total_lessons,
+          
+          -- Completed lessons
+          COALESCE(
+            (SELECT COUNT(*) 
+             FROM user_lesson_progress ulp 
+             JOIN course_lessons cl ON ulp.lesson_id = cl.id 
+             WHERE ulp.user_id = $1 AND cl.course_id = c.id AND ulp.completed = true
+            ), 0
+          ) as completed_lessons,
+          
+          -- Last accessed
+          (SELECT MAX(ulp.updated_at) 
+           FROM user_lesson_progress ulp 
+           JOIN course_lessons cl ON ulp.lesson_id = cl.id 
+           WHERE ulp.user_id = $1 AND cl.course_id = c.id
+          ) as last_accessed,
+          
+          -- Total watch time (in minutes)
+          COALESCE(
+            (SELECT SUM(ulp.watch_time) 
+             FROM user_lesson_progress ulp 
+             JOIN course_lessons cl ON ulp.lesson_id = cl.id 
+             WHERE ulp.user_id = $1 AND cl.course_id = c.id
+            ), 0
+          ) as total_watch_time,
+          
+          -- Course entry count (we'll track this in a separate table)
+          0 as entry_count
+          
+        FROM courses c
+        LEFT JOIN user_course_purchases ucp ON c.id = ucp.course_id AND ucp.user_id = $1
+        LEFT JOIN users up ON up.id = $1
+        WHERE c.id IN (5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+        ORDER BY c.id
+      `, [userId]);
+      
+      res.json(engagementData);
+    } catch (error) {
+      console.error("Error fetching user course engagement:", error);
+      res.status(500).json({ message: "Failed to fetch course engagement data" });
     }
   });
 
