@@ -379,10 +379,14 @@ function PaymentForm({
 
 export default function Checkout() {
   const [, params] = useRoute("/checkout/:courseId");
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  
+  // Extract courseId from URL parameters (either route param or query param)
+  const urlParams = new URLSearchParams(location.split('?')[1]);
+  const courseIdFromQuery = urlParams.get('courseId');
   const [customerDetails, setCustomerDetails] = useState({
     firstName: user?.firstName || "",
     email: user?.email || "",
@@ -451,7 +455,7 @@ export default function Checkout() {
     enabled: cartItems.length > 0,
   });
 
-  const courseId = params?.courseId ? parseInt(params.courseId) : null;
+  const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
   
   // Fetch course details
   const { data: course, isLoading: courseLoading, error: courseError } = useQuery({
