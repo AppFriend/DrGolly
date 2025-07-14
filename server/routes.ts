@@ -41,8 +41,9 @@ import { AuthUtils } from "./auth-utils";
 import { stripeDataSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
+import { notifications, userNotifications } from "@shared/schema";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -4644,36 +4645,27 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Create loyalty notification for authenticated user
-  app.post('/api/create-loyalty-notification', isAuthenticated, async (req, res) => {
+  // Create automated notifications API endpoint
+  app.post('/api/create-automated-notifications', isAppAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const notification = await storage.createNotification({
-        userId,
-        title: "Gold Member Loyalty Reward",
-        message: "Thanks for your first month as a gold member, you've unlocked a free sleep review valued at $250 - book now!",
-        type: "loyalty",
-        category: "reward",
-        priority: "high",
-        actionText: "Book Now",
-        actionUrl: "/track?section=review",
-        isRead: false,
-        isActive: true,
-        isPublished: true
-      });
+      // Import the NotificationService
+      const { NotificationService } = require('./notificationService');
+      
+      // Run the automated notification check for this user
+      await NotificationService.checkAndCreateAutomatedNotifications(userId);
 
       res.json({ 
         success: true, 
-        message: 'Loyalty notification created successfully', 
-        notification 
+        message: 'Automated notifications check completed successfully' 
       });
     } catch (error) {
-      console.error('Error creating loyalty notification:', error);
-      res.status(500).json({ success: false, message: 'Failed to create notification' });
+      console.error('Error creating automated notifications:', error);
+      res.status(500).json({ success: false, message: 'Failed to create automated notifications' });
     }
   });
 
@@ -5730,7 +5722,38 @@ Please contact the customer to confirm the appointment.
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const notifications = await storage.getUserNotifications(userId);
+      
+      // Try to get user notifications, fallback to raw SQL if needed
+      let notifications = [];
+      try {
+        notifications = await storage.getUserNotifications(userId);
+      } catch (error) {
+        console.error("Drizzle ORM failed for user notifications, using raw SQL fallback");
+        // Raw SQL fallback for notifications - use direct SQL connection
+        const sqlConnection = neon(process.env.DATABASE_URL!);
+        const result = await sqlConnection(`
+          SELECT 
+            n.id,
+            n.title,
+            n.message,
+            n.type,
+            n.category,
+            n.priority,
+            n.action_text as "actionText",
+            n.action_url as "actionUrl",
+            n.created_at as "createdAt",
+            COALESCE(un.is_read, false) as "isRead",
+            un.read_at as "readAt"
+          FROM notifications n
+          LEFT JOIN user_notifications un ON n.id = un.notification_id AND un.user_id = $1
+          WHERE n.target_type = 'global'
+          AND n.is_published = true
+          AND n.is_active = true
+          ORDER BY n.created_at DESC
+        `, [userId]);
+        notifications = result;
+      }
+      
       res.json(notifications);
     } catch (error) {
       console.error("Error fetching user notifications:", error);
@@ -5741,8 +5764,32 @@ Please contact the customer to confirm the appointment.
   // Get unread notification count
   app.get('/api/notifications/unread-count', isAppAuthenticated, async (req, res) => {
     try {
-      // Temporarily return 0 to fix connection issues
-      res.json({ count: 0 });
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Try to get unread count, fallback to raw SQL if needed
+      let count = 0;
+      try {
+        count = await storage.getUnreadNotificationCount(userId);
+      } catch (error) {
+        console.error("Drizzle ORM failed for unread notifications count, using raw SQL fallback");
+        // Raw SQL fallback - use direct SQL connection
+        const sqlConnection = neon(process.env.DATABASE_URL!);
+        const result = await sqlConnection(`
+          SELECT COUNT(*)::int as count
+          FROM notifications n
+          LEFT JOIN user_notifications un ON n.id = un.notification_id AND un.user_id = $1
+          WHERE n.target_type = 'global'
+          AND n.is_published = true
+          AND n.is_active = true
+          AND (un.is_read = false OR un.is_read IS NULL)
+        `, [userId]);
+        count = result[0]?.count || 0;
+      }
+      
+      res.json({ count });
     } catch (error) {
       console.error("Error fetching unread notification count:", error);
       res.status(500).json({ message: "Failed to fetch unread count" });
