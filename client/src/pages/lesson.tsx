@@ -301,7 +301,7 @@ export default function LessonPage() {
                   </div>
                 )}
 
-                {/* Main Lesson Content */}
+                {/* Main Lesson Content - Always show the main lesson content */}
                 {lesson.content && (
                   <div className="mb-6">
                     <div
@@ -311,10 +311,10 @@ export default function LessonPage() {
                   </div>
                 )}
 
-                {/* Sublessions as Accordion */}
+                {/* Sublessions as Accordion - Only show if there are actual sub-lessons */}
                 {content.length > 0 && (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Lesson Content</h3>
+                    <h3 className="text-lg font-semibold">Additional Content</h3>
                     {contentId ? (
                       // If contentId is provided, show only that specific content
                       content.filter(item => item.id === parseInt(contentId)).map((item, index) => (
