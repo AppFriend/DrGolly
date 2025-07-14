@@ -4645,27 +4645,101 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Create automated notifications API endpoint
-  app.post('/api/create-automated-notifications', isAppAuthenticated, async (req, res) => {
+  // Push notifications to user panel - simple approach
+  app.post('/api/push-notifications', isAppAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Import the NotificationService
-      const { NotificationService } = require('./notificationService');
+      // Mark all existing notifications as unread for this user to ensure they show up
+      const sqlConnection = neon(process.env.DATABASE_URL!);
       
-      // Run the automated notification check for this user
-      await NotificationService.checkAndCreateAutomatedNotifications(userId);
+      // First, remove any existing user notification records for this user
+      await sqlConnection.query(`
+        DELETE FROM user_notifications WHERE user_id = $1
+      `, [userId]);
+      
+      // Then insert new unread records for all active notifications
+      await sqlConnection.query(`
+        INSERT INTO user_notifications (user_id, notification_id, is_read, created_at, updated_at)
+        SELECT $1, id, false, NOW(), NOW()
+        FROM notifications
+        WHERE target_type = 'global'
+        AND is_published = true
+        AND is_active = true
+      `, [userId]);
 
       res.json({ 
         success: true, 
-        message: 'Automated notifications check completed successfully' 
+        message: 'Notifications pushed to panel successfully' 
       });
     } catch (error) {
-      console.error('Error creating automated notifications:', error);
-      res.status(500).json({ success: false, message: 'Failed to create automated notifications' });
+      console.error('Error pushing notifications:', error);
+      res.status(500).json({ success: false, message: 'Failed to push notifications' });
+    }
+  });
+
+  // Simple notification endpoints that don't rely on complex ORM
+  app.get('/api/simple-notifications', isAppAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const sqlConnection = neon(process.env.DATABASE_URL!);
+      const notifications = await sqlConnection.query(`
+        SELECT 
+          n.id,
+          n.title,
+          n.message,
+          n.type,
+          n.category,
+          n.priority,
+          n.action_text as "actionText",
+          n.action_url as "actionUrl",
+          n.created_at as "createdAt",
+          COALESCE(un.is_read, false) as "isRead",
+          un.read_at as "readAt"
+        FROM notifications n
+        LEFT JOIN user_notifications un ON n.id = un.notification_id AND un.user_id = $1
+        WHERE n.target_type = 'global'
+        AND n.is_published = true
+        AND n.is_active = true
+        ORDER BY n.created_at DESC
+      `, [userId]);
+
+      res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching simple notifications:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
+    }
+  });
+
+  app.get('/api/simple-notifications/unread-count', isAppAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const sqlConnection = neon(process.env.DATABASE_URL!);
+      const result = await sqlConnection.query(`
+        SELECT COUNT(*)::int as count
+        FROM notifications n
+        LEFT JOIN user_notifications un ON n.id = un.notification_id AND un.user_id = $1
+        WHERE n.target_type = 'global'
+        AND n.is_published = true
+        AND n.is_active = true
+        AND (un.is_read = false OR un.is_read IS NULL)
+      `, [userId]);
+
+      res.json({ count: result[0]?.count || 0 });
+    } catch (error) {
+      console.error('Error fetching simple unread count:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
     }
   });
 
@@ -5731,7 +5805,7 @@ Please contact the customer to confirm the appointment.
         console.error("Drizzle ORM failed for user notifications, using raw SQL fallback");
         // Raw SQL fallback for notifications - use direct SQL connection
         const sqlConnection = neon(process.env.DATABASE_URL!);
-        const result = await sqlConnection(`
+        const result = await sqlConnection.query(`
           SELECT 
             n.id,
             n.title,
@@ -5777,7 +5851,7 @@ Please contact the customer to confirm the appointment.
         console.error("Drizzle ORM failed for unread notifications count, using raw SQL fallback");
         // Raw SQL fallback - use direct SQL connection
         const sqlConnection = neon(process.env.DATABASE_URL!);
-        const result = await sqlConnection(`
+        const result = await sqlConnection.query(`
           SELECT COUNT(*)::int as count
           FROM notifications n
           LEFT JOIN user_notifications un ON n.id = un.notification_id AND un.user_id = $1

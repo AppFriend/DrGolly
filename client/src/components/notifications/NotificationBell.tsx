@@ -6,9 +6,9 @@ import { NotificationCenter } from "./NotificationCenter";
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Fetch unread notification count
+  // Fetch unread notification count using simple endpoint
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['/api/notifications/unread-count'],
+    queryKey: ['/api/simple-notifications/unread-count'],
     refetchInterval: 30000, // Poll every 30 seconds
   });
 

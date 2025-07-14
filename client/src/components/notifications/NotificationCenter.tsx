@@ -26,9 +26,9 @@ interface NotificationCenterProps {
 export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
   const queryClient = useQueryClient();
 
-  // Fetch user notifications
+  // Fetch user notifications using simple endpoint
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['/api/notifications'],
+    queryKey: ['/api/simple-notifications'],
     enabled: isOpen,
   });
 
@@ -39,8 +39,8 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
         method: 'POST',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/simple-notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/simple-notifications/unread-count'] });
     },
   });
 
@@ -51,8 +51,8 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
         method: 'POST',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/simple-notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/simple-notifications/unread-count'] });
     },
   });
 
