@@ -1,5 +1,5 @@
-import Stripe from "stripe";
-import type { User } from "@shared/schema";
+import Stripe from 'stripe';
+import { storage } from './storage';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -9,173 +9,141 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
 
-export interface StripeUserData {
-  customerId: string | null;
-  subscriptionId: string | null;
-  subscriptionStatus: string | null;
-  nextBillingDate: string | null;
-  paymentMethodType: string | null;
-  lastPaymentDate: string | null;
-  totalSpent: number;
-  invoiceCount: number;
-  defaultPaymentMethod: string | null;
-  subscriptionTier: string | null;
-  billingPeriod: string | null;
+export interface StripeProductPricing {
+  productId: string;
+  prices: {
+    aud?: number;
+    usd?: number;
+    eur?: number;
+  };
 }
 
-export class StripeDataSyncService {
-  private static instance: StripeDataSyncService;
-  private cache: Map<string, { data: StripeUserData; timestamp: number }> = new Map();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+export class StripeSyncService {
+  private static instance: StripeSyncService;
 
-  static getInstance(): StripeDataSyncService {
-    if (!StripeDataSyncService.instance) {
-      StripeDataSyncService.instance = new StripeDataSyncService();
+  static getInstance(): StripeSyncService {
+    if (!StripeSyncService.instance) {
+      StripeSyncService.instance = new StripeSyncService();
     }
-    return StripeDataSyncService.instance;
+    return StripeSyncService.instance;
   }
 
-  async getStripeDataForUser(user: User): Promise<StripeUserData | null> {
+  /**
+   * Fetch pricing for a specific Stripe product
+   */
+  async fetchProductPricing(productId: string): Promise<StripeProductPricing> {
     try {
-      if (!user.stripeCustomerId) {
-        return null;
-      }
-
-      // Check cache first
-      const cached = this.cache.get(user.stripeCustomerId);
-      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-        return cached.data;
-      }
-
-      // Get customer data
-      const customer = await stripe.customers.retrieve(user.stripeCustomerId);
-      if (customer.deleted) {
-        return null;
-      }
-
-      // Get subscription data
-      let subscriptionData: any = null;
-      if (user.stripeSubscriptionId) {
-        try {
-          subscriptionData = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-        } catch (error) {
-          console.error("Failed to retrieve subscription:", error);
-        }
-      }
-
-      // Get payment methods
-      const paymentMethods = await stripe.paymentMethods.list({
-        customer: user.stripeCustomerId,
-        type: 'card',
+      const prices = await stripe.prices.list({
+        product: productId,
+        active: true,
       });
 
-      // Get invoices to calculate total spent
-      const invoices = await stripe.invoices.list({
-        customer: user.stripeCustomerId,
-        status: 'paid',
-        limit: 100,
-      });
-
-      const totalSpent = invoices.data.reduce((sum, invoice) => {
-        return sum + (invoice.amount_paid || 0);
-      }, 0) / 100; // Convert from cents
-
-      // Get latest payment
-      const latestPayment = invoices.data.length > 0 ? invoices.data[0] : null;
-
-      // Determine subscription tier from subscription metadata or price
-      let subscriptionTier = null;
-      let billingPeriod = null;
-      if (subscriptionData && subscriptionData.status === 'active') {
-        const price = subscriptionData.items.data[0]?.price;
-        if (price) {
-          billingPeriod = price.recurring?.interval || null;
-          
-          // Determine tier based on price amount (you may need to adjust these values)
-          const priceAmount = price.unit_amount || 0;
-          if (priceAmount >= 49900) { // $499 or more
-            subscriptionTier = 'platinum';
-          } else if (priceAmount >= 19900) { // $199 or more
-            subscriptionTier = 'gold';
-          } else {
-            subscriptionTier = 'free';
-          }
-        }
-      }
-
-      const stripeData: StripeUserData = {
-        customerId: user.stripeCustomerId,
-        subscriptionId: user.stripeSubscriptionId,
-        subscriptionStatus: subscriptionData?.status || null,
-        nextBillingDate: subscriptionData?.current_period_end 
-          ? new Date(subscriptionData.current_period_end * 1000).toISOString()
-          : null,
-        paymentMethodType: paymentMethods.data[0]?.card?.brand || null,
-        lastPaymentDate: latestPayment?.created 
-          ? new Date(latestPayment.created * 1000).toISOString()
-          : null,
-        totalSpent: totalSpent,
-        invoiceCount: invoices.data.length,
-        defaultPaymentMethod: paymentMethods.data[0]?.id || null,
-        subscriptionTier: subscriptionTier,
-        billingPeriod: billingPeriod
+      const pricing: StripeProductPricing = {
+        productId,
+        prices: {},
       };
 
-      // Cache the result
-      this.cache.set(user.stripeCustomerId, {
-        data: stripeData,
-        timestamp: Date.now()
-      });
+      for (const price of prices.data) {
+        const amount = price.unit_amount ? price.unit_amount / 100 : 0;
+        const currency = price.currency.toUpperCase();
+        
+        switch (currency) {
+          case 'AUD':
+            pricing.prices.aud = amount;
+            break;
+          case 'USD':
+            pricing.prices.usd = amount;
+            break;
+          case 'EUR':
+            pricing.prices.eur = amount;
+            break;
+        }
+      }
 
-      return stripeData;
+      return pricing;
     } catch (error) {
-      console.error("Error fetching Stripe data for user:", error);
-      return null;
+      console.error(`Failed to fetch pricing for product ${productId}:`, error);
+      throw error;
     }
   }
 
-  async syncStripeDataToDatabase(user: User, stripeData: StripeUserData): Promise<boolean> {
+  /**
+   * Sync book prices from Stripe to regional pricing table
+   */
+  async syncBookPrices(): Promise<void> {
     try {
-      // This would update the database with latest Stripe data
-      // For now, we'll just log and return true
-      console.log("Syncing Stripe data to database for user:", user.id);
-      console.log("Stripe data:", {
-        subscriptionStatus: stripeData.subscriptionStatus,
-        nextBillingDate: stripeData.nextBillingDate,
-        totalSpent: stripeData.totalSpent,
-        subscriptionTier: stripeData.subscriptionTier
-      });
+      console.log('Starting book price sync from Stripe...');
+
+      // Fetch pricing for both books
+      const book1Pricing = await this.fetchProductPricing('prod_SfzaFvJapoxf3g'); // Your Baby Doesn't Come with a Book
+      const book2Pricing = await this.fetchProductPricing('prod_SfzbrHMafOFmHI'); // Dr Golly's Guide to Family Illness
+
+      console.log('Book 1 pricing:', book1Pricing);
+      console.log('Book 2 pricing:', book2Pricing);
+
+      // Update regional pricing table
+      await this.updateRegionalPricing(book1Pricing, book2Pricing);
+
+      console.log('Book price sync completed successfully');
+    } catch (error) {
+      console.error('Book price sync failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update regional pricing table with Stripe prices
+   */
+  private async updateRegionalPricing(book1Pricing: StripeProductPricing, book2Pricing: StripeProductPricing): Promise<void> {
+    try {
+      const regions = ['AU', 'US', 'EU'];
       
-      return true;
+      for (const region of regions) {
+        let book1Price = 0;
+        let book2Price = 0;
+
+        // Map prices based on region
+        switch (region) {
+          case 'AU':
+            book1Price = book1Pricing.prices.aud || 30; // Fallback to 30 AUD
+            book2Price = book2Pricing.prices.aud || 30;
+            break;
+          case 'US':
+            book1Price = book1Pricing.prices.usd || 20; // Fallback to 20 USD
+            book2Price = book2Pricing.prices.usd || 20;
+            break;
+          case 'EU':
+            book1Price = book1Pricing.prices.eur || 20; // Fallback to 20 EUR
+            book2Price = book2Pricing.prices.eur || 20;
+            break;
+        }
+
+        // Update regional pricing
+        await storage.updateRegionalPricingByRegion(region, {
+          book1Price: book1Price.toString(),
+          book2Price: book2Price.toString(),
+        });
+
+        console.log(`Updated ${region} pricing: Book1=${book1Price}, Book2=${book2Price}`);
+      }
     } catch (error) {
-      console.error("Error syncing Stripe data to database:", error);
-      return false;
+      console.error('Failed to update regional pricing:', error);
+      throw error;
     }
   }
 
-  clearUserCache(customerId: string): void {
-    this.cache.delete(customerId);
-  }
-
-  clearAllCache(): void {
-    this.cache.clear();
-  }
-
-  async getStripeHealthStatus(): Promise<{ healthy: boolean; message: string }> {
+  /**
+   * Sync all product prices (books and courses) - can be extended for courses later
+   */
+  async syncAllPrices(): Promise<void> {
     try {
-      // Test Stripe connection by retrieving balance
-      const balance = await stripe.balance.retrieve();
-      return {
-        healthy: true,
-        message: `Stripe connection healthy. Available balance: ${balance.available?.[0]?.amount || 0} ${balance.available?.[0]?.currency || 'USD'}`
-      };
+      await this.syncBookPrices();
+      // Can be extended to sync course prices, subscription prices, etc.
     } catch (error) {
-      return {
-        healthy: false,
-        message: `Stripe connection failed: ${error.message}`
-      };
+      console.error('Failed to sync all prices:', error);
+      throw error;
     }
   }
 }
 
-export const stripeDataSyncService = StripeDataSyncService.getInstance();
+export const stripeSyncService = StripeSyncService.getInstance();

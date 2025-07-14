@@ -38,7 +38,7 @@ import {
   lessonContent,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
-import { stripeDataSyncService } from "./stripe-sync";
+import { stripeSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
 import { db } from "./db";
 import { eq, sql, and, or, isNull } from "drizzle-orm";
