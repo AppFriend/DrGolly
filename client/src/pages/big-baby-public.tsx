@@ -17,7 +17,7 @@ import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
-import paymentLoaderGif from "@assets/Green Card_1752110693736.gif";
+import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
 import linkLogo from "@assets/Link_1752294500139.png";
 import afterpayLogo from "@assets/Afterpay_Badge_BlackonMint_1752294624500.png";
@@ -315,7 +315,7 @@ function PaymentForm({
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white p-8 rounded-lg text-center">
-          <img src={paymentLoaderGif} alt="Processing payment" className="w-16 h-16 mx-auto mb-4" />
+          <img src={paymentLoaderGif} alt="Processing payment" className="w-20 h-20 mx-auto mb-4 object-contain" />
           <p className="text-lg font-semibold">Processing your payment...</p>
           <p className="text-gray-600">Please don't close this window</p>
         </div>
