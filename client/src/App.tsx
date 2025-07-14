@@ -34,6 +34,7 @@ import CheckoutSubscription from "@/pages/checkout-subscription";
 import Admin from "@/pages/admin";
 import Profile from "@/pages/profile";
 import Cart from "@/pages/cart";
+import CartCheckout from "@/pages/cart-checkout";
 import KlaviyoTest from "@/pages/klaviyo-test";
 import NotificationTest from "@/pages/notification-test";
 import Terms from "@/pages/terms";
@@ -77,6 +78,7 @@ function AuthenticatedApp() {
         <Route path="/checkout/:courseId" component={Checkout} />
         <Route path="/payment-success" component={PaymentSuccess} />
         <Route path="/checkout" component={Checkout} />
+        <Route path="/cart-checkout" component={CartCheckout} />
         <Route path="/manage" component={Manage} />
         <Route path="/feature-demo" component={FeatureDemo} />
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
