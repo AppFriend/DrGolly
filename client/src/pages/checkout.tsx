@@ -461,6 +461,15 @@ export default function Checkout() {
 
   const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
   
+  // Debug logging
+  console.log('Checkout Debug:', {
+    location,
+    params,
+    courseIdFromQuery,
+    courseId,
+    urlParams: location.split('?')[1]
+  });
+  
   // Determine if this is a direct purchase or cart checkout
   const isDirectPurchase = !!courseId;
   const isCartCheckout = !courseId;
