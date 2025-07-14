@@ -24,6 +24,15 @@ export function VideoCard({ course, onClick, className, showAddToCart = false }:
   // Check if user has access to unlimited courses
   const hasUnlimitedCourses = hasAccess("courses_unlimited");
   
+  // Debug logging
+  console.log('VideoCard Debug:', {
+    courseId: course.id,
+    courseTitle: course.title,
+    courseCategory: course.category,
+    hasUnlimitedCourses,
+    buttonWillShow: !hasUnlimitedCourses && course.category !== "freebies"
+  });
+  
   // Add to cart mutation
   const addToCartMutation = useMutation({
     mutationFn: async ({ itemType, itemId, quantity }: { itemType: string; itemId: number; quantity: number }) => {
@@ -63,6 +72,7 @@ export function VideoCard({ course, onClick, className, showAddToCart = false }:
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the card click
+    console.log('Buy Now clicked for course:', course.id);
     setLocation(`/checkout?courseId=${course.id}`);
   };
   
