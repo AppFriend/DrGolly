@@ -471,16 +471,19 @@ export default function Checkout() {
     enabled: !!user && isCartCheckout, // Only fetch cart items for cart checkout
   });
 
+  // For direct purchase, cart items should always be empty
+  const displayCartItems = isDirectPurchase ? [] : cartItems;
+
   // Fetch shopping products for cart items
   const { data: shoppingProducts = [] } = useQuery<ShoppingProduct[]>({
     queryKey: ['/api/shopping-products'],
-    enabled: cartItems.length > 0 && isCartCheckout,
+    enabled: displayCartItems.length > 0 && isCartCheckout,
   });
 
   // Fetch courses for cart items
   const { data: courses = [] } = useQuery<Course[]>({
     queryKey: ['/api/courses'],
-    enabled: cartItems.length > 0 && isCartCheckout,
+    enabled: displayCartItems.length > 0 && isCartCheckout,
   });
   
   // Fetch course details only for direct purchase
@@ -496,7 +499,7 @@ export default function Checkout() {
   
   // Calculate total for cart items
   const calculateCartTotal = () => {
-    return cartItems.reduce((total, item) => {
+    return displayCartItems.reduce((total, item) => {
       const itemType = item.itemType || (item as any).item_type;
       const itemId = item.itemId || (item as any).item_id;
       
@@ -544,13 +547,13 @@ export default function Checkout() {
   };
 
   // Use cart total if there are cart items, otherwise use course price
-  const basePrice = cartItems.length > 0 ? calculateCartTotal() : originalPrice;
+  const basePrice = displayCartItems.length > 0 ? calculateCartTotal() : originalPrice;
   
   // Calculate final price with coupon
   const finalPrice = appliedCoupon ? 
     appliedCoupon.amount_off ? basePrice - (appliedCoupon.amount_off / 100) :
-    appliedCoupon.percent_off ? originalPrice * (1 - appliedCoupon.percent_off / 100) :
-    originalPrice : originalPrice;
+    appliedCoupon.percent_off ? basePrice * (1 - appliedCoupon.percent_off / 100) :
+    basePrice : basePrice;
 
   const handleBack = () => {
     setLocation("/courses");
@@ -572,7 +575,7 @@ export default function Checkout() {
   };
 
   // Handle case where no items to checkout (cart is empty and no direct course purchase)
-  if (cartItems.length === 0 && !courseId) {
+  if (displayCartItems.length === 0 && !courseId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -663,7 +666,7 @@ export default function Checkout() {
               <div className="space-y-4">
                 {/* Debug information */}
                 <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
-                  Debug: {isDirectPurchase ? 'Direct Purchase' : 'Cart Checkout'} - Cart items: {cartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
+                  Debug: {isDirectPurchase ? 'Direct Purchase' : 'Cart Checkout'} - Cart items: {displayCartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
                 </div>
                 
                 {/* Direct Purchase Flow */}

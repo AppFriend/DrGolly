@@ -323,6 +323,7 @@ export interface IStorage {
   getRegionalPricingByRegion(region: string): Promise<RegionalPricing | undefined>;
   createRegionalPricing(pricing: InsertRegionalPricing): Promise<RegionalPricing>;
   updateRegionalPricing(id: number, updates: Partial<RegionalPricing>): Promise<RegionalPricing>;
+  updateRegionalPricingByRegion(region: string, updates: Partial<RegionalPricing>): Promise<RegionalPricing>;
   getCoursePricing(courseId: number): Promise<number | null>;
   getSubscriptionPricing(): Promise<{ monthly: number | null; yearly: number | null; }>;
 
@@ -2867,6 +2868,18 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       })
       .where(eq(regionalPricing.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateRegionalPricingByRegion(region: string, updates: Partial<RegionalPricing>): Promise<RegionalPricing> {
+    const [result] = await db
+      .update(regionalPricing)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(regionalPricing.region, region))
       .returning();
     return result;
   }
