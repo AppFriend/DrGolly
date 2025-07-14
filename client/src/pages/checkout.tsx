@@ -59,13 +59,13 @@ function PaymentForm({
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState("card");
   const [billingDetails, setBillingDetails] = useState({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    address: '',
+    firstName: customerDetails.firstName || '',
+    lastName: customerDetails.lastName || '',
+    phone: customerDetails.phone || '',
+    address: customerDetails.address || '',
     country: 'Australia',
-    city: '',
-    postcode: ''
+    city: customerDetails.city || '',
+    postcode: customerDetails.zipCode || ''
   });
 
   useEffect(() => {
@@ -76,6 +76,19 @@ function PaymentForm({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Update billing details when customer details change
+  useEffect(() => {
+    setBillingDetails(prev => ({
+      ...prev,
+      firstName: customerDetails.firstName || prev.firstName,
+      lastName: customerDetails.lastName || prev.lastName,
+      phone: customerDetails.phone || prev.phone,
+      address: customerDetails.address || prev.address,
+      city: customerDetails.city || prev.city,
+      postcode: customerDetails.zipCode || prev.postcode
+    }));
+  }, [customerDetails]);
 
   // Initialize Apple Pay / Payment Request
   useEffect(() => {
@@ -139,20 +152,17 @@ function PaymentForm({
   }, [stripe, elements, coursePrice, currency, isMobile, customerDetails, course]);
 
   const handleCreatePayment = async (customerInfo: any) => {
-    const response = await apiRequest('/api/create-payment-intent', {
-      method: 'POST',
-      body: JSON.stringify({
-        courseId: course.id,
-        customerDetails: customerInfo,
-        couponId: appliedCoupon?.id
-      }),
+    const response = await apiRequest('POST', '/api/create-payment-intent', {
+      courseId: course.id,
+      customerDetails: customerInfo,
+      couponId: appliedCoupon?.id
     });
 
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Failed to create payment');
     }
-    return response;
+    return response.json();
   };
 
   const handleCardPayment = async (e: React.FormEvent) => {
