@@ -444,8 +444,8 @@ export default function Checkout() {
   const courseId = params?.courseId ? parseInt(params.courseId) : null;
   
   // Fetch course details
-  const { data: course, isLoading: courseLoading } = useQuery({
-    queryKey: ["/api/courses", courseId],
+  const { data: course, isLoading: courseLoading, error: courseError } = useQuery({
+    queryKey: [`/api/courses/${courseId}`],
     enabled: !!courseId,
   });
   
@@ -541,13 +541,15 @@ export default function Checkout() {
   }
 
   // Show loading state for course checkout or while cart data is loading
-  if ((courseId && (courseLoading || !course)) || (!courseId && cartItems.length === 0)) {
+  if (courseId && courseLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
+
+
 
   const canProceedToPayment = customerDetails.email && customerDetails.firstName;
 
