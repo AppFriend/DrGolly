@@ -210,13 +210,23 @@ export function PaymentForm({
       return;
     }
 
+    // Make sure we're on the card tab
+    if (activeTab !== 'card') {
+      setActiveTab('card');
+      // Give a moment for the tab to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     setIsProcessing(true);
     
     try {
       const paymentData = await handleCreatePayment(customerDetails);
       
       const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error('Card element not found');
+      if (!cardElement) {
+        console.error('Card element not found. Available elements:', elements);
+        throw new Error('Card element not found. Please ensure you are on the card payment tab.');
+      }
 
       console.log('Payment data:', paymentData);
       console.log('Customer details:', customerDetails);
@@ -418,13 +428,15 @@ export function PaymentForm({
       </div>
 
       {/* Place Order Button */}
-      <Button
-        onClick={handleCardPayment}
-        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName}
-        className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg"
-      >
-        {isProcessing ? 'Processing...' : 'Place order'}
-      </Button>
+      <form onSubmit={handleCardPayment}>
+        <Button
+          type="submit"
+          disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName}
+          className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg"
+        >
+          {isProcessing ? 'Processing...' : 'Place order'}
+        </Button>
+      </form>
     </div>
   );
 }
