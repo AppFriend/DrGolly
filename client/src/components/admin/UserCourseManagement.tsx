@@ -72,6 +72,15 @@ export default function UserCourseManagement({ user, isOpen, onClose }: UserCour
     enabled: isOpen,
   });
 
+  const { data: courseEngagement, isLoading: engagementLoading } = useQuery({
+    queryKey: [`/api/admin/users/${user.id}/course-engagement`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/admin/users/${user.id}/course-engagement`);
+      return await response.json();
+    },
+    enabled: isOpen,
+  });
+
   const { data: availableCourses } = useQuery({
     queryKey: ["/api/courses"],
     queryFn: async () => {
@@ -81,15 +90,7 @@ export default function UserCourseManagement({ user, isOpen, onClose }: UserCour
     enabled: isOpen,
   });
 
-  // Fetch course engagement data
-  const { data: courseEngagement, isLoading: engagementLoading } = useQuery({
-    queryKey: [`/api/admin/users/${user.id}/course-engagement`],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/admin/users/${user.id}/course-engagement`);
-      return await response.json();
-    },
-    enabled: isOpen,
-  });
+
 
   const addCourseMutation = useMutation({
     mutationFn: ({ courseId }: { courseId: string }) =>

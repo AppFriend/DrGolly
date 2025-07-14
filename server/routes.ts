@@ -3138,7 +3138,7 @@ Please contact the customer to confirm the appointment.
           
           -- Course access tracking
           CASE 
-            WHEN ucp.id IS NOT NULL THEN true 
+            WHEN cp.id IS NOT NULL THEN true 
             WHEN up.courses_purchased_previously LIKE '%' || c.title || '%' THEN true 
             ELSE false 
           END as has_access,
@@ -3178,7 +3178,7 @@ Please contact the customer to confirm the appointment.
           ) as completed_lessons,
           
           -- Last accessed
-          (SELECT MAX(ulp.updated_at) 
+          (SELECT MAX(COALESCE(ulp.completed_at, ulp.created_at)) 
            FROM user_lesson_progress ulp 
            JOIN course_lessons cl ON ulp.lesson_id = cl.id 
            WHERE ulp.user_id = $1 AND cl.course_id = c.id
@@ -3197,7 +3197,7 @@ Please contact the customer to confirm the appointment.
           0 as entry_count
           
         FROM courses c
-        LEFT JOIN user_course_purchases ucp ON c.id = ucp.course_id AND ucp.user_id = $1
+        LEFT JOIN course_purchases cp ON c.id = cp.course_id AND cp.user_id = $1
         LEFT JOIN users up ON up.id = $1
         WHERE c.id IN (5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
         ORDER BY c.id
