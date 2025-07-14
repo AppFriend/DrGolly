@@ -2080,61 +2080,116 @@ export class DatabaseStorage implements IStorage {
     totalPages: number;
     currentPage: number;
   }> {
-    const offset = (page - 1) * limit;
-    
-    // Get orders with course and user details
-    const ordersQuery = db
-      .select({
-        id: coursePurchases.id,
-        orderNumber: coursePurchases.stripePaymentIntentId,
-        userId: coursePurchases.userId,
-        courseId: coursePurchases.courseId,
-        amount: coursePurchases.amount,
-        status: coursePurchases.status,
-        purchasedAt: coursePurchases.purchasedAt,
-        stripePaymentIntentId: coursePurchases.stripePaymentIntentId,
-        courseTitle: courses.title,
-        userFirstName: users.firstName,
-        userLastName: users.lastName,
-        userEmail: users.email
-      })
-      .from(coursePurchases)
-      .leftJoin(courses, eq(coursePurchases.courseId, courses.id))
-      .leftJoin(users, eq(coursePurchases.userId, users.id))
-      .where(eq(coursePurchases.status, 'completed'))
-      .orderBy(desc(coursePurchases.purchasedAt))
-      .limit(limit)
-      .offset(offset);
+    try {
+      const offset = (page - 1) * limit;
+      
+      // Get orders with course and user details
+      const ordersQuery = db
+        .select({
+          id: coursePurchases.id,
+          orderNumber: coursePurchases.stripePaymentIntentId,
+          userId: coursePurchases.userId,
+          courseId: coursePurchases.courseId,
+          amount: coursePurchases.amount,
+          status: coursePurchases.status,
+          purchasedAt: coursePurchases.purchasedAt,
+          stripePaymentIntentId: coursePurchases.stripePaymentIntentId,
+          courseTitle: courses.title,
+          userFirstName: users.firstName,
+          userLastName: users.lastName,
+          userEmail: users.email
+        })
+        .from(coursePurchases)
+        .leftJoin(courses, eq(coursePurchases.courseId, courses.id))
+        .leftJoin(users, eq(coursePurchases.userId, users.id))
+        .where(eq(coursePurchases.status, 'completed'))
+        .orderBy(desc(coursePurchases.purchasedAt))
+        .limit(limit)
+        .offset(offset);
 
-    const orders = await ordersQuery;
-    
-    // Get total count for pagination
-    const totalCountResult = await db
-      .select({ count: count() })
-      .from(coursePurchases)
-      .where(eq(coursePurchases.status, 'completed'));
-    
-    const totalCount = totalCountResult[0]?.count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
+      const orders = await ordersQuery;
+      
+      // Get total count for pagination
+      const totalCountResult = await db
+        .select({ count: count() })
+        .from(coursePurchases)
+        .where(eq(coursePurchases.status, 'completed'));
+      
+      const totalCount = totalCountResult[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / limit);
 
-    // Format orders
-    const formattedOrders = orders.map(order => ({
-      id: order.id,
-      orderNumber: order.orderNumber || `#${order.id}`,
-      customerName: `${order.userFirstName || ''} ${order.userLastName || ''}`.trim() || order.userEmail || 'Unknown',
-      courseTitle: order.courseTitle || 'Unknown Course',
-      amount: (order.amount || 0) / 100, // Convert from cents
-      status: order.status,
-      purchasedAt: order.purchasedAt,
-      stripePaymentIntentId: order.stripePaymentIntentId || ''
-    }));
+      // Format orders
+      const formattedOrders = orders.map(order => ({
+        id: order.id,
+        orderNumber: order.orderNumber || `#${order.id}`,
+        customerName: `${order.userFirstName || ''} ${order.userLastName || ''}`.trim() || order.userEmail || 'Unknown',
+        courseTitle: order.courseTitle || 'Unknown Course',
+        amount: (order.amount || 0) / 100, // Convert from cents
+        status: order.status,
+        purchasedAt: order.purchasedAt,
+        stripePaymentIntentId: order.stripePaymentIntentId || ''
+      }));
 
-    return {
-      orders: formattedOrders,
-      totalCount,
-      totalPages,
-      currentPage: page
-    };
+      return {
+        orders: formattedOrders,
+        totalCount,
+        totalPages,
+        currentPage: page
+      };
+    } catch (error) {
+      console.error("Drizzle ORM failed for daily orders, using raw SQL fallback");
+      
+      // Raw SQL fallback
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const offset = (page - 1) * limit;
+      
+      const orders = await sql`
+        SELECT 
+          cp.id,
+          cp.stripe_payment_intent_id as stripe_payment_intent_id,
+          cp.user_id,
+          cp.course_id,
+          cp.amount,
+          cp.status,
+          cp.purchased_at,
+          c.title as course_title,
+          u.first_name,
+          u.last_name,
+          u.email
+        FROM course_purchases cp
+        LEFT JOIN courses c ON cp.course_id = c.id
+        LEFT JOIN users u ON cp.user_id = u.id
+        WHERE cp.status = 'completed'
+        ORDER BY cp.purchased_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+      
+      const totalCountResult = await sql`
+        SELECT COUNT(*) as count FROM course_purchases WHERE status = 'completed'
+      `;
+      
+      const totalCount = parseInt(totalCountResult[0].count) || 0;
+      const totalPages = Math.ceil(totalCount / limit);
+
+      const formattedOrders = orders.map(order => ({
+        id: order.id,
+        orderNumber: order.stripe_payment_intent_id || `#${order.id}`,
+        customerName: `${order.first_name || ''} ${order.last_name || ''}`.trim() || order.email || 'Unknown',
+        courseTitle: order.course_title || 'Unknown Course',
+        amount: (order.amount || 0) / 100, // Convert from cents
+        status: order.status,
+        purchasedAt: order.purchased_at,
+        stripePaymentIntentId: order.stripe_payment_intent_id || ''
+      }));
+
+      return {
+        orders: formattedOrders,
+        totalCount,
+        totalPages,
+        currentPage: page
+      };
+    }
   }
 
   async updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {
