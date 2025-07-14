@@ -716,8 +716,8 @@ export default function Checkout() {
                 
                 {/* Cart Checkout Flow */}
                 {isCartCheckout && (
-                  cartItems.length > 0 ? (
-                    cartItems.map((item) => {
+                  displayCartItems.length > 0 ? (
+                    displayCartItems.map((item) => {
                       const itemDetails = getItemDetails(item);
                       if (!itemDetails) return null;
                       
