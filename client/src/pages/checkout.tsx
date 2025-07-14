@@ -502,8 +502,8 @@ export default function Checkout() {
   
   // Calculate final price with coupon
   const finalPrice = appliedCoupon ? 
-    appliedCoupon.amountOff ? basePrice - (appliedCoupon.amountOff / 100) :
-    appliedCoupon.percentOff ? originalPrice * (1 - appliedCoupon.percentOff / 100) :
+    appliedCoupon.amount_off ? basePrice - (appliedCoupon.amount_off / 100) :
+    appliedCoupon.percent_off ? originalPrice * (1 - appliedCoupon.percent_off / 100) :
     originalPrice : originalPrice;
 
   const handleBack = () => {
