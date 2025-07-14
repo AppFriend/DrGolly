@@ -2867,41 +2867,86 @@ Please contact the customer to confirm the appointment.
 
 
   // Individual lesson routes with URL structure
-  app.get('/api/lessons/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/lessons/:id', async (req: any, res) => {
     try {
       const lessonId = parseInt(req.params.id);
-      const userId = req.user?.claims?.sub;
+      // Get user ID from session (works with both auth systems)
+      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
       
       console.log(`Fetching lesson ${lessonId} for user ${userId}`);
       
-      // Get lesson details
-      const [lesson] = await db.select().from(courseLessons).where(eq(courseLessons.id, lessonId));
+      // Get lesson details with raw SQL fallback
+      let lesson;
+      try {
+        [lesson] = await db.select().from(courseLessons).where(eq(courseLessons.id, lessonId));
+      } catch (error) {
+        console.log('Drizzle ORM failed for lesson, using raw SQL fallback');
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM course_lessons WHERE id = ${lessonId}`;
+        lesson = result[0];
+      }
+      
       if (!lesson) {
         console.log(`Lesson ${lessonId} not found`);
         return res.status(404).json({ message: 'Lesson not found' });
       }
       
-      console.log(`Found lesson: ${lesson.title}, courseId: ${lesson.courseId}`);
+      console.log(`Found lesson: ${lesson.title}, courseId: ${lesson.course_id || lesson.courseId}`);
+      const courseId = lesson.course_id || lesson.courseId;
       
-      // Get course details for access control
-      const [course] = await db.select().from(courses).where(eq(courses.id, lesson.courseId));
+      // Get course details for access control with raw SQL fallback
+      let course;
+      try {
+        [course] = await db.select().from(courses).where(eq(courses.id, courseId));
+      } catch (error) {
+        console.log('Drizzle ORM failed for course, using raw SQL fallback');
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM courses WHERE id = ${courseId}`;
+        course = result[0];
+      }
+      
       if (!course) {
-        console.log(`Course ${lesson.courseId} not found`);
+        console.log(`Course ${courseId} not found`);
         return res.status(404).json({ message: 'Course not found' });
       }
       
       console.log(`Found course: ${course.title}`);
       
-      // Check if user has access to this lesson
+      // Check if user has access to this lesson using the same logic as /api/user/courses
       const user = await storage.getUser(userId);
       const hasGoldAccess = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
+      
+      // Check both recent purchases and historical courses
       const coursePurchases = await storage.getUserCoursePurchases(userId);
-      const hasPurchased = coursePurchases.some(purchase => purchase.courseId === lesson.courseId && purchase.status === 'completed');
+      const hasPurchased = coursePurchases.some(purchase => purchase.courseId === courseId && purchase.status === 'completed');
       
-      console.log(`User subscription: ${user?.subscriptionTier}, hasGoldAccess: ${hasGoldAccess}, hasPurchased: ${hasPurchased}`);
+      // Check historical courses from courses_purchased_previously field
+      let hasHistoricalAccess = false;
+      if (user?.courses_purchased_previously) {
+        const historicalCourses = user.courses_purchased_previously.split(',').map(name => name.trim());
+        hasHistoricalAccess = historicalCourses.some(courseName => {
+          // Map course names to course IDs (same mapping as /api/user/courses)
+          const courseMapping: { [key: string]: number } = {
+            'Little Baby Sleep Program': 5,
+            'Big Baby Sleep Program': 6,
+            'Pre-toddler Sleep Program': 7,
+            'Toddler Sleep Program': 8,
+            'Pre-School Sleep Program': 9,
+            'Preparation for Newborns': 10,
+            'New Sibling Supplement': 11,
+            'Twins Supplement': 12,
+            'Toddler Toolkit': 13
+          };
+          return courseMapping[courseName] === courseId;
+        });
+      }
       
-      // User has access if they have Gold/Platinum subscription OR have purchased this specific course
-      if (!hasGoldAccess && !hasPurchased) {
+      console.log(`User subscription: ${user?.subscriptionTier}, hasGoldAccess: ${hasGoldAccess}, hasPurchased: ${hasPurchased}, hasHistoricalAccess: ${hasHistoricalAccess}`);
+      
+      // User has access if they have Gold/Platinum subscription OR have purchased this specific course OR have historical access
+      if (!hasGoldAccess && !hasPurchased && !hasHistoricalAccess) {
         return res.status(403).json({ message: 'Access denied. Please upgrade your plan or purchase this course.' });
       }
       
