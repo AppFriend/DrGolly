@@ -1,208 +1,122 @@
-# 🌳 Dr. Golly Git Branching Strategy
+# Git Branching Strategy
 
-## Overview
-This document outlines our Git workflow designed to protect production code while enabling safe, organized development.
-
-## 🗺️ Visual Git Flow
+## Branch Structure
 
 ```
-main (protected) ←------ Production deployments
-  ↑
-  PR merge
-  ↑
-dev ←------ Staging deployments & integration
-  ↑
-  PR merge
-  ↑
-Feature Branches:
-├── home/feature-name
-├── courses/feature-name
-├── tracking/feature-name
-├── discounts/feature-name
-├── family/feature-name
-├── settings/feature-name
-└── hotfix/issue-name
-
-test/replit ←------ Replit testing environment
+main (protected)
+├── dev (protected)
+├── feature/courses/*
+├── feature/admin/*
+├── feature/notifications/*
+├── feature/analytics/*
+├── feature/checkout/*
+├── feature/ui/*
+└── hotfix/*
 ```
 
-## 🏗️ Branch Structure
-
-### Protected Branches
-- **`main`** - Production-ready code only
-  - Direct pushes disabled
-  - Requires PR approval
-  - Triggers production deployment
-  
-- **`dev`** - Integration branch
-  - All features merge here first
-  - Triggers staging deployment
-  - Code review required
+## Branch Naming Convention
 
 ### Feature Branches
-Branch naming convention: `<module>/<feature-description>`
+- `feature/courses/lesson-progress-tracking`
+- `feature/admin/user-management-enhancement`
+- `feature/admin/course-content-editor`
+- `feature/checkout/payment-optimization`
+- `feature/analytics/user-engagement-metrics`
+- `feature/notifications/email-automation`
+- `feature/ui/mobile-optimization`
 
-#### Core Modules:
-- `home/*` - Landing page, dashboard functionality
-- `courses/*` - Course management, lessons, progress
-- `tracking/*` - Growth, development, sleep tracking
-- `discounts/*` - Partner discounts, coupon system
-- `family/*` - Family management, children profiles
-- `settings/*` - User settings, profile management
-- `subscription/*` - Subscription management, /manage page, plan offerings
-- `checkout/*` - Checkout flow, payment processing, purchase completion
-- `admin/*` - Admin panel, user management, analytics, content management
+### Hotfix Branches
+- `hotfix/payment-gateway-error`
+- `hotfix/course-access-bug`
+- `hotfix/admin-login-issue`
 
-#### Special Branches:
-- `test/replit` - Replit development environment
-- `hotfix/*` - Critical production fixes
-- `release/*` - Release preparation
+## Development Workflow
 
-## 🚀 Deployment Workflow
-
-### Step-by-Step Process
-
-1. **Start New Feature**
-   ```bash
-   git checkout dev
-   git pull origin dev
-   git checkout -b courses/add-video-player
-   ```
-
-2. **Develop & Test**
-   ```bash
-   # Make changes
-   git add .
-   git commit -m "Add video player component"
-   git push origin courses/add-video-player
-   ```
-
-3. **Create Pull Request**
-   - Target: `dev` branch
-   - Use PR template
-   - Add reviewers
-   - Link related issues
-
-4. **Code Review & Merge**
-   - PR reviewed and approved
-   - Merge to `dev`
-   - Deploy to staging
-
-5. **Release to Production**
-   - Create PR from `dev` to `main`
-   - Final testing
-   - Merge to `main`
-   - Production deployment
-
-## 📋 Branch Policies
-
-### Main Branch Protection
-- ✅ Require PR reviews (minimum 1)
-- ✅ Require status checks to pass
-- ✅ Require branches to be up to date
-- ✅ Restrict pushes to specific people/teams
-- ✅ Include administrators in restrictions
-
-### Dev Branch Protection
-- ✅ Require PR reviews
-- ✅ Require status checks to pass
-- ✅ Allow force pushes (for rebasing)
-
-## 🔧 Local Development Commands
-
-### Quick Reference
-
+### 1. Starting New Work
 ```bash
-# Start new feature
-git checkout dev && git pull origin dev
-git checkout -b <module>/<feature-name>
-
-# Save work
-git add . && git commit -m "descriptive message"
-git push origin <branch-name>
-
-# Update from dev
-git checkout dev && git pull origin dev
-git checkout <your-branch>
-git rebase dev  # or merge dev
-
-# Switch to test environment
-git checkout test/replit
-git pull origin test/replit
-
-# Deploy feature to test
-git checkout test/replit
-git merge <your-feature-branch>
-git push origin test/replit
+git checkout dev
+git pull origin dev
+git checkout -b feature/courses/lesson-navigation-enhancement
 ```
 
-## 🎯 Best Practices
+### 2. Daily Development
+```bash
+# Make changes
+git add .
+git commit -m "feat(courses): enhance lesson navigation with breadcrumbs"
+git push origin feature/courses/lesson-navigation-enhancement
+```
 
-### Commit Messages
-- Use present tense ("Add feature" not "Added feature")
-- Be descriptive but concise
-- Reference issues when applicable
+### 3. Creating Pull Request
+- Create PR: `feature/courses/lesson-navigation-enhancement` → `dev`
+- Require code review
+- Merge to dev after approval
 
-### Pull Requests
-- Small, focused changes
-- Clear description of what changed
-- Screenshots for UI changes
-- Test thoroughly before requesting review
+### 4. Release Process
+```bash
+git checkout main
+git merge dev
+git tag v1.4.0
+git push origin main --tags
+```
 
-### Code Reviews
-- Check for breaking changes
-- Verify mobile responsiveness
-- Test authentication flows
-- Ensure database migrations are safe
+## Commit Message Standards
 
-## 🚨 Emergency Procedures
+### Format
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### Types
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes
+- `refactor`: Code refactoring
+- `test`: Test additions
+- `chore`: Maintenance tasks
+
+### Examples
+```bash
+feat(courses): Add lesson completion tracking with progress persistence
+
+- Implement user progress storage in PostgreSQL
+- Add visual progress indicators on course overview
+- Create lesson completion API endpoints
+- Update mobile UI for progress display
+
+Closes #123, #124
+```
+
+## Branch Protection Rules
+
+### Main Branch
+- Require pull request reviews
+- Require status checks to pass
+- Require branches to be up to date
+- Restrict pushes to protect history
+
+### Dev Branch
+- Require pull request reviews
+- Allow force pushes for emergency fixes
+- Require linear history
+
+## Emergency Procedures
 
 ### Hotfix Process
-```bash
-# For critical production issues
-git checkout main
-git checkout -b hotfix/critical-bug-fix
-# Fix the issue
-git push origin hotfix/critical-bug-fix
-# Create PR to main (skip dev for emergencies)
-```
+1. Create hotfix branch from main
+2. Fix critical issue
+3. Test thoroughly
+4. Merge to both main and dev
+5. Deploy immediately
 
 ### Rollback Process
-```bash
-# If production deployment fails
-git checkout main
-git revert <commit-hash>
-git push origin main
-```
-
-## 📊 Branch Monitoring
-
-### Regular Maintenance
-- Delete merged feature branches
-- Keep dev up to date with main
-- Monitor for stale branches
-- Regular dependency updates
-
-### Branch Lifecycle
-1. **Active Development** (< 1 week)
-2. **Review Phase** (1-2 days)
-3. **Merged** (delete feature branch)
-4. **Deployed** (monitor for issues)
-
-## 🛡️ Security Considerations
-
-- Never commit secrets or API keys
-- Use environment variables for sensitive data
-- Regular security audits via GitHub Actions
-- Dependency vulnerability scanning
-
-## 📈 Success Metrics
-
-- **Lead Time**: Feature idea to production
-- **Deployment Frequency**: How often we deploy
-- **Mean Time to Recovery**: How quickly we fix issues
-- **Change Failure Rate**: Percentage of deployments causing issues
-
----
-
-*This strategy evolves with our team needs. Regular reviews ensure it serves our development goals effectively.*
+1. Identify stable commit/tag
+2. Create rollback branch
+3. Revert problematic changes
+4. Test rollback
+5. Deploy rollback to production
