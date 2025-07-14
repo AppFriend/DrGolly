@@ -633,6 +633,11 @@ export default function Checkout() {
               </div>
               
               <div className="space-y-4">
+                {/* Debug information */}
+                <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
+                  Debug: Cart items: {cartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
+                </div>
+                
                 {/* Display cart items if available */}
                 {cartItems.length > 0 ? (
                   cartItems.map((item) => {
@@ -669,8 +674,8 @@ export default function Checkout() {
                     );
                   })
                 ) : (
-                  // Display single course if no cart items
-                  course && (
+                  // Display single course if no cart items or fallback message
+                  course ? (
                     <div className="flex items-start space-x-3">
                       <img 
                         src={course.thumbnailUrl ? course.thumbnailUrl.replace('/assets/', '/attached_assets/') : "https://via.placeholder.com/64x64"} 
@@ -689,6 +694,18 @@ export default function Checkout() {
                       <Button variant="ghost" size="sm" className="text-gray-400">
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                    </div>
+                  ) : (
+                    // Show fallback if no course and no cart items
+                    <div className="flex items-start space-x-3">
+                      <div className="w-16 h-16 bg-[#83CFCC] rounded-lg flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">COURSE</span>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">Course Purchase</h3>
+                        <p className="text-sm text-gray-600">Digital Course</p>
+                        <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
+                      </div>
                     </div>
                   )
                 )}
@@ -733,7 +750,7 @@ export default function Checkout() {
                   <div className="animate-spin w-8 h-8 border-4 border-gray-300 border-t-[#6B9CA3] rounded-full mx-auto mb-4"></div>
                   <p className="text-gray-600">Loading course information...</p>
                 </div>
-              ) : course || !courseId ? (
+              ) : (
                 <Elements stripe={stripePromise}>
                   <PaymentForm
                     coursePrice={finalPrice}
@@ -745,10 +762,6 @@ export default function Checkout() {
                     onSuccess={handlePaymentSuccess}
                   />
                 </Elements>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-red-600">Unable to load course information. Please try again.</p>
-                </div>
               )}
             </div>
 
