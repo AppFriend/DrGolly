@@ -64,6 +64,13 @@ export default function CourseOverview() {
     enabled: !!user,
   });
 
+  // Debug logging
+  React.useEffect(() => {
+    if (userProgress) {
+      console.log('User progress data:', userProgress);
+    }
+  }, [userProgress]);
+
   // Check user's access to this course
   const hasAccess = () => {
     // Check if user has purchased this course (database returns courseId field)
@@ -161,7 +168,7 @@ export default function CourseOverview() {
 
   // Calculate progress based on lessons, not chapters
   const getLessonProgress = (lessonId: number) => {
-    return userProgress?.find((p: any) => p.courseId === parseInt(courseId || '0') && p.lessonId === lessonId);
+    return userProgress?.find((p: any) => p.lesson_id === lessonId);
   };
 
   const completedLessons = lessons.filter((lesson: any) => {
@@ -300,7 +307,7 @@ export default function CourseOverview() {
                             const chapterLessons = getLessonsForChapter(chapter.id);
                             const completedInChapter = chapterLessons.filter(lesson => {
                               const progress = getLessonProgress(lesson.id);
-                              return progress?.completedAt;
+                              return progress?.completed_at;
                             });
                             const isChapterCompleted = chapterLessons.length > 0 && completedInChapter.length === chapterLessons.length;
                             
@@ -375,7 +382,7 @@ export default function CourseOverview() {
                                 <div className="flex-shrink-0">
                                   {(() => {
                                     const progress = getLessonProgress(lesson.id);
-                                    const isCompleted = progress?.completedAt;
+                                    const isCompleted = progress?.completed_at;
                                     
                                     if (isCompleted) {
                                       return (
