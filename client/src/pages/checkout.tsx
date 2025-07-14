@@ -57,7 +57,7 @@ export function PaymentForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeTab, setActiveTab] = useState("card");
+  // Removed activeTab state since we removed tabs
   const [billingDetails, setBillingDetails] = useState({
     firstName: customerDetails.firstName || '',
     lastName: customerDetails.lastName || '',
@@ -210,23 +210,26 @@ export function PaymentForm({
       return;
     }
 
-    // Make sure we're on the card tab
-    if (activeTab !== 'card') {
-      setActiveTab('card');
-      // Give a moment for the tab to render
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    // Give a moment for the card element to be ready
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     setIsProcessing(true);
     
     try {
       const paymentData = await handleCreatePayment(customerDetails);
       
+      // Wait for elements to be ready
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) {
         console.error('Card element not found. Available elements:', elements);
+        console.error('Elements object:', elements);
+        console.error('Payment method: Card (no tabs)');
         throw new Error('Card element not found. Please ensure you are on the card payment tab.');
       }
+
+      console.log('Card element found:', cardElement);
 
       console.log('Payment data:', paymentData);
       console.log('Customer details:', customerDetails);
@@ -302,51 +305,27 @@ export function PaymentForm({
         </div>
       )}
 
-      {/* Payment Method Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="link" className="flex items-center justify-center">
-            <img src={linkLogo} alt="Link" className="h-5 w-auto" />
-          </TabsTrigger>
-          <TabsTrigger value="card">💳 Card</TabsTrigger>
-        </TabsList>
+      {/* Payment Method */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-lg font-semibold">Payment Method</span>
+          <div className="h-px bg-gray-200 flex-1" />
+        </div>
         
-        <TabsContent value="link" className="space-y-4">
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between mb-4">
-              <img src={linkLogo} alt="Link" className="h-6 w-auto" />
-              <div className="flex items-center text-gray-600 text-sm">
-                <span>frazeradnam@gmail.com</span>
-                <span className="ml-1">▼</span>
-                <span className="ml-2">✕</span>
-              </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center space-x-2 mb-4">
+            <div className="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-full"></div>
             </div>
-            <div className="flex space-x-2">
-              <Button variant="outline" className="flex-1 text-sm">
-                <span className="mr-2">💳</span>
-                Use •••• 0796
-              </Button>
-              <Button variant="outline" className="flex-1 text-sm">
-                Pay another way
-              </Button>
+            <span className="font-medium text-sm">Credit / Debit Card</span>
+            <div className="flex space-x-1 ml-auto">
+              <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" className="h-5" />
+              <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" className="h-5" />
+              <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a0aae7eba.svg" alt="Amex" className="h-5" />
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="card" className="space-y-4">
-          <div className="p-4 border rounded-lg">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-              </div>
-              <span className="font-medium text-sm">Credit / Debit Card</span>
-              <div className="flex space-x-1 ml-auto">
-                <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" className="h-5" />
-                <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" className="h-5" />
-                <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a0aae7eba.svg" alt="Amex" className="h-5" />
-              </div>
-            </div>
-            
+          
+          <div className="border rounded-lg p-4 bg-white">
             <CardElement
               options={{
                 style: {
@@ -365,8 +344,8 @@ export function PaymentForm({
               }}
             />
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       {/* Billing Details */}
       <div className="space-y-4">
