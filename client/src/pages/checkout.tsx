@@ -440,7 +440,7 @@ export default function Checkout() {
   // Fetch cart items
   const { data: cartItems = [] } = useQuery<CartItem[]>({
     queryKey: ['/api/cart'],
-    enabled: !!user && !params?.courseId, // Only fetch if not purchasing a specific course
+    enabled: !!user, // Always fetch cart items to support mixed purchases
   });
 
   // Fetch shopping products for cart items
@@ -539,13 +539,13 @@ export default function Checkout() {
     setLocation("/courses");
   };
 
-  // Handle case where no courseId is provided and no cart items
-  if (!courseId && cartItems.length === 0) {
+  // Handle case where no items to checkout (cart is empty and no direct course purchase)
+  if (cartItems.length === 0 && !courseId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Nothing to Checkout</h1>
-          <p className="text-gray-600 mb-6">Your cart is empty and no course was specified for checkout.</p>
+          <p className="text-gray-600 mb-6">Your cart is empty. Add some courses or books to your cart to proceed.</p>
           <Button onClick={() => setLocation("/courses")} className="bg-[#095D66] hover:bg-[#074952]">
             Browse Courses
           </Button>
