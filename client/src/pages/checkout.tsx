@@ -40,6 +40,7 @@ function SimpleCardPayment({
   currency, 
   customerDetails, 
   course,
+  appliedCoupon,
   onSuccess
 }: any) {
   const stripe = useStripe();
@@ -97,9 +98,12 @@ function SimpleCardPayment({
       // Create payment intent
       const response = await apiRequest('POST', '/api/create-course-payment', {
         courseId: course?.id,
-        email: customerDetails.email,
-        firstName: customerDetails.firstName,
-        lastName: customerDetails.lastName || customerDetails.firstName,
+        customerDetails: {
+          email: customerDetails.email,
+          firstName: customerDetails.firstName,
+          lastName: customerDetails.lastName || customerDetails.firstName
+        },
+        couponId: appliedCoupon?.id || '',
         currency,
         amount: coursePrice
       });
@@ -1064,6 +1068,7 @@ export default function Checkout() {
                     currency={currency}
                     customerDetails={customerDetails}
                     course={course}
+                    appliedCoupon={appliedCoupon}
                     onSuccess={handlePaymentSuccess}
                   />
                 </Elements>
