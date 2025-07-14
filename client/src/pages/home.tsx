@@ -40,6 +40,13 @@ export default function Home() {
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   
+  // Fetch cart count
+  const { data: cartCount } = useQuery({
+    queryKey: ['/api/cart/count'],
+    enabled: !!user,
+    refetchInterval: 5000, // Refetch every 5 seconds to keep count updated
+  });
+  
   // Initialize personalization hook to save signup data after auth
   const { personalization } = usePersonalization();
 
@@ -144,6 +151,20 @@ export default function Home() {
             </button>
           )}
           <NotificationBell />
+
+          {/* Cart Icon with Count */}
+          <button
+            onClick={() => setLocation("/cart")}
+            className="relative text-white hover:text-gray-200 transition-colors"
+            title="Shopping Cart"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {cartCount?.count > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                {cartCount.count}
+              </span>
+            )}
+          </button>
 
           <button
             onClick={() => setShowSupportModal(true)}

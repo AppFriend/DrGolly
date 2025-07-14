@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Star, ShoppingCart, ExternalLink } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { ShoppingProduct } from "@shared/schema";
 
 interface RegionalPricing {
@@ -18,6 +19,7 @@ interface RegionalPricing {
 export default function Shopping() {
   const [selectedProduct, setSelectedProduct] = useState<ShoppingProduct | null>(null);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const { toast } = useToast();
 
   // Fetch shopping products
   const { data: products, isLoading: productsLoading } = useQuery<ShoppingProduct[]>({
@@ -79,6 +81,42 @@ export default function Shopping() {
 
   const openAmazonLink = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ itemType, itemId, quantity }: { itemType: string; itemId: number; quantity: number }) => {
+      const response = await apiRequest('POST', '/api/cart', {
+        itemType,
+        itemId,
+        quantity
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Added to Cart",
+        description: "Book has been added to your cart successfully!",
+      });
+      // Invalidate cart queries to update the count
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart/count'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleAddToCart = (product: ShoppingProduct) => {
+    addToCartMutation.mutate({
+      itemType: 'book',
+      itemId: product.id,
+      quantity: 1
+    });
   };
 
   if (productsLoading || pricingLoading) {
@@ -167,9 +205,22 @@ export default function Shopping() {
                   {isPaymentLoading && selectedProduct?.id === product.id ? (
                     <LoadingSpinner />
                   ) : (
+                    "Buy Now"
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={() => handleAddToCart(product)}
+                  disabled={!product.inStock || addToCartMutation.isPending}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {addToCartMutation.isPending ? (
+                    <LoadingSpinner />
+                  ) : (
                     <>
                       <ShoppingCart className="w-4 h-4 mr-2" />
-                      Buy Now
+                      Add to Cart
                     </>
                   )}
                 </Button>

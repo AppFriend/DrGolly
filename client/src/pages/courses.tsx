@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Bookmark, Grid, Moon, Baby, Lock, ArrowLeft } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Search, Bookmark, Grid, Moon, Baby, Lock, ArrowLeft, ShoppingCart } from "lucide-react";
 import { VideoCard } from "@/components/ui/video-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Course } from "@shared/schema";
 import CourseDetail from "@/components/CourseDetail";
 import { Link } from "wouter";
@@ -195,6 +196,42 @@ export default function Courses() {
     // Handle individual course purchase
   };
 
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ itemType, itemId, quantity }: { itemType: string; itemId: number; quantity: number }) => {
+      const response = await apiRequest('POST', '/api/cart', {
+        itemType,
+        itemId,
+        quantity
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Added to Cart",
+        description: "Course has been added to your cart successfully!",
+      });
+      // Invalidate cart queries to update the count
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart/count'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add course to cart. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleAddToCart = (course: Course) => {
+    addToCartMutation.mutate({
+      itemType: 'course',
+      itemId: course.id,
+      quantity: 1
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-dr-bg">
@@ -365,13 +402,29 @@ export default function Courses() {
                       >
                         Unlimited Access with Gold
                       </Button>
-                      <Button
-                        onClick={() => window.location.href = `/checkout/${course.id}`}
-                        variant="outline"
-                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        Buy for $120
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => window.location.href = `/checkout?courseId=${course.id}`}
+                          className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white"
+                        >
+                          Buy Now
+                        </Button>
+                        <Button
+                          onClick={() => handleAddToCart(course)}
+                          disabled={addToCartMutation.isPending}
+                          variant="outline"
+                          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          {addToCartMutation.isPending ? (
+                            "Adding..."
+                          ) : (
+                            <>
+                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              Add to Cart
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </>
                   );
                 })()}
@@ -419,13 +472,29 @@ export default function Courses() {
                       >
                         Unlimited Access with Gold
                       </Button>
-                      <Button
-                        onClick={() => window.location.href = `/checkout/${course.id}`}
-                        variant="outline"
-                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        Buy for $120
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => window.location.href = `/checkout?courseId=${course.id}`}
+                          className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white"
+                        >
+                          Buy Now
+                        </Button>
+                        <Button
+                          onClick={() => handleAddToCart(course)}
+                          disabled={addToCartMutation.isPending}
+                          variant="outline"
+                          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          {addToCartMutation.isPending ? (
+                            "Adding..."
+                          ) : (
+                            <>
+                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              Add to Cart
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </>
                   );
                 })()}
