@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, X, Plus, DollarSign, Calendar, Eye } from "lucide-react";
+import { BookOpen, X, Plus, DollarSign, Calendar, Eye, Activity, Play, Clock, TrendingUp, BarChart3 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 interface Course {
   id: string;
@@ -24,6 +27,20 @@ interface UserCourse {
   amount: number;
   status: string;
   course: Course;
+}
+
+interface CourseEngagement {
+  course_id: number;
+  course_title: string;
+  thumbnail_url: string;
+  has_access: boolean;
+  has_started: boolean;
+  completion_percentage: number;
+  total_lessons: number;
+  completed_lessons: number;
+  last_accessed: string | null;
+  total_watch_time: number;
+  entry_count: number;
 }
 
 interface User {
@@ -59,6 +76,16 @@ export default function UserCourseManagement({ user, isOpen, onClose }: UserCour
     queryKey: ["/api/courses"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/courses");
+      return await response.json();
+    },
+    enabled: isOpen,
+  });
+
+  // Fetch course engagement data
+  const { data: courseEngagement, isLoading: engagementLoading } = useQuery({
+    queryKey: [`/api/admin/users/${user.id}/course-engagement`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/admin/users/${user.id}/course-engagement`);
       return await response.json();
     },
     enabled: isOpen,
@@ -129,7 +156,7 @@ export default function UserCourseManagement({ user, isOpen, onClose }: UserCour
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
@@ -138,6 +165,102 @@ export default function UserCourseManagement({ user, isOpen, onClose }: UserCour
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Course Engagement Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Course Engagement Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {engagementLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+                  <p className="text-gray-600">Loading engagement data...</p>
+                </div>
+              ) : courseEngagement?.length === 0 ? (
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600">No engagement data available</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {courseEngagement?.map((engagement: CourseEngagement) => (
+                    <Card key={engagement.course_id} className={`border-2 ${engagement.has_access ? 'border-green-200' : 'border-gray-200'}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <img 
+                            src={engagement.thumbnail_url?.replace('/assets/', '/attached_assets/') || '/api/placeholder/48/48'} 
+                            alt={engagement.course_title}
+                            className="w-12 h-12 rounded-lg object-cover"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{engagement.course_title}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={engagement.has_access ? 'default' : 'secondary'} className="text-xs">
+                                {engagement.has_access ? 'Has Access' : 'No Access'}
+                              </Badge>
+                              {engagement.has_started && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Play className="h-3 w-3 mr-1" />
+                                  Started
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {/* Progress Bar */}
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs text-gray-600">Progress</span>
+                              <span className="text-xs font-medium">{engagement.completion_percentage}%</span>
+                            </div>
+                            <Progress value={engagement.completion_percentage} className="h-2" />
+                          </div>
+                          
+                          {/* Lesson Stats */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-blue-50 p-2 rounded">
+                              <div className="text-blue-600 font-medium">{engagement.completed_lessons}</div>
+                              <div className="text-blue-500">Completed</div>
+                            </div>
+                            <div className="bg-gray-50 p-2 rounded">
+                              <div className="text-gray-600 font-medium">{engagement.total_lessons}</div>
+                              <div className="text-gray-500">Total</div>
+                            </div>
+                          </div>
+                          
+                          {/* Watch Time */}
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3 text-gray-500" />
+                            <span className="text-xs text-gray-600">
+                              {Math.floor(engagement.total_watch_time / 60)}h {engagement.total_watch_time % 60}m watched
+                            </span>
+                          </div>
+                          
+                          {/* Last Accessed */}
+                          {engagement.last_accessed && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-3 w-3 text-gray-500" />
+                              <span className="text-xs text-gray-600">
+                                Last: {formatDistanceToNow(new Date(engagement.last_accessed), { addSuffix: true })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Separator />
+
           {/* User's Purchased Courses */}
           <Card>
             <CardHeader>
