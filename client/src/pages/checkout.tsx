@@ -126,7 +126,7 @@ function PaymentForm({
           elements,
           clientSecret: paymentData.clientSecret,
           confirmParams: {
-            return_url: `${window.location.origin}/checkout/${course.id}`,
+            return_url: `${window.location.origin}/checkout/${course?.id || ''}`,
           },
           redirect: 'if_required',
         });
@@ -152,6 +152,10 @@ function PaymentForm({
   }, [stripe, elements, coursePrice, currency, isMobile, customerDetails, course]);
 
   const handleCreatePayment = async (customerInfo: any) => {
+    if (!course || !course.id) {
+      throw new Error('Course information is missing');
+    }
+    
     const response = await apiRequest('POST', '/api/create-course-payment', {
       courseId: course.id,
       customerDetails: customerInfo,
@@ -721,20 +725,31 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Payment Section - Always show */}
+            {/* Payment Section - Show only when course data is loaded */}
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
-              <Elements stripe={stripePromise}>
-                <PaymentForm
-                  coursePrice={finalPrice}
-                  currencySymbol={currencySymbol}
-                  currency={currency}
-                  customerDetails={customerDetails}
-                  appliedCoupon={appliedCoupon}
-                  course={course}
-                  onSuccess={handlePaymentSuccess}
-                />
-              </Elements>
+              {courseLoading && courseId ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-gray-300 border-t-[#6B9CA3] rounded-full mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading course information...</p>
+                </div>
+              ) : course || !courseId ? (
+                <Elements stripe={stripePromise}>
+                  <PaymentForm
+                    coursePrice={finalPrice}
+                    currencySymbol={currencySymbol}
+                    currency={currency}
+                    customerDetails={customerDetails}
+                    appliedCoupon={appliedCoupon}
+                    course={course}
+                    onSuccess={handlePaymentSuccess}
+                  />
+                </Elements>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-red-600">Unable to load course information. Please try again.</p>
+                </div>
+              )}
             </div>
 
 
