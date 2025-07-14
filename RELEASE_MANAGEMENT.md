@@ -1,246 +1,199 @@
-# 🚀 Release Management Guide
+# Release Management
 
-## Release Naming Convention
+## Release Versioning
 
-### Format: `stable-DD-MM-YYYY-feature-name`
-- **stable-14-07-2025-course-images** - Course image system complete
-- **stable-15-07-2025-git-workflow** - Git workflow implementation
-- **stable-20-07-2025-checkout-fixes** - Checkout page improvements
+We use Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 
-### Release Types
-- **stable-** : Production-ready releases
-- **beta-** : Pre-release testing versions
-- **hotfix-** : Emergency fixes
-- **snapshot-** : Development snapshots
+- **MAJOR**: Breaking changes that require user action
+- **MINOR**: New features, backward compatible
+- **PATCH**: Bug fixes, backward compatible
 
-## Creating Releases
+## Release Types
 
-### 1. Create Release Branch
+### Stable Releases
+- `v1.3.0` - Major feature release
+- `v1.3.1` - Bug fix release
+- `v1.4.0` - Next major feature release
+
+### Release Candidates
+- `v1.4.0-rc.1` - First release candidate
+- `v1.4.0-rc.2` - Second release candidate
+
+### Development Releases
+- `v1.4.0-dev.1` - Development preview
+- `v1.4.0-dev.2` - Development preview
+
+## Release Process
+
+### 1. Feature Development
 ```bash
-# From main branch
+# Create feature branch
+git checkout -b feature/courses/lesson-analytics
+# Develop feature
+git commit -m "feat(courses): add lesson completion analytics"
+# Push and create PR
+git push origin feature/courses/lesson-analytics
+```
+
+### 2. Integration Testing
+```bash
+# Merge to dev branch
+git checkout dev
+git merge feature/courses/lesson-analytics
+# Run comprehensive tests
+npm test
+npm run e2e-tests
+```
+
+### 3. Release Preparation
+```bash
+# Create release branch
+git checkout -b release/v1.4.0
+# Update version numbers
+npm version minor
+# Update changelog
+# Final testing
+```
+
+### 4. Production Release
+```bash
+# Merge to main
 git checkout main
-git pull origin main
-git checkout -b release/stable-14-07-2025-course-images
-```
-
-### 2. Tag the Release
-```bash
-# Create annotated tag
-git tag -a stable-14-07-2025-course-images -m "
-Course Image System Complete
-- All 9 course thumbnails working
-- Static file serving implemented
-- Database paths updated
-- Ready for production deployment
-"
-
-# Push tag to GitHub
-git push origin stable-14-07-2025-course-images
-```
-
-### 3. Create GitHub Release
-- Go to GitHub → Releases → Create New Release
-- Tag: `stable-14-07-2025-course-images`
-- Title: `Stable Release - Course Images (July 14, 2025)`
-- Description: Detailed changelog
-
-## Quick Release Commands
-
-### Create Today's Release
-```bash
-#!/bin/bash
-# save as: scripts/create-release.sh
-
-DATE=$(date +%d-%m-%Y)
-FEATURE_NAME=$1
-
-if [ -z "$FEATURE_NAME" ]; then
-    echo "Usage: ./create-release.sh <feature-name>"
-    exit 1
-fi
-
-TAG_NAME="stable-$DATE-$FEATURE_NAME"
-
-# Create and push tag
-git tag -a $TAG_NAME -m "Stable release: $FEATURE_NAME"
-git push origin $TAG_NAME
-
-echo "Release created: $TAG_NAME"
-```
-
-### Usage
-```bash
-chmod +x scripts/create-release.sh
-./scripts/create-release.sh course-images
-```
-
-## Reverting to Previous Releases
-
-### 1. List Available Releases
-```bash
-# Show all tags
-git tag -l "stable-*" --sort=-version:refname
-
-# Show recent releases with dates
-git log --tags --simplify-by-decoration --pretty="format:%ai %d"
-```
-
-### 2. Revert to Specific Release
-```bash
-# Method 1: Reset to tag (destructive)
-git checkout main
-git reset --hard stable-14-07-2025-course-images
-git push origin main --force
-
-# Method 2: Create revert commit (safer)
-git checkout main
-git revert --no-commit HEAD~5..HEAD  # adjust number as needed
-git commit -m "Revert to stable-14-07-2025-course-images"
-```
-
-### 3. Emergency Rollback Script
-```bash
-#!/bin/bash
-# save as: scripts/emergency-rollback.sh
-
-RELEASE_TAG=$1
-
-if [ -z "$RELEASE_TAG" ]; then
-    echo "Usage: ./emergency-rollback.sh <release-tag>"
-    echo "Example: ./emergency-rollback.sh stable-14-07-2025-course-images"
-    exit 1
-fi
-
-# Verify tag exists
-if ! git rev-parse $RELEASE_TAG >/dev/null 2>&1; then
-    echo "Error: Tag $RELEASE_TAG not found"
-    exit 1
-fi
-
-# Create rollback branch
-git checkout main
-git checkout -b rollback-to-$RELEASE_TAG
-
-# Reset to the stable release
-git reset --hard $RELEASE_TAG
-
-# Push rollback branch
-git push origin rollback-to-$RELEASE_TAG
-
-echo "Rollback branch created: rollback-to-$RELEASE_TAG"
-echo "Create PR to merge this into main"
+git merge release/v1.4.0
+# Tag release
+git tag v1.4.0
+git push origin main --tags
+# Deploy to production
 ```
 
 ## Release Checklist
 
 ### Pre-Release
-- [ ] All tests passing
-- [ ] Code reviewed and approved
+- [ ] All features merged to dev
+- [ ] Automated tests passing
+- [ ] Manual testing completed
 - [ ] Documentation updated
-- [ ] Database migrations tested
-- [ ] Security audit complete
+- [ ] Breaking changes documented
+- [ ] Migration scripts prepared
 
-### Release Process
-- [ ] Create release branch
-- [ ] Update version numbers
-- [ ] Create release notes
-- [ ] Tag release
-- [ ] Deploy to staging
-- [ ] Run smoke tests
-- [ ] Deploy to production
+### Release
+- [ ] Version number updated
+- [ ] Changelog updated
+- [ ] Git tag created
+- [ ] Production deployment successful
+- [ ] Health checks passing
+- [ ] Monitoring alerts configured
 
 ### Post-Release
-- [ ] Monitor for issues
-- [ ] Update replit.md with savepoint
-- [ ] Notify team of deployment
-- [ ] Close related GitHub issues
+- [ ] Release notes published
+- [ ] Team notifications sent
+- [ ] Performance metrics reviewed
+- [ ] User feedback collected
+- [ ] Hotfix process ready
 
-## Savepoint System
+## Emergency Releases
 
-### Current Savepoints (from replit.md)
-```
-STABLE VERSIONS (for easy rollback reference):
-- SAVEPOINT v1.0 (July 14, 2025): Course image system complete
-  * All 9 course thumbnails display correctly from user screenshots
-  * Direct static file serving: `/attached_assets/` folder
-  * Database paths: `/assets/` converted to `/attached_assets/`
-  * Key files: server/index.ts, client/src/pages/courses.tsx
-  * Status: Ready for production deployment
-```
+### Hotfix Process
+1. **Create hotfix branch from main**
+   ```bash
+   git checkout main
+   git checkout -b hotfix/critical-payment-bug
+   ```
 
-### Adding New Savepoints
+2. **Fix the issue**
+   ```bash
+   git commit -m "fix(payments): resolve Stripe webhook timeout issue"
+   ```
+
+3. **Test thoroughly**
+   ```bash
+   npm test
+   npm run integration-tests
+   ```
+
+4. **Deploy immediately**
+   ```bash
+   git checkout main
+   git merge hotfix/critical-payment-bug
+   git tag v1.3.1
+   git push origin main --tags
+   ```
+
+## Rollback Procedures
+
+### Automatic Rollback
 ```bash
-# After successful feature completion
-git tag -a v1.1-stable-15-07-2025 -m "Git workflow implementation complete"
-git push origin v1.1-stable-15-07-2025
-
-# Update replit.md
-echo "- SAVEPOINT v1.1 (July 15, 2025): Git workflow implementation" >> replit.md
+# Identify previous stable version
+git tag --sort=-version:refname | head -5
+# Rollback to previous version
+git checkout v1.3.0
+git checkout -b rollback/v1.3.0
+git push origin rollback/v1.3.0
 ```
 
-## Version Management
-
-### Semantic Versioning
-- **Major** (v2.0.0): Breaking changes
-- **Minor** (v1.1.0): New features
-- **Patch** (v1.0.1): Bug fixes
-
-### Dr. Golly Versioning
-- **v1.0**: Initial stable release
-- **v1.1**: Feature additions
-- **v1.1.1**: Bug fixes
-- **v2.0**: Major redesign/refactor
-
-## Monitoring & Alerts
-
-### Post-Release Monitoring
+### Database Rollback
 ```bash
-# Check deployment health
-curl -f https://your-app.com/health || echo "Deployment failed"
-
-# Monitor error rates
-# Set up alerts for increased error rates
+# Run database migrations in reverse
+npm run db:rollback
+# Verify data integrity
+npm run db:verify
 ```
 
-### Automated Rollback Triggers
-- 500 error rate > 5%
-- Response time > 5 seconds
-- Database connection failures
+## Release Communication
 
-## Best Practices
+### Internal Team
+- Slack notifications for releases
+- Email updates for major releases
+- Documentation updates required
 
-### Release Timing
-- **Weekdays**: Tuesday-Thursday (avoid Mondays/Fridays)
-- **Time**: Business hours for immediate support
-- **Frequency**: Weekly stable releases
+### External Users
+- Release notes on documentation site
+- Email notifications for breaking changes
+- Migration guides for major updates
 
-### Documentation
-- Always update CHANGELOG.md
-- Include breaking changes
-- Document database migrations
-- Update API documentation
+## Monitoring and Metrics
 
-### Communication
-- Slack/email notifications
-- GitHub release notes
-- Update status page
+### Release Health
+- Deployment success rate
+- Rollback frequency
+- Time to production
+- Bug escape rate
 
-## Emergency Procedures
+### Performance Metrics
+- Response time changes
+- Error rate changes
+- User engagement impact
+- System resource usage
 
-### If Release Breaks Production
-1. **Immediate**: Run rollback script
-2. **Assess**: Determine root cause
-3. **Fix**: Create hotfix branch
-4. **Test**: Verify fix in staging
-5. **Deploy**: Emergency deployment
-6. **Review**: Post-mortem analysis
+## Release History Template
 
-### Rollback Decision Matrix
-- **Critical bug**: Immediate rollback
-- **Minor issue**: Hotfix in next release
-- **Performance degradation**: Rollback if >20% impact
-- **Database corruption**: Immediate rollback + restore
+```markdown
+# Release v1.4.0 - Course Analytics Enhancement
 
----
+## 🚀 New Features
+- Enhanced lesson completion tracking
+- Real-time progress analytics
+- Advanced user engagement metrics
 
-*This release management system ensures safe, organized deployments with clear recovery procedures.*
+## 🐛 Bug Fixes
+- Fixed course navigation issue
+- Resolved payment processing timeout
+- Improved mobile responsiveness
+
+## 🔧 Technical Improvements
+- Database query optimization
+- API response time improvements
+- Enhanced error handling
+
+## 📱 Mobile Enhancements
+- Improved touch interactions
+- Better responsive design
+- Enhanced accessibility
+
+## 🔄 Breaking Changes
+- None
+
+## 📋 Migration Notes
+- No migration required
+- All changes are backward compatible
+```

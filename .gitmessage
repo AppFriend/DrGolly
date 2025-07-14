@@ -1,0 +1,21 @@
+# <type>(<scope>): <subject>
+#
+# <body>
+#
+# <footer>
+
+# Type: feat, fix, docs, style, refactor, test, chore
+# Scope: courses, admin, checkout, auth, ui, api, db
+# Subject: Brief description (50 chars max)
+# Body: Detailed explanation (72 chars per line)
+# Footer: Breaking changes, issue references
+
+# Example:
+# feat(courses): Add lesson completion tracking with progress persistence
+#
+# - Implement user progress storage in PostgreSQL
+# - Add visual progress indicators on course overview
+# - Create lesson completion API endpoints
+# - Update mobile UI for progress display
+#
+# Closes #123, #124

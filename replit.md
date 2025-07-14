@@ -156,6 +156,17 @@ STABLE VERSIONS (for easy rollback reference):
   * Extended Git workflow with subscription/*, checkout/*, admin/* branches
   * Admin panel fully functional with user management capabilities
   * Status: Production-ready with complete admin user management system
+
+- SAVEPOINT v1.3 (July 15, 2025): Comprehensive e-commerce system with stable checkout flow
+  * BREAKTHROUGH: Fixed critical coupon pricing issue - Stripe now charges discounted prices correctly
+  * Implemented complete cart functionality supporting mixed product types (courses and books)
+  * Added Stripe product ID integration for dynamic book pricing with real-time synchronization
+  * Enhanced course navigation with persistent progress tracking across sessions
+  * Implemented user engagement analytics in admin panel with course completion metrics
+  * Restored notification system with interactive bell icon and notification center
+  * Fixed all course thumbnail image display issues using user-provided screenshots
+  * Added comprehensive error handling and payment processing improvements
+  * Status: Production-ready with complete e-commerce functionality and stable payment system
 ```
 
 ## Changelog
@@ -831,6 +842,19 @@ Changelog:
   * Added comprehensive error handling and success notifications for image upload process
   * Upload button automatically updates image URL field when file is successfully uploaded
   * Maintained consistent Dr. Golly brand colors (#095D66) throughout upload interface
+
+- July 15, 2025. STABLE RELEASE v1.3: Comprehensive checkout system overhaul with e-commerce enhancements:
+  * BREAKTHROUGH: Fixed critical coupon pricing flow - Stripe now charges discounted price instead of full price
+  * Enhanced SimpleCardPayment component to properly pass appliedCoupon data to backend payment processing
+  * Implemented comprehensive cart functionality with mixed product types (courses and books)
+  * Added Stripe product ID integration for dynamic book pricing: prod_SfzaFvJapoxf3g, prod_SfzbrHMafOFmHI
+  * Fixed course tile image display issues - all 9 course thumbnails now load correctly from user screenshots
+  * Enhanced course navigation with improved lesson tracking and user progress persistence
+  * Implemented user engagement tracking in admin panel with course completion metrics
+  * Restored notification system functionality with proper bell icon and notification center
+  * Updated mobile-optimized checkout flow with Apple Pay/Google Pay integration
+  * Added comprehensive error handling and payment processing improvements
+  * Status: Production-ready stable release with complete e-commerce functionality
 
 - July 15, 2025. COMPLETED: Course access logic integration with historical purchases and progress tracking:
   * Fixed course access logic to properly integrate with `courses_purchased_previously` field from CSV migration
