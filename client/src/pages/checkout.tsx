@@ -33,6 +33,237 @@ const productImages: Record<number, string> = {
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
+// Simple card-only payment component
+function SimpleCardPayment({ 
+  coursePrice, 
+  currencySymbol, 
+  currency, 
+  customerDetails, 
+  course,
+  onSuccess
+}: any) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [billingDetails, setBillingDetails] = useState({
+    firstName: customerDetails.firstName || '',
+    lastName: customerDetails.lastName || '',
+    phone: customerDetails.phone || '',
+    address: customerDetails.address || '',
+    country: 'Australia',
+    city: customerDetails.city || '',
+    postcode: customerDetails.zipCode || ''
+  });
+
+  const handleBillingChange = (field: string, value: string) => {
+    setBillingDetails(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!stripe || !elements || isProcessing) {
+      toast({
+        title: "Payment System Not Ready",
+        description: "Please wait a moment and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!customerDetails.email || !customerDetails.firstName) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in your email and first name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!billingDetails.firstName || !billingDetails.lastName) {
+      toast({
+        title: "Missing Billing Details",
+        description: "Please fill in your billing first and last name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      // Create payment intent
+      const response = await apiRequest('POST', '/api/create-course-payment', {
+        courseId: course?.id,
+        email: customerDetails.email,
+        firstName: customerDetails.firstName,
+        lastName: customerDetails.lastName || customerDetails.firstName,
+        currency,
+        amount: coursePrice
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create payment intent');
+      }
+
+      const { clientSecret } = await response.json();
+
+      // Get card element
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card element not found');
+      }
+
+      // Confirm payment
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: `${billingDetails.firstName} ${billingDetails.lastName}`,
+            email: customerDetails.email,
+            phone: billingDetails.phone,
+            address: {
+              line1: billingDetails.address,
+              city: billingDetails.city,
+              postal_code: billingDetails.postcode,
+              country: billingDetails.country === 'Australia' ? 'AU' : 'US'
+            }
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        toast({
+          title: "Payment Successful!",
+          description: "Your course has been purchased successfully.",
+        });
+        onSuccess();
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      toast({
+        title: "Payment Error",
+        description: error.message || "Payment failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Payment Method */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-lg font-semibold">Payment Method</span>
+          <div className="h-px bg-gray-200 flex-1" />
+        </div>
+        
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center space-x-2 mb-4">
+            <div className="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-full"></div>
+            </div>
+            <span className="font-medium text-sm">Credit / Debit Card</span>
+            <div className="flex space-x-1 ml-auto">
+              <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" className="h-5" />
+              <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" className="h-5" />
+              <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a0aae7eba.svg" alt="Amex" className="h-5" />
+            </div>
+          </div>
+          
+          <div className="border rounded-lg p-4 bg-white">
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    fontSize: '16px',
+                    color: '#424770',
+                    '::placeholder': {
+                      color: '#aab7c4',
+                    },
+                  },
+                  invalid: {
+                    color: '#9e2146',
+                  },
+                },
+                hidePostalCode: false,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Billing Details */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-lg font-semibold">Billing Details</span>
+          <div className="h-px bg-gray-200 flex-1" />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="firstName">First Name</Label>
+            <Input
+              id="firstName"
+              value={billingDetails.firstName}
+              onChange={(e) => handleBillingChange('firstName', e.target.value)}
+              placeholder="First Name"
+            />
+          </div>
+          <div>
+            <Label htmlFor="lastName">Last Name</Label>
+            <Input
+              id="lastName"
+              value={billingDetails.lastName}
+              onChange={(e) => handleBillingChange('lastName', e.target.value)}
+              placeholder="Last Name"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            value={billingDetails.phone}
+            onChange={(e) => handleBillingChange('phone', e.target.value)}
+            placeholder="Phone number"
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="address">Address</Label>
+          <Input
+            id="address"
+            value={billingDetails.address}
+            onChange={(e) => handleBillingChange('address', e.target.value)}
+            placeholder="Address"
+          />
+        </div>
+      </div>
+
+      {/* Place Order Button */}
+      <form onSubmit={handlePayment}>
+        <Button
+          type="submit"
+          disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName}
+          className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg"
+        >
+          {isProcessing ? 'Processing...' : 'Place order'}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 // PaymentForm component
 export function PaymentForm({ 
   coursePrice, 
@@ -827,12 +1058,11 @@ export default function Checkout() {
                 </div>
               ) : (
                 <Elements stripe={stripePromise}>
-                  <PaymentForm
+                  <SimpleCardPayment
                     coursePrice={finalPrice}
                     currencySymbol={currencySymbol}
                     currency={currency}
                     customerDetails={customerDetails}
-                    appliedCoupon={appliedCoupon}
                     course={course}
                     onSuccess={handlePaymentSuccess}
                   />
