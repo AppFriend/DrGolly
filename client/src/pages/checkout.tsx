@@ -406,9 +406,17 @@ export default function Checkout() {
   const { toast } = useToast();
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   
-  // Extract courseId from URL parameters (either route param or query param)
-  const urlParams = new URLSearchParams(location.split('?')[1]);
-  const courseIdFromQuery = urlParams.get('courseId');
+  // SIMPLIFIED: Extract courseId from URL using simple approach
+  const courseIdFromQuery = new URLSearchParams(window.location.search).get('courseId');
+  const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
+  
+  console.log('SIMPLIFIED Checkout Debug:', {
+    windowLocationSearch: window.location.search,
+    courseIdFromQuery,
+    courseId,
+    isDirectPurchase: !!courseId
+  });
+  
   const [customerDetails, setCustomerDetails] = useState({
     firstName: user?.firstName || "",
     email: user?.email || "",
@@ -458,29 +466,18 @@ export default function Checkout() {
     queryKey: ["/api/regional-pricing"],
     retry: false,
   });
-
-  const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
   
-  // Debug logging
-  console.log('Checkout Debug:', {
-    location,
-    params,
-    courseIdFromQuery,
-    courseId,
-    urlParams: location.split('?')[1]
-  });
-  
-  // Determine if this is a direct purchase or cart checkout
+  // SIMPLIFIED: Determine checkout type
   const isDirectPurchase = !!courseId;
   const isCartCheckout = !courseId;
   
-  // Fetch cart items only for cart checkout
+  // For direct purchase, never fetch cart items
   const { data: cartItems = [] } = useQuery<CartItem[]>({
     queryKey: ['/api/cart'],
     enabled: !!user && isCartCheckout, // Only fetch cart items for cart checkout
   });
 
-  // For direct purchase, cart items should always be empty
+  // SIMPLIFIED: Always show empty cart for direct purchase
   const displayCartItems = isDirectPurchase ? [] : cartItems;
 
   // Fetch shopping products for cart items
