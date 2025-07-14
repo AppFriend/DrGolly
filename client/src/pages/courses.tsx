@@ -10,7 +10,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Course } from "@shared/schema";
 import CourseDetail from "@/components/CourseDetail";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 const courseTabs = [
   { id: "my", label: "Purchases", icon: Bookmark },
@@ -23,6 +23,7 @@ export default function Courses() {
   const { user } = useAuth();
   const { openUpgradeModal } = useUpgradeModal();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("my");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
@@ -406,14 +407,17 @@ export default function Courses() {
                   return (
                     <>
                       <Button
-                        onClick={() => window.location.href = "/manage"}
+                        onClick={() => setLocation("/manage")}
                         className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
                       >
                         Unlimited Access with Gold
                       </Button>
                       <div className="flex gap-2">
                         <Button
-                          onClick={() => window.location.href = `/checkout?courseId=${course.id}`}
+                          onClick={() => {
+                            console.log('Buy Now clicked for course:', course.id);
+                            setLocation(`/checkout?courseId=${course.id}`);
+                          }}
                           className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white"
                         >
                           Buy Now
@@ -476,14 +480,17 @@ export default function Courses() {
                   return (
                     <>
                       <Button
-                        onClick={() => window.location.href = "/manage"}
+                        onClick={() => setLocation("/manage")}
                         className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
                       >
                         Unlimited Access with Gold
                       </Button>
                       <div className="flex gap-2">
                         <Button
-                          onClick={() => window.location.href = `/checkout?courseId=${course.id}`}
+                          onClick={() => {
+                            console.log('Buy Now clicked for course:', course.id);
+                            setLocation(`/checkout?courseId=${course.id}`);
+                          }}
                           className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white"
                         >
                           Buy Now
