@@ -189,22 +189,30 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   const now = Math.floor(Date.now() / 1000);
+  console.log('Current time:', now, 'Token expires at:', user.expires_at);
+  
   if (now <= user.expires_at) {
+    console.log('Token is still valid, proceeding');
     return next();
   }
 
+  console.log('Token expired, attempting refresh');
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
+    console.log('No refresh token available');
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
 
   try {
+    console.log('Attempting to refresh token');
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
+    console.log('Token refreshed successfully');
     return next();
   } catch (error) {
+    console.log('Token refresh failed:', error);
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
