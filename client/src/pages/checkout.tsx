@@ -479,14 +479,17 @@ export default function Checkout() {
   // Calculate total for cart items
   const calculateCartTotal = () => {
     return cartItems.reduce((total, item) => {
-      if (item.itemType === 'book') {
-        const product = shoppingProducts.find(p => p.id === parseInt(item.itemId));
+      const itemType = item.itemType || (item as any).item_type;
+      const itemId = item.itemId || (item as any).item_id;
+      
+      if (itemType === 'book') {
+        const product = shoppingProducts.find(p => p.id === parseInt(itemId));
         if (product && regionalPricing) {
           const priceField = product.priceField as keyof typeof regionalPricing;
           const price = regionalPricing[priceField] || 0;
           return total + (price * item.quantity);
         }
-      } else if (item.itemType === 'course') {
+      } else if (itemType === 'course') {
         return total + (originalPrice * item.quantity);
       }
       return total;
@@ -495,8 +498,11 @@ export default function Checkout() {
 
   // Helper function to get item details
   const getItemDetails = (item: CartItem) => {
-    if (item.itemType === 'book') {
-      const product = shoppingProducts.find(p => p.id === parseInt(item.itemId));
+    const itemType = item.itemType || (item as any).item_type;
+    const itemId = item.itemId || (item as any).item_id;
+    
+    if (itemType === 'book') {
+      const product = shoppingProducts.find(p => p.id === parseInt(itemId));
       if (product && regionalPricing) {
         const priceField = product.priceField as keyof typeof regionalPricing;
         const price = regionalPricing[priceField] || 0;
@@ -507,11 +513,11 @@ export default function Checkout() {
           author: product.author,
         };
       }
-    } else if (item.itemType === 'course') {
-      const course = courses.find(c => c.id === parseInt(item.itemId));
+    } else if (itemType === 'course') {
+      const course = courses.find(c => c.id === parseInt(itemId));
       return course ? {
         title: course.title,
-        image: course.thumbnailUrl,
+        image: course.thumbnailUrl ? course.thumbnailUrl.replace('/assets/', '/attached_assets/') : null,
         price: originalPrice,
         author: 'Dr. Golly',
       } : null;
