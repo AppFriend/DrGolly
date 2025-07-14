@@ -719,52 +719,7 @@ export default function Checkout() {
               </Elements>
             </div>
 
-            {/* Billing Address Section */}
-            <div className="bg-white rounded-lg p-4">
-              <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING ADDRESS</h2>
-              <div className="space-y-3">
-                <div>
-                  <GoogleMapsAutocomplete
-                    value={customerDetails.address}
-                    onChange={(value) => handleDetailsChange("address", value)}
-                    placeholder="Enter your address"
-                    className="h-12"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    type="text"
-                    value={customerDetails.city}
-                    onChange={(e) => handleDetailsChange("city", e.target.value)}
-                    placeholder="City"
-                    className="h-12"
-                  />
-                  <Input
-                    type="text"
-                    value={customerDetails.state}
-                    onChange={(e) => handleDetailsChange("state", e.target.value)}
-                    placeholder="State"
-                    className="h-12"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    type="text"
-                    value={customerDetails.zipCode}
-                    onChange={(e) => handleDetailsChange("zipCode", e.target.value)}
-                    placeholder="Zip Code"
-                    className="h-12"
-                  />
-                  <Input
-                    type="text"
-                    value={customerDetails.country}
-                    onChange={(e) => handleDetailsChange("country", e.target.value)}
-                    placeholder="Country"
-                    className="h-12"
-                  />
-                </div>
-              </div>
-            </div>
+
           </div>
 
           {/* Right Column - Empty on desktop or additional content */}
