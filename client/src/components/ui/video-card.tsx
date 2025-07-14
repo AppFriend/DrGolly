@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Course } from "@shared/schema";
+import { useLocation } from "wouter";
 
 interface VideoCardProps {
   course: Course;
@@ -18,6 +19,7 @@ export function VideoCard({ course, onClick, className, showAddToCart = false }:
   const { user } = useAuth();
   const { hasAccess } = useFeatureAccess();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   // Check if user has access to unlimited courses
   const hasUnlimitedCourses = hasAccess("courses_unlimited");
@@ -57,6 +59,11 @@ export function VideoCard({ course, onClick, className, showAddToCart = false }:
       itemId: course.id,
       quantity: 1
     });
+  };
+
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    setLocation(`/checkout?courseId=${course.id}`);
   };
   
   // Handle different image URL formats
@@ -148,7 +155,10 @@ export function VideoCard({ course, onClick, className, showAddToCart = false }:
             {!hasUnlimitedCourses && course.category !== "freebies" && (
               <span className="text-lg font-bold text-dr-teal">$120</span>
             )}
-            <button className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors">
+            <button 
+              onClick={!hasUnlimitedCourses && course.category !== "freebies" ? handleBuyNow : onClick}
+              className="text-dr-teal font-medium text-sm flex items-center hover:text-dr-teal-dark transition-colors"
+            >
               {!hasUnlimitedCourses && course.category !== "freebies" ? "Buy Now" : "Read More"}
               <ArrowRight className="h-4 w-4 ml-1" />
             </button>
