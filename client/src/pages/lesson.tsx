@@ -144,6 +144,9 @@ export default function LessonPage() {
       // Mark lesson as complete first
       markProgressMutation.mutate({ completed: true, watchTime });
       
+      // Wait for progress to be saved before showing celebration
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Check if this is the last lesson in the chapter
       if (lessonData && lessonData.isLastInChapter) {
         // Show chapter completion celebration
@@ -393,8 +396,17 @@ export default function LessonPage() {
                         </>
                       ) : (
                         <>
-                          <Circle className="w-4 h-4 mr-2" />
-                          {lessonData.nextLesson ? 'Complete and Next' : 'Complete and Next'}
+                          {lessonData.isLastInChapter ? (
+                            <>
+                              <Trophy className="w-4 h-4 mr-2" />
+                              Complete Chapter
+                            </>
+                          ) : (
+                            <>
+                              <Circle className="w-4 h-4 mr-2" />
+                              {lessonData.nextLesson ? 'Complete and Next' : 'Complete Lesson'}
+                            </>
+                          )}
                         </>
                       )}
                     </Button>

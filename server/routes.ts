@@ -1528,8 +1528,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User progress routes
   app.get('/api/user/progress', async (req: any, res) => {
     try {
-      // Use session-based authentication that works with Dr. Golly system
-      const userId = req.session?.userId || "44434757";
+      // Use enhanced session-based authentication that works with Dr. Golly system
+      const userId = await getUserFromSession(req);
       if (!userId) {
         console.log('No authenticated user found in session for progress');
         return res.status(401).json({ message: "Unauthorized" });
@@ -3044,8 +3044,8 @@ Please contact the customer to confirm the appointment.
   app.post('/api/lessons/:lessonId/progress', async (req, res) => {
     try {
       const { lessonId } = req.params;
-      // Use session-based authentication that works with Dr. Golly system
-      const userId = req.session?.userId || "44434757";
+      // Use enhanced session-based authentication that works with Dr. Golly system
+      const userId = await getUserFromSession(req);
       
       if (!userId) {
         console.log('No authenticated user found in session for progress tracking');
