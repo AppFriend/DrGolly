@@ -200,42 +200,42 @@ export function AdminDashboard() {
           <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <MetricCard
           title="Total Users"
-          value={metrics.totalUsers.toLocaleString()}
+          value={(metrics.totalUsers || 0).toLocaleString()}
           icon={<Users className="h-4 w-4 text-muted-foreground" />}
           description="All registered users"
         />
         
         <MetricCard
           title="Free Users"
-          value={metrics.freeUsers.toLocaleString()}
+          value={(metrics.freeUsers || 0).toLocaleString()}
           icon={<Users className="h-4 w-4 text-blue-500" />}
           description="Users on free plan"
         />
         
         <MetricCard
           title="Gold Users"
-          value={metrics.goldUsers.toLocaleString()}
+          value={(metrics.goldUsers || 0).toLocaleString()}
           icon={<Crown className="h-4 w-4 text-yellow-500" />}
           description="Gold plan subscribers"
         />
         
         <MetricCard
           title="Platinum Users"
-          value={metrics.platinumUsers.toLocaleString()}
+          value={(metrics.platinumUsers || 0).toLocaleString()}
           icon={<Crown className="h-4 w-4 text-purple-500" />}
           description="Platinum plan subscribers"
         />
         
         <MetricCard
           title="Monthly Active"
-          value={metrics.monthlyActiveUsers.toLocaleString()}
+          value={(metrics.monthlyActiveUsers || 0).toLocaleString()}
           icon={<Activity className="h-4 w-4 text-green-500" />}
           description="Last 30 days"
         />
         
         <MetricCard
           title="Courses Sold"
-          value={metrics.totalCoursesSold.toLocaleString()}
+          value={(metrics.totalCoursesSold || 0).toLocaleString()}
           icon={<ShoppingCart className="h-4 w-4 text-green-500" />}
           description="Total course purchases"
         />
@@ -256,7 +256,7 @@ export function AdminDashboard() {
         
         <MetricCard
           title="Subscription Upgrades"
-          value={metrics.totalSubscriptionUpgrades.toLocaleString()}
+          value={(metrics.totalSubscriptionUpgrades || 0).toLocaleString()}
           icon={<TrendingUp className="h-4 w-4 text-blue-500" />}
           description="Free to Gold conversions"
         />
@@ -272,7 +272,7 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {metrics.totalChurn.toLocaleString()}
+              {(metrics.totalChurn || 0).toLocaleString()}
             </div>
             <p className="text-sm text-muted-foreground">
               Cancelled subscriptions
@@ -289,8 +289,8 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {metrics.totalUsers > 0 
-                ? ((metrics.goldUsers / metrics.totalUsers) * 100).toFixed(1) 
+              {(metrics.totalUsers || 0) > 0 
+                ? (((metrics.goldUsers || 0) / (metrics.totalUsers || 1)) * 100).toFixed(1) 
                 : 0}%
             </div>
             <p className="text-sm text-muted-foreground">
@@ -308,20 +308,20 @@ export function AdminDashboard() {
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Average Revenue Per User (ARPU)</span>
             <span className="font-semibold">
-              {formatCurrency(metrics.totalUsers > 0 ? metrics.monthlyGoldRevenue / metrics.totalUsers : 0)}
+              {formatCurrency((metrics.totalUsers || 0) > 0 ? (metrics.monthlyGoldRevenue || 0) / (metrics.totalUsers || 1) : 0)}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Revenue from Courses</span>
             <span className="font-semibold">
-              {formatCurrency(metrics.totalCoursesSold * 120)}
+              {formatCurrency((metrics.totalCoursesSold || 0) * 120)}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Active User Engagement</span>
             <span className="font-semibold">
-              {metrics.totalUsers > 0 
-                ? ((metrics.monthlyActiveUsers / metrics.totalUsers) * 100).toFixed(1) 
+              {(metrics.totalUsers || 0) > 0 
+                ? (((metrics.monthlyActiveUsers || 0) / (metrics.totalUsers || 1)) * 100).toFixed(1) 
                 : 0}%
             </span>
           </div>
