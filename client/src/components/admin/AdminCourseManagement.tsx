@@ -1126,13 +1126,16 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                           </div>
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-600">
+                        <div className={expandedLessons[lesson.id] ? "mt-3 p-3 bg-gray-50 rounded-lg border" : "text-sm text-gray-600"}>
                           {lesson.content ? (
-                            <div dangerouslySetInnerHTML={{ 
-                              __html: expandedLessons[lesson.id] 
-                                ? lesson.content 
-                                : lesson.content.substring(0, 200) + (lesson.content.length > 200 ? '...' : '') 
-                            }} />
+                            <div 
+                              className={expandedLessons[lesson.id] ? "prose-lesson max-w-none text-gray-900" : "text-sm"}
+                              dangerouslySetInnerHTML={{ 
+                                __html: expandedLessons[lesson.id] 
+                                  ? lesson.content 
+                                  : lesson.content.substring(0, 200) + (lesson.content.length > 200 ? '...' : '') 
+                              }} 
+                            />
                           ) : (
                             <p className="text-gray-400 italic">No content available</p>
                           )}
