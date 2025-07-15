@@ -171,7 +171,7 @@ STABLE VERSIONS (for easy rollback reference):
 - SAVEPOINT v1.4 (July 15, 2025): Advanced Slack notification system with signup type detection
   * BREAKTHROUGH: Implemented comprehensive Slack webhook integration for reliable notifications
   * Added signup type detection distinguishing "New Customer" vs "Existing Customer (Profile reactivation)"
-  * Created rich notification display with Name, Email, Marketing opt-in, App preferences, Phone, User role, and Signup Type
+  * Created rich notification display with Name, Email, Marketing opt-in, App preferences, and Signup Type
   * Transitioned from bot token to webhook-based integration for better reliability and maintenance
   * Integrated notification coverage across three key flows:
     - Regular signup: /api/auth/signup with signupType: 'new_customer'
@@ -184,6 +184,7 @@ STABLE VERSIONS (for easy rollback reference):
   * Added "Course Purchased" field for Big Baby checkout users showing their first course purchase
   * Reordered fields with "Signup Source" moved higher for better visibility
   * Big Baby checkout uses "public checkout web>app" source for clear identification
+  * Fixed test endpoint to properly pass coursePurchased field for accurate testing
   * Status: Production-ready with comprehensive webhook-based Slack integration
 ```
 
