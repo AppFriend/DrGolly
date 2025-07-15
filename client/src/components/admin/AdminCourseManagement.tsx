@@ -936,8 +936,8 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   };
 
   const getLessonsForChapter = (chapterId: number) => {
-    return lessons.filter((lesson: any) => lesson.chapterId === chapterId)
-      .sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+    return lessons.filter((lesson: any) => lesson.chapter_id === chapterId || lesson.chapterId === chapterId)
+      .sort((a: any, b: any) => (a.order_index || a.orderIndex) - (b.order_index || b.orderIndex));
   };
 
   const getCategoryColor = (category: string) => {
@@ -1157,8 +1157,8 @@ function CoursePreview({ course }: { course: Course }) {
   });
 
   const getLessonsForChapter = (chapterId: number) => {
-    return lessons.filter((lesson: any) => lesson.chapterId === chapterId)
-      .sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+    return lessons.filter((lesson: any) => lesson.chapter_id === chapterId || lesson.chapterId === chapterId)
+      .sort((a: any, b: any) => (a.order_index || a.orderIndex) - (b.order_index || b.orderIndex));
   };
 
   return (
