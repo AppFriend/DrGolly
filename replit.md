@@ -794,6 +794,8 @@ Changelog:
   * Status: Production-ready with complete transaction data integration and webhook reliability
   * FIXED: Database connection WebSocket configuration issue - updated server/db.ts to use proper Pool configuration with ws WebSocket constructor
   * Database connectivity verified and operational for production deployment
+  * RESOLVED: Database schema constraint conflicts - fixed user_lesson_progress unique constraint naming mismatch
+  * All database constraints properly aligned with Drizzle schema expectations without data loss
   * Implemented notification routing from action buttons to specific tracking sections (?section=review)
   * Enhanced tracking page to support URL parameters for direct section navigation
   * Added programmatic tab switching in tracking page tabs system
