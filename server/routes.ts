@@ -4,7 +4,8 @@ import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { getSession } from "./replitAuth";
+import passport from "passport";
 import { regionalPricingService } from "./regional-pricing";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -391,8 +392,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth middleware - restore Dr. Golly authentication
-  await setupAuth(app);
+  // Auth middleware - Use Dr. Golly authentication with session management
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+  
+  // Simple session serialization for Dr. Golly auth
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  
+  // Define authentication middleware for Dr. Golly auth
+  const isAuthenticated: RequestHandler = (req, res, next) => {
+    const user = req.session?.passport?.user;
+    if (user && user.claims && user.claims.sub) {
+      req.user = user;
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
+  };
   
   // Apply admin bypass middleware globally after auth setup
   app.use(adminBypass);
@@ -701,6 +718,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error in public login:", error);
       res.status(500).json({ message: "Login failed" });
     }
+  });
+
+  // Dr. Golly signup GET route - redirect to signup page
+  app.get('/api/signup', (req, res) => {
+    res.redirect('/signup');
+  });
+
+  // Dr. Golly login GET route - redirect to login page
+  app.get('/api/login', (req, res) => {
+    res.redirect('/login');
+  });
+
+  // Dr. Golly logout route
+  app.get('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      res.clearCookie('connect.sid');
+      res.redirect('/login');
+    });
   });
 
   // Dr. Golly signup endpoint
