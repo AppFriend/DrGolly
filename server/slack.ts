@@ -68,6 +68,7 @@ export class SlackNotificationService {
     signupSource?: string;
     signupType?: 'new_customer' | 'existing_customer_reactivation';
     previousCourses?: string[];
+    coursePurchased?: string;
   }): Promise<boolean> {
     try {
       const concernsText = signupData.primaryConcerns.length > 0 
@@ -115,6 +116,14 @@ export class SlackNotificationService {
         fields.push({
           type: 'mrkdwn',
           text: `*Previous Courses:*\n${coursesText}`
+        });
+      }
+
+      // Add course purchased field for public checkout users
+      if (signupData.signupSource === 'public checkout web>app' && signupData.coursePurchased) {
+        fields.push({
+          type: 'mrkdwn',
+          text: `*Course Purchased:*\n${signupData.coursePurchased}`
         });
       }
 
