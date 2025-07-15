@@ -935,7 +935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile routes
   app.get('/api/profile', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       
       // Use raw SQL to fetch profile with proper field mapping
       let user;
@@ -960,7 +960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: user.last_name || user.lastName,
         email: user.email,
         phone: user.phone_number || user.phoneNumber,
-        profileImageUrl: user.profile_picture_url || user.profileImageUrl || user.profilePictureUrl,
+        profileImageUrl: user.profile_image_url || user.profileImageUrl || user.profile_picture_url || user.profilePictureUrl,
         subscriptionTier: user.subscription_tier || user.subscriptionTier || 'free',
         subscriptionStatus: user.subscription_status || user.subscriptionStatus || 'active',
         subscriptionEndDate: user.subscription_end_date || user.subscriptionEndDate,
@@ -977,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/profile', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { firstName, lastName, email, phone, profileImageUrl } = req.body;
       
       // Use raw SQL to update profile with proper field mapping
@@ -990,7 +990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           last_name = ${lastName || null},
           email = ${email || null},
           phone_number = ${phone || null},
-          profile_picture_url = ${profileImageUrl || null},
+          profile_image_url = ${profileImageUrl || null},
           updated_at = ${new Date()}
           WHERE id = ${userId}`;
         
@@ -1015,7 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/profile/marketing-preferences', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { emailMarketing, smsMarketing } = req.body;
       
       // Update user marketing preferences
@@ -1047,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/profile/invoices', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const user = await storage.getUser(userId);
       
       let stripeInvoices = [];
@@ -1117,7 +1117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/profile/payment-methods', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const user = await storage.getUser(userId);
       
       if (!user?.stripeCustomerId) {
@@ -1157,7 +1157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/profile/payment-methods', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { paymentMethodId } = req.body;
       const user = await storage.getUser(userId);
       
