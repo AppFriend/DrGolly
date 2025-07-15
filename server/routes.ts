@@ -74,8 +74,8 @@ const COURSE_STRIPE_MAPPING = {
 
 // Helper function to get user ID from session - works with Dr. Golly auth
 async function getUserFromSession(req: any) {
-  // Try Dr. Golly session first, then Replit Auth, then fallback to test user
-  const userId = req.session?.userId || req.session?.passport?.user?.claims?.sub || "44434757";
+  // Try Dr. Golly session first, then Replit Auth - no fallback to hardcoded user
+  const userId = req.session?.userId || req.session?.passport?.user?.claims?.sub;
   
   if (!userId) {
     return null;
@@ -89,7 +89,9 @@ async function getUserFromSession(req: any) {
 const isAppAuthenticated: RequestHandler = async (req, res, next) => {
   try {
     // Get user ID from session (works with both auth systems)
-    const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+    const userId = req.session?.userId || req.user?.claims?.sub;
+    
+    // Don't fallback to hardcoded user ID for proper logout functionality
     if (!userId) {
       console.log('No authenticated user found in session');
       return res.status(401).json({ message: "Unauthorized" });
@@ -110,7 +112,7 @@ const isAppAuthenticated: RequestHandler = async (req, res, next) => {
 const isAdmin: RequestHandler = async (req, res, next) => {
   try {
     // Get user ID from session (works with both auth systems)
-    const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+    const userId = req.session?.userId || req.user?.claims?.sub;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -2158,18 +2160,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dr. Golly logout endpoint
   app.get('/api/logout', (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error('Error destroying session:', err);
-        return res.status(500).json({ message: 'Logout failed' });
+    try {
+      // Clear the session data first
+      if (req.session) {
+        req.session.userId = null;
+        req.session.passport = null;
+        delete req.session.userId;
+        delete req.session.passport;
       }
       
-      // Clear the session cookie
-      res.clearCookie('connect.sid');
-      
-      // Redirect to login page
-      res.redirect('/login');
-    });
+      // Destroy the session
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Error destroying session:', err);
+          return res.status(500).json({ message: 'Logout failed' });
+        }
+        
+        // Clear the session cookie
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax'
+        });
+        
+        // Redirect to login page
+        res.redirect('/login');
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ message: 'Logout failed' });
+    }
   });
 
   app.post('/api/seed/discounts', async (req, res) => {
