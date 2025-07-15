@@ -4998,21 +4998,6 @@ Please contact the customer to confirm the appointment.
               );
               
               console.log(`User ${user.id} billing updated, next billing: ${nextBillingDate}`);
-              
-              // Send payment notification for recurring payment
-              try {
-                const planTier = user.subscriptionTier || 'unknown';
-                const amount = invoice.amount_paid || 0;
-                
-                await slackNotificationService.sendPaymentNotification({
-                  name: `${user.firstName} ${user.lastName}`.trim(),
-                  email: user.email,
-                  purchaseDetails: `${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan Renewal`,
-                  paymentAmount: `$${(amount / 100).toFixed(2)} ${invoice.currency.toUpperCase()}`
-                });
-              } catch (error) {
-                console.error('Failed to send payment notification for recurring payment:', error);
-              }
             }
           } catch (error) {
             console.error('Error updating billing date:', error);
