@@ -40,6 +40,7 @@ import {
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
+import { slackNotificationService } from "./slack";
 import { db } from "./db";
 import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
@@ -676,6 +677,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Failed to sync user to Klaviyo:", error);
       }
 
+      // Send Slack notification for new signup
+      try {
+        await slackNotificationService.sendSignupNotification({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          marketingOptIn: personalization?.marketingOptIn || false,
+          primaryConcerns: personalization?.primaryConcerns || [],
+          userRole: personalization?.role || 'Parent',
+          phoneNumber: personalization?.phoneNumber,
+          signupSource: 'Regular Signup Flow',
+          signupType: 'new_customer' // Regular signup flow is always new customers
+        });
+        console.log("Slack signup notification sent successfully");
+      } catch (slackError) {
+        console.error("Failed to send Slack signup notification:", slackError);
+      }
+
       res.json({
         success: true,
         user: {
@@ -749,6 +767,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         klaviyoService.syncUserToKlaviyo(updatedUser, children).catch(error => {
           console.error("Failed to sync user personalization to Klaviyo:", error);
         });
+
+        // Send enhanced Slack signup notification
+        try {
+          const primaryConcerns = updatedUser.primaryConcerns 
+            ? JSON.parse(updatedUser.primaryConcerns) 
+            : [];
+          
+          await slackNotificationService.sendSignupNotification({
+            name: `${updatedUser.firstName || ''} ${updatedUser.lastName || ''}`.trim(),
+            email: updatedUser.email || '',
+            marketingOptIn: updatedUser.marketingOptIn || false,
+            primaryConcerns,
+            userRole: updatedUser.userRole || 'Not specified',
+            phoneNumber: updatedUser.phoneNumber,
+            signupSource: updatedUser.signupSource || 'App'
+          });
+        } catch (error) {
+          console.error("Failed to send Slack signup notification:", error);
+        }
       }
       
       res.json({ success: true });
@@ -1263,6 +1300,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("Klaviyo sync successful for Big Baby signup");
         } catch (klaviyoError) {
           console.error("Klaviyo sync failed for Big Baby signup, but account creation continues:", klaviyoError);
+        }
+
+        // Send Slack notification for new user signup
+        try {
+          await slackNotificationService.sendSignupNotification({
+            name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+            email: customerDetails.email,
+            marketingOptIn: false, // Big Baby checkout doesn't have marketing opt-in
+            primaryConcerns: interests || [],
+            userRole: customerDetails.role || 'Parent',
+            phoneNumber: customerDetails.phone,
+            signupSource: 'Big Baby Public Checkout',
+            signupType: 'new_customer' // Big Baby checkout is always new customers
+          });
+          console.log("Slack signup notification sent for Big Baby user");
+        } catch (slackError) {
+          console.error("Failed to send Slack signup notification:", slackError);
         }
       }
       
@@ -6359,6 +6413,26 @@ Please contact the customer to confirm the appointment.
       // Update last login for MAU tracking since this completes the login process
       await storage.updateUserLastLogin(userId);
 
+      // Send Slack notification for existing customer reactivation
+      try {
+        const user = await storage.getUser(userId);
+        if (user) {
+          await slackNotificationService.sendSignupNotification({
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            marketingOptIn: user.marketingOptIn || false,
+            primaryConcerns: user.primaryConcerns ? user.primaryConcerns.split(',') : [],
+            userRole: user.role || 'Parent',
+            phoneNumber: user.phone,
+            signupSource: 'Password Setup (Migrated User)',
+            signupType: 'existing_customer_reactivation'
+          });
+          console.log("Slack reactivation notification sent successfully");
+        }
+      } catch (slackError) {
+        console.error("Failed to send Slack reactivation notification:", slackError);
+      }
+
       res.json({ message: 'Password set successfully' });
     } catch (error) {
       console.error('Error setting password:', error);
@@ -7321,6 +7395,59 @@ Please contact the customer to confirm the appointment.
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Test endpoint for Slack notifications
+  app.post('/api/test/slack-notification', async (req, res) => {
+    try {
+      const { type = 'signup', ...data } = req.body;
+      
+      let result;
+      switch (type) {
+        case 'signup':
+          result = await slackNotificationService.sendSignupNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            marketingOptIn: data.marketingOptIn !== undefined ? data.marketingOptIn : true,
+            primaryConcerns: data.primaryConcerns || ['Baby Sleep', 'Toddler Sleep'],
+            userRole: data.userRole || 'Parent',
+            phoneNumber: data.phoneNumber || '+61 400 123 456',
+            signupSource: data.signupSource || 'Test Integration',
+            signupType: data.signupType || 'new_customer'
+          });
+          break;
+        case 'payment':
+          result = await slackNotificationService.sendPaymentNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            amount: data.amount || 12000,
+            courseName: data.courseName || 'Little Baby Sleep Program'
+          });
+          break;
+        case 'support':
+          result = await slackNotificationService.sendSupportNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            subject: data.subject || 'Test Support Request',
+            message: data.message || 'This is a test support message from the feature/signup branch'
+          });
+          break;
+        default:
+          return res.status(400).json({ error: 'Invalid notification type' });
+      }
+      
+      res.json({
+        success: result,
+        message: `Slack ${type} notification test ${result ? 'successful' : 'failed'}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "Slack notification test failed"
+      });
     }
   });
 
