@@ -684,8 +684,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           marketingOptIn: personalization?.marketingOptIn || false,
           primaryConcerns: personalization?.primaryConcerns || [],
-          userRole: personalization?.role || 'Parent',
-          phoneNumber: personalization?.phoneNumber,
           signupSource: 'Regular Signup Flow',
           signupType: 'new_customer' // Regular signup flow is always new customers
         });
@@ -779,8 +777,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: updatedUser.email || '',
             marketingOptIn: updatedUser.marketingOptIn || false,
             primaryConcerns,
-            userRole: updatedUser.userRole || 'Not specified',
-            phoneNumber: updatedUser.phoneNumber,
             signupSource: updatedUser.signupSource || 'App'
           });
         } catch (error) {
@@ -1309,9 +1305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: customerDetails.email,
             marketingOptIn: false, // Big Baby checkout doesn't have marketing opt-in
             primaryConcerns: interests || [],
-            userRole: customerDetails.role || 'Parent',
-            phoneNumber: customerDetails.phone,
-            signupSource: 'Big Baby Public Checkout',
+            signupSource: 'public checkout web>app',
             signupType: 'new_customer' // Big Baby checkout is always new customers
           });
           console.log("Slack signup notification sent for Big Baby user");
@@ -6417,15 +6411,28 @@ Please contact the customer to confirm the appointment.
       try {
         const user = await storage.getUser(userId);
         if (user) {
+          // Fetch previous courses for existing customer reactivation
+          let previousCourses: string[] = [];
+          try {
+            const coursePurchases = await storage.getUserCoursePurchases(userId);
+            if (coursePurchases && coursePurchases.length > 0) {
+              // Get course titles from purchases
+              const courseIds = coursePurchases.map(purchase => purchase.courseId);
+              const courses = await storage.getCoursesByIds(courseIds);
+              previousCourses = courses.map(course => course.title);
+            }
+          } catch (courseError) {
+            console.error("Failed to fetch previous courses:", courseError);
+          }
+
           await slackNotificationService.sendSignupNotification({
             name: `${user.firstName} ${user.lastName}`,
             email: user.email,
             marketingOptIn: user.marketingOptIn || false,
             primaryConcerns: user.primaryConcerns ? user.primaryConcerns.split(',') : [],
-            userRole: user.role || 'Parent',
-            phoneNumber: user.phone,
             signupSource: 'Password Setup (Migrated User)',
-            signupType: 'existing_customer_reactivation'
+            signupType: 'existing_customer_reactivation',
+            previousCourses: previousCourses
           });
           console.log("Slack reactivation notification sent successfully");
         }

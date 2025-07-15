@@ -126,6 +126,7 @@ export interface IStorage {
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
   getCourse(id: number): Promise<Course | undefined>;
+  getCoursesByIds(ids: number[]): Promise<Course[]>;
   createCourse(course: InsertCourse): Promise<Course>;
   updateCourseStats(courseId: number, likes?: number, views?: number): Promise<void>;
   
@@ -743,6 +744,44 @@ export class DatabaseStorage implements IStorage {
       price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
       discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
     };
+  }
+
+  async getCoursesByIds(ids: number[]): Promise<Course[]> {
+    if (ids.length === 0) return [];
+    
+    try {
+      const coursesList = await db.select().from(courses).where(sql`id = ANY(${ids})`);
+      
+      // Convert price from string to number if needed
+      return coursesList.map(course => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
+      }));
+    } catch (error) {
+      console.error('Error in getCoursesByIds:', error);
+      // Fallback to raw SQL
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                        duration, age_range, is_published, likes, views, created_at, updated_at,
+                                        price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                        status, detailed_description, website_content, key_features, whats_covered,
+                                        rating, review_count, overview_description, learning_objectives,
+                                        completion_criteria, course_structure_notes
+                                 FROM courses WHERE id = ANY(${ids})`;
+        
+        return result.map((course: any) => ({
+          ...course,
+          price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+          discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice
+        }));
+      } catch (fallbackError) {
+        console.error('Fallback getCoursesByIds query failed:', fallbackError);
+        return [];
+      }
+    }
   }
 
   async createCourse(course: InsertCourse): Promise<Course> {

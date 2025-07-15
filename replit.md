@@ -179,6 +179,10 @@ STABLE VERSIONS (for easy rollback reference):
     - Password setup: /api/auth/set-password with signupType: 'existing_customer_reactivation'
   * Webhook URL configured via SLACK_SIGNUP_WEBHOOK environment variable
   * All notifications tested and working correctly with proper signup type differentiation
+  * Enhanced notifications with streamlined fields (removed user role and phone number)
+  * Added "Previous Courses" field for existing customer reactivations showing migrated purchases
+  * Reordered fields with "Signup Source" moved higher for better visibility
+  * Big Baby checkout uses "public checkout web>app" source for clear identification
   * Status: Production-ready with comprehensive webhook-based Slack integration
 ```
 
