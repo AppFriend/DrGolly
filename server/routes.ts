@@ -320,7 +320,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user", async (req: any, res) => {
     try {
       // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      // No fallback to hardcoded user ID - return 401 if not authenticated
+      if (!userId) {
+        console.log('No authenticated user found for /api/user endpoint');
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching user data for ID:', userId);
       
       // Use raw SQL to avoid Drizzle ORM parsing issues
@@ -405,8 +412,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { courseId } = req.params;
       
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching chapters for course:', courseId, 'user:', userId);
       
       // Use raw SQL to get chapters directly - bypass storage layer
@@ -432,8 +444,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { courseId } = req.params;
       
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching lessons for course:', courseId, 'user:', userId);
       
       // Use raw SQL to get lessons directly - bypass storage layer  
@@ -2159,30 +2176,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dr. Golly logout endpoint
-  app.get('/api/logout', (req, res) => {
+  app.get('/api/logout', async (req, res) => {
     try {
-      // Clear the session data first
+      console.log('Logout initiated for session ID:', req.sessionID);
+      
+      // Clear all session data first
       if (req.session) {
+        // Clear Dr. Golly specific session data
         req.session.userId = null;
         req.session.passport = null;
+        req.session.user = null;
+        
+        // Delete the properties completely
         delete req.session.userId;
         delete req.session.passport;
+        delete req.session.user;
+        
+        // Clear any other session data
+        Object.keys(req.session).forEach(key => {
+          if (key !== 'cookie') {
+            delete req.session[key];
+          }
+        });
+      }
+      
+      // Also clear from database manually to ensure complete cleanup
+      if (req.sessionID) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          await sql`DELETE FROM sessions WHERE sid = ${req.sessionID}`;
+          console.log('Session deleted from database:', req.sessionID);
+        } catch (dbError) {
+          console.error('Error deleting session from database:', dbError);
+        }
       }
       
       // Destroy the session
       req.session.destroy((err) => {
         if (err) {
           console.error('Error destroying session:', err);
-          return res.status(500).json({ message: 'Logout failed' });
         }
         
-        // Clear the session cookie
+        // Clear the session cookie completely
         res.clearCookie('connect.sid', {
           path: '/',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax'
         });
+        
+        // Also clear with different cookie names that might be used
+        res.clearCookie('session');
+        res.clearCookie('sessionid');
+        
+        console.log('Session destroyed and cookies cleared');
         
         // Redirect to login page
         res.redirect('/login');
@@ -2671,8 +2719,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Children routes
   app.get('/api/children', async (req: any, res) => {
     try {
-      // Temporarily hardcode the user ID for debugging
-      const userId = "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching children for user ID:', userId);
       
       // Use raw SQL to bypass Drizzle ORM connection issues
@@ -3012,8 +3065,12 @@ Please contact the customer to confirm the appointment.
   app.get('/api/lessons/:id', async (req: any, res) => {
     try {
       const lessonId = parseInt(req.params.id);
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       console.log(`Fetching lesson ${lessonId} for user ${userId}`);
       
@@ -3608,13 +3665,14 @@ Please contact the customer to confirm the appointment.
     try {
       const { amount, currency, items, customerDetails, couponId } = req.body;
       
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Cart payment request for user ID:', userId);
+      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
+      
+      console.log('Cart payment request for user ID:', userId);
       
       // Get regional pricing
       const pricing = await regionalPricingService.getRegionalPricing(req);
@@ -3670,13 +3728,14 @@ Please contact the customer to confirm the appointment.
     try {
       const { courseId, customerDetails, couponId } = req.body;
       
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Payment request for user ID:', userId);
+      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
+      
+      console.log('Payment request for user ID:', userId);
       
       // Get course details with raw SQL fallback
       let course;
@@ -4679,8 +4738,12 @@ Please contact the customer to confirm the appointment.
       console.log("User courses endpoint called");
       console.log("Session:", req.session);
       
-      // Use the same hardcoded user ID as other endpoints for consistency
-      const userId = "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const sql = neon(process.env.DATABASE_URL!);
       
       console.log(`Fetching courses for user: ${userId}`);
@@ -4788,8 +4851,12 @@ Please contact the customer to confirm the appointment.
   // Debug route for course purchases (bypassing auth)
   app.get('/api/debug/course-purchases', async (req: any, res) => {
     try {
-      // Temporarily hardcode the user ID for debugging
-      const userId = "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       let purchases;
       
       try {
@@ -5189,8 +5256,9 @@ Please contact the customer to confirm the appointment.
 
   app.get('/api/simple-notifications/unread-count', async (req, res) => {
     try {
-      // Use session-based authentication that works with Dr. Golly system
-      const userId = req.session?.userId || "44434757";
+      // Use session-based authentication that works with Dr. Golly system - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
       if (!userId) {
         console.log('No authenticated user found in session for notifications');
         return res.status(401).json({ message: "Unauthorized" });
@@ -5627,8 +5695,9 @@ Please contact the customer to confirm the appointment.
   // Admin routes
   app.get('/api/admin/check', async (req, res) => {
     try {
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -5760,8 +5829,9 @@ Please contact the customer to confirm the appointment.
 
   app.get('/api/admin/metrics', async (req, res) => {
     try {
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -6849,77 +6919,13 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Seed sample orders for testing (Admin only)
+  // Seed sample orders endpoint disabled for production
   app.post('/api/admin/seed-orders', isAdmin, async (req, res) => {
     try {
-      const sampleOrders = [
-        {
-          userId: '44434757', // Admin user
-          courseId: 1,
-          amount: 12000, // $120 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189349',
-          purchasedAt: new Date('2025-07-09T08:34:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 2,
-          amount: 25000, // $250 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189348',
-          purchasedAt: new Date('2025-07-09T08:30:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 3,
-          amount: 11000, // $110 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189347',
-          purchasedAt: new Date('2025-07-09T08:25:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 4,
-          amount: 12000, // $120 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189346',
-          purchasedAt: new Date('2025-07-09T08:20:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 5,
-          amount: 12000, // $120 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189345',
-          purchasedAt: new Date('2025-07-09T08:15:00Z')
-        },
-        // Yesterday's orders
-        {
-          userId: '44434757',
-          courseId: 1,
-          amount: 12000,
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189344',
-          purchasedAt: new Date('2025-07-08T14:30:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 2,
-          amount: 12000,
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189343',
-          purchasedAt: new Date('2025-07-08T12:15:00Z')
-        }
-      ];
-
-      for (const order of sampleOrders) {
-        await storage.createCoursePurchase(order);
-      }
-
-      res.json({ message: 'Sample orders created successfully', count: sampleOrders.length });
+      res.status(503).json({ message: 'Sample order seeding disabled for production use' });
     } catch (error) {
-      console.error("Error seeding orders:", error);
-      res.status(500).json({ message: "Failed to seed orders" });
+      console.error("Error with seed orders endpoint:", error);
+      res.status(500).json({ message: "Endpoint disabled" });
     }
   });
 
@@ -8442,13 +8448,14 @@ Please contact the customer to confirm the appointment.
   // Cart endpoints
   app.get('/api/cart', async (req: any, res) => {
     try {
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Cart request for user ID:', userId);
+      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
+      
+      console.log('Cart request for user ID:', userId);
       
       let cart;
       try {
@@ -8471,12 +8478,13 @@ Please contact the customer to confirm the appointment.
 
   app.post('/api/cart', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Adding to cart for user ID:', userId);
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
+      
+      console.log('Adding to cart for user ID:', userId);
       
       let cartItem;
       try {
@@ -8508,7 +8516,11 @@ Please contact the customer to confirm the appointment.
 
   app.put('/api/cart/:id', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
       
       let cartItem;
       try {
@@ -8535,7 +8547,11 @@ Please contact the customer to confirm the appointment.
 
   app.delete('/api/cart/:id', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
       
       try {
         await storage.removeFromCart(parseInt(req.params.id));
@@ -8555,7 +8571,11 @@ Please contact the customer to confirm the appointment.
 
   app.delete('/api/cart', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
       
       try {
         await storage.clearUserCart(userId);
@@ -8575,7 +8595,11 @@ Please contact the customer to confirm the appointment.
 
   app.get('/api/cart/count', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.json({ count: 0 }); // Return empty cart for unauthenticated users
+      }
       
       let count = 0;
       try {
