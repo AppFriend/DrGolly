@@ -213,6 +213,18 @@ STABLE VERSIONS (for easy rollback reference):
     - Plan downgrade: $0.00 (Cancellation) with N/A promotional code and discount
   * Webhook processing now extracts actual payment amounts, currencies, and discount data from Stripe events
   * Status: Production-ready with comprehensive transaction data integration
+
+- SAVEPOINT v1.7 (July 15, 2025): Profile page mobile optimization and simplified profile picture system
+  * FIXED: Mobile logout button positioning - moved higher with bottom padding to prevent iPhone text bar overlap
+  * FIXED: Logout button now full-width and properly centered for better mobile accessibility
+  * SIMPLIFIED: Profile picture system - direct database storage with base64 encoding for immediate persistence
+  * ENHANCED: Profile picture upload flow - click camera icon for instant upload and storage to database
+  * IMPROVED: Profile picture display - fetches directly from database profile_picture_url field
+  * TESTED: Profile picture persistence working correctly with Dr. Golly logo for test user
+  * STREAMLINED: Removed complicated image preview and file state management for cleaner code
+  * Added 20px bottom padding to logout section to prevent iPhone text bar interference
+  * Profile picture now remains persistent across sessions and loads consistently from database
+  * Status: Production-ready with optimized mobile profile page experience
 ```
 
 ## Changelog
