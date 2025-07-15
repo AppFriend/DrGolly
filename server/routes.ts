@@ -7451,6 +7451,24 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Test endpoint for Slack bot verification
+  app.get('/api/test/slack-auth', async (req, res) => {
+    try {
+      const result = await slackNotificationService.testConnection();
+      res.json({
+        success: result,
+        message: result ? 'Slack connection verified' : 'Slack connection failed',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "Slack connection test failed"
+      });
+    }
+  });
+
   // Support request endpoint
   app.post('/api/support', async (req, res) => {
     try {

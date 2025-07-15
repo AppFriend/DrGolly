@@ -167,6 +167,19 @@ STABLE VERSIONS (for easy rollback reference):
   * Fixed all course thumbnail image display issues using user-provided screenshots
   * Added comprehensive error handling and payment processing improvements
   * Status: Production-ready with complete e-commerce functionality and stable payment system
+
+- SAVEPOINT v1.4 (July 15, 2025): Advanced Slack notification system with signup type detection
+  * BREAKTHROUGH: Implemented comprehensive Slack webhook integration for reliable notifications
+  * Added signup type detection distinguishing "New Customer" vs "Existing Customer (Profile reactivation)"
+  * Created rich notification display with Name, Email, Marketing opt-in, App preferences, Phone, User role, and Signup Type
+  * Transitioned from bot token to webhook-based integration for better reliability and maintenance
+  * Integrated notification coverage across three key flows:
+    - Regular signup: /api/auth/signup with signupType: 'new_customer'
+    - Big Baby checkout: /api/account/create-with-purchase with signupType: 'new_customer'
+    - Password setup: /api/auth/set-password with signupType: 'existing_customer_reactivation'
+  * Webhook URL configured via SLACK_SIGNUP_WEBHOOK environment variable
+  * All notifications tested and working correctly with proper signup type differentiation
+  * Status: Production-ready with comprehensive webhook-based Slack integration
 ```
 
 ## Changelog
