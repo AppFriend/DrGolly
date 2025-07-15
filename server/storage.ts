@@ -125,6 +125,7 @@ export interface IStorage {
   
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
+  getAllCourses(): Promise<Course[]>;
   getCourse(id: number): Promise<Course | undefined>;
   getCoursesByIds(ids: number[]): Promise<Course[]>;
   createCourse(course: InsertCourse): Promise<Course>;
@@ -724,6 +725,40 @@ export class DatabaseStorage implements IStorage {
                            WHERE is_published = true 
                            ORDER BY created_at`;
       }
+      
+      // Convert price from string to number if needed
+      return result.map((course: any) => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discounted_price
+      }));
+    }
+  }
+
+  async getAllCourses(): Promise<Course[]> {
+    try {
+      const coursesList = await db.select().from(courses).orderBy(courses.createdAt);
+      
+      // Convert price from string to number if needed
+      return coursesList.map(course => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
+      }));
+    } catch (error) {
+      console.error('Drizzle ORM failed for getAllCourses, using raw SQL fallback');
+      // Use raw SQL as fallback
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const result = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                      duration, age_range, is_published, likes, views, created_at, updated_at,
+                                      price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                      status, detailed_description, website_content, key_features, whats_covered,
+                                      rating, review_count, overview_description, learning_objectives,
+                                      completion_criteria, course_structure_notes
+                               FROM courses 
+                               ORDER BY created_at`;
       
       // Convert price from string to number if needed
       return result.map((course: any) => ({
