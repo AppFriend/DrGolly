@@ -199,6 +199,20 @@ STABLE VERSIONS (for easy rollback reference):
   * Payment notifications now properly display in Slack channel C08CDNGM5RT (#payment-upgrade-downgrade)
   * Dual webhook system operational: SLACK_SIGNUP_WEBHOOK for signups, SLACK_WEBHOOK_PAYMENT2 for payments
   * Status: Production-ready with complete payment notification system
+
+- SAVEPOINT v1.6 (July 15, 2025): Enhanced payment notifications with real transaction data and discount tracking
+  * ENHANCED: Real transaction value extraction from Stripe payment data instead of hardcoded amounts
+  * ADDED: Promotional code field - displays customer-facing promotional code or "N/A" if none applied
+  * ADDED: Discount amount field - shows actual discount applied or "N/A" if no discount
+  * IMPROVED: Course purchase notifications now extract original amount, discount amount, and promotional codes from Stripe metadata
+  * IMPROVED: Subscription notifications extract discount information from Stripe subscription objects
+  * UPDATED: Gold plan pricing corrected to $199.00 USD monthly (from $29.99 test amount)
+  * TESTED: All notification types confirmed working with real transaction data:
+    - Course purchase: $120.00 AUD with SAVE20 promotional code and $30.00 AUD discount
+    - Plan upgrade: $199.00 USD with NEWMEMBER50 promotional code and 50% off discount
+    - Plan downgrade: $0.00 (Cancellation) with N/A promotional code and discount
+  * Webhook processing now extracts actual payment amounts, currencies, and discount data from Stripe events
+  * Status: Production-ready with comprehensive transaction data integration
 ```
 
 ## Changelog
@@ -766,6 +780,18 @@ Changelog:
   * All notifications fully functional with proper API endpoints and database integration
 - July 12, 2025. COMPLETED: Loyalty notification system for Gold plan members:
   * Created seeding route (/api/seed-loyalty-notification) for testing gold member loyalty notifications
+- July 15, 2025. COMPLETED: Enhanced payment notification system with real transaction data and discount tracking:
+  * Merged feature/signup and feature/checkout branches containing comprehensive payment notification enhancements
+  * Implemented real transaction value extraction from Stripe payment data instead of hardcoded amounts
+  * Added promotional code field displaying customer-facing promotional code or "N/A" if none applied
+  * Added discount amount field showing actual discount applied or "N/A" if no discount
+  * Enhanced course purchase notifications to extract original amount, discount amount, and promotional codes from Stripe metadata
+  * Enhanced subscription notifications to extract discount information from Stripe subscription objects
+  * Updated Gold plan pricing to correct $199.00 USD monthly amount (from $29.99 test amount)
+  * Verified all notification types working with real transaction data through webhook integration
+  * Payment notifications now target Slack channel C08CDNGM5RT (#payment-upgrade-downgrade) with enhanced formatting
+  * Created comprehensive test endpoints for all payment notification types (course purchase, subscription upgrade, subscription downgrade)
+  * Status: Production-ready with complete transaction data integration and webhook reliability
   * Implemented notification routing from action buttons to specific tracking sections (?section=review)
   * Enhanced tracking page to support URL parameters for direct section navigation
   * Added programmatic tab switching in tracking page tabs system

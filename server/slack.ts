@@ -175,6 +175,8 @@ export class SlackNotificationService {
     purchaseDetails: string;
     paymentAmount: string;
     downgradeDate?: string;
+    promotionalCode?: string;
+    discountAmount?: string;
   }): Promise<boolean> {
     try {
       // Determine the header title based on purchase details
@@ -205,6 +207,14 @@ export class SlackNotificationService {
         {
           type: 'mrkdwn',
           text: `*Amount:*\n${paymentData.paymentAmount}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Promotional Code:*\n${paymentData.promotionalCode || 'N/A'}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Discount Amount:*\n${paymentData.discountAmount || 'N/A'}`
         }
       ];
 
