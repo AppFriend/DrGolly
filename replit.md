@@ -186,6 +186,19 @@ STABLE VERSIONS (for easy rollback reference):
   * Big Baby checkout uses "public checkout web>app" source for clear identification
   * Fixed test endpoint to properly pass coursePurchased field for accurate testing
   * Status: Production-ready with comprehensive webhook-based Slack integration
+
+- SAVEPOINT v1.5 (July 15, 2025): Complete payment notification system with proper webhook integration
+  * FIXED: Critical environment variable issue - corrected SLACK_PAYMENT_WEBHOOK to SLACK_WEBHOOK_PAYMENT2
+  * FIXED: Removed duplicate sendPaymentNotification methods causing $NaN display issues
+  * ENHANCED: Dynamic header titles based on transaction type:
+    - "💰 Single Course Purchase" for individual course purchases
+    - "💰 Plan Upgrade (Free → Gold)" for subscription upgrades
+    - "💰 Plan Downgrade (Gold → Free)" for subscription downgrades
+  * IMPROVED: Clean notification formatting with Customer, Email, Details, Amount fields
+  * TESTED: All three payment notification types confirmed working with 200 status responses
+  * Payment notifications now properly display in Slack channel C08CDNGM5RT (#payment-upgrade-downgrade)
+  * Dual webhook system operational: SLACK_SIGNUP_WEBHOOK for signups, SLACK_WEBHOOK_PAYMENT2 for payments
+  * Status: Production-ready with complete payment notification system
 ```
 
 ## Changelog
