@@ -160,6 +160,15 @@ const isAuthenticatedOrAdmin: RequestHandler = async (req, res, next) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up session middleware FIRST - critical for session persistence
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+  
+  // Simple session serialization for Dr. Golly auth
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  
   // Configure multer for file uploads
   const upload = multer({
     storage: multer.diskStorage({
@@ -392,14 +401,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth middleware - Use Dr. Golly authentication with session management
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
-  
-  // Simple session serialization for Dr. Golly auth
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  // Session middleware was already set up at the beginning of registerRoutes
+  // This duplicate setup is removed to prevent conflicts
   
   // Define authentication middleware for Dr. Golly auth
   const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -551,14 +554,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if we have a valid session and user ID
       let userId = null;
       
-      // Try to get user from session
+      // Try multiple ways to get user from session
       if (req.session?.passport?.user?.claims?.sub) {
         userId = req.session.passport.user.claims.sub;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
       }
+      
+      // Debug session info
+      console.log('Session debug:', {
+        sessionExists: !!req.session,
+        passportExists: !!req.session?.passport,
+        userExists: !!req.session?.passport?.user,
+        claimsExist: !!req.session?.passport?.user?.claims,
+        subExists: !!req.session?.passport?.user?.claims?.sub,
+        directUserId: req.session?.userId,
+        foundUserId: userId
+      });
       
       // If no user in session, check if user is authenticated via other means
       if (!userId) {
-        console.log('No authenticated user found in session');
+        console.log('No authenticated user found for /api/user endpoint');
         return res.status(401).json({ message: "Unauthorized" });
       }
       
@@ -696,24 +712,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       
-      // Store session data in req.session
+      // Store session data in req.session with proper structure
       req.session.passport = { user: sessionData };
+      req.session.userId = user.id; // Also store userId directly for easier access
+      
+      // Force session save before sending response
       req.session.save((err) => {
         if (err) {
           console.error('Session save error:', err);
+          return res.status(500).json({ message: "Session save failed" });
         }
+        
+        console.log('Session saved successfully for user:', user.id);
+        
+        // Return user data for session creation
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName
+          }
+        });
       });
 
-      // Return user data for session creation
-      res.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName
-        }
-      });
+      // This is now handled inside the session.save callback above
     } catch (error) {
       console.error("Error in public login:", error);
       res.status(500).json({ message: "Login failed" });
@@ -732,13 +756,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dr. Golly logout route
   app.get('/api/logout', (req, res) => {
+    console.log('Logout request received');
     req.session.destroy((err) => {
       if (err) {
         console.error('Session destroy error:', err);
         return res.status(500).json({ message: 'Logout failed' });
       }
       res.clearCookie('connect.sid');
+      console.log('Session destroyed successfully');
       res.redirect('/login');
+    });
+  });
+
+  // Alternative logout route for JSON response
+  app.post('/api/logout', (req, res) => {
+    console.log('POST logout request received');
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      res.clearCookie('connect.sid');
+      console.log('Session destroyed successfully');
+      res.json({ success: true, message: 'Logged out successfully' });
     });
   });
 
@@ -790,9 +830,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       req.session.passport = { user: sessionData };
+      req.session.userId = user.id; // Store userId directly for easier access
+      
+      // Force session save before continuing
       req.session.save((err) => {
         if (err) {
-          console.error('Session save error:', err);
+          console.error('Session save error during signup:', err);
+        } else {
+          console.log('Session saved successfully for new user:', user.id);
         }
       });
 
