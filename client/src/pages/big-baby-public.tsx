@@ -345,7 +345,7 @@ function PaymentForm({
           <div className="flex items-center justify-between mb-3">
             <img src={linkLogo} alt="Link" className="h-6 w-auto" />
             <div className="flex items-center text-gray-600 text-sm">
-              <span>frazeradnam@gmail.com</span>
+              <span>{customerDetails.email || 'Enter email above'}</span>
               <span className="ml-1">▼</span>
               <span className="ml-2">✕</span>
             </div>
