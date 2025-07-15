@@ -31,7 +31,9 @@ import {
   Grid3X3,
   BookOpen,
   X,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import AdminCoursesAccordion from './AdminCoursesAccordionNew';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -874,6 +876,7 @@ interface CourseAccordionViewProps {
 
 function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: CourseAccordionViewProps) {
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
+  const [expandedLessons, setExpandedLessons] = useState<Record<number, boolean>>({});
   const [editingLesson, setEditingLesson] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
 
@@ -933,6 +936,13 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   const handleCancelEdit = () => {
     setEditingLesson(null);
     setEditContent('');
+  };
+
+  const toggleLesson = (lessonId: number) => {
+    setExpandedLessons(prev => ({
+      ...prev,
+      [lessonId]: !prev[lessonId]
+    }));
   };
 
   const getLessonsForChapter = (chapterId: number) => {
@@ -1060,8 +1070,22 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => toggleLesson(lesson.id)}
+                            className="h-6 w-6 p-0"
+                            title={expandedLessons[lesson.id] ? "Collapse preview" : "Expand preview"}
+                          >
+                            {expandedLessons[lesson.id] ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleEditLesson(lesson.id, lesson.content || '')}
                             className="h-6 w-6 p-0"
+                            title="Edit lesson"
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -1104,7 +1128,11 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                       ) : (
                         <div className="text-sm text-gray-600">
                           {lesson.content ? (
-                            <div dangerouslySetInnerHTML={{ __html: lesson.content.substring(0, 200) + (lesson.content.length > 200 ? '...' : '') }} />
+                            <div dangerouslySetInnerHTML={{ 
+                              __html: expandedLessons[lesson.id] 
+                                ? lesson.content 
+                                : lesson.content.substring(0, 200) + (lesson.content.length > 200 ? '...' : '') 
+                            }} />
                           ) : (
                             <p className="text-gray-400 italic">No content available</p>
                           )}
