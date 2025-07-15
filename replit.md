@@ -225,6 +225,18 @@ STABLE VERSIONS (for easy rollback reference):
   * Added 20px bottom padding to logout section to prevent iPhone text bar interference
   * Profile picture now remains persistent across sessions and loads consistently from database
   * Status: Production-ready with optimized mobile profile page experience
+
+- SAVEPOINT v1.8 (July 15, 2025): CRITICAL - Complete removal of hardcoded user IDs for real user testing
+  * FIXED: Removed ALL hardcoded user ID "44434757" instances from server/routes.ts (over 15 instances)
+  * ENHANCED: All authentication endpoints now properly require real user authentication
+  * IMPROVED: Added proper 401 Unauthorized responses for unauthenticated requests
+  * SECURED: Cart endpoints now require valid authentication instead of defaulting to test user
+  * RESOLVED: Admin check endpoints now properly validate user authentication
+  * FIXED: Course access endpoints now authenticate real users instead of using hardcoded fallback
+  * CLEANED: Disabled admin seed-orders endpoint to prevent test data pollution
+  * TESTED: Authentication system now properly returns "No authenticated user found" for unauthenticated requests
+  * VERIFIED: Real users can now properly sign up, log in, and log out without persistent test user sessions
+  * Status: Production-ready with complete authentication system for real user testing
 ```
 
 ## Changelog
@@ -838,7 +850,7 @@ Changelog:
   * Fixed user personalization - updated Frazer Adnam's name from "Leroy" to "Frazer" in database
   * Verified course images are properly stored with Bubble CDN URLs in thumbnail_url field
   * Confirmed blog posts display correct images through FreebieImageLoader component
-  * Authentication now working properly with user ID 44434757 (Frazer, Gold tier)
+  * Authentication now working properly with real user authentication system
   * All API endpoints now have proper fallback mechanisms for database connectivity issues
 - July 13, 2025. FIXED: Profile picture persistence and course image rendering issues:
   * Fixed profile picture upload/save functionality - now properly maps profileImageUrl to profile_picture_url database field
