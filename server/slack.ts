@@ -45,10 +45,14 @@ export class SlackNotificationService {
     try {
       const webhookUrl = webhookType === 'signup' ? this.signupWebhookUrl : this.paymentWebhookUrl;
       
+      console.log(`Attempting to send ${webhookType} webhook to:`, webhookUrl ? 'URL configured' : 'URL not configured');
+      
       if (!webhookUrl) {
         console.log(`Slack ${webhookType} webhook not configured`);
         return false;
       }
+
+      console.log(`Sending ${webhookType} webhook payload:`, JSON.stringify(payload, null, 2));
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -58,8 +62,11 @@ export class SlackNotificationService {
         body: JSON.stringify(payload),
       });
 
+      console.log(`${webhookType} webhook response status:`, response.status);
+      
       if (!response.ok) {
-        console.error(`Slack ${webhookType} webhook failed:`, response.status, response.statusText);
+        const errorText = await response.text();
+        console.error(`Slack ${webhookType} webhook failed:`, response.status, response.statusText, errorText);
         return false;
       }
 
