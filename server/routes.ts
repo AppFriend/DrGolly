@@ -229,7 +229,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: 'Test User',
             email: 'test@example.com',
             purchaseDetails: 'Single Course Purchase (Big baby sleep program)',
-            paymentAmount: '$120.00 AUD'
+            paymentAmount: '$120.00 AUD',
+            promotionalCode: 'SAVE20',
+            discountAmount: '$30.00 AUD'
           };
           break;
         case 'subscription_upgrade':
@@ -237,7 +239,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: 'Test User',
             email: 'test@example.com',
             purchaseDetails: 'Free → Gold Plan Upgrade',
-            paymentAmount: '$29.99 USD'
+            paymentAmount: '$199.00 USD',
+            promotionalCode: 'NEWMEMBER50',
+            discountAmount: '50% off'
           };
           break;
         case 'subscription_downgrade':
@@ -4065,11 +4069,18 @@ Please contact the customer to confirm the appointment.
               
               // Send payment notification
               try {
+                // Extract discount information from payment intent
+                const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+                const discountAmount = originalAmount - paymentIntent.amount;
+                const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+                
                 await slackNotificationService.sendPaymentNotification({
                   name: customerName,
                   email: customerEmail,
                   purchaseDetails: "Single Course Purchase (Big baby sleep program)",
-                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`,
+                  promotionalCode: promotionalCode || undefined,
+                  discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}` : undefined
                 });
               } catch (error) {
                 console.error('Failed to send payment notification for new user:', error);
@@ -4090,11 +4101,18 @@ Please contact the customer to confirm the appointment.
               
               // Send payment notification
               try {
+                // Extract discount information from payment intent
+                const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+                const discountAmount = originalAmount - paymentIntent.amount;
+                const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+                
                 await slackNotificationService.sendPaymentNotification({
                   name: `${existingUser.firstName} ${existingUser.lastName}`.trim(),
                   email: existingUser.email,
                   purchaseDetails: "Single Course Purchase (Big baby sleep program)",
-                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`,
+                  promotionalCode: promotionalCode || undefined,
+                  discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}` : undefined
                 });
               } catch (error) {
                 console.error('Failed to send payment notification for existing user:', error);
@@ -4857,11 +4875,31 @@ Please contact the customer to confirm the appointment.
               const planTier = createdSub.metadata.plan_tier;
               const amount = createdSub.items.data[0]?.price?.unit_amount || 0;
               
+              // Extract discount information from subscription
+              const discountInfo = createdSub.discount;
+              let promotionalCode = undefined;
+              let discountAmount = undefined;
+              
+              if (discountInfo) {
+                if (discountInfo.coupon) {
+                  promotionalCode = discountInfo.promotion_code || discountInfo.coupon.id;
+                  
+                  // Calculate discount amount
+                  if (discountInfo.coupon.percent_off) {
+                    discountAmount = `${discountInfo.coupon.percent_off}% off`;
+                  } else if (discountInfo.coupon.amount_off) {
+                    discountAmount = `$${(discountInfo.coupon.amount_off / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`;
+                  }
+                }
+              }
+              
               await slackNotificationService.sendPaymentNotification({
                 name: `${user.firstName} ${user.lastName}`.trim(),
                 email: user.email,
                 purchaseDetails: `Free → ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan Upgrade`,
-                paymentAmount: `$${(amount / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`
+                paymentAmount: `$${(amount / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`,
+                promotionalCode: promotionalCode,
+                discountAmount: discountAmount
               });
             } catch (error) {
               console.error('Failed to send payment notification for subscription creation:', error);
