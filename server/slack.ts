@@ -1,10 +1,17 @@
 // Slack webhook integration for Dr. Golly notifications
-const SLACK_WEBHOOK_URL = process.env.SLACK_SIGNUP_WEBHOOK;
+const SLACK_SIGNUP_WEBHOOK = process.env.SLACK_SIGNUP_WEBHOOK;
+const SLACK_PAYMENT_WEBHOOK = process.env.SLACK_PAYMENT_WEBHOOK;
 
-if (!SLACK_WEBHOOK_URL) {
-  console.warn("Slack integration disabled - SLACK_SIGNUP_WEBHOOK not configured");
+if (!SLACK_SIGNUP_WEBHOOK) {
+  console.warn("Slack signup integration disabled - SLACK_SIGNUP_WEBHOOK not configured");
 } else {
-  console.log(`Slack webhook integration enabled`);
+  console.log(`Slack signup webhook integration enabled`);
+}
+
+if (!SLACK_PAYMENT_WEBHOOK) {
+  console.warn("Slack payment integration disabled - SLACK_PAYMENT_WEBHOOK not configured");
+} else {
+  console.log(`Slack payment webhook integration enabled`);
 }
 
 export interface SlackNotificationData {
@@ -19,10 +26,12 @@ export interface SlackNotificationData {
 
 export class SlackNotificationService {
   private static instance: SlackNotificationService;
-  private webhookUrl: string;
+  private signupWebhookUrl: string;
+  private paymentWebhookUrl: string;
 
   private constructor() {
-    this.webhookUrl = SLACK_WEBHOOK_URL;
+    this.signupWebhookUrl = SLACK_SIGNUP_WEBHOOK;
+    this.paymentWebhookUrl = SLACK_PAYMENT_WEBHOOK;
   }
 
   static getInstance(): SlackNotificationService {
@@ -32,14 +41,16 @@ export class SlackNotificationService {
     return SlackNotificationService.instance;
   }
 
-  private async sendWebhookMessage(payload: any): Promise<boolean> {
+  private async sendWebhookMessage(payload: any, webhookType: 'signup' | 'payment' = 'signup'): Promise<boolean> {
     try {
-      if (!this.webhookUrl) {
-        console.log('Slack webhook not configured');
+      const webhookUrl = webhookType === 'signup' ? this.signupWebhookUrl : this.paymentWebhookUrl;
+      
+      if (!webhookUrl) {
+        console.log(`Slack ${webhookType} webhook not configured`);
         return false;
       }
 
-      const response = await fetch(this.webhookUrl, {
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,11 +59,11 @@ export class SlackNotificationService {
       });
 
       if (!response.ok) {
-        console.error('Slack webhook failed:', response.status, response.statusText);
+        console.error(`Slack ${webhookType} webhook failed:`, response.status, response.statusText);
         return false;
       }
 
-      console.log('Slack webhook message sent successfully');
+      console.log(`Slack ${webhookType} webhook message sent successfully`);
       return true;
     } catch (error) {
       console.error('Failed to send Slack webhook message:', error);
@@ -144,9 +155,68 @@ export class SlackNotificationService {
         text: `New user signup: ${signupData.name} (${signupData.email}) - ${signupTypeText}`
       };
 
-      return await this.sendWebhookMessage(payload);
+      return await this.sendWebhookMessage(payload, 'signup');
     } catch (error) {
       console.error('Failed to send Slack signup notification:', error);
+      return false;
+    }
+  }
+
+  async sendPaymentNotification(paymentData: {
+    name: string;
+    email: string;
+    purchaseDetails: string;
+    paymentAmount: string;
+    downgradeDate?: string;
+  }): Promise<boolean> {
+    try {
+      const fields = [
+        {
+          type: 'mrkdwn',
+          text: `*Name:*\n${paymentData.name}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Email:*\n${paymentData.email}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Purchase Details:*\n${paymentData.purchaseDetails}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Payment Amount:*\n${paymentData.paymentAmount}`
+        }
+      ];
+
+      // Add downgrade date if provided
+      if (paymentData.downgradeDate) {
+        fields.push({
+          type: 'mrkdwn',
+          text: `*Downgrade Date:*\n${paymentData.downgradeDate}`
+        });
+      }
+
+      const payload = {
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '💳 Payment Transaction'
+            }
+          },
+          {
+            type: 'section',
+            fields: fields
+          }
+        ],
+        text: `Payment transaction: ${paymentData.name} (${paymentData.email}) - ${paymentData.purchaseDetails}`
+      };
+
+      return await this.sendWebhookMessage(payload, 'payment');
+    } catch (error) {
+      console.error('Failed to send Slack payment notification:', error);
       return false;
     }
   }
@@ -194,7 +264,7 @@ export class SlackNotificationService {
         text: `Payment received: $${(paymentData.amount / 100).toFixed(2)} from ${paymentData.name}`
       };
 
-      return await this.sendWebhookMessage(payload);
+      return await this.sendWebhookMessage(payload, 'payment');
     } catch (error) {
       console.error('Failed to send Slack payment notification:', error);
       return false;
