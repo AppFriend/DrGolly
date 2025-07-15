@@ -7419,10 +7419,10 @@ Please contact the customer to confirm the appointment.
             email: data.email || 'test@drgolly.com',
             marketingOptIn: data.marketingOptIn !== undefined ? data.marketingOptIn : true,
             primaryConcerns: data.primaryConcerns || ['Baby Sleep', 'Toddler Sleep'],
-            userRole: data.userRole || 'Parent',
-            phoneNumber: data.phoneNumber || '+61 400 123 456',
             signupSource: data.signupSource || 'Test Integration',
-            signupType: data.signupType || 'new_customer'
+            signupType: data.signupType || 'new_customer',
+            previousCourses: data.previousCourses,
+            coursePurchased: data.coursePurchased
           });
           break;
         case 'payment':
