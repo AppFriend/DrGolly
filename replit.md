@@ -167,6 +167,52 @@ STABLE VERSIONS (for easy rollback reference):
   * Fixed all course thumbnail image display issues using user-provided screenshots
   * Added comprehensive error handling and payment processing improvements
   * Status: Production-ready with complete e-commerce functionality and stable payment system
+
+- SAVEPOINT v1.4 (July 15, 2025): Advanced Slack notification system with signup type detection
+  * BREAKTHROUGH: Implemented comprehensive Slack webhook integration for reliable notifications
+  * Added signup type detection distinguishing "New Customer" vs "Existing Customer (Profile reactivation)"
+  * Created rich notification display with Name, Email, Marketing opt-in, App preferences, and Signup Type
+  * Transitioned from bot token to webhook-based integration for better reliability and maintenance
+  * Integrated notification coverage across three key flows:
+    - Regular signup: /api/auth/signup with signupType: 'new_customer'
+    - Big Baby checkout: /api/account/create-with-purchase with signupType: 'new_customer'
+    - Password setup: /api/auth/set-password with signupType: 'existing_customer_reactivation'
+  * Webhook URL configured via SLACK_SIGNUP_WEBHOOK environment variable
+  * All notifications tested and working correctly with proper signup type differentiation
+  * Enhanced notifications with streamlined fields (removed user role and phone number)
+  * Added "Previous Courses" field for existing customer reactivations showing migrated purchases
+  * Added "Course Purchased" field for Big Baby checkout users showing their first course purchase
+  * Reordered fields with "Signup Source" moved higher for better visibility
+  * Big Baby checkout uses "public checkout web>app" source for clear identification
+  * Fixed test endpoint to properly pass coursePurchased field for accurate testing
+  * Status: Production-ready with comprehensive webhook-based Slack integration
+
+- SAVEPOINT v1.5 (July 15, 2025): Complete payment notification system with proper webhook integration
+  * FIXED: Critical environment variable issue - corrected SLACK_PAYMENT_WEBHOOK to SLACK_WEBHOOK_PAYMENT2
+  * FIXED: Removed duplicate sendPaymentNotification methods causing $NaN display issues
+  * ENHANCED: Dynamic header titles based on transaction type:
+    - "💰 Single Course Purchase" for individual course purchases
+    - "💰 Plan Upgrade (Free → Gold)" for subscription upgrades
+    - "💰 Plan Downgrade (Gold → Free)" for subscription downgrades
+  * IMPROVED: Clean notification formatting with Customer, Email, Details, Amount fields
+  * TESTED: All three payment notification types confirmed working with 200 status responses
+  * Payment notifications now properly display in Slack channel C08CDNGM5RT (#payment-upgrade-downgrade)
+  * Dual webhook system operational: SLACK_SIGNUP_WEBHOOK for signups, SLACK_WEBHOOK_PAYMENT2 for payments
+  * Status: Production-ready with complete payment notification system
+
+- SAVEPOINT v1.6 (July 15, 2025): Enhanced payment notifications with real transaction data and discount tracking
+  * ENHANCED: Real transaction value extraction from Stripe payment data instead of hardcoded amounts
+  * ADDED: Promotional code field - displays customer-facing promotional code or "N/A" if none applied
+  * ADDED: Discount amount field - shows actual discount applied or "N/A" if no discount
+  * IMPROVED: Course purchase notifications now extract original amount, discount amount, and promotional codes from Stripe metadata
+  * IMPROVED: Subscription notifications extract discount information from Stripe subscription objects
+  * UPDATED: Gold plan pricing corrected to $199.00 USD monthly (from $29.99 test amount)
+  * TESTED: All notification types confirmed working with real transaction data:
+    - Course purchase: $120.00 AUD with SAVE20 promotional code and $30.00 AUD discount
+    - Plan upgrade: $199.00 USD with NEWMEMBER50 promotional code and 50% off discount
+    - Plan downgrade: $0.00 (Cancellation) with N/A promotional code and discount
+  * Webhook processing now extracts actual payment amounts, currencies, and discount data from Stripe events
+  * Status: Production-ready with comprehensive transaction data integration
 ```
 
 ## Changelog
@@ -734,6 +780,18 @@ Changelog:
   * All notifications fully functional with proper API endpoints and database integration
 - July 12, 2025. COMPLETED: Loyalty notification system for Gold plan members:
   * Created seeding route (/api/seed-loyalty-notification) for testing gold member loyalty notifications
+- July 15, 2025. COMPLETED: Enhanced payment notification system with real transaction data and discount tracking:
+  * Merged feature/signup and feature/checkout branches containing comprehensive payment notification enhancements
+  * Implemented real transaction value extraction from Stripe payment data instead of hardcoded amounts
+  * Added promotional code field displaying customer-facing promotional code or "N/A" if none applied
+  * Added discount amount field showing actual discount applied or "N/A" if no discount
+  * Enhanced course purchase notifications to extract original amount, discount amount, and promotional codes from Stripe metadata
+  * Enhanced subscription notifications to extract discount information from Stripe subscription objects
+  * Updated Gold plan pricing to correct $199.00 USD monthly amount (from $29.99 test amount)
+  * Verified all notification types working with real transaction data through webhook integration
+  * Payment notifications now target Slack channel C08CDNGM5RT (#payment-upgrade-downgrade) with enhanced formatting
+  * Created comprehensive test endpoints for all payment notification types (course purchase, subscription upgrade, subscription downgrade)
+  * Status: Production-ready with complete transaction data integration and webhook reliability
   * Implemented notification routing from action buttons to specific tracking sections (?section=review)
   * Enhanced tracking page to support URL parameters for direct section navigation
   * Added programmatic tab switching in tracking page tabs system

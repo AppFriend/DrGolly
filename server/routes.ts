@@ -40,6 +40,7 @@ import {
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
+import { slackNotificationService } from "./slack";
 import { db } from "./db";
 import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
@@ -213,6 +214,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to verify routing
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Test endpoint working' });
+  });
+
+  // Test endpoint for Slack payment notifications
+  app.post('/api/test/payment-notification', async (req, res) => {
+    try {
+      const { type = 'course_purchase' } = req.body;
+      
+      let notificationData;
+      
+      switch (type) {
+        case 'course_purchase':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Single Course Purchase (Big baby sleep program)',
+            paymentAmount: '$120.00 AUD',
+            promotionalCode: 'SAVE20',
+            discountAmount: '$30.00 AUD'
+          };
+          break;
+        case 'subscription_upgrade':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Free → Gold Plan Upgrade',
+            paymentAmount: '$199.00 USD',
+            promotionalCode: 'NEWMEMBER50',
+            discountAmount: '50% off'
+          };
+          break;
+        case 'subscription_downgrade':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Gold → Free Plan Downgrade',
+            paymentAmount: '$0.00 (Cancellation)',
+            downgradeDate: 'Feb 15, 2025'
+          };
+          break;
+        case 'subscription_renewal':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Gold Plan Renewal',
+            paymentAmount: '$29.99 USD'
+          };
+          break;
+        case 'cart_checkout':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Cart Checkout (Course ID 5, Book ID 1)',
+            paymentAmount: '$240.00 AUD'
+          };
+          break;
+        default:
+          return res.status(400).json({ error: 'Invalid notification type' });
+      }
+      
+      const success = await slackNotificationService.sendPaymentNotification(notificationData);
+      
+      res.json({ 
+        success,
+        message: success ? 'Payment notification sent successfully' : 'Failed to send payment notification',
+        data: notificationData
+      });
+    } catch (error) {
+      console.error('Test payment notification error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   // Test database connectivity with sample user
@@ -676,6 +747,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Failed to sync user to Klaviyo:", error);
       }
 
+      // Send Slack notification for new signup
+      try {
+        await slackNotificationService.sendSignupNotification({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          marketingOptIn: personalization?.marketingOptIn || false,
+          primaryConcerns: personalization?.primaryConcerns || [],
+          signupSource: 'Regular Signup Flow',
+          signupType: 'new_customer' // Regular signup flow is always new customers
+        });
+        console.log("Slack signup notification sent successfully");
+      } catch (slackError) {
+        console.error("Failed to send Slack signup notification:", slackError);
+      }
+
       res.json({
         success: true,
         user: {
@@ -749,6 +835,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         klaviyoService.syncUserToKlaviyo(updatedUser, children).catch(error => {
           console.error("Failed to sync user personalization to Klaviyo:", error);
         });
+
+        // Send enhanced Slack signup notification
+        try {
+          const primaryConcerns = updatedUser.primaryConcerns 
+            ? JSON.parse(updatedUser.primaryConcerns) 
+            : [];
+          
+          await slackNotificationService.sendSignupNotification({
+            name: `${updatedUser.firstName || ''} ${updatedUser.lastName || ''}`.trim(),
+            email: updatedUser.email || '',
+            marketingOptIn: updatedUser.marketingOptIn || false,
+            primaryConcerns,
+            signupSource: updatedUser.signupSource || 'App'
+          });
+        } catch (error) {
+          console.error("Failed to send Slack signup notification:", error);
+        }
       }
       
       res.json({ success: true });
@@ -1263,6 +1366,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("Klaviyo sync successful for Big Baby signup");
         } catch (klaviyoError) {
           console.error("Klaviyo sync failed for Big Baby signup, but account creation continues:", klaviyoError);
+        }
+
+        // Send Slack notification for new user signup
+        try {
+          await slackNotificationService.sendSignupNotification({
+            name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+            email: customerDetails.email,
+            marketingOptIn: false, // Big Baby checkout doesn't have marketing opt-in
+            primaryConcerns: interests || [],
+            signupSource: 'public checkout web>app',
+            signupType: 'new_customer', // Big Baby checkout is always new customers
+            coursePurchased: paymentIntent.metadata.courseName
+          });
+          console.log("Slack signup notification sent for Big Baby user");
+        } catch (slackError) {
+          console.error("Failed to send Slack signup notification:", slackError);
         }
       }
       
@@ -3947,6 +4066,25 @@ Please contact the customer to confirm the appointment.
               await klaviyoService.sendPublicCheckoutWelcome(newUser, tempPassword);
               
               console.log(`Public checkout completed: Created user ${userId} for ${customerEmail}`);
+              
+              // Send payment notification
+              try {
+                // Extract discount information from payment intent
+                const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+                const discountAmount = originalAmount - paymentIntent.amount;
+                const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+                
+                await slackNotificationService.sendPaymentNotification({
+                  name: customerName,
+                  email: customerEmail,
+                  purchaseDetails: "Single Course Purchase (Big baby sleep program)",
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`,
+                  promotionalCode: promotionalCode || undefined,
+                  discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}` : undefined
+                });
+              } catch (error) {
+                console.error('Failed to send payment notification for new user:', error);
+              }
             } else {
               // User exists, just create the course purchase
               await storage.createCoursePurchase({
@@ -3960,6 +4098,25 @@ Please contact the customer to confirm the appointment.
               });
               
               console.log(`Public checkout completed: Added course to existing user ${existingUser.id}`);
+              
+              // Send payment notification
+              try {
+                // Extract discount information from payment intent
+                const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+                const discountAmount = originalAmount - paymentIntent.amount;
+                const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+                
+                await slackNotificationService.sendPaymentNotification({
+                  name: `${existingUser.firstName} ${existingUser.lastName}`.trim(),
+                  email: existingUser.email,
+                  purchaseDetails: "Single Course Purchase (Big baby sleep program)",
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`,
+                  promotionalCode: promotionalCode || undefined,
+                  discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}` : undefined
+                });
+              } catch (error) {
+                console.error('Failed to send payment notification for existing user:', error);
+              }
             }
           } else if (paymentIntent.metadata.type === 'cart_checkout') {
             // Handle cart checkout completion
@@ -3992,6 +4149,25 @@ Please contact the customer to confirm the appointment.
               await sql`DELETE FROM cart_items WHERE user_id = ${userId}`;
               
               console.log(`Cart checkout completed: ${paymentIntent.id} for user ${userId} - ${cartItems.length} items`);
+              
+              // Send payment notification for cart checkout
+              try {
+                const user = await storage.getUser(userId);
+                if (user) {
+                  const courseNames = cartItems.filter(item => item.item_type === 'course').map(item => `Course ID ${item.item_id}`).join(', ');
+                  const bookNames = cartItems.filter(item => item.item_type === 'book').map(item => `Book ID ${item.item_id}`).join(', ');
+                  const purchaseDetails = [courseNames, bookNames].filter(Boolean).join(', ') || 'Multiple items';
+                  
+                  await slackNotificationService.sendPaymentNotification({
+                    name: `${user.firstName} ${user.lastName}`.trim(),
+                    email: user.email,
+                    purchaseDetails: `Cart Checkout (${purchaseDetails})`,
+                    paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to send payment notification for cart checkout:', error);
+              }
             }
           } else {
             // Handle regular course purchase
@@ -3999,6 +4175,22 @@ Please contact the customer to confirm the appointment.
             if (purchase) {
               await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
               console.log(`Course purchase completed: ${paymentIntent.id} for user ${purchase.userId}`);
+              
+              // Send payment notification for course purchase
+              try {
+                const user = await storage.getUser(purchase.userId);
+                const course = await storage.getCourse(purchase.courseId);
+                if (user && course) {
+                  await slackNotificationService.sendPaymentNotification({
+                    name: `${user.firstName} ${user.lastName}`.trim(),
+                    email: user.email,
+                    purchaseDetails: `Single Course Purchase (${course.title})`,
+                    paymentAmount: `$${(purchase.amount / 100).toFixed(2)} ${purchase.currency.toUpperCase()}`
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to send payment notification for course purchase:', error);
+              }
               
               // Sync course purchase to Klaviyo
               try {
@@ -4677,6 +4869,41 @@ Please contact the customer to confirm the appointment.
             await storage.updateUserStripeSubscriptionId(user.id, createdSub.id);
             
             console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
+            
+            // Send payment notification for new subscription
+            try {
+              const planTier = createdSub.metadata.plan_tier;
+              const amount = createdSub.items.data[0]?.price?.unit_amount || 0;
+              
+              // Extract discount information from subscription
+              const discountInfo = createdSub.discount;
+              let promotionalCode = undefined;
+              let discountAmount = undefined;
+              
+              if (discountInfo) {
+                if (discountInfo.coupon) {
+                  promotionalCode = discountInfo.promotion_code || discountInfo.coupon.id;
+                  
+                  // Calculate discount amount
+                  if (discountInfo.coupon.percent_off) {
+                    discountAmount = `${discountInfo.coupon.percent_off}% off`;
+                  } else if (discountInfo.coupon.amount_off) {
+                    discountAmount = `$${(discountInfo.coupon.amount_off / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`;
+                  }
+                }
+              }
+              
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `Free → ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan Upgrade`,
+                paymentAmount: `$${(amount / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`,
+                promotionalCode: promotionalCode,
+                discountAmount: discountAmount
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for subscription creation:', error);
+            }
           }
         } catch (error) {
           console.error('Error processing subscription creation:', error);
@@ -4731,6 +4958,26 @@ Please contact the customer to confirm the appointment.
             );
             
             console.log(`User ${user.id} subscription cancelled, access until: ${accessEndDate}`);
+            
+            // Send payment notification for subscription cancellation
+            try {
+              const planTier = user.subscriptionTier || 'unknown';
+              const downgradeDate = accessEndDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+              
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `${planTier.charAt(0).toUpperCase() + planTier.slice(1)} → Free Plan Downgrade`,
+                paymentAmount: "$0.00 (Cancellation)",
+                downgradeDate: downgradeDate
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for subscription cancellation:', error);
+            }
           }
         } catch (error) {
           console.error('Error processing subscription cancellation:', error);
@@ -6359,6 +6606,39 @@ Please contact the customer to confirm the appointment.
       // Update last login for MAU tracking since this completes the login process
       await storage.updateUserLastLogin(userId);
 
+      // Send Slack notification for existing customer reactivation
+      try {
+        const user = await storage.getUser(userId);
+        if (user) {
+          // Fetch previous courses for existing customer reactivation
+          let previousCourses: string[] = [];
+          try {
+            const coursePurchases = await storage.getUserCoursePurchases(userId);
+            if (coursePurchases && coursePurchases.length > 0) {
+              // Get course titles from purchases
+              const courseIds = coursePurchases.map(purchase => purchase.courseId);
+              const courses = await storage.getCoursesByIds(courseIds);
+              previousCourses = courses.map(course => course.title);
+            }
+          } catch (courseError) {
+            console.error("Failed to fetch previous courses:", courseError);
+          }
+
+          await slackNotificationService.sendSignupNotification({
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            marketingOptIn: user.marketingOptIn || false,
+            primaryConcerns: user.primaryConcerns ? user.primaryConcerns.split(',') : [],
+            signupSource: 'Password Setup (Migrated User)',
+            signupType: 'existing_customer_reactivation',
+            previousCourses: previousCourses
+          });
+          console.log("Slack reactivation notification sent successfully");
+        }
+      } catch (slackError) {
+        console.error("Failed to send Slack reactivation notification:", slackError);
+      }
+
       res.json({ message: 'Password set successfully' });
     } catch (error) {
       console.error('Error setting password:', error);
@@ -7321,6 +7601,77 @@ Please contact the customer to confirm the appointment.
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Test endpoint for Slack notifications
+  app.post('/api/test/slack-notification', async (req, res) => {
+    try {
+      const { type = 'signup', ...data } = req.body;
+      
+      let result;
+      switch (type) {
+        case 'signup':
+          result = await slackNotificationService.sendSignupNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            marketingOptIn: data.marketingOptIn !== undefined ? data.marketingOptIn : true,
+            primaryConcerns: data.primaryConcerns || ['Baby Sleep', 'Toddler Sleep'],
+            signupSource: data.signupSource || 'Test Integration',
+            signupType: data.signupType || 'new_customer',
+            previousCourses: data.previousCourses,
+            coursePurchased: data.coursePurchased
+          });
+          break;
+        case 'payment':
+          result = await slackNotificationService.sendPaymentNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            amount: data.amount || 12000,
+            courseName: data.courseName || 'Little Baby Sleep Program'
+          });
+          break;
+        case 'support':
+          result = await slackNotificationService.sendSupportNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            subject: data.subject || 'Test Support Request',
+            message: data.message || 'This is a test support message from the feature/signup branch'
+          });
+          break;
+        default:
+          return res.status(400).json({ error: 'Invalid notification type' });
+      }
+      
+      res.json({
+        success: result,
+        message: `Slack ${type} notification test ${result ? 'successful' : 'failed'}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "Slack notification test failed"
+      });
+    }
+  });
+
+  // Test endpoint for Slack bot verification
+  app.get('/api/test/slack-auth', async (req, res) => {
+    try {
+      const result = await slackNotificationService.testConnection();
+      res.json({
+        success: result,
+        message: result ? 'Slack connection verified' : 'Slack connection failed',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "Slack connection test failed"
+      });
     }
   });
 
