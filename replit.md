@@ -181,6 +181,7 @@ STABLE VERSIONS (for easy rollback reference):
   * All notifications tested and working correctly with proper signup type differentiation
   * Enhanced notifications with streamlined fields (removed user role and phone number)
   * Added "Previous Courses" field for existing customer reactivations showing migrated purchases
+  * Added "Course Purchased" field for Big Baby checkout users showing their first course purchase
   * Reordered fields with "Signup Source" moved higher for better visibility
   * Big Baby checkout uses "public checkout web>app" source for clear identification
   * Status: Production-ready with comprehensive webhook-based Slack integration

@@ -1306,7 +1306,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             marketingOptIn: false, // Big Baby checkout doesn't have marketing opt-in
             primaryConcerns: interests || [],
             signupSource: 'public checkout web>app',
-            signupType: 'new_customer' // Big Baby checkout is always new customers
+            signupType: 'new_customer', // Big Baby checkout is always new customers
+            coursePurchased: paymentIntent.metadata.courseName
           });
           console.log("Slack signup notification sent for Big Baby user");
         } catch (slackError) {
