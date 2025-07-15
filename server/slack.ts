@@ -65,10 +65,9 @@ export class SlackNotificationService {
     email: string;
     marketingOptIn: boolean;
     primaryConcerns: string[];
-    userRole: string;
-    phoneNumber?: string;
     signupSource?: string;
     signupType?: 'new_customer' | 'existing_customer_reactivation';
+    previousCourses?: string[];
   }): Promise<boolean> {
     try {
       const concernsText = signupData.primaryConcerns.length > 0 
@@ -82,6 +81,43 @@ export class SlackNotificationService {
         ? '🔄 Existing Customer (Profile reactivation)'
         : '✨ New Customer';
 
+      // Build fields array dynamically
+      const fields = [
+        {
+          type: 'mrkdwn',
+          text: `*Name:*\n${signupData.name}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Email:*\n${signupData.email}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Signup Source:*\n${signupData.signupSource || 'Direct'}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Marketing Opt-in:*\n${marketingStatus}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*App Preferences:*\n${concernsText}`
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Signup Type:*\n${signupTypeText}`
+        }
+      ];
+
+      // Add previous courses field only for existing customer reactivations
+      if (signupData.signupType === 'existing_customer_reactivation' && signupData.previousCourses && signupData.previousCourses.length > 0) {
+        const coursesText = signupData.previousCourses.join(', ');
+        fields.push({
+          type: 'mrkdwn',
+          text: `*Previous Courses:*\n${coursesText}`
+        });
+      }
+
       const payload = {
         blocks: [
           {
@@ -93,40 +129,7 @@ export class SlackNotificationService {
           },
           {
             type: 'section',
-            fields: [
-              {
-                type: 'mrkdwn',
-                text: `*Name:*\n${signupData.name}`
-              },
-              {
-                type: 'mrkdwn',
-                text: `*Email:*\n${signupData.email}`
-              },
-              {
-                type: 'mrkdwn',
-                text: `*Marketing Opt-in:*\n${marketingStatus}`
-              },
-              {
-                type: 'mrkdwn',
-                text: `*App Preferences:*\n${concernsText}`
-              },
-              {
-                type: 'mrkdwn',
-                text: `*Phone:*\n${signupData.phoneNumber || 'Not provided'}`
-              },
-              {
-                type: 'mrkdwn',
-                text: `*User Role:*\n${signupData.userRole}`
-              },
-              {
-                type: 'mrkdwn',
-                text: `*Signup Source:*\n${signupData.signupSource || 'Direct'}`
-              },
-              {
-                type: 'mrkdwn',
-                text: `*Signup Type:*\n${signupTypeText}`
-              }
-            ]
+            fields: fields
           }
         ],
         text: `New user signup: ${signupData.name} (${signupData.email}) - ${signupTypeText}`
