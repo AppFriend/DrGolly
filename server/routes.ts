@@ -2156,6 +2156,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dr. Golly logout endpoint
+  app.get('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Error destroying session:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      
+      // Clear the session cookie
+      res.clearCookie('connect.sid');
+      
+      // Redirect to login page
+      res.redirect('/login');
+    });
+  });
+
   app.post('/api/seed/discounts', async (req, res) => {
     try {
       const sampleDiscounts = [
