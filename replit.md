@@ -796,6 +796,9 @@ Changelog:
   * Database connectivity verified and operational for production deployment
   * RESOLVED: Database schema constraint conflicts - fixed user_lesson_progress unique constraint naming mismatch
   * All database constraints properly aligned with Drizzle schema expectations without data loss
+  * FIXED: Critical Stripe Link checkout issue - replaced hardcoded "frazeradnam@gmail.com" with dynamic user email in big-baby-public.tsx
+  * Stripe Link now properly detects users' saved payment methods for Yvonne Pfliger, Alex Dawkins, and other existing Stripe customers
+  * Enhanced checkout form to show "Enter email above" fallback when no email entered
   * Implemented notification routing from action buttons to specific tracking sections (?section=review)
   * Enhanced tracking page to support URL parameters for direct section navigation
   * Added programmatic tab switching in tracking page tabs system
