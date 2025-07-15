@@ -216,6 +216,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: 'Test endpoint working' });
   });
 
+  // Test endpoint for Slack payment notifications
+  app.post('/api/test/payment-notification', async (req, res) => {
+    try {
+      const { type = 'course_purchase' } = req.body;
+      
+      let notificationData;
+      
+      switch (type) {
+        case 'course_purchase':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Single Course Purchase (Big baby sleep program)',
+            paymentAmount: '$120.00 AUD'
+          };
+          break;
+        case 'subscription_upgrade':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Free → Gold Plan Upgrade',
+            paymentAmount: '$29.99 USD'
+          };
+          break;
+        case 'subscription_downgrade':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Gold → Free Plan Downgrade',
+            paymentAmount: '$0.00 (Cancellation)',
+            downgradeDate: 'Feb 15, 2025'
+          };
+          break;
+        case 'subscription_renewal':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Gold Plan Renewal',
+            paymentAmount: '$29.99 USD'
+          };
+          break;
+        case 'cart_checkout':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Cart Checkout (Course ID 5, Book ID 1)',
+            paymentAmount: '$240.00 AUD'
+          };
+          break;
+        default:
+          return res.status(400).json({ error: 'Invalid notification type' });
+      }
+      
+      const success = await slackNotificationService.sendPaymentNotification(notificationData);
+      
+      res.json({ 
+        success,
+        message: success ? 'Payment notification sent successfully' : 'Failed to send payment notification',
+        data: notificationData
+      });
+    } catch (error) {
+      console.error('Test payment notification error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Test database connectivity with sample user
   app.get('/api/test/user/:email', async (req, res) => {
     try {
@@ -3996,6 +4062,18 @@ Please contact the customer to confirm the appointment.
               await klaviyoService.sendPublicCheckoutWelcome(newUser, tempPassword);
               
               console.log(`Public checkout completed: Created user ${userId} for ${customerEmail}`);
+              
+              // Send payment notification
+              try {
+                await slackNotificationService.sendPaymentNotification({
+                  name: customerName,
+                  email: customerEmail,
+                  purchaseDetails: "Single Course Purchase (Big baby sleep program)",
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`
+                });
+              } catch (error) {
+                console.error('Failed to send payment notification for new user:', error);
+              }
             } else {
               // User exists, just create the course purchase
               await storage.createCoursePurchase({
@@ -4009,6 +4087,18 @@ Please contact the customer to confirm the appointment.
               });
               
               console.log(`Public checkout completed: Added course to existing user ${existingUser.id}`);
+              
+              // Send payment notification
+              try {
+                await slackNotificationService.sendPaymentNotification({
+                  name: `${existingUser.firstName} ${existingUser.lastName}`.trim(),
+                  email: existingUser.email,
+                  purchaseDetails: "Single Course Purchase (Big baby sleep program)",
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`
+                });
+              } catch (error) {
+                console.error('Failed to send payment notification for existing user:', error);
+              }
             }
           } else if (paymentIntent.metadata.type === 'cart_checkout') {
             // Handle cart checkout completion
@@ -4041,6 +4131,25 @@ Please contact the customer to confirm the appointment.
               await sql`DELETE FROM cart_items WHERE user_id = ${userId}`;
               
               console.log(`Cart checkout completed: ${paymentIntent.id} for user ${userId} - ${cartItems.length} items`);
+              
+              // Send payment notification for cart checkout
+              try {
+                const user = await storage.getUser(userId);
+                if (user) {
+                  const courseNames = cartItems.filter(item => item.item_type === 'course').map(item => `Course ID ${item.item_id}`).join(', ');
+                  const bookNames = cartItems.filter(item => item.item_type === 'book').map(item => `Book ID ${item.item_id}`).join(', ');
+                  const purchaseDetails = [courseNames, bookNames].filter(Boolean).join(', ') || 'Multiple items';
+                  
+                  await slackNotificationService.sendPaymentNotification({
+                    name: `${user.firstName} ${user.lastName}`.trim(),
+                    email: user.email,
+                    purchaseDetails: `Cart Checkout (${purchaseDetails})`,
+                    paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to send payment notification for cart checkout:', error);
+              }
             }
           } else {
             // Handle regular course purchase
@@ -4048,6 +4157,22 @@ Please contact the customer to confirm the appointment.
             if (purchase) {
               await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
               console.log(`Course purchase completed: ${paymentIntent.id} for user ${purchase.userId}`);
+              
+              // Send payment notification for course purchase
+              try {
+                const user = await storage.getUser(purchase.userId);
+                const course = await storage.getCourse(purchase.courseId);
+                if (user && course) {
+                  await slackNotificationService.sendPaymentNotification({
+                    name: `${user.firstName} ${user.lastName}`.trim(),
+                    email: user.email,
+                    purchaseDetails: `Single Course Purchase (${course.title})`,
+                    paymentAmount: `$${(purchase.amount / 100).toFixed(2)} ${purchase.currency.toUpperCase()}`
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to send payment notification for course purchase:', error);
+              }
               
               // Sync course purchase to Klaviyo
               try {
@@ -4726,6 +4851,21 @@ Please contact the customer to confirm the appointment.
             await storage.updateUserStripeSubscriptionId(user.id, createdSub.id);
             
             console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
+            
+            // Send payment notification for new subscription
+            try {
+              const planTier = createdSub.metadata.plan_tier;
+              const amount = createdSub.items.data[0]?.price?.unit_amount || 0;
+              
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `Free → ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan Upgrade`,
+                paymentAmount: `$${(amount / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for subscription creation:', error);
+            }
           }
         } catch (error) {
           console.error('Error processing subscription creation:', error);
@@ -4780,6 +4920,26 @@ Please contact the customer to confirm the appointment.
             );
             
             console.log(`User ${user.id} subscription cancelled, access until: ${accessEndDate}`);
+            
+            // Send payment notification for subscription cancellation
+            try {
+              const planTier = user.subscriptionTier || 'unknown';
+              const downgradeDate = accessEndDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+              
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `${planTier.charAt(0).toUpperCase() + planTier.slice(1)} → Free Plan Downgrade`,
+                paymentAmount: "$0.00 (Cancellation)",
+                downgradeDate: downgradeDate
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for subscription cancellation:', error);
+            }
           }
         } catch (error) {
           console.error('Error processing subscription cancellation:', error);
@@ -4838,6 +4998,21 @@ Please contact the customer to confirm the appointment.
               );
               
               console.log(`User ${user.id} billing updated, next billing: ${nextBillingDate}`);
+              
+              // Send payment notification for recurring payment
+              try {
+                const planTier = user.subscriptionTier || 'unknown';
+                const amount = invoice.amount_paid || 0;
+                
+                await slackNotificationService.sendPaymentNotification({
+                  name: `${user.firstName} ${user.lastName}`.trim(),
+                  email: user.email,
+                  purchaseDetails: `${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan Renewal`,
+                  paymentAmount: `$${(amount / 100).toFixed(2)} ${invoice.currency.toUpperCase()}`
+                });
+              } catch (error) {
+                console.error('Failed to send payment notification for recurring payment:', error);
+              }
             }
           } catch (error) {
             console.error('Error updating billing date:', error);
