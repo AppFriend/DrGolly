@@ -1,16 +1,11 @@
-import { WebClient } from "@slack/web-api";
+// Slack webhook integration for Dr. Golly notifications
+const SLACK_WEBHOOK_URL = process.env.SLACK_SIGNUP_WEBHOOK;
 
-// Allow the app to run without Slack credentials in development
-const SLACK_ENABLED = process.env.SLACK_BOT_TOKEN;
-const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || 'C08D5C0UEHW';
-
-if (!SLACK_ENABLED) {
-  console.warn("Slack integration disabled - SLACK_BOT_TOKEN not configured");
+if (!SLACK_WEBHOOK_URL) {
+  console.warn("Slack integration disabled - SLACK_SIGNUP_WEBHOOK not configured");
 } else {
-  console.log(`Slack integration enabled - Channel: ${SLACK_CHANNEL_ID}`);
+  console.log(`Slack webhook integration enabled`);
 }
-
-const slack = SLACK_ENABLED ? new WebClient(process.env.SLACK_BOT_TOKEN) : null;
 
 export interface SlackNotificationData {
   type: 'signup' | 'payment' | 'support' | 'admin';
@@ -24,12 +19,10 @@ export interface SlackNotificationData {
 
 export class SlackNotificationService {
   private static instance: SlackNotificationService;
-  private client: WebClient;
-  private defaultChannel: string;
+  private webhookUrl: string;
 
   private constructor() {
-    this.client = slack;
-    this.defaultChannel = SLACK_CHANNEL_ID;
+    this.webhookUrl = SLACK_WEBHOOK_URL;
   }
 
   static getInstance(): SlackNotificationService {
@@ -37,6 +30,34 @@ export class SlackNotificationService {
       SlackNotificationService.instance = new SlackNotificationService();
     }
     return SlackNotificationService.instance;
+  }
+
+  private async sendWebhookMessage(payload: any): Promise<boolean> {
+    try {
+      if (!this.webhookUrl) {
+        console.log('Slack webhook not configured');
+        return false;
+      }
+
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.error('Slack webhook failed:', response.status, response.statusText);
+        return false;
+      }
+
+      console.log('Slack webhook message sent successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to send Slack webhook message:', error);
+      return false;
+    }
   }
 
   async sendSignupNotification(signupData: {
@@ -50,12 +71,6 @@ export class SlackNotificationService {
     signupType?: 'new_customer' | 'existing_customer_reactivation';
   }): Promise<boolean> {
     try {
-      // Return early if Slack is not enabled
-      if (!SLACK_ENABLED || !this.client) {
-        console.log('Slack notification skipped - not configured');
-        return false;
-      }
-
       const concernsText = signupData.primaryConcerns.length > 0 
         ? signupData.primaryConcerns.join(', ')
         : 'None selected';
@@ -67,74 +82,57 @@ export class SlackNotificationService {
         ? '🔄 Existing Customer (Profile reactivation)'
         : '✨ New Customer';
 
-      const blocks = [
-        {
-          type: 'header',
-          text: {
-            type: 'plain_text',
-            text: '🎉 New User Signup'
+      const payload = {
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '🎉 New User Signup'
+            }
+          },
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*Name:*\n${signupData.name}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Email:*\n${signupData.email}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Marketing Opt-in:*\n${marketingStatus}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*App Preferences:*\n${concernsText}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Phone:*\n${signupData.phoneNumber || 'Not provided'}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*User Role:*\n${signupData.userRole}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Signup Source:*\n${signupData.signupSource || 'Direct'}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Signup Type:*\n${signupTypeText}`
+              }
+            ]
           }
-        },
-        {
-          type: 'section',
-          fields: [
-            {
-              type: 'mrkdwn',
-              text: `*Name:*\n${signupData.name}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Email:*\n${signupData.email}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Signup Type:*\n${signupTypeText}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Marketing Opt-in:*\n${marketingStatus}`
-            }
-          ]
-        },
-        {
-          type: 'section',
-          fields: [
-            {
-              type: 'mrkdwn',
-              text: `*User Role:*\n${signupData.userRole || 'Not specified'}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*App Preferences:*\n${concernsText}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Phone:*\n${signupData.phoneNumber || 'Not provided'}`
-            }
-          ]
-        }
-      ];
+        ],
+        text: `New user signup: ${signupData.name} (${signupData.email}) - ${signupTypeText}`
+      };
 
-      if (signupData.signupSource) {
-        blocks.push({
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `📱 Source: ${signupData.signupSource}`
-            }
-          ]
-        });
-      }
-
-      const result = await this.client.chat.postMessage({
-        channel: this.defaultChannel,
-        blocks,
-        text: `New user signup: ${signupData.name} (${signupData.email})`
-      });
-
-      console.log('Slack signup notification sent successfully:', result.ts);
-      return true;
+      return await this.sendWebhookMessage(payload);
     } catch (error) {
       console.error('Failed to send Slack signup notification:', error);
       return false;
@@ -150,45 +148,41 @@ export class SlackNotificationService {
     paymentMethod?: string;
   }): Promise<boolean> {
     try {
-      const blocks = [
-        {
-          type: 'header',
-          text: {
-            type: 'plain_text',
-            text: '💰 Payment Received'
-          }
-        },
-        {
-          type: 'section',
-          fields: [
-            {
-              type: 'mrkdwn',
-              text: `*Customer:*\n${paymentData.name}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Email:*\n${paymentData.email}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Amount:*\n$${(paymentData.amount / 100).toFixed(2)}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Item:*\n${paymentData.courseName || paymentData.subscriptionTier || 'Unknown'}`
+      const payload = {
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '💰 Payment Received'
             }
-          ]
-        }
-      ];
-
-      const result = await this.client.chat.postMessage({
-        channel: this.defaultChannel,
-        blocks,
+          },
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*Customer:*\n${paymentData.name}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Email:*\n${paymentData.email}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Amount:*\n$${(paymentData.amount / 100).toFixed(2)}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Item:*\n${paymentData.courseName || paymentData.subscriptionTier || 'Unknown'}`
+              }
+            ]
+          }
+        ],
         text: `Payment received: $${(paymentData.amount / 100).toFixed(2)} from ${paymentData.name}`
-      });
+      };
 
-      console.log('Slack payment notification sent successfully:', result.ts);
-      return true;
+      return await this.sendWebhookMessage(payload);
     } catch (error) {
       console.error('Failed to send Slack payment notification:', error);
       return false;
@@ -203,52 +197,48 @@ export class SlackNotificationService {
     userTier?: string;
   }): Promise<boolean> {
     try {
-      const blocks = [
-        {
-          type: 'header',
-          text: {
-            type: 'plain_text',
-            text: '🆘 Support Request'
-          }
-        },
-        {
-          type: 'section',
-          fields: [
-            {
-              type: 'mrkdwn',
-              text: `*From:*\n${supportData.name}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Email:*\n${supportData.email}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Subject:*\n${supportData.subject}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*User Tier:*\n${supportData.userTier || 'Free'}`
+      const payload = {
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '🆘 Support Request'
             }
-          ]
-        },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `*Message:*\n${supportData.message}`
+          },
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*From:*\n${supportData.name}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Email:*\n${supportData.email}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Subject:*\n${supportData.subject}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*User Tier:*\n${supportData.userTier || 'Free'}`
+              }
+            ]
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*Message:*\n${supportData.message}`
+            }
           }
-        }
-      ];
-
-      const result = await this.client.chat.postMessage({
-        channel: this.defaultChannel,
-        blocks,
+        ],
         text: `Support request from ${supportData.name}: ${supportData.subject}`
-      });
+      };
 
-      console.log('Slack support notification sent successfully:', result.ts);
-      return true;
+      return await this.sendWebhookMessage(payload);
     } catch (error) {
       console.error('Failed to send Slack support notification:', error);
       return false;
@@ -262,45 +252,41 @@ export class SlackNotificationService {
     details: string;
   }): Promise<boolean> {
     try {
-      const blocks = [
-        {
-          type: 'header',
-          text: {
-            type: 'plain_text',
-            text: '🔧 Admin Action'
-          }
-        },
-        {
-          type: 'section',
-          fields: [
-            {
-              type: 'mrkdwn',
-              text: `*Admin:*\n${adminData.adminUser}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Action:*\n${adminData.action}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Target:*\n${adminData.targetUser || 'System'}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Details:*\n${adminData.details}`
+      const payload = {
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '🔧 Admin Action'
             }
-          ]
-        }
-      ];
-
-      const result = await this.client.chat.postMessage({
-        channel: this.defaultChannel,
-        blocks,
+          },
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*Admin:*\n${adminData.adminUser}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Action:*\n${adminData.action}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Target:*\n${adminData.targetUser || 'System'}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Details:*\n${adminData.details}`
+              }
+            ]
+          }
+        ],
         text: `Admin action: ${adminData.action} by ${adminData.adminUser}`
-      });
+      };
 
-      console.log('Slack admin notification sent successfully:', result.ts);
-      return true;
+      return await this.sendWebhookMessage(payload);
     } catch (error) {
       console.error('Failed to send Slack admin notification:', error);
       return false;
@@ -309,11 +295,27 @@ export class SlackNotificationService {
 
   async testConnection(): Promise<boolean> {
     try {
-      const result = await this.client.auth.test();
-      console.log('Slack connection test successful:', result.user);
-      return true;
+      if (!this.webhookUrl) {
+        console.log('Slack webhook not configured');
+        return false;
+      }
+
+      const testPayload = {
+        text: '🧪 Slack webhook test successful!',
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: '✅ *Slack Webhook Test*\n\nThe Dr. Golly notification system is working correctly!'
+            }
+          }
+        ]
+      };
+
+      return await this.sendWebhookMessage(testPayload);
     } catch (error) {
-      console.error('Slack connection test failed:', error);
+      console.error('Slack webhook test failed:', error);
       return false;
     }
   }
