@@ -30,10 +30,19 @@ done
 echo ""
 echo "2. Checking database connectivity..."
 node -e "
-const { Pool } = require('@neondatabase/serverless');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-pool.query('SELECT 1').then(() => {
-    console.log('✅ Database connection successful');
+const { Pool, neonConfig } = require('@neondatabase/serverless');
+const ws = require('ws');
+neonConfig.webSocketConstructor = ws;
+
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+pool.query('SELECT 1 as test').then(result => {
+    console.log('✅ Database connection successful:', result.rows[0]);
     process.exit(0);
 }).catch(err => {
     console.log('❌ Database connection failed:', err.message);
