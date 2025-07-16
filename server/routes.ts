@@ -588,13 +588,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Debug session info
-      console.log('Session debug:', {
+      console.log('Session debug info:', {
         sessionExists: !!req.session,
+        sessionId: req.session?.id,
+        directUserId: req.session?.userId,
         passportExists: !!req.session?.passport,
         userExists: !!req.session?.passport?.user,
         claimsExist: !!req.session?.passport?.user?.claims,
         subExists: !!req.session?.passport?.user?.claims?.sub,
-        directUserId: req.session?.userId,
+        reqUserExists: !!req.user,
         foundUserId: userId
       });
       
