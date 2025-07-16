@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import AdminCoursesAccordion from './AdminCoursesAccordionNew';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { InlineEditTitle } from "./InlineEditTitle";
 
 interface Course {
   id: number;
@@ -917,6 +918,64 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     },
   });
 
+  // Title update mutations
+  const updateCourseTitleMutation = useMutation({
+    mutationFn: (newTitle: string) =>
+      apiRequest("PATCH", `/api/courses/${course.id}`, { title: newTitle }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/courses/detailed"] });
+      toast({
+        title: "Success",
+        description: "Course title updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateChapterTitleMutation = useMutation({
+    mutationFn: ({ chapterId, newTitle }: { chapterId: number; newTitle: string }) =>
+      apiRequest("PATCH", `/api/chapters/${chapterId}`, { title: newTitle }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      toast({
+        title: "Success",
+        description: "Chapter title updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateLessonTitleMutation = useMutation({
+    mutationFn: ({ lessonId, newTitle }: { lessonId: number; newTitle: string }) =>
+      apiRequest("PATCH", `/api/lessons/${lessonId}`, { title: newTitle }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson title updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const toggleChapter = (chapterId: number) => {
     setExpandedChapters(prev => ({
       ...prev,
@@ -936,6 +995,19 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   const handleCancelEdit = () => {
     setEditingLesson(null);
     setEditContent('');
+  };
+
+  // Title update handlers
+  const handleUpdateCourseTitle = async (newTitle: string) => {
+    await updateCourseTitleMutation.mutateAsync(newTitle);
+  };
+
+  const handleUpdateChapterTitle = async (chapterId: number, newTitle: string) => {
+    await updateChapterTitleMutation.mutateAsync({ chapterId, newTitle });
+  };
+
+  const handleUpdateLessonTitle = async (lessonId: number, newTitle: string) => {
+    await updateLessonTitleMutation.mutateAsync({ lessonId, newTitle });
   };
 
   const toggleLesson = (lessonId: number) => {
@@ -987,7 +1059,11 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
               <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base sm:text-lg truncate">{course.title}</CardTitle>
+              <InlineEditTitle
+                title={course.title}
+                onSave={handleUpdateCourseTitle}
+                className="text-base sm:text-lg font-bold"
+              />
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
                 <Badge className={`${getCategoryColor(course.category)} text-xs w-fit`}>
                   {course.category}
@@ -1031,25 +1107,36 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
         <Accordion type="multiple" value={Object.keys(expandedChapters).filter(k => expandedChapters[parseInt(k)])} onValueChange={() => {}}>
           {chapters.map((chapter: any) => (
             <AccordionItem key={chapter.id} value={chapter.id.toString()}>
-              <AccordionTrigger 
-                className="text-left hover:no-underline py-3"
-                onClick={() => toggleChapter(chapter.id)}
-              >
-                <div className="flex items-center justify-between w-full mr-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Book className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{chapter.title}</h3>
-                      <p className="text-sm text-gray-500">
-                        {getLessonsForChapter(chapter.id).length} lessons
-                      </p>
-                    </div>
+              <div className="flex items-center justify-between w-full py-3 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Book className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <InlineEditTitle
+                      title={chapter.title}
+                      onSave={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
+                      className="font-medium text-gray-900"
+                    />
+                    <p className="text-sm text-gray-500">
+                      {getLessonsForChapter(chapter.id).length} lessons
+                    </p>
                   </div>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleChapter(chapter.id)}
+                  className="h-6 w-6 p-0"
+                >
+                  {expandedChapters[chapter.id] ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {expandedChapters[chapter.id] && (
                 <div className="pl-11 space-y-2">
                   {getLessonsForChapter(chapter.id).map((lesson: any) => (
                     <div key={lesson.id} className="border border-gray-200 rounded-lg p-3">
@@ -1058,7 +1145,11 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                           <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
                             <FileText className="h-3 w-3 text-green-600" />
                           </div>
-                          <h4 className="font-medium text-sm">{lesson.title}</h4>
+                          <InlineEditTitle
+                            title={lesson.title}
+                            onSave={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
+                            className="font-medium text-sm"
+                          />
                         </div>
                         <div className="flex items-center gap-2">
                           {lesson.videoUrl && (
@@ -1155,7 +1246,7 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                     </div>
                   )}
                 </div>
-              </AccordionContent>
+              )}
             </AccordionItem>
           ))}
         </Accordion>
