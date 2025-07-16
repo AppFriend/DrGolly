@@ -88,6 +88,16 @@ export const temporaryPasswords = pgTable("temporary_passwords", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Password reset tokens for proper password reset flow
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  token: varchar("token").notNull().unique(),
+  isUsed: boolean("is_used").default(false),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Family members table for family sharing
 export const familyMembers = pgTable("family_members", {
   id: serial("id").primaryKey(),
@@ -704,6 +714,11 @@ export const insertCourseChapterSchema = createInsertSchema(courseChapters).omit
   createdAt: true,
 });
 
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertUserChapterProgressSchema = createInsertSchema(userChapterProgress).omit({
   id: true,
   createdAt: true,
@@ -788,6 +803,8 @@ export type InsertCourseChapter = z.infer<typeof insertCourseChapterSchema>;
 export type InsertCourseLesson = z.infer<typeof insertCourseLessonSchema>;
 export type InsertLessonContent = z.infer<typeof insertLessonContentSchema>;
 export type InsertUserChapterProgress = z.infer<typeof insertUserChapterProgressSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type InsertUserLessonProgress = z.infer<typeof insertUserLessonProgressSchema>;
 export type InsertUserLessonContentProgress = z.infer<typeof insertUserLessonContentProgressSchema>;
 export type InsertUserCourseProgress = z.infer<typeof insertUserCourseProgressSchema>;
