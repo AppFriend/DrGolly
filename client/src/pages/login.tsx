@@ -52,8 +52,14 @@ export default function LoginPage() {
         password: formData.password
       });
 
-      // Simple redirect after successful login
-      window.location.href = '/';
+      // Clear any cached user data and refetch
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      // Wait a moment for session to be established, then navigate
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
+      
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
