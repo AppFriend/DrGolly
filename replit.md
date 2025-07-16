@@ -310,6 +310,17 @@ STABLE VERSIONS (for easy rollback reference):
   * IMPROVED: Session persistence with proper userId and passport user handling across authentication systems
   * CONFIRMED: Users land on /home page after login/signup and remain there with persistent authentication
   * Status: Production-ready with fully functional authentication system and proper navigation flow
+
+- SAVEPOINT v1.15 (July 16, 2025): STRIPE CHECKOUT SECURITY FIX - Complete removal of hardcoded payment details
+  * CRITICAL SECURITY FIX: Completely removed hardcoded "0796" card details from Big Baby checkout page
+  * IMPLEMENTED: Proper Stripe PaymentElement with authentic Link functionality that searches by email
+  * ENHANCED: Payment intent creation flow with proper client secret handling and real Stripe integration
+  * ADDED: Missing firstName field to customer details form for complete user information capture
+  * TESTED: Payment system now uses authentic Stripe processing instead of mock hardcoded interface
+  * VERIFIED: Backend APIs (create-big-baby-payment, big-baby-account) working correctly with real payment intents
+  * ELIMINATED: All traces of personal payment information from checkout forms
+  * IMPROVED: Payment form now properly loads only when client secret is available
+  * Status: Production-ready with secure, authentic Stripe payment processing
 ```
 
 ## Changelog
