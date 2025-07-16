@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { isAuthenticated } from '../replitAuth';
 import { storage } from '../storage';
 import { restoreAuthenticContent } from '../../scripts/restore-authentic-content';
+import { completeContentRestoration } from '../../scripts/complete-content-restoration';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ router.get('/ai-generated-content', isAuthenticated, async (req, res) => {
 // Restore authentic content
 router.post('/restore-content', isAuthenticated, async (req, res) => {
   try {
-    const result = await restoreAuthenticContent();
+    const result = await completeContentRestoration();
     res.json({ success: true, result });
   } catch (error) {
     console.error('Error restoring content:', error);
