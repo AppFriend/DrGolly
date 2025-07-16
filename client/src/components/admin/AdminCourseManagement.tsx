@@ -36,7 +36,9 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
-  Trash2
+  Trash2,
+  Minimize2,
+  Maximize2
 } from "lucide-react";
 import {
   DndContext,
@@ -1076,6 +1078,7 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   const [addLessonTitle, setAddLessonTitle] = useState('');
   const [addLessonContent, setAddLessonContent] = useState('');
   const [addingToChapterId, setAddingToChapterId] = useState<number | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1482,6 +1485,15 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="h-8 w-8 p-0"
+                title={isMinimized ? "Expand course" : "Minimize course"}
+              >
+                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   // TODO: Add course editing functionality
                   toast({
@@ -1496,101 +1508,107 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
             </div>
           </div>
         </CardHeader>
-      <CardContent>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleChapterDragEnd}
-        >
-          <SortableContext
-            items={chapters.map((c: any) => c.id)}
-            strategy={verticalListSortingStrategy}
+      {!isMinimized && (
+        <CardContent>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleChapterDragEnd}
           >
-            {chapters.map((chapter: any) => (
-              <SortableChapter
-                key={chapter.id}
-                chapter={chapter}
-                isExpanded={expandedChapters[chapter.id]}
-                onToggle={() => toggleChapter(chapter.id)}
-                onUpdateTitle={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
-                onDeleteChapter={handleDeleteChapter}
-                onAddLesson={handleAddLessonToChapter}
-              >
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={(event) => handleLessonDragEnd(event, chapter.id)}
+            <SortableContext
+              items={chapters.map((c: any) => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {chapters.map((chapter: any) => (
+                <SortableChapter
+                  key={chapter.id}
+                  chapter={chapter}
+                  isExpanded={expandedChapters[chapter.id]}
+                  onToggle={() => toggleChapter(chapter.id)}
+                  onUpdateTitle={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
+                  onDeleteChapter={handleDeleteChapter}
+                  onAddLesson={handleAddLessonToChapter}
                 >
-                  <SortableContext
-                    items={getLessonsForChapter(chapter.id).map((l: any) => l.id)}
-                    strategy={verticalListSortingStrategy}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => handleLessonDragEnd(event, chapter.id)}
                   >
-                    {getLessonsForChapter(chapter.id).map((lesson: any) => (
-                      <SortableLesson
-                        key={lesson.id}
-                        lesson={lesson}
-                        isExpanded={expandedLessons[lesson.id]}
-                        onToggle={() => toggleLesson(lesson.id)}
-                        onUpdateTitle={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
-                        onDeleteLesson={handleDeleteLesson}
-                        onEditContent={() => handleEditLesson(lesson.id, lesson.content || '')}
-                        isEditing={editingLesson === lesson.id}
-                        editContent={editContent}
-                        onContentChange={setEditContent}
-                        onSave={() => handleSaveLesson(lesson.id)}
-                        onCancel={handleCancelEdit}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              </SortableChapter>
-            ))}
-          </SortableContext>
-        </DndContext>
-        
-        <div className="mt-4 flex justify-center">
-          <Button
-            onClick={() => setShowAddChapterDialog(true)}
-            size="sm"
-            variant="outline"
-            className="text-sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Chapter
-          </Button>
-        </div>
-        
-        {chapters.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <Book className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm">No chapters in this course yet</p>
+                    <SortableContext
+                      items={getLessonsForChapter(chapter.id).map((l: any) => l.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {getLessonsForChapter(chapter.id).map((lesson: any) => (
+                        <SortableLesson
+                          key={lesson.id}
+                          lesson={lesson}
+                          isExpanded={expandedLessons[lesson.id]}
+                          onToggle={() => toggleLesson(lesson.id)}
+                          onUpdateTitle={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
+                          onDeleteLesson={handleDeleteLesson}
+                          onEditContent={() => handleEditLesson(lesson.id, lesson.content || '')}
+                          isEditing={editingLesson === lesson.id}
+                          editContent={editContent}
+                          onContentChange={setEditContent}
+                          onSave={() => handleSaveLesson(lesson.id)}
+                          onCancel={handleCancelEdit}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </SortableChapter>
+              ))}
+            </SortableContext>
+          </DndContext>
+          
+          <div className="mt-4 flex justify-center">
+            <Button
+              onClick={() => setShowAddChapterDialog(true)}
+              size="sm"
+              variant="outline"
+              className="text-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Chapter
+            </Button>
           </div>
-        )}
-      </CardContent>
+          
+          {chapters.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Book className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">No chapters in this course yet</p>
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
     
-    {/* Add Chapter Dialog */}
-    <AddChapterDialog
-      open={showAddChapterDialog}
-      onOpenChange={setShowAddChapterDialog}
-      addChapterTitle={addChapterTitle}
-      setAddChapterTitle={setAddChapterTitle}
-      handleCreateChapter={handleCreateChapter}
-      createChapterMutation={createChapterMutation}
-    />
+    {/* Add Chapter Dialog - only show when not minimized */}
+    {!isMinimized && (
+      <AddChapterDialog
+        open={showAddChapterDialog}
+        onOpenChange={setShowAddChapterDialog}
+        addChapterTitle={addChapterTitle}
+        setAddChapterTitle={setAddChapterTitle}
+        handleCreateChapter={handleCreateChapter}
+        createChapterMutation={createChapterMutation}
+      />
+    )}
     
-    {/* Add Lesson Dialog */}
-    <AddLessonDialog
-      open={showAddLessonDialog}
-      onOpenChange={setShowAddLessonDialog}
-      addLessonTitle={addLessonTitle}
-      setAddLessonTitle={setAddLessonTitle}
-      addLessonContent={addLessonContent}
-      setAddLessonContent={setAddLessonContent}
-      handleCreateLesson={handleCreateLesson}
-      createLessonMutation={createLessonMutation}
-      setAddingToChapterId={setAddingToChapterId}
-    />
+    {/* Add Lesson Dialog - only show when not minimized */}
+    {!isMinimized && (
+      <AddLessonDialog
+        open={showAddLessonDialog}
+        onOpenChange={setShowAddLessonDialog}
+        addLessonTitle={addLessonTitle}
+        setAddLessonTitle={setAddLessonTitle}
+        addLessonContent={addLessonContent}
+        setAddLessonContent={setAddLessonContent}
+        handleCreateLesson={handleCreateLesson}
+        createLessonMutation={createLessonMutation}
+        setAddingToChapterId={setAddingToChapterId}
+      />
+    )}
   </>
   );
 }
