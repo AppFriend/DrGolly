@@ -120,7 +120,16 @@ export default function LoginPage() {
             </div>
             
             <div>
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <button
+                  type="button"
+                  onClick={() => setLocation("/reset-password")}
+                  className="text-sm text-[#095D66] hover:text-[#0a434a] transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <Input
                 id="password"
                 name="password"
@@ -157,11 +166,7 @@ export default function LoginPage() {
             <p className="text-xs text-gray-500">
               Forgot your password?{' '}
               <button
-                onClick={() => toast({
-                  title: "Password Reset",
-                  description: "Contact support for password reset assistance",
-                  variant: "default"
-                })}
+                onClick={() => setLocation('/reset-password')}
                 className="text-[#095D66] hover:underline"
               >
                 Reset here

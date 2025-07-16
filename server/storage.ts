@@ -302,6 +302,11 @@ export interface IStorage {
   createBulkCoursePurchases(purchases: InsertCoursePurchase[]): Promise<CoursePurchase[]>;
   setUserPassword(userId: string, passwordHash: string): Promise<void>;
   authenticateWithTemporaryPassword(email: string, tempPassword: string): Promise<User | null>;
+  
+  // Password reset token operations
+  createPasswordResetToken(userId: string, token: string): Promise<PasswordResetToken>;
+  verifyPasswordResetToken(token: string): Promise<PasswordResetToken | null>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
 
   // Family invite operations
   getFamilyMembers(familyOwnerId: string): Promise<FamilyMember[]>;
@@ -3404,6 +3409,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(serviceBookings.id, id))
       .returning();
     return result;
+  }
+
+  // Password reset token operations
+  async createPasswordResetToken(userId: string, token: string): Promise<PasswordResetToken> {
+    const [result] = await db
+      .insert(passwordResetTokens)
+      .values({
+        userId,
+        token,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        isUsed: false
+      })
+      .returning();
+    return result;
+  }
+
+  async verifyPasswordResetToken(token: string): Promise<PasswordResetToken | null> {
+    const [tokenRecord] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.token, token),
+        eq(passwordResetTokens.isUsed, false),
+        gt(passwordResetTokens.expiresAt, new Date())
+      ));
+    
+    return tokenRecord || null;
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ isUsed: true })
+      .where(eq(passwordResetTokens.token, token));
   }
 
   // Shopping product operations

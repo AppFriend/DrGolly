@@ -1717,6 +1717,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Password reset routes
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      console.log("Password reset request for:", email);
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        return res.json({ message: "If an account with this email exists, a password reset link has been sent." });
+      }
+      
+      // Generate password reset token
+      const token = AuthUtils.generatePasswordResetToken();
+      
+      // Save token to database
+      await storage.createPasswordResetToken(user.id, token);
+      
+      // Send password reset email via Klaviyo
+      try {
+        await klaviyoService.sendPasswordResetEmail(user.email, user.firstName || 'User', token);
+        console.log("Password reset email sent successfully");
+      } catch (klaviyoError) {
+        console.error("Failed to send password reset email:", klaviyoError);
+        return res.status(500).json({ message: "Failed to send password reset email" });
+      }
+      
+      res.json({ message: "If an account with this email exists, a password reset link has been sent." });
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      console.log("Password reset attempt with token:", token);
+      
+      // Validate password strength
+      const passwordValidation = AuthUtils.validatePasswordStrength(newPassword);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: "Password does not meet requirements",
+          errors: passwordValidation.errors 
+        });
+      }
+      
+      // Verify token
+      const tokenRecord = await storage.verifyPasswordResetToken(token);
+      if (!tokenRecord) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+      
+      // Hash new password
+      const hashedPassword = await AuthUtils.hashPassword(newPassword);
+      
+      // Update user password
+      await storage.setUserPassword(tokenRecord.userId, hashedPassword);
+      
+      // Mark token as used
+      await storage.markPasswordResetTokenAsUsed(token);
+      
+      console.log("Password reset successful for user:", tokenRecord.userId);
+      
+      res.json({ message: "Password reset successful" });
+    } catch (error) {
+      console.error("Error in reset password:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Admin endpoint to set up test user
+  app.post('/api/admin/setup-test-user', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      console.log("Setting up test user:", email);
+      
+      // Get user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Hash the password
+      const hashedPassword = await AuthUtils.hashPassword(password);
+      
+      // Update user with proper password setup
+      await storage.setUserPassword(user.id, hashedPassword);
+      
+      // Mark user as having set password and not first login
+      await storage.updateUser(user.id, {
+        hasSetPassword: true,
+        isFirstLogin: false,
+        accountActivated: true,
+        lastLoginAt: new Date()
+      });
+      
+      console.log("Test user setup complete for:", email);
+      res.json({ message: "Test user setup successful" });
+    } catch (error) {
+      console.error("Error setting up test user:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Course routes
   app.get('/api/courses', async (req, res) => {
     try {

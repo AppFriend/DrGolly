@@ -43,6 +43,7 @@ import Refunds from "@/pages/refunds";
 import Contact from "@/pages/contact";
 import Shipping from "@/pages/shipping";
 import ResetPassword from "@/pages/reset-password";
+import ResetPasswordConfirm from "@/pages/reset-password-confirm";
 import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
@@ -240,6 +241,7 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
           <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />
           <Route path="/terms" component={Terms} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />

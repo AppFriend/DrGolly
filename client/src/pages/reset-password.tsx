@@ -38,9 +38,8 @@ export default function ResetPassword() {
     setError("");
 
     try {
-      await apiRequest("POST", "/api/auth/request-password-reset", {
-        email,
-        fromCheckout
+      await apiRequest("POST", "/api/auth/forgot-password", {
+        email
       });
 
       setEmailSent(true);
