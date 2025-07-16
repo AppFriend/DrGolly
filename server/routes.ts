@@ -1088,6 +1088,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Forgot password endpoint (frontend calls this one)
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        return res.status(404).json({ message: "No account found with this email address" });
+      }
+
+      // Generate a reset token
+      const resetToken = AuthUtils.generateUserId();
+      
+      // Send password reset email via Klaviyo
+      await klaviyoService.sendPasswordResetEmail(user, resetToken);
+      
+      res.json({ 
+        message: "Password reset email sent successfully"
+      });
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      res.status(500).json({ message: "Failed to send reset email" });
+    }
+  });
+
   // Personalization routes
   app.post('/api/personalization', isAppAuthenticated, async (req: any, res) => {
     try {
