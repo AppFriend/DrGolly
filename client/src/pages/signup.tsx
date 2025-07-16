@@ -7,7 +7,7 @@ import { LoadingAnimation } from "@/components/ui/loading-animation";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function SignupPage() {
   const [, setLocation] = useLocation();
@@ -70,14 +70,22 @@ export default function SignupPage() {
         }
       });
 
+      // Invalidate auth cache to refresh user data
+      await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      
+      // Refetch user data to ensure authentication state is updated
+      await queryClient.refetchQueries({ queryKey: ['/api/user'] });
+
       toast({
         title: "Success!",
         description: "Account created successfully. You are now logged in.",
         variant: "default"
       });
 
-      // Redirect to home page
-      window.location.href = '/';
+      // Wait for auth state to be updated, then redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({

@@ -7,7 +7,7 @@ import { LoadingAnimation } from "@/components/ui/loading-animation";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -52,14 +52,22 @@ export default function LoginPage() {
         password: formData.password
       });
 
+      // Invalidate auth cache to refresh user data
+      await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      
+      // Refetch user data to ensure authentication state is updated
+      await queryClient.refetchQueries({ queryKey: ['/api/user'] });
+
       toast({
         title: "Success!",
         description: "Logged in successfully",
         variant: "default"
       });
 
-      // Redirect to home page
-      window.location.href = '/';
+      // Wait for auth state to be updated, then redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
