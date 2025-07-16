@@ -1968,6 +1968,14 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async reorderCourseLessons(chapterId: number, lessons: any[]): Promise<void> {
+    for (const lesson of lessons) {
+      await db.update(courseLessons)
+        .set({ orderIndex: lesson.orderIndex })
+        .where(eq(courseLessons.id, lesson.id));
+    }
+  }
+
   async updateBlogPostStats(postId: number, views?: number, likes?: number): Promise<void> {
     const updateData: any = {};
     if (views !== undefined) updateData.views = views;

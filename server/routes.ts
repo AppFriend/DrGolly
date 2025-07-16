@@ -8238,6 +8238,18 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  app.put('/api/chapters/:chapterId/lessons/reorder', async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      const { lessons } = req.body;
+      await storage.reorderCourseLessons(parseInt(chapterId), lessons);
+      res.json({ message: "Lesson order updated successfully" });
+    } catch (error) {
+      console.error("Error reordering lessons:", error);
+      res.status(500).json({ message: "Failed to reorder lessons" });
+    }
+  });
+
   // Enhanced blog management endpoints
   app.post('/api/blog-posts', async (req, res) => {
     try {
