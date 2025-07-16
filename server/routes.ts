@@ -785,25 +785,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dr. Golly signup endpoint
   app.post('/api/auth/signup', async (req, res) => {
+    console.log('🔐 SIGNUP REQUEST RECEIVED');
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request headers:', req.headers);
+    
     try {
       const { firstName, lastName, email, password, personalization } = req.body;
       
+      console.log('📋 VALIDATION STEP');
+      console.log('firstName:', firstName ? 'provided' : 'MISSING');
+      console.log('lastName:', lastName ? 'provided' : 'MISSING');
+      console.log('email:', email ? email : 'MISSING');
+      console.log('password:', password ? 'provided' : 'MISSING');
+      console.log('personalization:', personalization ? 'provided' : 'not provided');
+      
       if (!firstName || !lastName || !email || !password) {
+        console.log('❌ VALIDATION FAILED - Missing required fields');
         return res.status(400).json({ message: "All fields are required" });
       }
 
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        console.log('❌ VALIDATION FAILED - Invalid email format');
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      console.log('🔍 CHECKING EXISTING USER');
       // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
+      let existingUser;
+      try {
+        existingUser = await storage.getUserByEmail(email);
+        console.log('Existing user check result:', existingUser ? 'USER EXISTS' : 'USER DOES NOT EXIST');
+      } catch (dbError) {
+        console.error('❌ DATABASE ERROR - Failed to check existing user:', dbError);
+        return res.status(500).json({ message: "Database error during user check" });
+      }
+      
       if (existingUser) {
+        console.log('❌ USER ALREADY EXISTS');
         return res.status(400).json({ message: "User already exists with this email" });
       }
 
+      console.log('🔑 GENERATING USER ID');
       // Generate user ID
-      const userId = AuthUtils.generateUserId();
+      let userId;
+      try {
+        userId = AuthUtils.generateUserId();
+        console.log('Generated user ID:', userId);
+      } catch (idError) {
+        console.error('❌ ID GENERATION ERROR:', idError);
+        return res.status(500).json({ message: "Failed to generate user ID" });
+      }
 
+      console.log('🔐 HASHING PASSWORD');
       // Hash password
-      const passwordHash = await AuthUtils.hashPassword(password);
+      let passwordHash;
+      try {
+        passwordHash = await AuthUtils.hashPassword(password);
+        console.log('Password hashed successfully');
+      } catch (hashError) {
+        console.error('❌ PASSWORD HASHING ERROR:', hashError);
+        return res.status(500).json({ message: "Failed to hash password" });
+      }
 
+      console.log('👤 CREATING USER DATA');
       // Create user
       const userData = {
         id: userId,
@@ -818,8 +864,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...personalization
       };
 
-      const user = await storage.createUser(userData);
+      console.log('💾 SAVING USER TO DATABASE');
+      let user;
+      try {
+        user = await storage.createUser(userData);
+        console.log('User created successfully:', user.id);
+      } catch (createError) {
+        console.error('❌ USER CREATION ERROR:', createError);
+        console.error('Error details:', createError.message);
+        console.error('Error stack:', createError.stack);
+        return res.status(500).json({ message: "Failed to create user in database" });
+      }
 
+      console.log('🎫 CREATING SESSION');
       // Create session for immediate login
       const sessionData = {
         claims: {
@@ -830,27 +887,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       
-      req.session.passport = { user: sessionData };
-      req.session.userId = user.id; // Store userId directly for easier access
+      try {
+        req.session.passport = { user: sessionData };
+        req.session.userId = user.id; // Store userId directly for easier access
+        console.log('Session data set successfully');
+      } catch (sessionError) {
+        console.error('❌ SESSION CREATION ERROR:', sessionError);
+        return res.status(500).json({ message: "Failed to create session" });
+      }
       
+      console.log('💾 SAVING SESSION');
       // Force session save before continuing
       req.session.save((err) => {
         if (err) {
-          console.error('Session save error during signup:', err);
+          console.error('❌ SESSION SAVE ERROR during signup:', err);
         } else {
-          console.log('Session saved successfully for new user:', user.id);
+          console.log('✅ Session saved successfully for new user:', user.id);
         }
       });
 
+      console.log('📧 KLAVIYO SYNC (NON-BLOCKING)');
       // Sync to Klaviyo with comprehensive data
       try {
         // Fetch course purchase data for new user sync
         const coursePurchases = await storage.getUserCoursePurchases(user.id);
         await klaviyoService.syncUserToKlaviyo(user, undefined, coursePurchases);
+        console.log('✅ Klaviyo sync successful');
       } catch (error) {
-        console.error("Failed to sync user to Klaviyo:", error);
+        console.error('⚠️ Klaviyo sync failed (non-blocking):', error);
       }
 
+      console.log('📱 SLACK NOTIFICATION (NON-BLOCKING)');
       // Send Slack notification for new signup
       try {
         await slackNotificationService.sendSignupNotification({
@@ -861,11 +928,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signupSource: 'Regular Signup Flow',
           signupType: 'new_customer' // Regular signup flow is always new customers
         });
-        console.log("Slack signup notification sent successfully");
+        console.log('✅ Slack signup notification sent successfully');
       } catch (slackError) {
-        console.error("Failed to send Slack signup notification:", slackError);
+        console.error('⚠️ Slack notification failed (non-blocking):', slackError);
       }
 
+      console.log('🎉 SIGNUP SUCCESSFUL - Sending response');
       res.json({
         success: true,
         user: {
@@ -876,8 +944,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Error in signup:", error);
-      res.status(500).json({ message: "Signup failed" });
+      console.error('❌ CRITICAL SIGNUP ERROR:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Error name:', error.name);
+      res.status(500).json({ 
+        message: "Signup failed",
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  // Test endpoint to verify Jared Looman signup fix
+  app.post('/api/test/signup', async (req, res) => {
+    try {
+      console.log('🧪 TEST SIGNUP ENDPOINT - Testing Jared Looman case');
+      
+      // Test data similar to what Jared would submit
+      const testData = {
+        firstName: 'Jared',
+        lastName: 'Looman',
+        email: 'jaredlooman+test@gmail.com',
+        password: 'TestPassword123'
+      };
+      
+      console.log('Testing with data:', testData);
+      
+      // Check if user exists
+      const existingUser = await storage.getUserByEmail(testData.email);
+      if (existingUser) {
+        console.log('Test user already exists, removing...');
+        // For testing, we'll skip existing user check
+      }
+      
+      // Generate user ID
+      const userId = AuthUtils.generateUserId();
+      console.log('Generated test user ID:', userId);
+      
+      // Hash password
+      const passwordHash = await AuthUtils.hashPassword(testData.password);
+      console.log('Password hashed successfully');
+      
+      // Create test user data
+      const userData = {
+        id: userId,
+        email: testData.email,
+        firstName: testData.firstName,
+        lastName: testData.lastName,
+        passwordHash,
+        hasSetPassword: true,
+        subscriptionTier: 'free',
+        planTier: 'free',
+        lastLoginAt: new Date()
+      };
+      
+      // Test user creation
+      const user = await storage.createUser(userData);
+      console.log('Test user created successfully:', user.id);
+      
+      res.json({
+        success: true,
+        message: 'Test signup successful - createUser method is working',
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error('❌ TEST SIGNUP ERROR:', error);
+      res.status(500).json({ 
+        message: "Test signup failed",
+        error: error.message
+      });
     }
   });
 

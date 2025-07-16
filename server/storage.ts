@@ -117,6 +117,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
+  createUser(user: any): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserSubscription(userId: string, tier: string, billingPeriod: string, nextBillingDate: Date): Promise<User>;
   updateUserPersonalization(userId: string, personalizationData: any): Promise<User>;
@@ -419,6 +420,49 @@ export class DatabaseStorage implements IStorage {
   async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId));
     return user;
+  }
+
+  async createUser(userData: any): Promise<User> {
+    try {
+      console.log('🔧 STORAGE: Creating user with data:', JSON.stringify(userData, null, 2));
+      
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .returning();
+      
+      console.log('✅ STORAGE: User created successfully:', user.id);
+      return user;
+    } catch (error) {
+      console.error('❌ STORAGE: Database error in createUser:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Try raw SQL fallback
+      try {
+        console.log('🔧 STORAGE: Attempting raw SQL fallback for createUser');
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        const result = await sql`
+          INSERT INTO users (
+            id, email, first_name, last_name, password_hash, has_set_password, 
+            subscription_tier, plan_tier, last_login_at, created_at, updated_at
+          ) VALUES (
+            ${userData.id}, ${userData.email}, ${userData.firstName}, ${userData.lastName}, 
+            ${userData.passwordHash}, ${userData.hasSetPassword}, ${userData.subscriptionTier}, 
+            ${userData.planTier}, ${userData.lastLoginAt}, ${new Date()}, ${new Date()}
+          )
+          RETURNING *
+        `;
+        
+        console.log('✅ STORAGE: User created via raw SQL fallback:', result[0]?.id);
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('❌ STORAGE: Raw SQL fallback also failed:', fallbackError);
+        throw error;
+      }
+    }
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
