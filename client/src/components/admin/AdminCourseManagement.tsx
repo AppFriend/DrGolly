@@ -33,11 +33,182 @@ import {
   X,
   Loader2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  GripVertical
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import AdminCoursesAccordion from './AdminCoursesAccordionNew';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { InlineEditTitle } from "./InlineEditTitle";
+
+interface SortableChapterProps {
+  chapter: any;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdateTitle: (title: string) => void;
+  children: React.ReactNode;
+}
+
+function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, children }: SortableChapterProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: chapter.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="border rounded-lg mb-2">
+      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-t-lg">
+        <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-gray-400" />
+        </div>
+        <Book className="h-4 w-4 text-green-600" />
+        <InlineEditTitle
+          title={chapter.title}
+          onSave={onUpdateTitle}
+          className="text-sm font-medium flex-1"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="hover:bg-gray-200"
+        >
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+      {isExpanded && (
+        <div className="p-3 border-t">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface SortableLessonProps {
+  lesson: any;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdateTitle: (title: string) => void;
+  onEditContent: () => void;
+  isEditing: boolean;
+  editContent: string;
+  onContentChange: (content: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+function SortableLesson({ 
+  lesson, 
+  isExpanded, 
+  onToggle, 
+  onUpdateTitle, 
+  onEditContent, 
+  isEditing, 
+  editContent, 
+  onContentChange, 
+  onSave, 
+  onCancel 
+}: SortableLessonProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: lesson.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="border rounded-lg mb-2 ml-6">
+      <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-t-lg">
+        <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-gray-400" />
+        </div>
+        <FileText className="h-4 w-4 text-blue-600" />
+        <InlineEditTitle
+          title={lesson.title}
+          onSave={onUpdateTitle}
+          className="text-sm font-medium flex-1"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onEditContent}
+          className="hover:bg-blue-200"
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="hover:bg-blue-200"
+        >
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+      {isExpanded && (
+        <div className="p-3 border-t">
+          {isEditing ? (
+            <div className="space-y-3">
+              <RichTextEditor
+                content={editContent}
+                onChange={onContentChange}
+                placeholder="Enter lesson content..."
+              />
+              <div className="flex gap-2">
+                <Button onClick={onSave} size="sm">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+                <Button onClick={onCancel} variant="outline" size="sm">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="prose-lesson text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+              <div dangerouslySetInnerHTML={{ __html: lesson.content || "No content available" }} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Course {
   id: number;
@@ -884,6 +1055,13 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   // Fetch course chapters
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery({
     queryKey: [`/api/courses/${course.id}/chapters`],
@@ -976,6 +1154,44 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     },
   });
 
+  const reorderChaptersMutation = useMutation({
+    mutationFn: (orderedChapters: any[]) =>
+      apiRequest("PUT", `/api/courses/${course.id}/chapters/reorder`, { chapters: orderedChapters }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      toast({
+        title: "Success",
+        description: "Chapter order updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reorderLessonsMutation = useMutation({
+    mutationFn: ({ chapterId, orderedLessons }: { chapterId: number; orderedLessons: any[] }) =>
+      apiRequest("PUT", `/api/chapters/${chapterId}/lessons/reorder`, { lessons: orderedLessons }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson order updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const toggleChapter = (chapterId: number) => {
     setExpandedChapters(prev => ({
       ...prev,
@@ -1034,6 +1250,41 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
         return "bg-purple-100 text-purple-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const handleChapterDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeIndex = chapters.findIndex((c: any) => c.id === active.id);
+    const overIndex = chapters.findIndex((c: any) => c.id === over.id);
+
+    if (activeIndex !== -1 && overIndex !== -1) {
+      const newChapters = arrayMove(chapters, activeIndex, overIndex);
+      const orderedChapters = newChapters.map((chapter: any, index: number) => ({
+        id: chapter.id,
+        orderIndex: index + 1,
+      }));
+      reorderChaptersMutation.mutate(orderedChapters);
+    }
+  };
+
+  const handleLessonDragEnd = (event: DragEndEvent, chapterId: number) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const chapterLessons = getLessonsForChapter(chapterId);
+    const activeIndex = chapterLessons.findIndex((l: any) => l.id === active.id);
+    const overIndex = chapterLessons.findIndex((l: any) => l.id === over.id);
+
+    if (activeIndex !== -1 && overIndex !== -1) {
+      const newLessons = arrayMove(chapterLessons, activeIndex, overIndex);
+      const orderedLessons = newLessons.map((lesson: any, index: number) => ({
+        id: lesson.id,
+        orderIndex: index + 1,
+      }));
+      reorderLessonsMutation.mutate({ chapterId, orderedLessons });
     }
   };
 
@@ -1104,152 +1355,53 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
         </div>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" value={Object.keys(expandedChapters).filter(k => expandedChapters[parseInt(k)])} onValueChange={() => {}}>
-          {chapters.map((chapter: any) => (
-            <AccordionItem key={chapter.id} value={chapter.id.toString()}>
-              <div className="flex items-center justify-between w-full py-3 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Book className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <InlineEditTitle
-                      title={chapter.title}
-                      onSave={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
-                      className="font-medium text-gray-900"
-                    />
-                    <p className="text-sm text-gray-500">
-                      {getLessonsForChapter(chapter.id).length} lessons
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleChapter(chapter.id)}
-                  className="h-6 w-6 p-0"
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleChapterDragEnd}
+        >
+          <SortableContext
+            items={chapters.map((c: any) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {chapters.map((chapter: any) => (
+              <SortableChapter
+                key={chapter.id}
+                chapter={chapter}
+                isExpanded={expandedChapters[chapter.id]}
+                onToggle={() => toggleChapter(chapter.id)}
+                onUpdateTitle={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
+              >
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(event) => handleLessonDragEnd(event, chapter.id)}
                 >
-                  {expandedChapters[chapter.id] ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              {expandedChapters[chapter.id] && (
-                <div className="pl-11 space-y-2">
-                  {getLessonsForChapter(chapter.id).map((lesson: any) => (
-                    <div key={lesson.id} className="border border-gray-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
-                            <FileText className="h-3 w-3 text-green-600" />
-                          </div>
-                          <InlineEditTitle
-                            title={lesson.title}
-                            onSave={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
-                            className="font-medium text-sm"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {lesson.videoUrl && (
-                            <Badge variant="outline" className="text-xs">
-                              <Play className="h-3 w-3 mr-1" />
-                              Video
-                            </Badge>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleLesson(lesson.id)}
-                            className="h-6 w-6 p-0"
-                            title={expandedLessons[lesson.id] ? "Collapse preview" : "Expand preview"}
-                          >
-                            {expandedLessons[lesson.id] ? (
-                              <ChevronUp className="h-3 w-3" />
-                            ) : (
-                              <ChevronDown className="h-3 w-3" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditLesson(lesson.id, lesson.content || '')}
-                            className="h-6 w-6 p-0"
-                            title="Edit lesson"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {editingLesson === lesson.id ? (
-                        <div className="space-y-2">
-                          <RichTextEditor
-                            content={editContent}
-                            onChange={(content) => setEditContent(content)}
-                            placeholder="Enter lesson content..."
-                            className="min-h-[120px] text-sm"
-                          />
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleSaveLesson(lesson.id)}
-                              disabled={updateLessonMutation.isPending}
-                              className="h-7 bg-green-700 hover:bg-green-800 text-white"
-                            >
-                              {updateLessonMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              ) : (
-                                <Save className="h-3 w-3 mr-1" />
-                              )}
-                              Save
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleCancelEdit}
-                              className="h-7"
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className={expandedLessons[lesson.id] ? "mt-3 p-3 bg-gray-50 rounded-lg border" : "text-sm text-gray-600"}>
-                          {lesson.content ? (
-                            <div 
-                              className={expandedLessons[lesson.id] ? "prose-lesson max-w-none text-gray-900" : "text-sm"}
-                              dangerouslySetInnerHTML={{ 
-                                __html: expandedLessons[lesson.id] 
-                                  ? lesson.content 
-                                  : lesson.content.substring(0, 200) + (lesson.content.length > 200 ? '...' : '') 
-                              }} 
-                            />
-                          ) : (
-                            <p className="text-gray-400 italic">No content available</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {getLessonsForChapter(chapter.id).length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-sm">No lessons in this chapter yet</p>
-                      <Button variant="outline" size="sm" className="mt-2">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Lesson
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </AccordionItem>
-          ))}
-        </Accordion>
+                  <SortableContext
+                    items={getLessonsForChapter(chapter.id).map((l: any) => l.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {getLessonsForChapter(chapter.id).map((lesson: any) => (
+                      <SortableLesson
+                        key={lesson.id}
+                        lesson={lesson}
+                        isExpanded={expandedLessons[lesson.id]}
+                        onToggle={() => toggleLesson(lesson.id)}
+                        onUpdateTitle={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
+                        onEditContent={() => handleEditLesson(lesson.id, lesson.content || '')}
+                        isEditing={editingLesson === lesson.id}
+                        editContent={editContent}
+                        onContentChange={setEditContent}
+                        onSave={() => handleSaveLesson(lesson.id)}
+                        onCancel={handleCancelEdit}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </SortableChapter>
+            ))}
+          </SortableContext>
+        </DndContext>
         
         {chapters.length === 0 && (
           <div className="text-center py-8 text-gray-500">
