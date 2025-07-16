@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, CardElement } from "@stripe/react-stripe-js";
+import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, CardElement, LinkAuthenticationElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
@@ -128,7 +128,8 @@ function PaymentForm({
   currencySymbol, 
   currency, 
   customerDetails, 
-  appliedCoupon 
+  appliedCoupon,
+  clientSecret
 }: { 
   onSuccess: (paymentIntentId: string) => void;
   coursePrice: number;
@@ -136,6 +137,7 @@ function PaymentForm({
   currency: string;
   customerDetails: any;
   appliedCoupon: any;
+  clientSecret: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -144,6 +146,8 @@ function PaymentForm({
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState("card");
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [linkEmail, setLinkEmail] = useState('');
   const [billingDetails, setBillingDetails] = useState({
     firstName: '',
     lastName: '',
@@ -262,31 +266,17 @@ function PaymentForm({
 
   const handleCardPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || isProcessing) return;
+    if (!stripe || !elements || isProcessing || !clientSecret) return;
 
     setIsProcessing(true);
     
     try {
-      const paymentData = await handleCreatePayment(customerDetails);
-      
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error('Card element not found');
-
-      const { error, paymentIntent } = await stripe.confirmCardPayment(paymentData.clientSecret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: {
-            name: `${billingDetails.firstName} ${billingDetails.lastName}`,
-            email: customerDetails.email,
-            phone: billingDetails.phone,
-            address: {
-              line1: billingDetails.address,
-              city: billingDetails.city,
-              postal_code: billingDetails.postcode,
-              country: billingDetails.country === 'Australia' ? 'AU' : 'US'
-            }
-          }
-        }
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/big-baby-public`,
+        },
+        redirect: 'if_required',
       });
 
       if (error) throw error;
@@ -340,24 +330,38 @@ function PaymentForm({
           </div>
         </div>
 
-        {/* Link Payment Section - White container within gray */}
+        {/* Stripe PaymentElement for proper Link integration */}
         <div className="bg-white p-4 rounded-lg border">
-          <div className="flex items-center justify-between mb-3">
-            <img src={linkLogo} alt="Link" className="h-6 w-auto" />
-            <div className="flex items-center text-gray-600 text-sm">
-              <span>{customerDetails.email || 'Enter email above'}</span>
-              <span className="ml-1">▼</span>
-              <span className="ml-2">✕</span>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-3">
+              <img src={linkLogo} alt="Link" className="h-6 w-auto" />
+              <div className="flex items-center text-gray-600 text-sm">
+                <span>{customerDetails.email || 'Enter email above'}</span>
+              </div>
             </div>
-          </div>
-          <div className="flex space-x-2">
-            <Button variant="outline" className="flex-1 text-sm">
-              <span className="mr-2">💳</span>
-              Use •••• 0796
-            </Button>
-            <Button variant="outline" className="flex-1 text-sm">
-              Pay another way
-            </Button>
+            
+            {customerDetails.email && (
+              <div className="space-y-3">
+                <PaymentElement 
+                  options={{
+                    layout: 'accordion',
+                    defaultValues: {
+                      billingDetails: {
+                        email: customerDetails.email,
+                      }
+                    }
+                  }}
+                />
+              </div>
+            )}
+            
+            {!customerDetails.email && (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-600 mb-3">
+                  Enter your email above to see payment options
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -398,8 +402,8 @@ function PaymentForm({
         </Button>
 
         {/* Google Pay Button */}
-        <Button className="w-full h-12 bg-black text-white hover:bg-gray-800 rounded-lg flex items-center">
-          <div className="flex items-center justify-center flex-1">
+        <Button className="w-full h-12 bg-black text-white hover:bg-gray-800 rounded-lg flex items-center justify-center">
+          <div className="flex items-center justify-center">
             <svg className="h-6 w-6" viewBox="0 0 24 24">
               <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -408,20 +412,12 @@ function PaymentForm({
             </svg>
             <span className="text-white text-lg font-medium ml-2">Pay</span>
           </div>
-          <div className="flex items-center text-sm border-l border-gray-500 pl-3 pr-4">
-            <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium mr-1">VISA</span>
-            <span>•••• 0796</span>
-          </div>
         </Button>
 
         {/* Link Button */}
-        <Button className="w-full h-12 bg-green-500 text-white hover:bg-green-600 rounded-lg flex items-center">
-          <div className="flex items-center justify-center flex-1">
+        <Button className="w-full h-12 bg-green-500 text-white hover:bg-green-600 rounded-lg flex items-center justify-center">
+          <div className="flex items-center justify-center">
             <img src={linkLogo} alt="Link" className="h-8 w-auto" />
-          </div>
-          <div className="flex items-center text-sm border-l border-green-700 pl-3 pr-4">
-            <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium mr-1">VISA</span>
-            <span>0796</span>
           </div>
         </Button>
       </div>
@@ -481,7 +477,7 @@ function PaymentForm({
       {/* Place Order Button */}
       <Button
         onClick={handleCardPayment}
-        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName}
+        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName || !customerDetails.email || !clientSecret}
         className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg h-12"
       >
         {isProcessing ? 'Processing...' : 'Place order'}
@@ -503,6 +499,7 @@ export default function BigBabyPublic() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [orderExpanded, setOrderExpanded] = useState(true);
+  const [clientSecret, setClientSecret] = useState("");
 
   // Fetch regional pricing
   const { data: regionalPricing } = useQuery({
@@ -518,6 +515,29 @@ export default function BigBabyPublic() {
     appliedCoupon.amount_off ? parseFloat((originalPrice - (appliedCoupon.amount_off / 100)).toFixed(2)) :
     appliedCoupon.percent_off ? parseFloat((originalPrice * (1 - appliedCoupon.percent_off / 100)).toFixed(2)) :
     originalPrice : originalPrice;
+
+  // Create payment intent when customer details are sufficient
+  const createPaymentIntent = async () => {
+    if (!customerDetails.email || !customerDetails.firstName) return;
+    
+    try {
+      const response = await fetch('/api/create-big-baby-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerDetails,
+          couponId: appliedCoupon?.id
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setClientSecret(data.clientSecret);
+      }
+    } catch (error) {
+      console.error('Failed to create payment intent:', error);
+    }
+  };
 
   const handleDetailsChange = (field: string, value: string) => {
     setCustomerDetails(prev => ({ ...prev, [field]: value }));
@@ -546,6 +566,13 @@ export default function BigBabyPublic() {
       console.error('Post-payment error:', error);
     }
   };
+
+  // Create payment intent when customer details are ready
+  useEffect(() => {
+    if (customerDetails.email && customerDetails.firstName) {
+      createPaymentIntent();
+    }
+  }, [customerDetails.email, customerDetails.firstName, appliedCoupon]);
 
   const canProceedToPayment = customerDetails.email && customerDetails.firstName;
   
@@ -589,6 +616,17 @@ export default function BigBabyPublic() {
                   {shouldShowEmailWarning && (
                     <p className="text-red-500 text-sm mt-1">Is this correct?</p>
                   )}
+                </div>
+                
+                <div>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    value={customerDetails.firstName}
+                    onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                    placeholder="Enter your first name"
+                    className="h-12"
+                  />
                 </div>
                 
                 <div>
@@ -662,16 +700,24 @@ export default function BigBabyPublic() {
             {/* Payment Section - Always show */}
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
-              <Elements stripe={stripePromise}>
-                <PaymentForm
-                  onSuccess={handlePaymentSuccess}
-                  coursePrice={finalPrice}
-                  currencySymbol={currencySymbol}
-                  currency={currency}
-                  customerDetails={customerDetails}
-                  appliedCoupon={appliedCoupon}
-                />
-              </Elements>
+              {clientSecret && (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <PaymentForm
+                    onSuccess={handlePaymentSuccess}
+                    coursePrice={finalPrice}
+                    currencySymbol={currencySymbol}
+                    currency={currency}
+                    customerDetails={customerDetails}
+                    appliedCoupon={appliedCoupon}
+                    clientSecret={clientSecret}
+                  />
+                </Elements>
+              )}
+              {!clientSecret && customerDetails.email && customerDetails.firstName && (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-600">Loading payment options...</p>
+                </div>
+              )}
             </div>
           </div>
 
