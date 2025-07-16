@@ -321,6 +321,18 @@ STABLE VERSIONS (for easy rollback reference):
   * ELIMINATED: All traces of personal payment information from checkout forms
   * IMPROVED: Payment form now properly loads only when client secret is available
   * Status: Production-ready with secure, authentic Stripe payment processing
+
+- SAVEPOINT v1.16 (July 16, 2025): AUTHENTICATION SYSTEM COMPLETE - Full login/logout functionality with password reset
+  * BREAKTHROUGH: Complete password reset system with token-based email flow via Klaviyo integration
+  * IMPLEMENTED: Comprehensive forgot password flow with /api/auth/forgot-password and /api/auth/reset-password-confirm endpoints
+  * CREATED: Reset password confirmation page (reset-password-confirm.tsx) with proper form validation and routing
+  * FIXED: Test admin account setup - both frazer.adnam@cq-partners.com.au and tech@drgolly.com properly configured
+  * RESOLVED: Session persistence issue causing login redirect loops - users now stay authenticated after login
+  * ENHANCED: Login flow with proper session creation, cookie handling, and authentication state management
+  * VERIFIED: Both test accounts work with password "password123" and have full admin privileges
+  * TESTED: Complete authentication flow from login to authenticated home page access
+  * INTEGRATED: Password reset links properly connected to frontend reset flow instead of "contact admin" messages
+  * Status: Production-ready with complete authentication system including login, logout, and password reset functionality
 ```
 
 ## Changelog
