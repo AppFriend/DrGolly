@@ -5,10 +5,11 @@ export function useAuth() {
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    retry: 1,
+    retry: 2, // Retry twice on failure
     refetchOnWindowFocus: true,
     refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   // Handle authentication errors
