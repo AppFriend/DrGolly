@@ -327,13 +327,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user data with raw SQL only to avoid Drizzle ORM issues
+  // PRIMARY USER AUTHENTICATION ENDPOINT - handles both Dr. Golly and Replit Auth
   app.get("/api/user", async (req: any, res) => {
     try {
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub;
+      // Check if we have a valid session and user ID
+      let userId = null;
       
-      // No fallback to hardcoded user ID - return 401 if not authenticated
+      // Try multiple ways to get user from session - check Dr. Golly session first
+      if (req.session?.userId) {
+        userId = req.session.userId;
+        console.log('Found user ID from Dr. Golly session:', userId);
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+        console.log('Found user ID from Passport session:', userId);
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+        console.log('Found user ID from req.user:', userId);
+      }
+      
+      // Debug session info for troubleshooting
+      console.log('Session debug info:', {
+        sessionExists: !!req.session,
+        sessionId: req.session?.id,
+        directUserId: req.session?.userId,
+        passportExists: !!req.session?.passport,
+        userExists: !!req.session?.passport?.user,
+        claimsExist: !!req.session?.passport?.user?.claims,
+        subExists: !!req.session?.passport?.user?.claims?.sub,
+        reqUserExists: !!req.user,
+        foundUserId: userId
+      });
+      
+      // If no user in session, return 401
       if (!userId) {
         console.log('No authenticated user found for /api/user endpoint');
         return res.status(401).json({ message: "Unauthorized" });
