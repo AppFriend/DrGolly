@@ -52,44 +52,8 @@ export default function LoginPage() {
         password: formData.password
       });
 
-      // Invalidate auth cache to refresh user data
-      await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      
-      // Wait a moment for session to be established
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      try {
-        // Refetch user data to ensure authentication state is updated
-        const updatedUser = await queryClient.fetchQuery({ queryKey: ['/api/user'] });
-        
-        if (updatedUser) {
-          toast({
-            title: "Success!",
-            description: "Logged in successfully",
-            variant: "default"
-          });
-          
-          // Force immediate redirect with window.location.replace for cleaner navigation
-          window.location.replace('/');
-        } else {
-          // If session verification fails, try the direct redirect approach
-          toast({
-            title: "Success!",
-            description: "Logged in successfully",
-            variant: "default"
-          });
-          window.location.replace('/');
-        }
-      } catch (sessionError) {
-        // If session verification fails, still consider login successful and redirect
-        console.log('Session verification failed, but login succeeded. Redirecting...', sessionError);
-        toast({
-          title: "Success!",
-          description: "Logged in successfully",
-          variant: "default"
-        });
-        window.location.replace('/');
-      }
+      // Simple redirect after successful login
+      window.location.href = '/';
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
@@ -97,7 +61,6 @@ export default function LoginPage() {
         description: error.message || "Invalid email or password",
         variant: "destructive"
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
