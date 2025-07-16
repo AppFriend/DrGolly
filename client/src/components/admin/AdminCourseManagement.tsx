@@ -62,10 +62,11 @@ interface SortableChapterProps {
   isExpanded: boolean;
   onToggle: () => void;
   onUpdateTitle: (title: string) => void;
+  onAddLesson: (chapterId: number) => void;
   children: React.ReactNode;
 }
 
-function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, children }: SortableChapterProps) {
+function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, onAddLesson, children }: SortableChapterProps) {
   const {
     attributes,
     listeners,
@@ -105,6 +106,17 @@ function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, childre
       {isExpanded && (
         <div className="p-3 border-t">
           {children}
+          <div className="mt-4 flex justify-center">
+            <Button
+              onClick={() => onAddLesson(chapter.id)}
+              size="sm"
+              variant="outline"
+              className="text-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lesson
+            </Button>
+          </div>
         </div>
       )}
     </div>
@@ -1051,6 +1063,12 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   const [expandedLessons, setExpandedLessons] = useState<Record<number, boolean>>({});
   const [editingLesson, setEditingLesson] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [showAddChapterDialog, setShowAddChapterDialog] = useState(false);
+  const [showAddLessonDialog, setShowAddLessonDialog] = useState(false);
+  const [addChapterTitle, setAddChapterTitle] = useState('');
+  const [addLessonTitle, setAddLessonTitle] = useState('');
+  const [addLessonContent, setAddLessonContent] = useState('');
+  const [addingToChapterId, setAddingToChapterId] = useState<number | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1192,6 +1210,50 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     },
   });
 
+  const createChapterMutation = useMutation({
+    mutationFn: (chapterData: { title: string; courseId: number }) =>
+      apiRequest("POST", `/api/courses/${course.id}/chapters`, chapterData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      toast({
+        title: "Success",
+        description: "Chapter created successfully",
+      });
+      setShowAddChapterDialog(false);
+      setAddChapterTitle('');
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createLessonMutation = useMutation({
+    mutationFn: (lessonData: { title: string; content: string; chapterId: number }) =>
+      apiRequest("POST", `/api/chapters/${lessonData.chapterId}/lessons`, lessonData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson created successfully",
+      });
+      setShowAddLessonDialog(false);
+      setAddLessonTitle('');
+      setAddLessonContent('');
+      setAddingToChapterId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const toggleChapter = (chapterId: number) => {
     setExpandedChapters(prev => ({
       ...prev,
@@ -1211,6 +1273,30 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   const handleCancelEdit = () => {
     setEditingLesson(null);
     setEditContent('');
+  };
+
+  const handleCreateChapter = () => {
+    if (!addChapterTitle.trim()) return;
+    
+    createChapterMutation.mutate({
+      title: addChapterTitle,
+      courseId: course.id,
+    });
+  };
+
+  const handleCreateLesson = () => {
+    if (!addLessonTitle.trim() || !addingToChapterId) return;
+    
+    createLessonMutation.mutate({
+      title: addLessonTitle,
+      content: addLessonContent,
+      chapterId: addingToChapterId,
+    });
+  };
+
+  const handleAddLessonToChapter = (chapterId: number) => {
+    setAddingToChapterId(chapterId);
+    setShowAddLessonDialog(true);
   };
 
   // Title update handlers
@@ -1302,58 +1388,59 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   }
 
   return (
-    <Card>
-      <CardHeader className="p-3 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
-              <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <InlineEditTitle
-                title={course.title}
-                onSave={handleUpdateCourseTitle}
-                className="text-base sm:text-lg font-bold"
-              />
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
-                <Badge className={`${getCategoryColor(course.category)} text-xs w-fit`}>
-                  {course.category}
-                </Badge>
-                <span className="text-sm text-gray-500">
-                  {chapters.length} chapters • {lessons.length} lessons
-                </span>
+    <>
+      <Card>
+        <CardHeader className="p-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <InlineEditTitle
+                  title={course.title}
+                  onSave={handleUpdateCourseTitle}
+                  className="text-base sm:text-lg font-bold"
+                />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                  <Badge className={`${getCategoryColor(course.category)} text-xs w-fit`}>
+                    {course.category}
+                  </Badge>
+                  <span className="text-sm text-gray-500">
+                    {chapters.length} chapters • {lessons.length} lessons
+                  </span>
+                </div>
               </div>
             </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Badge variant="outline" className="text-xs">
+                ${typeof course.price === 'number' ? course.price.toFixed(2) : course.price}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPreviewCourse(course)}
+                className="h-8 w-8 p-0"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // TODO: Add course editing functionality
+                  toast({
+                    title: "Coming Soon",
+                    description: "Course editing functionality will be added soon",
+                  });
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge variant="outline" className="text-xs">
-              ${typeof course.price === 'number' ? course.price.toFixed(2) : course.price}
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPreviewCourse(course)}
-              className="h-8 w-8 p-0"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                // TODO: Add course editing functionality
-                toast({
-                  title: "Coming Soon",
-                  description: "Course editing functionality will be added soon",
-                });
-              }}
-              className="h-8 w-8 p-0"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
       <CardContent>
         <DndContext
           sensors={sensors}
@@ -1371,6 +1458,7 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                 isExpanded={expandedChapters[chapter.id]}
                 onToggle={() => toggleChapter(chapter.id)}
                 onUpdateTitle={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
+                onAddLesson={handleAddLessonToChapter}
               >
                 <DndContext
                   sensors={sensors}
@@ -1403,18 +1491,186 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
           </SortableContext>
         </DndContext>
         
+        <div className="mt-4 flex justify-center">
+          <Button
+            onClick={() => setShowAddChapterDialog(true)}
+            size="sm"
+            variant="outline"
+            className="text-sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Chapter
+          </Button>
+        </div>
+        
         {chapters.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             <Book className="h-8 w-8 mx-auto mb-2 text-gray-400" />
             <p className="text-sm">No chapters in this course yet</p>
-            <Button variant="outline" size="sm" className="mt-2">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Chapter
-            </Button>
           </div>
         )}
       </CardContent>
     </Card>
+    
+    {/* Add Chapter Dialog */}
+    <AddChapterDialog
+      open={showAddChapterDialog}
+      onOpenChange={setShowAddChapterDialog}
+      addChapterTitle={addChapterTitle}
+      setAddChapterTitle={setAddChapterTitle}
+      handleCreateChapter={handleCreateChapter}
+      createChapterMutation={createChapterMutation}
+    />
+    
+    {/* Add Lesson Dialog */}
+    <AddLessonDialog
+      open={showAddLessonDialog}
+      onOpenChange={setShowAddLessonDialog}
+      addLessonTitle={addLessonTitle}
+      setAddLessonTitle={setAddLessonTitle}
+      addLessonContent={addLessonContent}
+      setAddLessonContent={setAddLessonContent}
+      handleCreateLesson={handleCreateLesson}
+      createLessonMutation={createLessonMutation}
+      setAddingToChapterId={setAddingToChapterId}
+    />
+  </>
+  );
+}
+
+// Add Chapter Dialog Component
+function AddChapterDialog({
+  open,
+  onOpenChange,
+  addChapterTitle,
+  setAddChapterTitle,
+  handleCreateChapter,
+  createChapterMutation
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  addChapterTitle: string;
+  setAddChapterTitle: (title: string) => void;
+  handleCreateChapter: () => void;
+  createChapterMutation: any;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New Chapter</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="chapter-title">Chapter Title</Label>
+            <Input
+              id="chapter-title"
+              value={addChapterTitle}
+              onChange={(e) => setAddChapterTitle(e.target.value)}
+              placeholder="Enter chapter title..."
+              className="mt-1"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateChapter}
+              disabled={!addChapterTitle.trim() || createChapterMutation.isPending}
+            >
+              {createChapterMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Chapter
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Lesson Dialog Component
+function AddLessonDialog({
+  open,
+  onOpenChange,
+  addLessonTitle,
+  setAddLessonTitle,
+  addLessonContent,
+  setAddLessonContent,
+  handleCreateLesson,
+  createLessonMutation,
+  setAddingToChapterId
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  addLessonTitle: string;
+  setAddLessonTitle: (title: string) => void;
+  addLessonContent: string;
+  setAddLessonContent: (content: string) => void;
+  handleCreateLesson: () => void;
+  createLessonMutation: any;
+  setAddingToChapterId: (id: number | null) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Add New Lesson</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="lesson-title">Lesson Title</Label>
+            <Input
+              id="lesson-title"
+              value={addLessonTitle}
+              onChange={(e) => setAddLessonTitle(e.target.value)}
+              placeholder="Enter lesson title..."
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="lesson-content">Lesson Content</Label>
+            <RichTextEditor
+              content={addLessonContent}
+              onChange={setAddLessonContent}
+              placeholder="Enter lesson content..."
+              className="mt-1 min-h-[200px]"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                onOpenChange(false);
+                setAddLessonTitle('');
+                setAddLessonContent('');
+                setAddingToChapterId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateLesson}
+              disabled={!addLessonTitle.trim() || createLessonMutation.isPending}
+            >
+              {createLessonMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Lesson
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
