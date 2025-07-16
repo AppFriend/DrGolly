@@ -2346,6 +2346,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete chapter endpoint
+  app.delete('/api/chapters/:chapterId', isAdmin, async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      
+      // First delete all lessons in this chapter
+      await db.delete(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
+      
+      // Then delete the chapter
+      const [deletedChapter] = await db
+        .delete(courseChapters)
+        .where(eq(courseChapters.id, parseInt(chapterId)))
+        .returning();
+      
+      if (!deletedChapter) {
+        return res.status(404).json({ error: 'Chapter not found' });
+      }
+      
+      res.json({ message: 'Chapter deleted successfully', deletedChapter });
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      res.status(500).json({ error: 'Failed to delete chapter' });
+    }
+  });
+
+  // Delete lesson endpoint
+  app.delete('/api/lessons/:lessonId', isAdmin, async (req, res) => {
+    try {
+      const { lessonId } = req.params;
+      
+      const [deletedLesson] = await db
+        .delete(courseLessons)
+        .where(eq(courseLessons.id, parseInt(lessonId)))
+        .returning();
+      
+      if (!deletedLesson) {
+        return res.status(404).json({ error: 'Lesson not found' });
+      }
+      
+      res.json({ message: 'Lesson deleted successfully', deletedLesson });
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      res.status(500).json({ error: 'Failed to delete lesson' });
+    }
+  });
+
   app.post('/api/admin/sublessons', isAdmin, async (req, res) => {
     try {
       const { title, content, lessonId, videoUrl } = req.body;

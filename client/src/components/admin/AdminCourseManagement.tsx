@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { apiRequest } from "@/lib/queryClient";
@@ -34,7 +35,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  GripVertical
+  GripVertical,
+  Trash2
 } from "lucide-react";
 import {
   DndContext,
@@ -62,11 +64,12 @@ interface SortableChapterProps {
   isExpanded: boolean;
   onToggle: () => void;
   onUpdateTitle: (title: string) => void;
+  onDeleteChapter: (chapterId: number) => void;
   onAddLesson: (chapterId: number) => void;
   children: React.ReactNode;
 }
 
-function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, onAddLesson, children }: SortableChapterProps) {
+function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, onDeleteChapter, onAddLesson, children }: SortableChapterProps) {
   const {
     attributes,
     listeners,
@@ -92,6 +95,7 @@ function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, onAddLe
         <InlineEditTitle
           title={chapter.title}
           onSave={onUpdateTitle}
+          onDelete={() => onDeleteChapter(chapter.id)}
           className="text-sm font-medium flex-1"
         />
         <Button
@@ -128,6 +132,7 @@ interface SortableLessonProps {
   isExpanded: boolean;
   onToggle: () => void;
   onUpdateTitle: (title: string) => void;
+  onDeleteLesson: (lessonId: number) => void;
   onEditContent: () => void;
   isEditing: boolean;
   editContent: string;
@@ -141,6 +146,7 @@ function SortableLesson({
   isExpanded, 
   onToggle, 
   onUpdateTitle, 
+  onDeleteLesson,
   onEditContent, 
   isEditing, 
   editContent, 
@@ -173,6 +179,7 @@ function SortableLesson({
         <InlineEditTitle
           title={lesson.title}
           onSave={onUpdateTitle}
+          onDelete={() => onDeleteLesson(lesson.id)}
           className="text-sm font-medium flex-1"
         />
         <Button
@@ -1172,6 +1179,46 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     },
   });
 
+  // Delete mutations
+  const deleteChapterMutation = useMutation({
+    mutationFn: (chapterId: number) =>
+      apiRequest("DELETE", `/api/chapters/${chapterId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Chapter deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteLessonMutation = useMutation({
+    mutationFn: (lessonId: number) =>
+      apiRequest("DELETE", `/api/lessons/${lessonId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const reorderChaptersMutation = useMutation({
     mutationFn: (orderedChapters: any[]) =>
       apiRequest("PUT", `/api/courses/${course.id}/chapters/reorder`, { chapters: orderedChapters }),
@@ -1282,6 +1329,14 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
       title: addChapterTitle,
       courseId: course.id,
     });
+  };
+
+  const handleDeleteChapter = (chapterId: number) => {
+    deleteChapterMutation.mutate(chapterId);
+  };
+
+  const handleDeleteLesson = (lessonId: number) => {
+    deleteLessonMutation.mutate(lessonId);
   };
 
   const handleCreateLesson = () => {
@@ -1458,6 +1513,7 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                 isExpanded={expandedChapters[chapter.id]}
                 onToggle={() => toggleChapter(chapter.id)}
                 onUpdateTitle={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
+                onDeleteChapter={handleDeleteChapter}
                 onAddLesson={handleAddLessonToChapter}
               >
                 <DndContext
@@ -1476,6 +1532,7 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                         isExpanded={expandedLessons[lesson.id]}
                         onToggle={() => toggleLesson(lesson.id)}
                         onUpdateTitle={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
+                        onDeleteLesson={handleDeleteLesson}
                         onEditContent={() => handleEditLesson(lesson.id, lesson.content || '')}
                         isEditing={editingLesson === lesson.id}
                         editContent={editContent}

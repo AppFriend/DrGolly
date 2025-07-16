@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Edit2, Check, X } from 'lucide-react';
+import { Edit2, Check, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -9,11 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 interface InlineEditTitleProps {
   title: string;
   onSave: (newTitle: string) => Promise<void>;
+  onDelete?: () => void;
   placeholder?: string;
   className?: string;
 }
 
-export function InlineEditTitle({ title, onSave, placeholder = "Enter title...", className = "" }: InlineEditTitleProps) {
+export function InlineEditTitle({ title, onSave, onDelete, placeholder = "Enter title...", className = "" }: InlineEditTitleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,6 +117,36 @@ export function InlineEditTitle({ title, onSave, placeholder = "Enter title...",
       >
         <Edit2 className="h-3 w-3 text-gray-600" />
       </Button>
+      {onDelete && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0 opacity-80 hover:opacity-100 transition-opacity hover:bg-red-50"
+            >
+              <Trash2 className="h-3 w-3 text-red-600" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete "{title}" and cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={onDelete}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
