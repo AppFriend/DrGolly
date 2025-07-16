@@ -111,9 +111,9 @@ export function InlineEditTitle({ title, onSave, placeholder = "Enter title...",
         size="sm"
         variant="ghost"
         onClick={handleEdit}
-        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100"
+        className="h-6 w-6 p-0 opacity-80 hover:opacity-100 transition-opacity hover:bg-gray-100"
       >
-        <Edit2 className="h-3 w-3 text-gray-500" />
+        <Edit2 className="h-3 w-3 text-gray-600" />
       </Button>
     </div>
   );
