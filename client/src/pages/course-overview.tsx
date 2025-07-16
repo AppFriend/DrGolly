@@ -35,9 +35,6 @@ export default function CourseOverview() {
   });
 
   const isAdmin = adminCheck?.isAdmin || false;
-  
-  // Debug: Log admin status to console
-  console.log('Admin check data:', adminCheck, 'isAdmin:', isAdmin);
 
   // Admin functions for updating titles
   const updateCourseTitle = async (newTitle: string) => {
