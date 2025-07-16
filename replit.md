@@ -346,6 +346,19 @@ STABLE VERSIONS (for easy rollback reference):
   * SECURED: Admin-only functionality properly gated behind authenticated admin check
   * DATABASE: Single source of truth maintained - all title changes persist correctly in PostgreSQL
   * Status: Production-ready with complete inline editing system for comprehensive content management
+
+- SAVEPOINT v1.18 (July 16, 2025): QUICK CONTENT CREATION SYSTEM - "Add Chapter" and "Add Lesson" functionality with unique numbering
+  * BREAKTHROUGH: Complete quick creation system for chapters and lessons with modal popups
+  * IMPLEMENTED: "Add Chapter" button at bottom center of course accordion with title input modal
+  * IMPLEMENTED: "Add Lesson" button at bottom center of each chapter with title input and rich text editor
+  * CREATED: Backend API endpoints /api/courses/:courseId/chapters and /api/chapters/:chapterId/lessons
+  * ENHANCED: Intelligent chapter numbering system following existing URL structure (1.21, 1.22, etc.)
+  * INTEGRATED: RichTextEditor component for lesson content creation with comprehensive formatting
+  * VERIFIED: Sequential order_index system maintains proper lesson/chapter ordering
+  * TESTED: Successfully created chapters and lessons with proper database persistence
+  * FIXED: Database schema compatibility with chapter_number field requirements
+  * OPTIMIZED: Numbering algorithm ignores special chapters ("Evidence", "0.0") for clean sequential numbering
+  * Status: Production-ready with complete content creation system matching existing URL structure
 ```
 
 ## Changelog

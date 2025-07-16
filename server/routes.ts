@@ -2228,11 +2228,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Title is required and must be a string' });
       }
       
-      // Get the highest order_index for this course
+      // Get all existing chapters for this course to determine the next chapter number
       const existingChapters = await db.select().from(courseChapters).where(eq(courseChapters.courseId, parseInt(courseId)));
+      
+      // Find the highest order_index for sequential order
       const maxOrderIndex = existingChapters.reduce((max, chapter) => 
         Math.max(max, chapter.orderIndex || 0), 0
       );
+      
+      // Generate the next chapter number based on existing pattern
+      let nextChapterNumber;
+      
+      // Find the highest numeric chapter number (ignoring special chapters like "Evidence", "0.0")
+      const numericChapters = existingChapters
+        .filter(chapter => chapter.chapterNumber && chapter.chapterNumber.match(/^1\.\d+$/))
+        .map(chapter => {
+          const match = chapter.chapterNumber.match(/^1\.(\d+)$/);
+          return match ? parseInt(match[1]) : null;
+        })
+        .filter(num => num !== null)
+        .sort((a, b) => a - b);
+      
+      if (numericChapters.length === 0) {
+        // No numeric chapters exist, start with 1.1
+        nextChapterNumber = "1.1";
+      } else {
+        // Find the highest minor number and increment it
+        const lastMinor = numericChapters[numericChapters.length - 1];
+        const nextMinor = lastMinor + 1;
+        nextChapterNumber = `1.${nextMinor}`;
+      }
       
       const [newChapter] = await db
         .insert(courseChapters)
@@ -2241,7 +2266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: '',
           courseId: parseInt(courseId),
           orderIndex: maxOrderIndex + 1,
-          chapterNumber: `${maxOrderIndex + 1}.0`
+          chapterNumber: nextChapterNumber
         })
         .returning();
       
@@ -2301,6 +2326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Chapter not found' });
       }
       
+      // Lessons use descriptive titles rather than strict numbering
+      // The order_index provides the sequential order for URL generation
       const [newLesson] = await db
         .insert(courseLessons)
         .values({
