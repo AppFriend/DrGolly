@@ -56,18 +56,24 @@ export default function LoginPage() {
       await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       
       // Refetch user data to ensure authentication state is updated
-      await queryClient.refetchQueries({ queryKey: ['/api/user'] });
-
-      toast({
-        title: "Success!",
-        description: "Logged in successfully",
-        variant: "default"
-      });
-
-      // Wait for auth state to be updated, then redirect
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 500);
+      const updatedUser = await queryClient.fetchQuery({ queryKey: ['/api/user'] });
+      
+      if (updatedUser) {
+        toast({
+          title: "Success!",
+          description: "Logged in successfully",
+          variant: "default"
+        });
+        
+        // Force immediate redirect with window.location.replace for cleaner navigation
+        window.location.replace('/');
+      } else {
+        toast({
+          title: "Authentication Error",
+          description: "Login succeeded but could not verify session. Please try again.",
+          variant: "destructive"
+        });
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
