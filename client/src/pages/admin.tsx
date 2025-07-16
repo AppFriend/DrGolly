@@ -28,6 +28,7 @@ import { AdminUserSettings } from "@/components/admin/AdminUserSettings";
 import { EnhancedCourseManagement } from "@/components/admin/EnhancedCourseManagement";
 import { EnhancedBlogManagement } from "@/components/admin/EnhancedBlogManagement";
 import { AdminBlogManagementSimple } from "@/components/admin/AdminBlogManagementSimple";
+import AdminContentManager from "@/components/admin/AdminContentManager";
 
 
 export default function AdminPanel() {
@@ -112,7 +113,7 @@ export default function AdminPanel() {
       {/* Admin Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6 overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 mb-6 overflow-x-auto">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -124,6 +125,10 @@ export default function AdminPanel() {
             <TabsTrigger value="courses" className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" />
               <span className="hidden sm:inline">Courses</span>
+            </TabsTrigger>
+            <TabsTrigger value="content" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              <span className="hidden sm:inline">Content</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -149,6 +154,10 @@ export default function AdminPanel() {
 
           <TabsContent value="courses" className="mt-6">
             <AdminCourseManagement />
+          </TabsContent>
+
+          <TabsContent value="content" className="mt-6">
+            <AdminContentManager />
           </TabsContent>
 
           <TabsContent value="users" className="mt-6">

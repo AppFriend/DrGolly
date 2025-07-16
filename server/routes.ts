@@ -46,6 +46,7 @@ import { db } from "./db";
 import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
+import adminContentRoutes from "./routes/admin-content";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -8834,6 +8835,9 @@ Please contact the customer to confirm the appointment.
       res.status(500).json({ error: 'Failed to update Stripe products' });
     }
   });
+
+  // Admin content management routes
+  app.use('/api/admin', adminContentRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

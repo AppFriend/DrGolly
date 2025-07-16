@@ -2438,6 +2438,63 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Title editing methods
+  async updateCourseTitle(courseId: number, title: string): Promise<void> {
+    await db.update(courses).set({ title }).where(eq(courses.id, courseId));
+  }
+
+  async updateChapterTitle(chapterId: number, title: string): Promise<void> {
+    await db.update(courseChapters).set({ title }).where(eq(courseChapters.id, chapterId));
+  }
+
+  async updateLessonTitle(lessonId: number, title: string): Promise<void> {
+    await db.update(courseLessons).set({ title }).where(eq(courseLessons.id, lessonId));
+  }
+
+  // Content restoration methods
+  async identifyAIGeneratedContent(): Promise<CourseLesson[]> {
+    const aiLessons = await db.select()
+      .from(courseLessons)
+      .where(or(
+        like(courseLessons.content, '%Key Learning Objectives%'),
+        like(courseLessons.content, '%This lesson provides important information%'),
+        like(courseLessons.content, '%Evidence-Based Approach%')
+      ));
+    return aiLessons;
+  }
+
+  async restoreAuthenticContent(lessonId: number, content: string, videoUrl?: string): Promise<void> {
+    const updateData: any = { content };
+    if (videoUrl) {
+      updateData.videoUrl = videoUrl;
+    }
+    await db.update(courseLessons).set(updateData).where(eq(courseLessons.id, lessonId));
+  }
+
+  async getContentIntegrityReport(): Promise<{
+    totalLessons: number;
+    aiGeneratedCount: number;
+    authenticVideoCount: number;
+    authenticContentCount: number;
+  }> {
+    const [stats] = await db.execute(sql`
+      SELECT 
+        COUNT(*) as total_lessons,
+        COUNT(CASE WHEN content LIKE '%Key Learning Objectives%' THEN 1 END) as ai_generated_count,
+        COUNT(CASE WHEN content LIKE '%Vimeo%' OR content LIKE '%iframe%' THEN 1 END) as authentic_video_count,
+        COUNT(CASE WHEN content NOT LIKE '%Key Learning Objectives%' AND content NOT LIKE '%This lesson provides important information%' AND content IS NOT NULL THEN 1 END) as authentic_content_count
+      FROM course_lessons
+      WHERE content IS NOT NULL
+    `);
+    
+    return {
+      totalLessons: Number(stats.total_lessons),
+      aiGeneratedCount: Number(stats.ai_generated_count),
+      authenticVideoCount: Number(stats.authentic_video_count),
+      authenticContentCount: Number(stats.authentic_content_count)
+    };
+  }
+
   async getAllAdminUsers(): Promise<User[]> {
     const adminUsers = await db
       .select()
@@ -3436,6 +3493,106 @@ export class DatabaseStorage implements IStorage {
       .from(cartItems)
       .where(eq(cartItems.userId, userId));
     return result.reduce((total, item) => total + item.quantity, 0);
+  }
+
+  // Admin content management methods
+  async getContentIntegrityReport() {
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const stats = await sql`
+        SELECT 
+          COUNT(*) as total_lessons,
+          COUNT(CASE WHEN content LIKE '%evidence-based%' AND content LIKE '%template%' THEN 1 END) as ai_generated_count,
+          COUNT(CASE WHEN video_url IS NOT NULL THEN 1 END) as authentic_video_count,
+          COUNT(CASE WHEN content IS NOT NULL AND content NOT LIKE '%evidence-based%' THEN 1 END) as authentic_content_count
+        FROM course_lessons
+        WHERE content IS NOT NULL
+      `;
+      
+      return {
+        totalLessons: Number(stats[0].total_lessons),
+        aiGeneratedCount: Number(stats[0].ai_generated_count),
+        authenticVideoCount: Number(stats[0].authentic_video_count),
+        authenticContentCount: Number(stats[0].authentic_content_count)
+      };
+    } catch (error) {
+      console.error('Error fetching content integrity report:', error);
+      throw error;
+    }
+  }
+
+  async getAIGeneratedLessons() {
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const lessons = await sql`
+        SELECT id, title, content, course_id, chapter_id, created_at
+        FROM course_lessons
+        WHERE content LIKE '%evidence-based%' AND content LIKE '%template%'
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
+      
+      return lessons.map(lesson => ({
+        id: lesson.id,
+        title: lesson.title,
+        content: lesson.content,
+        courseId: lesson.course_id,
+        chapterId: lesson.chapter_id,
+        createdAt: lesson.created_at
+      }));
+    } catch (error) {
+      console.error('Error fetching AI generated lessons:', error);
+      throw error;
+    }
+  }
+
+  async updateCourseTitle(courseId: number, title: string) {
+    try {
+      const [updatedCourse] = await db
+        .update(courses)
+        .set({ title })
+        .where(eq(courses.id, courseId))
+        .returning();
+      
+      return updatedCourse;
+    } catch (error) {
+      console.error('Error updating course title:', error);
+      throw error;
+    }
+  }
+
+  async updateChapterTitle(chapterId: number, title: string) {
+    try {
+      const [updatedChapter] = await db
+        .update(courseChapters)
+        .set({ title })
+        .where(eq(courseChapters.id, chapterId))
+        .returning();
+      
+      return updatedChapter;
+    } catch (error) {
+      console.error('Error updating chapter title:', error);
+      throw error;
+    }
+  }
+
+  async updateLessonTitle(lessonId: number, title: string) {
+    try {
+      const [updatedLesson] = await db
+        .update(courseLessons)
+        .set({ title })
+        .where(eq(courseLessons.id, lessonId))
+        .returning();
+      
+      return updatedLesson;
+    } catch (error) {
+      console.error('Error updating lesson title:', error);
+      throw error;
+    }
   }
 }
 
