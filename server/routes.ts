@@ -2218,6 +2218,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create chapter endpoint for course accordion
+  app.post('/api/courses/:courseId/chapters', isAdmin, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { title } = req.body;
+      
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'Title is required and must be a string' });
+      }
+      
+      // Get the highest order_index for this course
+      const existingChapters = await db.select().from(courseChapters).where(eq(courseChapters.courseId, parseInt(courseId)));
+      const maxOrderIndex = existingChapters.reduce((max, chapter) => 
+        Math.max(max, chapter.orderIndex || 0), 0
+      );
+      
+      const [newChapter] = await db
+        .insert(courseChapters)
+        .values({
+          title,
+          description: '',
+          courseId: parseInt(courseId),
+          orderIndex: maxOrderIndex + 1,
+          chapterNumber: `${maxOrderIndex + 1}.0`
+        })
+        .returning();
+      
+      res.json(newChapter);
+    } catch (error) {
+      console.error('Error creating chapter:', error);
+      res.status(500).json({ error: 'Failed to create chapter' });
+    }
+  });
+
   app.post('/api/admin/lessons', isAdmin, async (req, res) => {
     try {
       const { title, content, videoUrl, courseId, chapterId } = req.body;
@@ -2235,6 +2269,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           courseId,
           chapterId,
           orderIndex: nextOrderIndex
+        })
+        .returning();
+      
+      res.json(newLesson);
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      res.status(500).json({ error: 'Failed to create lesson' });
+    }
+  });
+
+  // Create lesson endpoint for chapter accordion
+  app.post('/api/chapters/:chapterId/lessons', isAdmin, async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      const { title, content } = req.body;
+      
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'Title is required and must be a string' });
+      }
+      
+      // Get the highest order_index for this chapter
+      const existingLessons = await db.select().from(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
+      const maxOrderIndex = existingLessons.reduce((max, lesson) => 
+        Math.max(max, lesson.orderIndex || 0), 0
+      );
+      
+      // Get the courseId from the chapter
+      const [chapter] = await db.select().from(courseChapters).where(eq(courseChapters.id, parseInt(chapterId)));
+      if (!chapter) {
+        return res.status(404).json({ error: 'Chapter not found' });
+      }
+      
+      const [newLesson] = await db
+        .insert(courseLessons)
+        .values({
+          title,
+          content: content || '',
+          courseId: chapter.courseId,
+          chapterId: parseInt(chapterId),
+          orderIndex: maxOrderIndex + 1
         })
         .returning();
       
