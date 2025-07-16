@@ -372,6 +372,18 @@ STABLE VERSIONS (for easy rollback reference):
   * SECURED: Admin-only delete operations with proper authentication checks
   * OPTIMIZED: Red trash icons with hover effects for clear visual feedback
   * Status: Production-ready with complete CRUD operations (Create, Read, Update, Delete)
+
+- SAVEPOINT v1.20 (July 16, 2025): COMPLETE COURSE CARD MINIMIZE/MAXIMIZE SYSTEM - Enhanced admin navigation
+  * BREAKTHROUGH: Complete course card minimize/maximize functionality for improved top-level navigation
+  * IMPLEMENTED: Minimize/maximize button placed next to edit icon in course headers with Minimize2/Maximize2 icons
+  * CREATED: Course card collapse system allowing courses to be minimized to compact card view
+  * ENHANCED: Conditional rendering of course content and dialogs based on minimized state
+  * INTEGRATED: Tooltips providing clear user guidance ("Minimize course" / "Expand course")
+  * OPTIMIZED: Admin workflow efficiency with quick course navigation without losing functionality
+  * VERIFIED: All existing functionality preserved when courses are expanded (editing, deletion, creation)
+  * TESTED: Minimize/maximize functionality confirmed working for better course management workflow
+  * MAINTAINED: Complete CRUD operations alongside new navigation improvements
+  * Status: Production-ready with enhanced admin navigation experience and complete course management
 ```
 
 ## Changelog
