@@ -554,23 +554,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update lesson content (admin only)
+  // Update lesson content or title (admin only)
   app.patch('/api/lessons/:lessonId', isAdmin, async (req: any, res) => {
     try {
       const { lessonId } = req.params;
-      const { content } = req.body;
+      const { content, title } = req.body;
       
-      if (!content) {
-        return res.status(400).json({ message: "Content is required" });
+      if (!content && !title) {
+        return res.status(400).json({ message: "Content or title is required" });
       }
       
-      console.log('Updating lesson content for lesson:', lessonId);
+      console.log('Updating lesson for lesson:', lessonId);
       
-      const updatedLesson = await storage.updateLessonContent(parseInt(lessonId), content);
+      let updatedLesson;
+      
+      if (title) {
+        // Update lesson title
+        updatedLesson = await storage.updateLessonTitle(parseInt(lessonId), title);
+      } else {
+        // Update lesson content
+        updatedLesson = await storage.updateLessonContent(parseInt(lessonId), content);
+      }
+      
       res.json(updatedLesson);
     } catch (error) {
-      console.error("Error updating lesson content:", error);
-      res.status(500).json({ message: "Failed to update lesson content" });
+      console.error("Error updating lesson:", error);
+      res.status(500).json({ message: "Failed to update lesson" });
     }
   });
 

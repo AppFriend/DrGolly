@@ -144,6 +144,7 @@ export interface IStorage {
   getChapterLessons(chapterId: number): Promise<CourseLesson[]>;
   createCourseLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
   updateLessonContent(lessonId: number, content: string): Promise<CourseLesson>;
+  updateLessonTitle(lessonId: number, title: string): Promise<CourseLesson>;
   getAllLessons(): Promise<CourseLesson[]>;
   createLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
   updateLesson(id: number, updates: Partial<CourseLesson>): Promise<CourseLesson>;
