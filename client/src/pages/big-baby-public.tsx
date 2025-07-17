@@ -272,6 +272,16 @@ function PaymentForm({
       return;
     }
 
+    // Check if PaymentElement is ready before proceeding
+    if (!isElementReady) {
+      toast({
+        title: "Payment Loading",
+        description: "Please wait for the payment form to finish loading.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -281,6 +291,12 @@ function PaymentForm({
       
       if (missingFields.length > 0) {
         throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Additional check to ensure elements are mounted
+      const paymentElement = elements.getElement('payment');
+      if (!paymentElement) {
+        throw new Error('Payment form is not ready. Please refresh the page and try again.');
       }
 
       // Submit the elements to validate and collect payment method
@@ -773,7 +789,11 @@ export default function BigBabyPublic() {
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               {clientSecret && (
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <Elements 
+                  key={clientSecret} 
+                  stripe={stripePromise} 
+                  options={{ clientSecret }}
+                >
                   <PaymentForm
                     onSuccess={handlePaymentSuccess}
                     coursePrice={finalPrice}
