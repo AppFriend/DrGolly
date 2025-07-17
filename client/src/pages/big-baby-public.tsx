@@ -330,6 +330,19 @@ function PaymentForm({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/big-baby-public`,
+          payment_method_data: {
+            billing_details: {
+              name: `${billingDetails.firstName} ${billingDetails.lastName}`,
+              email: customerDetails.email,
+              phone: billingDetails.phone || undefined,
+              address: {
+                line1: billingDetails.address || undefined,
+                city: billingDetails.city || undefined,
+                postal_code: billingDetails.postcode || undefined,
+                country: billingDetails.country || 'AU'
+              }
+            }
+          }
         },
         redirect: 'if_required',
       });
@@ -624,7 +637,7 @@ export default function BigBabyPublic() {
     originalPrice : originalPrice;
 
   // Create payment intent when customer details are sufficient
-  const createPaymentIntent = async () => {
+  const createPaymentIntent = async (skipCoupon = false) => {
     if (!customerDetails.email || !customerDetails.firstName) return;
     
     try {
@@ -633,7 +646,7 @@ export default function BigBabyPublic() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerDetails,
-          couponId: appliedCoupon?.id
+          couponId: skipCoupon ? null : appliedCoupon?.id
         }),
       });
 
@@ -674,16 +687,12 @@ export default function BigBabyPublic() {
     }
   };
 
-  // Create payment intent when customer details are ready (debounced)
+  // Create payment intent only once when customer details are ready
   useEffect(() => {
-    if (customerDetails.email && customerDetails.firstName) {
-      const timeoutId = setTimeout(() => {
-        createPaymentIntent();
-      }, 500); // Debounce for 500ms
-      
-      return () => clearTimeout(timeoutId);
+    if (customerDetails.email && customerDetails.firstName && !clientSecret) {
+      createPaymentIntent(true); // Skip coupon initially
     }
-  }, [customerDetails.email, customerDetails.firstName, appliedCoupon]);
+  }, [customerDetails.email, customerDetails.firstName]);
 
   const canProceedToPayment = customerDetails.email && customerDetails.firstName;
   
@@ -813,7 +822,7 @@ export default function BigBabyPublic() {
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               {clientSecret && (
                 <Elements 
-                  key={clientSecret} 
+                  key={`${customerDetails.email}-${customerDetails.firstName}`} 
                   stripe={stripePromise} 
                   options={{ clientSecret }}
                 >
