@@ -21,6 +21,7 @@ import CourseOverview from "@/pages/course-overview";
 import LessonPage from "@/pages/lesson";
 import Checkout from "@/pages/checkout";
 import BigBabyPublic from "@/pages/big-baby-public";
+import BigBabyCheckout from "@/pages/big-baby-checkout";
 import PaymentSuccess from "@/pages/payment-success";
 import BlogPost from "@/pages/blog-post";
 import Discounts from "@/pages/discounts";
@@ -229,6 +230,7 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
+          <Route path="/big-baby-checkout" component={BigBabyCheckout} />
           <Route path="/share/:slug" component={Share} />
           <Route component={Landing} />
         </Switch>

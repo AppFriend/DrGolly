@@ -4674,6 +4674,189 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // New clean Big Baby checkout endpoints
+  app.post('/api/create-big-baby-payment-intent', async (req, res) => {
+    try {
+      const { customerDetails, couponId, courseId } = req.body;
+      
+      // Validate required fields
+      if (!customerDetails?.email || !customerDetails?.firstName) {
+        return res.status(400).json({ message: "Email and first name are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customerDetails.email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
+      }
+      
+      // Get regional pricing
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      
+      const baseAmount = regionalPricing.coursePrice;
+      const currency = regionalPricing.currency;
+      
+      let finalAmount = baseAmount;
+      let coupon = null;
+      let promotionCode = null;
+      
+      // Apply coupon if provided
+      if (couponId) {
+        try {
+          console.log('Processing coupon code:', couponId);
+          
+          // First try to find promotion code
+          const promotionCodes = await stripe.promotionCodes.list({
+            code: couponId,
+            limit: 1,
+          });
+          
+          if (promotionCodes.data.length > 0) {
+            promotionCode = promotionCodes.data[0];
+            if (promotionCode.active) {
+              coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
+            }
+          } else {
+            // Try direct coupon lookup
+            try {
+              coupon = await stripe.coupons.retrieve(couponId);
+            } catch (directCouponError) {
+              console.log('No direct coupon found with code:', couponId);
+            }
+          }
+          
+          // Apply discount if coupon is valid
+          if (coupon && coupon.valid) {
+            if (coupon.percent_off) {
+              finalAmount = baseAmount * (1 - coupon.percent_off / 100);
+            } else if (coupon.amount_off) {
+              finalAmount = Math.max(0, baseAmount - (coupon.amount_off / 100));
+            }
+          }
+        } catch (error) {
+          console.error('Coupon validation failed:', error);
+        }
+      }
+      
+      // Create payment intent with automatic payment methods (includes Apple Pay, Google Pay, Link)
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(finalAmount * 100), // Convert to cents
+        currency: currency.toLowerCase(),
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          courseId: courseId.toString(),
+          courseName: 'Big baby sleep program',
+          customerEmail: customerDetails.email,
+          customerName: `${customerDetails.firstName} ${customerDetails.lastName}`,
+          originalAmount: baseAmount.toString(),
+          finalAmount: finalAmount.toString(),
+          couponId: couponId || 'none',
+          couponName: coupon?.name || 'none',
+          discountAmount: (baseAmount - finalAmount).toString(),
+          currency: currency
+        }
+      });
+      
+      console.log('Payment intent created:', paymentIntent.id, 'Amount:', finalAmount, currency);
+      
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        amount: finalAmount,
+        currency: currency
+      });
+    } catch (error: any) {
+      console.error('Payment intent creation failed:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/big-baby-complete-purchase', async (req, res) => {
+    try {
+      const { paymentIntentId, customerDetails, courseId, finalPrice, currency, appliedCoupon } = req.body;
+      
+      // Retrieve payment intent to verify payment
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: 'Payment not successful' });
+      }
+      
+      // Check if user exists
+      let user = await storage.getUserByEmail(customerDetails.email);
+      let isNewUser = false;
+      
+      if (!user) {
+        // Create new user
+        isNewUser = true;
+        user = await storage.createUser({
+          email: customerDetails.email,
+          firstName: customerDetails.firstName,
+          lastName: customerDetails.lastName,
+          phone: customerDetails.phone || null,
+          subscriptionTier: 'free',
+          planTier: 'free',
+          signupSource: 'big_baby_checkout',
+          accountActivated: true
+        });
+        
+        console.log('Created new user:', user.id, 'Email:', user.email);
+      } else {
+        console.log('Found existing user:', user.id, 'Email:', user.email);
+      }
+      
+      // Add course to user's purchases
+      await db.insert(schema.userCoursePurchases).values({
+        userId: user.id,
+        courseId: courseId,
+        purchaseDate: new Date(),
+        amount: finalPrice,
+        currency: currency,
+        paymentIntentId: paymentIntentId,
+        status: 'completed'
+      });
+      
+      console.log('Course purchase added for user:', user.id, 'Course:', courseId);
+      
+      // Send payment notification to Slack
+      try {
+        await sendPaymentNotification({
+          customerName: `${customerDetails.firstName} ${customerDetails.lastName}`,
+          customerEmail: customerDetails.email,
+          transactionType: 'course_purchase',
+          courseName: 'Big baby sleep program',
+          amount: finalPrice,
+          currency: currency,
+          promotionalCode: appliedCoupon?.name || 'N/A',
+          discountAmount: appliedCoupon ? (120 - finalPrice) : 0
+        });
+      } catch (slackError) {
+        console.error('Slack notification failed:', slackError);
+        // Don't fail the purchase if Slack fails
+      }
+      
+      // Auto-login user by creating session
+      try {
+        req.session.userId = user.id;
+        req.session.save();
+        console.log('User auto-logged in:', user.id);
+      } catch (sessionError) {
+        console.error('Auto-login failed:', sessionError);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: isNewUser ? 'Account created and purchase completed!' : 'Course added to your account!',
+        userId: user.id,
+        isNewUser: isNewUser
+      });
+    } catch (error: any) {
+      console.error('Purchase completion failed:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Stripe webhook endpoint for payment completion
   app.post('/api/stripe-webhook', async (req, res) => {
     try {
