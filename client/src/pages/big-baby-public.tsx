@@ -817,30 +817,27 @@ export default function BigBabyPublic() {
               </div>
             </div>
 
-            {/* Payment Section - Always show */}
+            {/* Payment Section - Redirect to clean checkout */}
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
-              {clientSecret && (
-                <Elements 
-                  key={`${customerDetails.email}-${customerDetails.firstName}`} 
-                  stripe={stripePromise} 
-                  options={{ clientSecret }}
-                >
-                  <PaymentForm
-                    onSuccess={handlePaymentSuccess}
-                    coursePrice={finalPrice}
-                    currencySymbol={currencySymbol}
-                    currency={currency}
-                    customerDetails={customerDetails}
-                    appliedCoupon={appliedCoupon}
-                    clientSecret={clientSecret}
-                  />
-                </Elements>
-              )}
-              {!clientSecret && customerDetails.email && customerDetails.firstName && (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-600">Loading payment options...</p>
-                </div>
+              <Button 
+                onClick={() => {
+                  if (canProceedToPayment) {
+                    // Store customer details in localStorage to pass to checkout
+                    localStorage.setItem('big-baby-customer-details', JSON.stringify(customerDetails));
+                    localStorage.setItem('big-baby-applied-coupon', JSON.stringify(appliedCoupon));
+                    setLocation('/big-baby-checkout');
+                  }
+                }}
+                className="w-full bg-[#095D66] text-white hover:bg-[#0A525A] h-12 text-base font-medium"
+                disabled={!canProceedToPayment}
+              >
+                Continue to Payment
+              </Button>
+              {!canProceedToPayment && (
+                <p className="text-sm text-gray-600 mt-2 text-center">
+                  Please complete your email and first name above to continue
+                </p>
               )}
             </div>
           </div>
