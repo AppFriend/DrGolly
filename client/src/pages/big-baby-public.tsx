@@ -143,6 +143,7 @@ function PaymentForm({
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isElementReady, setIsElementReady] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState("card");
@@ -266,11 +267,30 @@ function PaymentForm({
 
   const handleCardPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || isProcessing || !clientSecret) return;
+    if (!stripe || !elements || isProcessing || !clientSecret || !customerDetails.email) {
+      console.error('Missing required components:', { stripe: !!stripe, elements: !!elements, clientSecret: !!clientSecret, email: !!customerDetails.email });
+      return;
+    }
 
     setIsProcessing(true);
     
     try {
+      // Ensure all required billing details are present
+      const requiredFields = ['firstName', 'lastName'];
+      const missingFields = requiredFields.filter(field => !billingDetails[field]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Submit the elements to validate and collect payment method
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        console.error('Submit error:', submitError);
+        throw submitError;
+      }
+
+      // Confirm payment with additional error handling
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -279,11 +299,21 @@ function PaymentForm({
         redirect: 'if_required',
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Stripe error:', error);
+        // If Link payment fails, provide helpful message
+        if (error.code === 'link_authentication_required') {
+          throw new Error('Link authentication required. Please use the card form below or try a different payment method.');
+        }
+        throw error;
+      }
 
-      if (paymentIntent.status === 'succeeded') {
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
         await handleAccountCreation(paymentIntent.id);
         onSuccess(paymentIntent.id);
+      } else {
+        console.error('Payment intent status:', paymentIntent?.status);
+        throw new Error('Payment was not successful. Please try again.');
       }
     } catch (error: any) {
       console.error('Payment error:', error);
@@ -340,25 +370,66 @@ function PaymentForm({
               </div>
             </div>
             
-            {customerDetails.email && (
+            {customerDetails.email && clientSecret ? (
               <div className="space-y-3">
                 <PaymentElement 
+                  key={customerDetails.email} // Force re-render when email changes
                   options={{
                     layout: 'accordion',
                     defaultValues: {
                       billingDetails: {
                         email: customerDetails.email,
                       }
+                    },
+                    paymentMethodOrder: ['link', 'card'],
+                    fields: {
+                      billingDetails: {
+                        email: 'never' // We already have email
+                      }
+                    },
+                    terms: {
+                      card: 'never',
+                      auBankAccount: 'never',
+                      bancontact: 'never',
+                      blik: 'never',
+                      boleto: 'never',
+                      eps: 'never',
+                      fpx: 'never',
+                      giropay: 'never',
+                      grabPay: 'never',
+                      ideal: 'never',
+                      konbini: 'never',
+                      oxxo: 'never',
+                      p24: 'never',
+                      paynow: 'never',
+                      paypal: 'never',
+                      pix: 'never',
+                      promptpay: 'never',
+                      sepaDebit: 'never',
+                      sofort: 'never',
+                      usBankAccount: 'never'
                     }
+                  }}
+                  onReady={() => {
+                    console.log('PaymentElement is ready');
+                    setIsElementReady(true);
+                  }}
+                  onLoaderStart={() => {
+                    console.log('PaymentElement is loading');
+                    setIsElementReady(false);
+                  }}
+                  onChange={(event) => {
+                    console.log('PaymentElement changed:', event.complete);
                   }}
                 />
               </div>
-            )}
-            
-            {!customerDetails.email && (
+            ) : (
               <div className="text-center py-4">
                 <p className="text-sm text-gray-600 mb-3">
-                  Enter your email above to see payment options
+                  {!customerDetails.email 
+                    ? 'Enter your email above to see payment options'
+                    : 'Loading payment options...'
+                  }
                 </p>
               </div>
             )}
@@ -477,10 +548,11 @@ function PaymentForm({
       {/* Place Order Button */}
       <Button
         onClick={handleCardPayment}
-        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName || !customerDetails.email || !clientSecret}
+        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName || !customerDetails.email || !clientSecret || !isElementReady}
         className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg h-12"
       >
-        {isProcessing ? 'Processing...' : 'Place order'}
+        {isProcessing ? 'Processing...' : 
+         !isElementReady ? 'Loading payment form...' : 'Place order'}
       </Button>
     </div>
   );
