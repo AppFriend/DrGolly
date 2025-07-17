@@ -11,19 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CouponInput } from "@/components/CouponInput";
 import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import moneyBackGuarantee from "@assets/money-back-guarantee.png";
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
-
-const BIG_BABY_COURSE = {
-  id: 6,
-  title: "Big baby sleep program",
-  description: "A comprehensive sleep program designed specifically for babies over 6 months old",
-  thumbnailUrl: "/attached_assets/IMG_5167_1752574749114.jpeg"
-};
 
 // Testimonial data
 const testimonials = [
@@ -152,7 +146,7 @@ function PaymentForm({
         const response = await apiRequest('POST', '/api/big-baby-complete-purchase', {
           paymentIntentId: paymentIntent.id,
           customerDetails,
-          courseId: BIG_BABY_COURSE.id,
+          courseId: 6, // Big Baby course ID
           finalPrice: pricing.price,
           currency: pricing.currency,
           appliedCoupon
@@ -232,6 +226,12 @@ export default function BigBabyCheckout() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const { toast } = useToast();
 
+  // Fetch authentic Big Baby product information from database
+  const { data: productInfo, isLoading: isProductLoading } = useQuery({
+    queryKey: ['/api/big-baby-product'],
+    retry: false,
+  });
+
   // Validate form to show payment section
   const isFormValid = customerDetails.firstName && customerDetails.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerDetails.email);
 
@@ -247,7 +247,7 @@ export default function BigBabyCheckout() {
       const response = await apiRequest('POST', '/api/create-big-baby-payment-intent', {
         customerDetails,
         couponId: appliedCoupon?.id || appliedCoupon?.code,
-        courseId: BIG_BABY_COURSE.id
+        courseId: 6 // Big Baby course ID
       });
 
       if (response.ok) {
@@ -278,7 +278,7 @@ export default function BigBabyCheckout() {
       window.fbq('track', 'Purchase', {
         value: pricing.price,
         currency: pricing.currency,
-        content_ids: [BIG_BABY_COURSE.id],
+        content_ids: [6], // Big Baby course ID
         content_type: 'product',
       });
     }
@@ -318,19 +318,37 @@ export default function BigBabyCheckout() {
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Course Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center space-x-4">
-            <img 
-              src={BIG_BABY_COURSE.thumbnailUrl} 
-              alt={BIG_BABY_COURSE.title}
-              className="w-16 h-16 rounded-lg object-cover"
-            />
-            <div className="flex-1">
-              <h1 className="text-lg font-semibold text-gray-900">{BIG_BABY_COURSE.title}</h1>
-              <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
+        {isProductLoading ? (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 rounded-lg bg-gray-200 animate-pulse" />
+              <div className="flex-1">
+                <div className="h-5 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+              </div>
             </div>
           </div>
-        </div>
+        ) : productInfo ? (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center space-x-4">
+              <img 
+                src={productInfo.imageUrl} 
+                alt={productInfo.title}
+                className="w-16 h-16 rounded-lg object-cover"
+              />
+              <div className="flex-1">
+                <h1 className="text-lg font-semibold text-gray-900">{productInfo.title}</h1>
+                <p className="text-sm text-gray-600">{productInfo.detailedDescription}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="text-center text-gray-500">
+              Unable to load product information
+            </div>
+          </div>
+        )}
 
         {/* Customer Details */}
         <Card>
@@ -400,13 +418,15 @@ export default function BigBabyCheckout() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Course Price</span>
-                <span className="font-medium">{pricing.symbol}120.00</span>
+                <span className="font-medium">
+                  {pricing.symbol}{productInfo ? productInfo.price.toFixed(2) : '120.00'}
+                </span>
               </div>
               
               {appliedCoupon && (
                 <div className="flex justify-between items-center text-green-600">
                   <span>Discount ({appliedCoupon.name})</span>
-                  <span>-{pricing.symbol}{(120 - pricing.price).toFixed(2)}</span>
+                  <span>-{pricing.symbol}{productInfo ? (productInfo.price - pricing.price).toFixed(2) : (120 - pricing.price).toFixed(2)}</span>
                 </div>
               )}
               
