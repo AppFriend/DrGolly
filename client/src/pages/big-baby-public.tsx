@@ -303,17 +303,26 @@ function PaymentForm({
         throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       }
 
-      // Additional check to ensure elements are mounted
+      // Additional check to ensure elements are mounted with timeout
       const paymentElement = elements.getElement('payment');
       if (!paymentElement) {
         throw new Error('Payment form is not ready. Please refresh the page and try again.');
       }
+
+      // Wait a bit to ensure element is fully mounted
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Submit the elements to validate and collect payment method
       const { error: submitError } = await elements.submit();
       if (submitError) {
         console.error('Submit error:', submitError);
         throw submitError;
+      }
+
+      // Double check that elements are still mounted before confirmation
+      const elementsCheck = elements.getElement('payment');
+      if (!elementsCheck) {
+        throw new Error('Payment form has become unmounted. Please refresh the page and try again.');
       }
 
       // Confirm payment with additional error handling
@@ -665,10 +674,14 @@ export default function BigBabyPublic() {
     }
   };
 
-  // Create payment intent when customer details are ready
+  // Create payment intent when customer details are ready (debounced)
   useEffect(() => {
     if (customerDetails.email && customerDetails.firstName) {
-      createPaymentIntent();
+      const timeoutId = setTimeout(() => {
+        createPaymentIntent();
+      }, 500); // Debounce for 500ms
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [customerDetails.email, customerDetails.firstName, appliedCoupon]);
 
