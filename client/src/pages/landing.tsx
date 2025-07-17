@@ -48,8 +48,8 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Buttons Container - Moved higher into white space */}
-        <div className="px-6 pb-[6.5rem] space-y-3 relative z-[60]">
+        {/* Buttons Container - Added 10px spacing between text box and buttons */}
+        <div className="px-6 pb-[5.5rem] space-y-3 relative z-[60] mt-[10px]">
           <Button
             onClick={(e) => {
               e.preventDefault();
@@ -76,17 +76,17 @@ export default function Landing() {
         </div>
       </main>
 
-      {/* Bottom Section with Curved Design */}
+      {/* Bottom Section with Curved Design - Reduced height */}
       <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-0 pointer-events-none">
         {/* Curved Background */}
         <div className="relative">
           <svg
-            viewBox="0 0 400 200"
+            viewBox="0 0 400 150"
             className="w-full h-auto"
             preserveAspectRatio="none"
           >
             <path
-              d="M0,100 C100,20 300,20 400,100 L400,200 L0,200 Z"
+              d="M0,80 C100,15 300,15 400,80 L400,150 L0,150 Z"
               fill="#83CFCC"
               className="opacity-90"
             />
