@@ -232,6 +232,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: 'Test endpoint working' });
   });
 
+  // Test endpoint for Big Baby payment flow
+  app.post('/api/test/big-baby-payment', async (req, res) => {
+    try {
+      const testCustomerDetails = {
+        email: 'test@example.com',
+        firstName: 'Test',
+        dueDate: '2025-08-15'
+      };
+
+      // Test creating payment intent
+      const response = await fetch(`${req.protocol}://${req.get('host')}/api/create-big-baby-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerDetails: testCustomerDetails,
+          couponId: null
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        res.json({
+          success: true,
+          message: 'Payment intent created successfully',
+          clientSecret: data.clientSecret ? 'Present' : 'Missing',
+          paymentIntentId: data.paymentIntentId,
+          amount: data.amount
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: 'Failed to create payment intent',
+          error: data.message
+        });
+      }
+    } catch (error) {
+      console.error('Test payment error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  });
+
   // Test endpoint for Slack payment notifications
   app.post('/api/test/payment-notification', async (req, res) => {
     try {
