@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { ArrowLeft, Check, Shield, CreditCard, Smartphone, Info } from "lucide-react";
+import { ArrowLeft, Check, Shield, CreditCard, Smartphone, Info, Star, Users, Clock, Award, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { CouponInput } from "@/components/CouponInput";
 import { apiRequest } from "@/lib/queryClient";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
@@ -21,21 +25,92 @@ const BIG_BABY_COURSE = {
   thumbnailUrl: "/attached_assets/IMG_5167_1752574749114.jpeg"
 };
 
-// Clean checkout form component
-function CheckoutForm({ 
-  onSuccess, 
+// Testimonial data
+const testimonials = [
+  {
+    name: "Kristiana E",
+    review: "Dr Golly's program has helped me get my baby to have much more quality and long lasting sleeps. I'm so happy that I stumbled across this program especially as a new parent.",
+    program: "Big baby sleep program"
+  },
+  {
+    name: "Sigourney S", 
+    review: "Toddler sleep felt impossible, bedtime battles, night wakes, early starts... we were all exhausted. The Dr Golly Toddler Program gave us the tools (and confidence) to create calm, consistent routines that actually work.",
+    program: "Toddler sleep program"
+  },
+  {
+    name: "Sarah M",
+    review: "Within 3 days of implementing the techniques, our 6-month-old was sleeping through the night. The program is clear, evidence-based, and actually works!",
+    program: "Big baby sleep program"
+  },
+  {
+    name: "Jennifer L",
+    review: "I was skeptical at first, but Dr Golly's approach is so gentle and effective. My toddler now goes to bed without fights and sleeps 11 hours straight!",
+    program: "Toddler sleep program"
+  }
+];
+
+// TestimonialCarousel Component
+function TestimonialCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % testimonials.length);
+    }, 4000); // Change every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="relative overflow-hidden">
+        <div 
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {testimonials.map((testimonial, index) => (
+            <div key={index} className="w-full flex-shrink-0 border-b pb-4">
+              <div className="flex items-center space-x-1 mb-2">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                ))}
+              </div>
+              <p className="text-gray-700 mb-2 text-sm leading-relaxed">"{testimonial.review}"</p>
+              <p className="text-sm font-medium text-gray-900">{testimonial.name}</p>
+              <p className="text-xs text-gray-500">{testimonial.program}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Progress dots */}
+      <div className="flex justify-center space-x-2">
+        {testimonials.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentIndex(index)}
+            className={`w-2 h-2 rounded-full transition-colors ${
+              index === currentIndex ? 'bg-[#095D66]' : 'bg-gray-300'
+            }`}
+            aria-label={`Go to testimonial ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Payment Form Component
+function PaymentForm({ 
   customerDetails, 
   appliedCoupon, 
-  coursePrice, 
-  currencySymbol, 
-  currency 
+  pricing, 
+  onSuccess 
 }: {
-  onSuccess: (paymentIntentId: string) => void;
   customerDetails: any;
   appliedCoupon: any;
-  coursePrice: number;
-  currencySymbol: string;
-  currency: string;
+  pricing: { price: number; currency: string; symbol: string };
+  onSuccess: (paymentIntentId: string) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -78,8 +153,8 @@ function CheckoutForm({
           paymentIntentId: paymentIntent.id,
           customerDetails,
           courseId: BIG_BABY_COURSE.id,
-          finalPrice: coursePrice,
-          currency,
+          finalPrice: pricing.price,
+          currency: pricing.currency,
           appliedCoupon
         });
 
@@ -135,7 +210,7 @@ function CheckoutForm({
               <span>Processing...</span>
             </div>
           ) : (
-            `Pay ${currencySymbol}${coursePrice.toFixed(2)}`
+            `Pay ${pricing.symbol}${pricing.price.toFixed(2)}`
           )}
         </Button>
       </div>
@@ -145,32 +220,27 @@ function CheckoutForm({
 
 export default function BigBabyCheckout() {
   const [location, setLocation] = useLocation();
-  const [customerDetails, setCustomerDetails] = useState<any>(null);
+  const [customerDetails, setCustomerDetails] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    dueDate: ''
+  });
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [clientSecret, setClientSecret] = useState<string>('');
   const [pricing, setPricing] = useState({ price: 120, currency: 'USD', symbol: '$' });
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
   const { toast } = useToast();
 
-  // Load customer details from localStorage
-  useEffect(() => {
-    const savedDetails = localStorage.getItem('big-baby-customer-details');
-    const savedCoupon = localStorage.getItem('big-baby-applied-coupon');
-    
-    if (savedDetails) {
-      setCustomerDetails(JSON.parse(savedDetails));
-    }
-    
-    if (savedCoupon && savedCoupon !== 'null') {
-      setAppliedCoupon(JSON.parse(savedCoupon));
-    }
-  }, []);
+  // Validate form to show payment section
+  const isFormValid = customerDetails.firstName && customerDetails.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerDetails.email);
 
-  // Create payment intent when customer details are loaded
+  // Create payment intent when form is valid
   useEffect(() => {
-    if (customerDetails && customerDetails.email && customerDetails.firstName) {
+    if (isFormValid) {
       createPaymentIntent();
     }
-  }, [customerDetails, appliedCoupon]);
+  }, [customerDetails, appliedCoupon, isFormValid]);
 
   const createPaymentIntent = async () => {
     try {
@@ -188,6 +258,7 @@ export default function BigBabyCheckout() {
           currency: data.currency,
           symbol: data.currency === 'AUD' ? '$' : data.currency === 'USD' ? '$' : '€'
         });
+        setShowPaymentForm(true);
       } else {
         throw new Error('Failed to create payment intent');
       }
@@ -202,10 +273,6 @@ export default function BigBabyCheckout() {
   };
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
-    // Clear localStorage
-    localStorage.removeItem('big-baby-customer-details');
-    localStorage.removeItem('big-baby-applied-coupon');
-
     // Track Facebook Pixel purchase event
     if (typeof window !== 'undefined' && window.fbq) {
       window.fbq('track', 'Purchase', {
@@ -225,138 +292,183 @@ export default function BigBabyCheckout() {
     setLocation("/");
   };
 
-  // Redirect if no customer details
-  if (!customerDetails) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Redirecting to course information...</p>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#095D66] mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
-
-  const finalPrice = appliedCoupon ? 
-    appliedCoupon.amount_off ? pricing.price - (appliedCoupon.amount_off / 100) :
-    appliedCoupon.percent_off ? pricing.price * (1 - appliedCoupon.percent_off / 100) :
-    pricing.price : pricing.price;
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-[#095D66] px-4 py-4">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div className="flex items-center space-x-3">
+      <div className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-md mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocation('/big-baby-public')}
-              className="text-[#095D66] hover:bg-[#095D66]/10"
+              onClick={() => setLocation("/")}
+              className="p-2"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-            <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
+            <img 
+              src={drGollyLogo} 
+              alt="Dr Golly Sleep" 
+              className="h-8"
+            />
+            <div className="w-9" />
           </div>
-          <h1 className="text-lg font-semibold text-[#095D66]">Secure Checkout</h1>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4">
-        <div className="space-y-6">
-          {/* Order Summary */}
-          <Card>
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-4 text-[#095D66]">Order Summary</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <img 
-                    src={BIG_BABY_COURSE.thumbnailUrl} 
-                    alt={BIG_BABY_COURSE.title}
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{BIG_BABY_COURSE.title}</h3>
-                    <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">Subtotal</span>
-                    <span className="text-sm">{pricing.symbol}{pricing.price.toFixed(2)}</span>
-                  </div>
-                  {appliedCoupon && (
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
-                      <span className="text-sm text-green-600">
-                        -{pricing.symbol}{(pricing.price - finalPrice).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold">Total</span>
-                    <span className="text-lg font-semibold">{pricing.symbol}{finalPrice.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+        {/* Course Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center space-x-4">
+            <img 
+              src={BIG_BABY_COURSE.thumbnailUrl} 
+              alt={BIG_BABY_COURSE.title}
+              className="w-16 h-16 rounded-lg object-cover"
+            />
+            <div className="flex-1">
+              <h1 className="text-lg font-semibold text-gray-900">{BIG_BABY_COURSE.title}</h1>
+              <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
+            </div>
+          </div>
+        </div>
 
-          {/* Payment Form */}
-          <Card>
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-4 text-[#095D66]">Payment Information</h2>
+        {/* Customer Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Your Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  value={customerDetails.firstName}
+                  onChange={(e) => setCustomerDetails(prev => ({ ...prev, firstName: e.target.value }))}
+                  placeholder="Enter first name"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={customerDetails.lastName}
+                  onChange={(e) => setCustomerDetails(prev => ({ ...prev, lastName: e.target.value }))}
+                  placeholder="Enter last name"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="email">Email Address *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={customerDetails.email}
+                onChange={(e) => setCustomerDetails(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="dueDate">Due Date (Optional)</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={customerDetails.dueDate}
+                onChange={(e) => setCustomerDetails(prev => ({ ...prev, dueDate: e.target.value }))}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Coupon Input */}
+        <Card>
+          <CardContent className="pt-6">
+            <CouponInput
+              onCouponApplied={(coupon) => setAppliedCoupon(coupon)}
+              onCouponRemoved={() => setAppliedCoupon(null)}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Pricing Summary */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Course Price</span>
+                <span className="font-medium">{pricing.symbol}120.00</span>
+              </div>
               
-              {clientSecret ? (
-                <Elements 
-                  stripe={stripePromise} 
-                  options={{ 
-                    clientSecret,
-                    appearance: {
-                      theme: 'stripe',
-                      variables: {
-                        colorPrimary: '#095D66',
-                        colorBackground: '#ffffff',
-                        colorText: '#374151',
-                        colorDanger: '#dc2626',
-                        fontFamily: 'system-ui, sans-serif',
-                      },
-                    },
-                  }}
-                >
-                  <CheckoutForm
-                    onSuccess={handlePaymentSuccess}
-                    customerDetails={customerDetails}
-                    appliedCoupon={appliedCoupon}
-                    coursePrice={finalPrice}
-                    currencySymbol={pricing.symbol}
-                    currency={pricing.currency}
-                  />
-                </Elements>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#095D66] mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading payment options...</p>
+              {appliedCoupon && (
+                <div className="flex justify-between items-center text-green-600">
+                  <span>Discount ({appliedCoupon.name})</span>
+                  <span>-{pricing.symbol}{(120 - pricing.price).toFixed(2)}</span>
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Money Back Guarantee */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <img src={moneyBackGuarantee} alt="30 Days Money Back Guarantee" className="h-12 w-12" />
-                <div>
-                  <p className="font-semibold text-[#095D66]">30-Day Money Back Guarantee</p>
-                  <p className="text-sm text-gray-600">No results after completing the program? Get a full refund!</p>
+              
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Total</span>
+                  <span>{pricing.symbol}{pricing.price.toFixed(2)}</span>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Payment Form */}
+        {showPaymentForm && clientSecret && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Payment Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Elements 
+                stripe={stripePromise} 
+                options={{ 
+                  clientSecret,
+                  appearance: {
+                    theme: 'stripe',
+                    variables: {
+                      colorPrimary: '#095D66',
+                    }
+                  }
+                }}
+              >
+                <PaymentForm 
+                  customerDetails={customerDetails}
+                  appliedCoupon={appliedCoupon}
+                  pricing={pricing}
+                  onSuccess={handlePaymentSuccess}
+                />
+              </Elements>
             </CardContent>
           </Card>
+        )}
+
+        {/* Money Back Guarantee */}
+        <div className="text-center py-4">
+          <img 
+            src={moneyBackGuarantee} 
+            alt="30-day money-back guarantee" 
+            className="h-16 mx-auto mb-2"
+          />
+          <p className="text-sm text-gray-600">30-day money-back guarantee</p>
         </div>
+
+        {/* Testimonials */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg text-center">What Parents Say</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TestimonialCarousel />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
