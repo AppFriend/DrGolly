@@ -168,6 +168,16 @@ function PaymentForm({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Auto-populate billing details first name from customer details
+  useEffect(() => {
+    if (customerDetails.firstName && !billingDetails.firstName) {
+      setBillingDetails(prev => ({
+        ...prev,
+        firstName: customerDetails.firstName
+      }));
+    }
+  }, [customerDetails.firstName, billingDetails.firstName]);
+
   // Initialize Apple Pay / Payment Request
   useEffect(() => {
     if (!stripe || !elements || coursePrice <= 0) return;
