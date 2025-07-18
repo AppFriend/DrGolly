@@ -119,11 +119,11 @@ function StablePaymentForm({
             billing_details: {
               name: `${effectiveBillingDetails.firstName} ${effectiveBillingDetails.lastName}`,
               email: customerDetails.email,
-              phone: effectiveBillingDetails.phone || undefined,
+              phone: effectiveBillingDetails.phone || '',
               address: {
-                line1: effectiveBillingDetails.address || undefined,
-                city: effectiveBillingDetails.city || undefined,
-                postal_code: effectiveBillingDetails.postcode || undefined,
+                line1: effectiveBillingDetails.address || '',
+                city: effectiveBillingDetails.city || '',
+                postal_code: effectiveBillingDetails.postcode || '',
                 country: effectiveBillingDetails.country
               }
             }
