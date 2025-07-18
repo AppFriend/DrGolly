@@ -18,6 +18,8 @@ interface StablePaymentFormProps {
   billingDetails: any;
   isProcessing: boolean;
   onProcessingChange: (processing: boolean) => void;
+  finalPrice?: number;
+  discountAmount?: number;
 }
 
 // Inner payment form component that uses the stable Elements context
@@ -31,7 +33,9 @@ function StablePaymentForm({
   appliedCoupon, 
   billingDetails,
   isProcessing,
-  onProcessingChange
+  onProcessingChange,
+  finalPrice = coursePrice,
+  discountAmount = 0
 }: StablePaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -146,8 +150,9 @@ function StablePaymentForm({
     }
   };
 
-  const finalPrice = coursePrice * (appliedCoupon ? (1 - appliedCoupon.discount / 100) : 1);
-  const discount = appliedCoupon ? coursePrice - finalPrice : 0;
+  // Use the passed finalPrice and discountAmount instead of calculating here
+  const displayFinalPrice = finalPrice || coursePrice;
+  const displayDiscountAmount = discountAmount || 0;
 
   return (
     <form onSubmit={handlePayment} className="space-y-4">
@@ -169,7 +174,7 @@ function StablePaymentForm({
         <div className="bg-green-50 p-3 rounded-lg border border-green-200">
           <div className="flex justify-between items-center">
             <span className="text-green-700 font-medium">Coupon Applied: {appliedCoupon.code}</span>
-            <span className="text-green-700 font-medium">-{currencySymbol}{discount.toFixed(2)}</span>
+            <span className="text-green-700 font-medium">-{currencySymbol}{displayDiscountAmount.toFixed(2)}</span>
           </div>
         </div>
       )}
@@ -177,7 +182,7 @@ function StablePaymentForm({
       <div className="border-t pt-4">
         <div className="flex justify-between items-center mb-4">
           <span className="text-lg font-semibold">Total:</span>
-          <span className="text-2xl font-bold text-[#6B9CA3]">{currencySymbol}{finalPrice.toFixed(2)}</span>
+          <span className="text-2xl font-bold text-[#6B9CA3]">{currencySymbol}{displayFinalPrice.toFixed(2)}</span>
         </div>
         
         <Button 
@@ -191,7 +196,7 @@ function StablePaymentForm({
               Processing payment...
             </div>
           ) : (
-            `Place order • ${currencySymbol}${finalPrice.toFixed(2)}`
+            `Place order • ${currencySymbol}${displayFinalPrice.toFixed(2)}`
           )}
         </Button>
       </div>
@@ -210,7 +215,9 @@ export default function StableStripeElements({
   appliedCoupon, 
   billingDetails,
   isProcessing,
-  onProcessingChange
+  onProcessingChange,
+  finalPrice,
+  discountAmount
 }: StablePaymentFormProps) {
   const [initialClientSecret] = useState(clientSecret);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -260,6 +267,8 @@ export default function StableStripeElements({
         billingDetails={billingDetails}
         isProcessing={isProcessing}
         onProcessingChange={onProcessingChange}
+        finalPrice={finalPrice}
+        discountAmount={discountAmount}
       />
     </Elements>
   );

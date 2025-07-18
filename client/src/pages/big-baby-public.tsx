@@ -960,7 +960,7 @@ export default function BigBabyPublic() {
                 <StableStripeElements 
                   clientSecret={clientSecret}
                   onSuccess={handlePaymentSuccess}
-                  coursePrice={finalPrice}
+                  coursePrice={originalPrice}
                   currencySymbol={currencySymbol}
                   currency={currency}
                   customerDetails={customerDetails}
@@ -968,6 +968,8 @@ export default function BigBabyPublic() {
                   billingDetails={billingDetails}
                   isProcessing={isProcessing}
                   onProcessingChange={setIsProcessing}
+                  finalPrice={finalPrice}
+                  discountAmount={discountAmount}
                 />
               )}
               {!clientSecret && customerDetails.email && customerDetails.firstName && (
