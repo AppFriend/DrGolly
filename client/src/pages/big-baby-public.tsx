@@ -149,6 +149,7 @@ function PaymentForm({
   const [activeTab, setActiveTab] = useState("card");
   const [showCardForm, setShowCardForm] = useState(false);
   const [linkEmail, setLinkEmail] = useState('');
+  const [elementMounted, setElementMounted] = useState(false);
   const [billingDetails, setBillingDetails] = useState({
     firstName: '',
     lastName: '',
@@ -278,12 +279,17 @@ function PaymentForm({
   const handleCardPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements || isProcessing || !clientSecret || !customerDetails.email) {
-      console.error('Missing required components:', { stripe: !!stripe, elements: !!elements, clientSecret: !!clientSecret, email: !!customerDetails.email });
+      console.error('Missing required components:', { 
+        stripe: !!stripe, 
+        elements: !!elements, 
+        clientSecret: !!clientSecret, 
+        email: !!customerDetails.email 
+      });
       return;
     }
 
-    // Check if PaymentElement is ready before proceeding
-    if (!isElementReady) {
+    // Enhanced readiness check
+    if (!isElementReady || !elementMounted) {
       toast({
         title: "Payment Loading",
         description: "Please wait for the payment form to finish loading.",
@@ -303,14 +309,28 @@ function PaymentForm({
         throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       }
 
-      // Additional check to ensure elements are mounted with timeout
+      // Multiple checks to ensure elements are properly mounted
       const paymentElement = elements.getElement('payment');
       if (!paymentElement) {
         throw new Error('Payment form is not ready. Please refresh the page and try again.');
       }
 
-      // Wait a bit to ensure element is fully mounted
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait longer to ensure element is fully mounted and ready
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Verify element is still mounted after timeout
+      const verifyElement = elements.getElement('payment');
+      if (!verifyElement) {
+        throw new Error('Payment form has become unmounted during processing. Please refresh the page and try again.');
+      }
+
+      // Log element state for debugging
+      console.log('PaymentElement ready state:', {
+        isElementReady,
+        elementMounted,
+        hasPaymentElement: !!paymentElement,
+        hasVerifyElement: !!verifyElement
+      });
 
       // Submit the elements to validate and collect payment method
       const { error: submitError } = await elements.submit();
@@ -319,13 +339,13 @@ function PaymentForm({
         throw submitError;
       }
 
-      // Double check that elements are still mounted before confirmation
-      const elementsCheck = elements.getElement('payment');
-      if (!elementsCheck) {
-        throw new Error('Payment form has become unmounted. Please refresh the page and try again.');
+      // Final check before confirmation
+      const finalCheck = elements.getElement('payment');
+      if (!finalCheck) {
+        throw new Error('Payment form has become unmounted during submission. Please refresh the page and try again.');
       }
 
-      // Confirm payment with additional error handling
+      // Confirm payment with comprehensive error handling
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -349,14 +369,27 @@ function PaymentForm({
 
       if (error) {
         console.error('Stripe error:', error);
-        // If Link payment fails, provide helpful message
+        // Enhanced error handling for different scenarios
         if (error.code === 'link_authentication_required') {
           throw new Error('Link authentication required. Please use the card form below or try a different payment method.');
+        }
+        if (error.code === 'card_declined') {
+          throw new Error('Your card was declined. Please try a different payment method.');
+        }
+        if (error.code === 'incorrect_cvc') {
+          throw new Error('Your card security code is incorrect. Please check and try again.');
+        }
+        if (error.code === 'expired_card') {
+          throw new Error('Your card has expired. Please try a different payment method.');
+        }
+        if (error.type === 'validation_error') {
+          throw new Error('Please check your payment details and try again.');
         }
         throw error;
       }
 
       if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('Payment successful, creating account...');
         await handleAccountCreation(paymentIntent.id);
         onSuccess(paymentIntent.id);
       } else {
@@ -421,12 +454,13 @@ function PaymentForm({
             {customerDetails.email && clientSecret ? (
               <div className="space-y-3">
                 <PaymentElement 
-                  key={customerDetails.email} // Force re-render when email changes
+                  key={`payment-${customerDetails.email}-${clientSecret.slice(-8)}`} // Stable key based on email and client secret
                   options={{
                     layout: 'accordion',
                     defaultValues: {
                       billingDetails: {
                         email: customerDetails.email,
+                        name: `${customerDetails.firstName} ${billingDetails.lastName}`.trim()
                       }
                     },
                     paymentMethodOrder: ['link', 'card'],
@@ -459,15 +493,25 @@ function PaymentForm({
                     }
                   }}
                   onReady={() => {
-                    console.log('PaymentElement is ready');
+                    console.log('PaymentElement is ready and mounted');
                     setIsElementReady(true);
+                    setElementMounted(true);
                   }}
                   onLoaderStart={() => {
-                    console.log('PaymentElement is loading');
+                    console.log('PaymentElement loading started');
                     setIsElementReady(false);
+                    setElementMounted(false);
                   }}
                   onChange={(event) => {
                     console.log('PaymentElement changed:', event.complete);
+                    if (event.complete) {
+                      setIsElementReady(true);
+                    }
+                  }}
+                  onLoadError={(event) => {
+                    console.error('PaymentElement load error:', event.error);
+                    setIsElementReady(false);
+                    setElementMounted(false);
                   }}
                 />
               </div>
@@ -640,7 +684,14 @@ export default function BigBabyPublic() {
   const createPaymentIntent = async (skipCoupon = false) => {
     if (!customerDetails.email || !customerDetails.firstName) return;
     
+    // Don't create new payment intent if one already exists
+    if (clientSecret) {
+      console.log('Payment intent already exists, skipping creation');
+      return;
+    }
+    
     try {
+      console.log('Creating payment intent for:', customerDetails.email);
       const response = await fetch('/api/create-big-baby-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -652,7 +703,10 @@ export default function BigBabyPublic() {
 
       const data = await response.json();
       if (response.ok) {
+        console.log('Payment intent created successfully');
         setClientSecret(data.clientSecret);
+      } else {
+        console.error('Failed to create payment intent:', data.message);
       }
     } catch (error) {
       console.error('Failed to create payment intent:', error);
@@ -665,6 +719,26 @@ export default function BigBabyPublic() {
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     try {
+      console.log('Payment success handler called with:', paymentIntentId);
+      
+      // Verify payment intent on both dev and production
+      const verificationResponse = await fetch('/api/verify-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId })
+      });
+      
+      const verification = await verificationResponse.json();
+      console.log('Payment verification result:', verification);
+      
+      if (!verificationResponse.ok) {
+        throw new Error(verification.error || 'Payment verification failed');
+      }
+      
+      if (!verification.confirmed) {
+        throw new Error('Payment was not confirmed by Stripe');
+      }
+      
       // Track Facebook Pixel purchase event
       if (typeof window !== 'undefined' && window.fbq) {
         window.fbq('track', 'Purchase', {
@@ -677,13 +751,23 @@ export default function BigBabyPublic() {
 
       toast({
         title: "Payment Successful!",
-        description: "Your account has been created and you're now logged in.",
+        description: verification.coursePurchaseCreated 
+          ? "Your account has been created and you're now logged in."
+          : "Payment processed successfully. Your account is being set up.",
       });
+
+      // Add a small delay to ensure all backend processing completes
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Redirect to home page
       setLocation("/");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Post-payment error:', error);
+      toast({
+        title: "Payment Processing Error",
+        description: error.message || "There was an issue processing your payment. Please contact support.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -822,9 +906,25 @@ export default function BigBabyPublic() {
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               {clientSecret && (
                 <Elements 
-                  key={`${customerDetails.email}-${customerDetails.firstName}`} 
+                  key={`elements-${clientSecret.slice(-12)}`} // Use client secret suffix as stable key
                   stripe={stripePromise} 
-                  options={{ clientSecret }}
+                  options={{ 
+                    clientSecret,
+                    // Enhanced options for better stability
+                    appearance: {
+                      theme: 'stripe',
+                      variables: {
+                        colorPrimary: '#095D66',
+                        colorBackground: '#ffffff',
+                        colorText: '#262626',
+                        colorDanger: '#dc2626',
+                        fontFamily: 'system-ui, sans-serif',
+                        borderRadius: '8px',
+                        spacingUnit: '6px'
+                      }
+                    },
+                    loader: 'auto'
+                  }}
                 >
                   <PaymentForm
                     onSuccess={handlePaymentSuccess}
@@ -839,9 +939,15 @@ export default function BigBabyPublic() {
               )}
               {!clientSecret && customerDetails.email && customerDetails.firstName && (
                 <div className="text-center py-4">
+                  <div className="animate-spin w-6 h-6 border-2 border-[#095D66] border-t-transparent rounded-full mx-auto mb-2"></div>
                   <p className="text-sm text-gray-600">Loading payment options...</p>
                 </div>
               )}
+              {!customerDetails.email || !customerDetails.firstName ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-600">Please complete your details above to see payment options</p>
+                </div>
+              ) : null}
             </div>
           </div>
 

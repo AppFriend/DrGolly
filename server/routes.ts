@@ -4963,6 +4963,127 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Payment verification endpoint for dev and production testing
+  app.post('/api/verify-payment-intent', async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent ID is required" });
+      }
+      
+      console.log('Verifying payment intent:', paymentIntentId);
+      
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      const verification = {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        customer: paymentIntent.customer,
+        metadata: paymentIntent.metadata,
+        created: paymentIntent.created,
+        confirmed: paymentIntent.status === 'succeeded',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      };
+      
+      // Check if payment was successful
+      if (paymentIntent.status === 'succeeded') {
+        // Verify that the course purchase was created
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        const coursePurchases = await sql`
+          SELECT * FROM course_purchases 
+          WHERE stripe_payment_intent_id = ${paymentIntentId}
+        `;
+        
+        verification.coursePurchaseCreated = coursePurchases.length > 0;
+        verification.coursePurchaseCount = coursePurchases.length;
+        
+        if (coursePurchases.length > 0) {
+          verification.coursePurchaseDetails = coursePurchases[0];
+        }
+        
+        // Check if user account was created or updated
+        const customerEmail = paymentIntent.metadata.customerEmail;
+        if (customerEmail) {
+          const users = await sql`
+            SELECT id, email, first_name, last_name, created_at 
+            FROM users 
+            WHERE email = ${customerEmail}
+          `;
+          
+          verification.userAccountExists = users.length > 0;
+          if (users.length > 0) {
+            verification.userAccountDetails = users[0];
+          }
+        }
+        
+        console.log('Payment verification successful:', verification);
+        res.json(verification);
+      } else {
+        console.log('Payment verification failed - not succeeded:', verification);
+        res.status(400).json({
+          ...verification,
+          error: `Payment status is ${paymentIntent.status}, expected 'succeeded'`
+        });
+      }
+    } catch (error: any) {
+      console.error('Payment verification error:', error);
+      res.status(500).json({ 
+        message: "Payment verification failed",
+        error: error.message,
+        paymentIntentId: req.body.paymentIntentId,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Test endpoint to verify payment verification system is working
+  app.post('/api/test-payment-verification', async (req, res) => {
+    try {
+      const { testPaymentIntentId } = req.body;
+      
+      if (!testPaymentIntentId) {
+        return res.status(400).json({ message: "Test payment intent ID is required" });
+      }
+      
+      console.log('Testing payment verification system with:', testPaymentIntentId);
+      
+      // Call our own verification endpoint
+      const verificationUrl = `${req.protocol}://${req.get('host')}/api/verify-payment-intent`;
+      const verificationResponse = await fetch(verificationUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: testPaymentIntentId })
+      });
+      
+      const verification = await verificationResponse.json();
+      
+      res.json({
+        success: true,
+        message: "Payment verification endpoint test completed",
+        testPaymentIntentId: testPaymentIntentId,
+        verificationEndpointStatus: verificationResponse.status,
+        verificationResult: verification,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } catch (error: any) {
+      console.error('Payment verification test error:', error);
+      res.status(500).json({ 
+        message: "Payment verification test failed",
+        error: error.message,
+        testPaymentIntentId: req.body.testPaymentIntentId,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Stripe webhook endpoint for payment completion
   app.post('/api/stripe-webhook', async (req, res) => {
     try {
