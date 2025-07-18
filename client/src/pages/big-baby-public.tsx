@@ -837,17 +837,53 @@ export default function BigBabyPublic() {
     }
   };
 
-  // Create payment intent when customer details are ready or when coupon changes
-  useEffect(() => {
-    if (customerDetails.email && customerDetails.firstName) {
-      // Reset client secret when coupon changes to force recreation
-      if (clientSecret) {
-        setClientSecret("");
+  // Create payment intent and redirect to checkout - eliminates loading friction
+  const handleCreatePaymentAndPay = async () => {
+    if (!customerDetails.email || !customerDetails.firstName) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      console.log('Creating payment intent for checkout:', customerDetails.email);
+      console.log('Applied coupon:', appliedCoupon?.id || 'none');
+      
+      const response = await fetch('/api/create-big-baby-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerDetails,
+          couponId: appliedCoupon?.id
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log('Payment intent created successfully');
+        console.log('Final amount:', data.finalAmount);
+        console.log('Discount amount:', data.discountAmount);
+        console.log('Coupon applied:', data.couponApplied?.name || 'none');
+        
+        // Set client secret and show Stripe Elements
+        setClientSecret(data.clientSecret);
+      } else {
+        console.error('Failed to create payment intent:', data.message);
+        toast({
+          title: "Payment Error",
+          description: data.message || "Failed to initialize payment. Please try again.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
       }
-      // Create payment intent with current coupon state
-      createPaymentIntent(false);
+    } catch (error) {
+      console.error('Failed to create payment intent:', error);
+      toast({
+        title: "Payment Error", 
+        description: "Failed to initialize payment. Please try again.",
+        variant: "destructive",
+      });
+      setIsProcessing(false);
     }
-  }, [customerDetails.email, customerDetails.firstName, appliedCoupon]);
+  };
 
   const canProceedToPayment = customerDetails.email && customerDetails.firstName;
   
@@ -972,10 +1008,12 @@ export default function BigBabyPublic() {
               </div>
             </div>
 
-            {/* Payment Section - Always show */}
+            {/* Payment Section - Always visible */}
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
-              {clientSecret && (
+              
+              {/* Show Stripe Elements if clientSecret exists, otherwise show payment button */}
+              {clientSecret ? (
                 <StableStripeElements 
                   clientSecret={clientSecret}
                   onSuccess={handlePaymentSuccess}
@@ -990,18 +1028,40 @@ export default function BigBabyPublic() {
                   finalPrice={finalPrice}
                   discountAmount={discountAmount}
                 />
-              )}
-              {!clientSecret && customerDetails.email && customerDetails.firstName && (
-                <div className="text-center py-4">
-                  <div className="animate-spin w-6 h-6 border-2 border-[#095D66] border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-600">Loading payment options...</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                        <CreditCard className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="font-medium">Card Payment</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">Secure payment with Apple Pay, Google Pay, or any card</p>
+                    
+                    <button
+                      onClick={handleCreatePaymentAndPay}
+                      disabled={!customerDetails.email || !customerDetails.firstName || isProcessing}
+                      className="w-full bg-[#095D66] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#074850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isProcessing ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        `Pay ${currencySymbol}${finalPrice.toFixed(2)} now`
+                      )}
+                    </button>
+                  </div>
+                  
+                  {(!customerDetails.email || !customerDetails.firstName) && (
+                    <div className="text-center py-2">
+                      <p className="text-sm text-gray-600">Please complete your details above to continue</p>
+                    </div>
+                  )}
                 </div>
               )}
-              {!customerDetails.email || !customerDetails.firstName ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-600">Please complete your details above to see payment options</p>
-                </div>
-              ) : null}
             </div>
           </div>
 
