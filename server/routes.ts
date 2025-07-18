@@ -4839,9 +4839,12 @@ Please contact the customer to confirm the appointment.
         return res.status(400).json({ message: "Invalid email address format" });
       }
       
-      // Get regional pricing
-      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      // Get regional pricing with proper IP detection
+      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
+      console.log('Payment intent creation - User IP:', userIP);
+      
       const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      console.log('Payment intent creation - Regional pricing:', regionalPricing);
       
       const baseAmount = regionalPricing.coursePrice;
       const currency = regionalPricing.currency;
@@ -6715,8 +6718,12 @@ Please contact the customer to confirm the appointment.
   // Regional pricing routes
   app.get('/api/regional-pricing', async (req, res) => {
     try {
-      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      // Get IP from various sources, prioritizing X-Forwarded-For for production
+      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
+      console.log('Regional pricing request from IP:', userIP);
+      
       const pricing = await regionalPricingService.getPricingForIP(userIP);
+      console.log('Regional pricing result:', pricing);
       res.json(pricing);
     } catch (error) {
       console.error('Error getting regional pricing:', error);
@@ -9879,7 +9886,8 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Get regional pricing for products
+  // Get regional pricing for products (duplicate endpoint - remove this one)
+  /*
   app.get('/api/regional-pricing', async (req, res) => {
     try {
       const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
@@ -9890,6 +9898,7 @@ Please contact the customer to confirm the appointment.
       res.status(500).json({ message: "Failed to fetch regional pricing" });
     }
   });
+  */
 
   // Book purchase endpoints
   app.post('/api/create-book-payment', async (req, res) => {
