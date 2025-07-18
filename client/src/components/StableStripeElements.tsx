@@ -82,13 +82,16 @@ function StablePaymentForm({
     onProcessingChange(true);
     
     try {
-      // Ensure all required billing details are present
-      const requiredFields = ['firstName', 'lastName'];
-      const missingFields = requiredFields.filter(field => !billingDetails[field]);
-      
-      if (missingFields.length > 0) {
-        throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
-      }
+      // Use customer details for billing if billing details are not provided
+      const effectiveBillingDetails = {
+        firstName: billingDetails.firstName || customerDetails.firstName || '',
+        lastName: billingDetails.lastName || 'Customer', // Default last name since it's required by Stripe
+        phone: billingDetails.phone || '',
+        address: billingDetails.address || '',
+        city: billingDetails.city || '',
+        postcode: billingDetails.postcode || '',
+        country: billingDetails.country || 'AU'
+      };
 
       console.log('Starting payment confirmation process...');
       
@@ -114,14 +117,14 @@ function StablePaymentForm({
           return_url: `${window.location.origin}/big-baby-public`,
           payment_method_data: {
             billing_details: {
-              name: `${billingDetails.firstName} ${billingDetails.lastName}`,
+              name: `${effectiveBillingDetails.firstName} ${effectiveBillingDetails.lastName}`,
               email: customerDetails.email,
-              phone: billingDetails.phone || undefined,
+              phone: effectiveBillingDetails.phone || undefined,
               address: {
-                line1: billingDetails.address || undefined,
-                city: billingDetails.city || undefined,
-                postal_code: billingDetails.postcode || undefined,
-                country: billingDetails.country || 'AU'
+                line1: effectiveBillingDetails.address || undefined,
+                city: effectiveBillingDetails.city || undefined,
+                postal_code: effectiveBillingDetails.postcode || undefined,
+                country: effectiveBillingDetails.country
               }
             }
           }
