@@ -1996,6 +1996,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment intent verification endpoint
+  app.post('/api/verify-payment-intent', async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent ID is required" });
+      }
+      
+      console.log("Verifying payment intent:", paymentIntentId);
+      
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      const verificationData = {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        customer: paymentIntent.customer,
+        metadata: paymentIntent.metadata,
+        created: paymentIntent.created,
+        confirmed: paymentIntent.status === 'succeeded',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV
+      };
+      
+      console.log("Payment verification failed - not succeeded:", verificationData);
+      
+      // For testing purposes, return the data even if not succeeded
+      if (paymentIntent.status === 'succeeded') {
+        res.json(verificationData);
+      } else {
+        res.status(400).json(verificationData);
+      }
+    } catch (error) {
+      console.error("Error verifying payment intent:", error);
+      res.status(500).json({ message: "Payment verification failed" });
+    }
+  });
+
   // Course routes
   app.get('/api/courses', async (req, res) => {
     try {
