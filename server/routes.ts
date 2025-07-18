@@ -881,7 +881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Enhanced login endpoint for migrated users
+  // Enhanced login endpoint for migrated users - seamless temporary password handling
   app.post('/api/auth/login', async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -898,6 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let isValidPassword = false;
       let requiresPasswordSetup = false;
+      let isUsingTemporaryPassword = false;
       
       // Check if user has a permanent password set
       if (user.hasSetPassword && user.passwordHash) {
@@ -910,6 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (tempAuthResult) {
             isValidPassword = true;
             requiresPasswordSetup = true;
+            isUsingTemporaryPassword = true;
           }
         } catch (tempAuthError) {
           console.log('Temporary password authentication failed:', tempAuthError);
@@ -937,6 +939,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.passport = { user: sessionData };
       req.session.userId = user.id; // Also store userId directly for easier access
       
+      // If using temporary password, store it in session for password setup
+      if (isUsingTemporaryPassword) {
+        req.session.tempPassword = password;
+      }
+      
       // Force session save before sending response
       req.session.save((err) => {
         if (err) {
@@ -956,7 +963,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastName: user.lastName
           },
           requiresPasswordSetup: requiresPasswordSetup,
-          showPasswordSetupBanner: requiresPasswordSetup
+          showPasswordSetupBanner: requiresPasswordSetup,
+          isUsingTemporaryPassword: isUsingTemporaryPassword
         });
       });
 
@@ -7527,7 +7535,7 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Set permanent password after first-time login
+  // Set permanent password after first-time login - enhanced for migrated users
   app.post('/api/auth/set-password', async (req, res) => {
     try {
       const { userId, newPassword, tempPassword } = req.body;
@@ -7555,7 +7563,7 @@ Please contact the customer to confirm the appointment.
       // Hash the new password
       const passwordHash = await AuthUtils.hashPassword(newPassword);
       
-      // Update user with permanent password
+      // Update user with permanent password and mark migration as complete
       await storage.setUserPassword(userId, passwordHash);
       
       // Mark temporary password as used if one was provided
@@ -7603,6 +7611,60 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error setting password:', error);
       res.status(500).json({ message: 'Failed to set password' });
+    }
+  });
+
+  // Create test migrated user for password setup banner demo
+  app.post('/api/admin/create-test-migrated-user', async (req, res) => {
+    try {
+      const testUserId = `migrated_user_${Date.now()}`;
+      const testEmail = "testuser@example.com";
+      const tempPassword = "temp123456";
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Check if user exists
+      const existingUser = await sql`SELECT * FROM users WHERE email = ${testEmail} LIMIT 1`;
+      
+      if (existingUser.length > 0) {
+        // Delete existing user for clean test
+        await sql`DELETE FROM users WHERE email = ${testEmail}`;
+        await sql`DELETE FROM temporary_passwords WHERE user_id = ${existingUser[0].id}`;
+      }
+      
+      // Create migrated user
+      const [user] = await sql`
+        INSERT INTO users (
+          id, email, first_name, last_name, migrated, has_set_password, 
+          is_first_login, password_set, subscription_tier, subscription_status, 
+          created_at, updated_at
+        ) VALUES (
+          ${testUserId}, ${testEmail}, 'Test', 'User', true, false, 
+          true, 'no', 'free', 'active', NOW(), NOW()
+        ) RETURNING *
+      `;
+      
+      // Create temporary password
+      await sql`
+        INSERT INTO temporary_passwords (
+          user_id, temp_password, is_used, expires_at, created_at
+        ) VALUES (
+          ${testUserId}, ${tempPassword}, false, 
+          NOW() + INTERVAL '90 days', NOW()
+        )
+      `;
+      
+      res.json({ 
+        message: 'Test migrated user created successfully',
+        email: testEmail,
+        tempPassword: tempPassword,
+        userId: testUserId,
+        instructions: `Login with email: ${testEmail} and password: ${tempPassword} to see the password setup banner.`
+      });
+    } catch (error) {
+      console.error('Error creating test migrated user:', error);
+      res.status(500).json({ message: 'Failed to create test user' });
     }
   });
 

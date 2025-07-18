@@ -3016,6 +3016,7 @@ export class DatabaseStorage implements IStorage {
         hasSetPassword: true,
         isFirstLogin: false,
         lastPasswordChange: new Date(),
+        passwordSet: "yes", // Track migration completion
       })
       .where(eq(users.id, userId));
   }
