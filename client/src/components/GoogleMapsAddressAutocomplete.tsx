@@ -134,7 +134,7 @@ export default function GoogleMapsAddressAutocomplete({
                 postcode = component.long_name;
               }
               if (types.includes('country')) {
-                country = component.long_name;
+                country = component.short_name; // Use short_name for 2-character country code (AU, US, etc.)
               }
             });
             
