@@ -159,7 +159,7 @@ function PaymentForm({
     lastName: '',
     phone: '',
     address: '',
-    country: 'Australia',
+    country: 'AU', // Use 2-character ISO code instead of 'Australia'
     city: '',
     postcode: ''
   });
