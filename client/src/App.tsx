@@ -50,6 +50,7 @@ import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
 import TestCheckout from "@/pages/test-checkout";
+import ProfileCompletion from "@/pages/profile-completion";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -212,6 +213,7 @@ function AuthenticatedApp() {
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
+        <Route path="/profile-completion" component={ProfileCompletion} />
         <Route path="/auth-test" component={AuthTestPage} />
         <Route path="/test-checkout" component={TestCheckout} />
         <Route component={NotFound} />
