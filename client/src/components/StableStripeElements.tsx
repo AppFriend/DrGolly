@@ -145,7 +145,7 @@ function StablePaymentForm({
 
       if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded:', paymentIntent.id);
-        onSuccess(paymentIntent);
+        onSuccess(paymentIntent.id);
       }
     } catch (error: any) {
       console.error('Payment processing error:', error);
