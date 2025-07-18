@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { ArrowLeft, Check, Shield, CreditCard, Smartphone, Info, Star, Users, Clock, Award, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartphone, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { CouponInput } from "@/components/CouponInput";
 import { apiRequest } from "@/lib/queryClient";
-import { useQuery } from "@tanstack/react-query";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import moneyBackGuarantee from "@assets/money-back-guarantee.png";
@@ -19,341 +18,204 @@ import moneyBackGuarantee from "@assets/money-back-guarantee.png";
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
-// Testimonial data
-const testimonials = [
-  {
-    name: "Kristiana E",
-    review: "Dr Golly's program has helped me get my baby to have much more quality and long lasting sleeps. I'm so happy that I stumbled across this program especially as a new parent.",
-    program: "Big baby sleep program"
-  },
-  {
-    name: "Sigourney S", 
-    review: "Toddler sleep felt impossible, bedtime battles, night wakes, early starts... we were all exhausted. The Dr Golly Toddler Program gave us the tools (and confidence) to create calm, consistent routines that actually work.",
-    program: "Toddler sleep program"
-  },
-  {
-    name: "Sarah M",
-    review: "Within 3 days of implementing the techniques, our 6-month-old was sleeping through the night. The program is clear, evidence-based, and actually works!",
-    program: "Big baby sleep program"
-  },
-  {
-    name: "Jennifer L",
-    review: "I was skeptical at first, but Dr Golly's approach is so gentle and effective. My toddler now goes to bed without fights and sleeps 11 hours straight!",
-    program: "Toddler sleep program"
-  }
-];
+// Course data
+const COURSE_DATA = {
+  id: 6,
+  title: "Big baby sleep program",
+  description: "Complete sleep solution for babies 4-8 months",
+  basePrice: 120,
+  features: [
+    "Evidence-based sleep strategies",
+    "Step-by-step implementation guide", 
+    "Troubleshooting common issues",
+    "Gentle, responsive methods",
+    "Lifetime access to materials"
+  ]
+};
 
-// TestimonialCarousel Component
-function TestimonialCarousel() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % testimonials.length);
-    }, 4000); // Change every 4 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <div className="relative overflow-hidden">
-        <div 
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-        >
-          {testimonials.map((testimonial, index) => (
-            <div key={index} className="w-full flex-shrink-0 border-b pb-4">
-              <div className="flex items-center space-x-1 mb-2">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <p className="text-gray-700 mb-2 text-sm leading-relaxed">"{testimonial.review}"</p>
-              <p className="text-sm font-medium text-gray-900">{testimonial.name}</p>
-              <p className="text-xs text-gray-500">{testimonial.program}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Progress dots */}
-      <div className="flex justify-center space-x-2">
-        {testimonials.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-2 h-2 rounded-full transition-colors ${
-              index === currentIndex ? 'bg-[#095D66]' : 'bg-gray-300'
-            }`}
-            aria-label={`Go to testimonial ${index + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
+// Customer details interface
+interface CustomerDetails {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  dueDate: string;
 }
 
-// Payment Form Component
-function PaymentForm({ 
-  customerDetails, 
-  appliedCoupon, 
-  pricing, 
-  onSuccess 
-}: {
-  customerDetails: any;
-  appliedCoupon: any;
-  pricing: { price: number; currency: string; symbol: string };
-  onSuccess: (paymentIntentId: string) => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isElementReady, setIsElementReady] = useState(false);
-  const { toast } = useToast();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!stripe || !elements || isProcessing || !isElementReady) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      // Confirm payment
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/big-baby-checkout`,
-        },
-        redirect: 'if_required'
-      });
-
-      if (error) {
-        console.error('Payment error:', error);
-        toast({
-          title: "Payment Failed",
-          description: error.message || "There was an issue processing your payment",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // Complete the purchase
-        const response = await apiRequest('POST', '/api/big-baby-complete-purchase', {
-          paymentIntentId: paymentIntent.id,
-          customerDetails,
-          courseId: 6, // Big Baby course ID
-          finalPrice: pricing.price,
-          currency: pricing.currency,
-          appliedCoupon
-        });
-
-        if (response.ok) {
-          onSuccess(paymentIntent.id);
-        } else {
-          throw new Error('Failed to complete purchase');
-        }
-      }
-    } catch (error: any) {
-      console.error('Payment processing error:', error);
-      toast({
-        title: "Payment Error",
-        description: error.message || "There was an issue processing your payment",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        <PaymentElement 
-          onReady={() => setIsElementReady(true)}
-          options={{
-            layout: 'tabs',
-            defaultValues: {
-              billingDetails: {
-                name: `${customerDetails.firstName} ${customerDetails.lastName}`,
-                email: customerDetails.email
-              }
-            }
-          }}
-        />
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Shield className="h-4 w-4" />
-          <span>Your payment information is secure and encrypted</span>
-        </div>
-
-        <Button 
-          type="submit"
-          disabled={!stripe || !elements || isProcessing || !isElementReady}
-          className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg h-12"
-        >
-          {isProcessing ? (
-            <div className="flex items-center justify-center space-x-2">
-              <img src={paymentLoaderGif} alt="Processing" className="h-6 w-6" />
-              <span>Processing...</span>
-            </div>
-          ) : (
-            `Pay ${pricing.symbol}${pricing.price.toFixed(2)}`
-          )}
-        </Button>
-      </div>
-    </form>
-  );
+// Coupon interface
+interface Coupon {
+  id: string;
+  name: string;
+  percent_off?: number;
+  amount_off?: number;
+  currency?: string;
 }
 
+// Main checkout component
 export default function BigBabyCheckout() {
-  const [location, setLocation] = useLocation();
-  const [customerDetails, setCustomerDetails] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    dueDate: ''
-  });
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
-  const [clientSecret, setClientSecret] = useState<string>('');
-  const [pricing, setPricing] = useState({ price: 120, currency: 'USD', symbol: '$' });
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Fetch authentic Big Baby product information from database
-  const { data: productInfo, isLoading: isProductLoading } = useQuery({
-    queryKey: ['/api/big-baby-product'],
-    retry: false,
+  // State management
+  const [customerDetails, setCustomerDetails] = useState<CustomerDetails>({
+    email: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    dueDate: ""
+  });
+  
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [clientSecret, setClientSecret] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Fetch regional pricing
+  const { data: regionalPricing } = useQuery({
+    queryKey: ['/api/regional-pricing'],
+    staleTime: 300000 // 5 minutes
   });
 
-  // Validate form to show payment section
-  const isFormValid = customerDetails.firstName && customerDetails.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerDetails.email);
+  const currency = regionalPricing?.currency || 'USD';
+  const currencySymbol = currency === 'EUR' ? '€' : '$';
+  const originalPrice = regionalPricing?.coursePrice || COURSE_DATA.basePrice;
 
-  // Create payment intent when form is valid
-  useEffect(() => {
-    if (isFormValid) {
-      createPaymentIntent();
-    }
-  }, [customerDetails, appliedCoupon, isFormValid]);
+  // Calculate final price with coupon
+  const finalPrice = appliedCoupon 
+    ? appliedCoupon.amount_off 
+      ? Math.max(0, originalPrice - (appliedCoupon.amount_off / 100))
+      : appliedCoupon.percent_off
+      ? Math.max(0, originalPrice * (1 - appliedCoupon.percent_off / 100))
+      : originalPrice
+    : originalPrice;
 
+  const discountAmount = originalPrice - finalPrice;
+
+  // Create payment intent
   const createPaymentIntent = async () => {
+    if (!customerDetails.email || !customerDetails.firstName) return;
+
     try {
       const response = await apiRequest('POST', '/api/create-big-baby-payment-intent', {
         customerDetails,
-        couponId: appliedCoupon?.id || appliedCoupon?.code,
-        courseId: 6 // Big Baby course ID
+        couponId: appliedCoupon?.id || null,
+        courseId: COURSE_DATA.id
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setClientSecret(data.clientSecret);
-        setPricing({
-          price: data.amount,
-          currency: data.currency,
-          symbol: data.currency === 'AUD' ? '$' : data.currency === 'USD' ? '$' : '€'
-        });
-        setShowPaymentForm(true);
-      } else {
-        throw new Error('Failed to create payment intent');
+      if (response.clientSecret) {
+        setClientSecret(response.clientSecret);
       }
-    } catch (error: any) {
-      console.error('Payment intent creation failed:', error);
+    } catch (error) {
+      console.error('Failed to create payment intent:', error);
       toast({
-        title: "Payment Setup Error",
-        description: error.message || "Failed to initialize payment",
-        variant: "destructive",
+        title: "Payment Setup Failed",
+        description: "Unable to initialize payment. Please try again.",
+        variant: "destructive"
       });
     }
   };
 
-  const handlePaymentSuccess = async (paymentIntentId: string) => {
-    // Track Facebook Pixel purchase event
-    if (typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'Purchase', {
-        value: pricing.price,
-        currency: pricing.currency,
-        content_ids: [6], // Big Baby course ID
-        content_type: 'product',
-      });
-    }
+  // Validate coupon
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) return;
 
+    setIsValidatingCoupon(true);
+    try {
+      const response = await apiRequest('POST', '/api/validate-coupon', {
+        couponCode: couponCode.trim()
+      });
+
+      if (response.valid) {
+        setAppliedCoupon(response.coupon);
+        toast({
+          title: "Coupon Applied!",
+          description: `${response.coupon.name} has been applied to your order.`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Invalid Coupon",
+          description: "This coupon code is not valid or has expired.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Coupon Validation Failed",
+        description: "Unable to validate coupon. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  // Remove coupon
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
     toast({
-      title: "Payment Successful!",
-      description: "Your account has been created and you're now logged in.",
+      title: "Coupon Removed",
+      description: "Coupon has been removed from your order.",
+      variant: "default"
     });
-
-    // Redirect to home page
-    setLocation("/");
   };
+
+  // Create payment intent when customer details are ready
+  useEffect(() => {
+    if (customerDetails.email && customerDetails.firstName) {
+      createPaymentIntent();
+    }
+  }, [customerDetails.email, customerDetails.firstName, appliedCoupon]);
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation("/")}
-              className="p-2"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <img 
-              src={drGollyLogo} 
-              alt="Dr Golly Sleep" 
-              className="h-8"
-            />
-            <div className="w-9" />
-          </div>
+      <div className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation('/')}
+            className="p-1"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <img src={drGollyLogo} alt="Dr. Golly" className="h-8 w-auto" />
+          <div className="w-8" />
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
-        {/* Course Header */}
-        {isProductLoading ? (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-lg bg-gray-200 animate-pulse" />
-              <div className="flex-1">
-                <div className="h-5 bg-gray-200 rounded animate-pulse mb-2" />
-                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
-              </div>
+        {/* Course Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-[#095D66]" />
+              {COURSE_DATA.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">{COURSE_DATA.description}</p>
+            <div className="space-y-2">
+              {COURSE_DATA.features.map((feature, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span className="text-sm">{feature}</span>
+                </div>
+              ))}
             </div>
-          </div>
-        ) : productInfo ? (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center space-x-4">
-              <img 
-                src={productInfo.imageUrl} 
-                alt={productInfo.title}
-                className="w-16 h-16 rounded-lg object-cover"
-              />
-              <div className="flex-1">
-                <h1 className="text-lg font-semibold text-gray-900">{productInfo.title}</h1>
-                <p className="text-sm text-gray-600">{productInfo.detailedDescription}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="text-center text-gray-500">
-              Unable to load product information
-            </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
 
         {/* Customer Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Your Details</CardTitle>
+            <CardTitle>Customer Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -364,11 +226,10 @@ export default function BigBabyCheckout() {
                   value={customerDetails.firstName}
                   onChange={(e) => setCustomerDetails(prev => ({ ...prev, firstName: e.target.value }))}
                   placeholder="Enter first name"
-                  required
                 />
               </div>
               <div>
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">Last Name *</Label>
                 <Input
                   id="lastName"
                   value={customerDetails.lastName}
@@ -377,7 +238,6 @@ export default function BigBabyCheckout() {
                 />
               </div>
             </div>
-            
             <div>
               <Label htmlFor="email">Email Address *</Label>
               <Input
@@ -386,12 +246,20 @@ export default function BigBabyCheckout() {
                 value={customerDetails.email}
                 onChange={(e) => setCustomerDetails(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="Enter email address"
-                required
               />
             </div>
-            
             <div>
-              <Label htmlFor="dueDate">Due Date (Optional)</Label>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={customerDetails.phone}
+                onChange={(e) => setCustomerDetails(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="Enter phone number"
+              />
+            </div>
+            <div>
+              <Label htmlFor="dueDate">Baby's Due Date (Optional)</Label>
               <Input
                 id="dueDate"
                 type="date"
@@ -402,38 +270,75 @@ export default function BigBabyCheckout() {
           </CardContent>
         </Card>
 
-        {/* Coupon Input */}
+        {/* Coupon Code */}
         <Card>
-          <CardContent className="pt-6">
-            <CouponInput
-              onCouponApplied={(coupon) => setAppliedCoupon(coupon)}
-              onCouponRemoved={() => setAppliedCoupon(null)}
-            />
+          <CardHeader>
+            <CardTitle>Coupon Code</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!appliedCoupon ? (
+              <div className="flex gap-2">
+                <Input
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Enter coupon code"
+                  onKeyPress={(e) => e.key === 'Enter' && validateCoupon()}
+                />
+                <Button
+                  onClick={validateCoupon}
+                  disabled={!couponCode.trim() || isValidatingCoupon}
+                  className="bg-[#095D66] hover:bg-[#074B54]"
+                >
+                  {isValidatingCoupon ? "Validating..." : "Apply"}
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-green-800">{appliedCoupon.name}</p>
+                    <p className="text-sm text-green-600">
+                      {appliedCoupon.percent_off 
+                        ? `${appliedCoupon.percent_off}% off` 
+                        : `${currencySymbol}${(appliedCoupon.amount_off! / 100).toFixed(2)} off`
+                      }
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeCoupon}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Pricing Summary */}
+        {/* Order Summary */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Course Price</span>
-                <span className="font-medium">
-                  {pricing.symbol}{productInfo ? productInfo.price.toFixed(2) : '120.00'}
-                </span>
+          <CardHeader>
+            <CardTitle>Order Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Course Price</span>
+                <span>{currencySymbol}{originalPrice.toFixed(2)}</span>
               </div>
-              
               {appliedCoupon && (
-                <div className="flex justify-between items-center text-green-600">
+                <div className="flex justify-between text-green-600">
                   <span>Discount ({appliedCoupon.name})</span>
-                  <span>-{pricing.symbol}{productInfo ? (productInfo.price - pricing.price).toFixed(2) : (120 - pricing.price).toFixed(2)}</span>
+                  <span>-{currencySymbol}{discountAmount.toFixed(2)}</span>
                 </div>
               )}
-              
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center text-lg font-semibold">
+              <div className="border-t pt-2">
+                <div className="flex justify-between font-semibold text-lg">
                   <span>Total</span>
-                  <span>{pricing.symbol}{pricing.price.toFixed(2)}</span>
+                  <span>{currencySymbol}{finalPrice.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -441,55 +346,153 @@ export default function BigBabyCheckout() {
         </Card>
 
         {/* Payment Form */}
-        {showPaymentForm && clientSecret && (
+        {clientSecret && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Payment Information</CardTitle>
+              <CardTitle>Payment Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <Elements 
-                stripe={stripePromise} 
-                options={{ 
-                  clientSecret,
-                  appearance: {
-                    theme: 'stripe',
-                    variables: {
-                      colorPrimary: '#095D66',
-                    }
-                  }
-                }}
-              >
-                <PaymentForm 
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <PaymentForm
                   customerDetails={customerDetails}
+                  courseId={COURSE_DATA.id}
+                  finalPrice={finalPrice}
+                  currency={currency}
                   appliedCoupon={appliedCoupon}
-                  pricing={pricing}
-                  onSuccess={handlePaymentSuccess}
+                  onSuccess={() => setShowSuccess(true)}
                 />
               </Elements>
             </CardContent>
           </Card>
         )}
 
-        {/* Money Back Guarantee */}
-        <div className="text-center py-4">
-          <img 
-            src={moneyBackGuarantee} 
-            alt="30-day money-back guarantee" 
-            className="h-16 mx-auto mb-2"
-          />
-          <p className="text-sm text-gray-600">30-day money-back guarantee</p>
+        {/* Trust Indicators */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-2">
+            <Shield className="h-4 w-4 text-green-500" />
+            <span className="text-sm text-gray-600">Secure SSL encrypted payment</span>
+          </div>
+          <img src={moneyBackGuarantee} alt="Money back guarantee" className="h-16 mx-auto" />
         </div>
-
-        {/* Testimonials */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg text-center">What Parents Say</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TestimonialCarousel />
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Success Modal */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 mx-4 max-w-sm">
+            <div className="text-center">
+              <Check className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Payment Successful!</h3>
+              <p className="text-gray-600 mb-4">
+                Your course has been added to your account. You'll receive a confirmation email shortly.
+              </p>
+              <Button 
+                onClick={() => setLocation('/home')}
+                className="w-full bg-[#095D66] hover:bg-[#074B54]"
+              >
+                Go to Home
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Payment form component
+function PaymentForm({ 
+  customerDetails, 
+  courseId, 
+  finalPrice, 
+  currency, 
+  appliedCoupon, 
+  onSuccess 
+}: {
+  customerDetails: CustomerDetails;
+  courseId: number;
+  finalPrice: number;
+  currency: string;
+  appliedCoupon: Coupon | null;
+  onSuccess: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!stripe || !elements || isProcessing) return;
+
+    setIsProcessing(true);
+
+    try {
+      // Submit payment element
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        throw submitError;
+      }
+
+      // Confirm payment
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/big-baby-checkout`,
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (paymentIntent?.status === 'succeeded') {
+        // Create account and add course
+        await fetch('/api/big-baby-complete-purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+            customerDetails,
+            courseId,
+            finalPrice,
+            currency,
+            appliedCoupon
+          })
+        });
+
+        onSuccess();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Payment Failed",
+        description: error.message || "An error occurred during payment",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      <Button
+        type="submit"
+        disabled={!stripe || !elements || isProcessing}
+        className="w-full bg-[#095D66] hover:bg-[#074B54]"
+      >
+        {isProcessing ? (
+          <div className="flex items-center gap-2">
+            <img src={paymentLoaderGif} alt="Processing" className="h-4 w-4" />
+            Processing...
+          </div>
+        ) : (
+          `Pay $${finalPrice.toFixed(2)} ${currency}`
+        )}
+      </Button>
+    </form>
   );
 }
