@@ -453,11 +453,11 @@ export class DatabaseStorage implements IStorage {
         const result = await sql`
           INSERT INTO users (
             id, email, first_name, last_name, password_hash, has_set_password, 
-            subscription_tier, plan_tier, last_login_at, created_at, updated_at
+            subscription_tier, subscription_status, is_admin, last_login_at, created_at, updated_at
           ) VALUES (
             ${userData.id}, ${userData.email}, ${userData.firstName}, ${userData.lastName}, 
             ${userData.passwordHash}, ${userData.hasSetPassword}, ${userData.subscriptionTier}, 
-            ${userData.planTier}, ${userData.lastLoginAt}, ${new Date()}, ${new Date()}
+            ${userData.subscriptionStatus}, ${userData.isAdmin}, ${new Date()}, ${new Date()}, ${new Date()}
           )
           RETURNING *
         `;
