@@ -853,6 +853,7 @@ export default function BigBabyPublic() {
                 <div>
                   <Input
                     id="email"
+                    data-testid="customer-email"
                     type="email"
                     value={customerDetails.email}
                     onChange={(e) => handleDetailsChange("email", e.target.value)}
@@ -867,6 +868,7 @@ export default function BigBabyPublic() {
                 <div>
                   <Input
                     id="firstName"
+                    data-testid="customer-firstName"
                     type="text"
                     value={customerDetails.firstName}
                     onChange={(e) => handleDetailsChange("firstName", e.target.value)}
@@ -904,7 +906,7 @@ export default function BigBabyPublic() {
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">{BIG_BABY_COURSE.title}</h3>
                     <p className="text-sm text-gray-600">{BIG_BABY_COURSE.description}</p>
-                    <p className="text-sm font-medium">{currencySymbol}{originalPrice}</p>
+                    <p className="text-sm font-medium" data-testid="original-price">{currencySymbol}{originalPrice}</p>
                   </div>
                   <Button variant="ghost" size="sm" className="text-gray-400">
                     <Trash2 className="h-4 w-4" />
@@ -928,7 +930,7 @@ export default function BigBabyPublic() {
                   {appliedCoupon && (
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
-                      <span className="text-sm text-green-600">
+                      <span className="text-sm text-green-600" data-testid="discount-amount">
                         -{currencySymbol}{(() => {
                           let discountAmount = 0;
                           if (appliedCoupon.amount_off && !isNaN(appliedCoupon.amount_off)) {
@@ -943,7 +945,7 @@ export default function BigBabyPublic() {
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold">Total (incl. GST)</span>
-                    <span className="text-lg font-semibold">{currencySymbol}{isNaN(finalPrice) ? '0.00' : finalPrice.toFixed(2)}</span>
+                    <span className="text-lg font-semibold" data-testid="final-price">{currencySymbol}{isNaN(finalPrice) ? '0.00' : finalPrice.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
