@@ -41,6 +41,13 @@ export default function GoogleMapsAddressAutocomplete({
           return;
         }
 
+        // Check if API key is available
+        if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
+          console.error('VITE_GOOGLE_MAPS_API_KEY is not set');
+          setError('Google Maps API key not configured. Please enter your address manually.');
+          return;
+        }
+
         // Load Google Maps JavaScript API
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
