@@ -36,10 +36,15 @@ export default function ProfileCompletion() {
     'Partner Discounts'
   ];
 
-  // Redirect if user is not logged in
+  // Redirect if user is not logged in (with delay for cache refresh)
   useEffect(() => {
     if (!authLoading && !user) {
-      setLocation('/login');
+      // Add a small delay to allow authentication cache to refresh
+      setTimeout(() => {
+        if (!user) {
+          setLocation('/');
+        }
+      }, 2000);
     }
   }, [user, authLoading, setLocation]);
 

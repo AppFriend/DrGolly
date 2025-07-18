@@ -744,7 +744,7 @@ export default function BigBabyPublic() {
     
     try {
       console.log('Creating payment intent for:', customerDetails.email);
-      const response = await fetch('/api/create-big-baby-payment', {
+      const response = await fetch('/api/create-big-baby-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -813,6 +813,9 @@ export default function BigBabyPublic() {
 
       // Add a small delay to ensure all backend processing completes
       await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Invalidate authentication cache to refresh user state
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       // Redirect to profile completion for new users, or home for existing users
       if (completion.isNewUser) {
