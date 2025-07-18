@@ -702,24 +702,34 @@ export default function BigBabyPublic() {
   const currency = regionalPricing?.currency || 'USD';
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
   
-  // Calculate final price with proper coupon handling
-  const finalPrice = useMemo(() => {
-    if (!appliedCoupon || !originalPrice) return originalPrice;
+  // Calculate final price and discount amount with proper coupon handling
+  const { finalPrice, discountAmount } = useMemo(() => {
+    if (!appliedCoupon || !originalPrice) {
+      return { finalPrice: originalPrice, discountAmount: 0 };
+    }
     
     let discountedPrice = originalPrice;
+    let calculatedDiscountAmount = 0;
     
     if (appliedCoupon.amount_off && !isNaN(appliedCoupon.amount_off)) {
       // Fixed amount discount (amount_off is in cents)
-      const discountAmount = appliedCoupon.amount_off / 100;
-      discountedPrice = originalPrice - discountAmount;
+      calculatedDiscountAmount = appliedCoupon.amount_off / 100;
+      discountedPrice = originalPrice - calculatedDiscountAmount;
     } else if (appliedCoupon.percent_off && !isNaN(appliedCoupon.percent_off)) {
       // Percentage discount
-      discountedPrice = originalPrice * (1 - appliedCoupon.percent_off / 100);
+      calculatedDiscountAmount = originalPrice * (appliedCoupon.percent_off / 100);
+      discountedPrice = originalPrice - calculatedDiscountAmount;
     }
     
     // Ensure price is not negative and is a valid number
     const result = Math.max(0, discountedPrice);
-    return isNaN(result) ? originalPrice : parseFloat(result.toFixed(2));
+    const finalCalculatedPrice = isNaN(result) ? originalPrice : parseFloat(result.toFixed(2));
+    const finalDiscountAmount = isNaN(calculatedDiscountAmount) ? 0 : parseFloat(calculatedDiscountAmount.toFixed(2));
+    
+    return { 
+      finalPrice: finalCalculatedPrice, 
+      discountAmount: finalDiscountAmount 
+    };
   }, [originalPrice, appliedCoupon]);
 
   // Create payment intent when customer details are sufficient
@@ -931,21 +941,13 @@ export default function BigBabyPublic() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
                       <span className="text-sm text-green-600" data-testid="discount-amount">
-                        -{currencySymbol}{(() => {
-                          let discountAmount = 0;
-                          if (appliedCoupon.amount_off && !isNaN(appliedCoupon.amount_off)) {
-                            discountAmount = appliedCoupon.amount_off / 100;
-                          } else if (appliedCoupon.percent_off && !isNaN(appliedCoupon.percent_off)) {
-                            discountAmount = originalPrice * appliedCoupon.percent_off / 100;
-                          }
-                          return isNaN(discountAmount) ? '0.00' : discountAmount.toFixed(2);
-                        })()}
+                        -{currencySymbol}{discountAmount.toFixed(2)}
                       </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold">Total (incl. GST)</span>
-                    <span className="text-lg font-semibold" data-testid="final-price">{currencySymbol}{isNaN(finalPrice) ? '0.00' : finalPrice.toFixed(2)}</span>
+                    <span className="text-lg font-semibold" data-testid="final-price">{currencySymbol}{finalPrice.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
