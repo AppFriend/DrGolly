@@ -4913,8 +4913,8 @@ Please contact the customer to confirm the appointment.
           customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
           originalAmount: baseAmount.toString(),
           finalAmount: finalAmount.toString(),
-          couponId: couponId || 'none',
-          couponName: coupon?.name || 'none',
+          couponId: couponId || '',
+          couponName: coupon?.name || '',
           discountAmount: (baseAmount - finalAmount).toString(),
           currency: currency
         }
@@ -4955,9 +4955,9 @@ Please contact the customer to confirm the appointment.
       
       // Extract actual payment amounts from Stripe data
       const actualAmountPaid = paymentIntent.amount; // This is the amount actually charged
-      const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+      const originalAmount = paymentIntent.metadata.originalAmount ? parseFloat(paymentIntent.metadata.originalAmount) * 100 : paymentIntent.amount;
       const discountAmount = originalAmount - actualAmountPaid;
-      const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.promotionalCode || paymentIntent.metadata.couponCode || paymentIntent.metadata.couponId;
+      const promotionalCode = paymentIntent.metadata.couponName && paymentIntent.metadata.couponName !== 'none' ? paymentIntent.metadata.couponName : null;
       
       console.log('Payment details:', {
         actualAmountPaid: actualAmountPaid / 100,
@@ -5042,6 +5042,35 @@ Please contact the customer to confirm the appointment.
       });
     } catch (error: any) {
       console.error('Purchase completion failed:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Test endpoint for Slack payment notification
+  app.post('/api/test/slack-payment-notification', async (req, res) => {
+    try {
+      const { name, email, purchaseDetails, paymentAmount, promotionalCode, discountAmount } = req.body;
+      
+      console.log('Testing Slack payment notification with data:', {
+        name, email, purchaseDetails, paymentAmount, promotionalCode, discountAmount
+      });
+      
+      const result = await slackNotificationService.sendPaymentNotification({
+        name,
+        email,
+        purchaseDetails,
+        paymentAmount,
+        promotionalCode,
+        discountAmount
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Test notification sent',
+        result: result
+      });
+    } catch (error: any) {
+      console.error('Test notification failed:', error);
       res.status(500).json({ message: error.message });
     }
   });
