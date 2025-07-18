@@ -563,6 +563,16 @@ STABLE VERSIONS (for easy rollback reference):
   * TESTED: Comprehensive validation confirms 100% success rate across all payment system components
   * PRODUCTION-READY: Complete payment system with proper transaction descriptions for customer billing statements
   * Status: All payment system requirements fully implemented and production-ready
+
+- SAVEPOINT v1.36 (July 18, 2025 - 10:06 PM AEST): SLACK NOTIFICATION ENHANCEMENT COMPLETE - Accurate transaction data integration
+  * RESOLVED: Fixed Slack notification to display correct discounted amount ($1.20 AUD instead of $120.00)
+  * ENHANCED: Promotional code now correctly displays actual coupon name (App_Checkout-Test$1 instead of "none")
+  * IMPROVED: Discount amount now shows accurate savings ($118.80 AUD instead of "N/A")
+  * OPTIMIZED: Payment intent metadata extraction to properly parse coupon information from Stripe data
+  * FIXED: Removed hardcoded "none" values in payment intent creation for cleaner data flow
+  * VERIFIED: Complete notification system now shows accurate transaction amounts and promotional codes
+  * TESTED: Comprehensive simulation confirms proper data extraction and notification formatting
+  * Status: Production-ready with complete accurate Slack notification integration
 ```
 
 ## Changelog
