@@ -15,7 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, CardElement, LinkAuthenticationElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
-import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
+import GoogleMapsAddressAutocomplete from "@/components/GoogleMapsAddressAutocomplete";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
@@ -121,7 +121,7 @@ const BIG_BABY_COURSE = {
   tier: "platinum"
 };
 
-// PaymentForm component
+// PaymentForm component  
 function PaymentForm({ 
   onSuccess, 
   coursePrice, 
@@ -150,6 +150,7 @@ function PaymentForm({
   const [showCardForm, setShowCardForm] = useState(false);
   const [linkEmail, setLinkEmail] = useState('');
   const [elementMounted, setElementMounted] = useState(false);
+  const [elementStable, setElementStable] = useState(false);
   const [billingDetails, setBillingDetails] = useState({
     firstName: '',
     lastName: '',
@@ -288,8 +289,8 @@ function PaymentForm({
       return;
     }
 
-    // Enhanced readiness check
-    if (!isElementReady || !elementMounted) {
+    // Enhanced readiness check with stable element verification
+    if (!isElementReady || !elementMounted || !elementStable) {
       toast({
         title: "Payment Loading",
         description: "Please wait for the payment form to finish loading.",
@@ -309,28 +310,13 @@ function PaymentForm({
         throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       }
 
-      // Multiple checks to ensure elements are properly mounted
+      // Get payment element immediately and preserve reference
       const paymentElement = elements.getElement('payment');
       if (!paymentElement) {
         throw new Error('Payment form is not ready. Please refresh the page and try again.');
       }
 
-      // Wait longer to ensure element is fully mounted and ready
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Verify element is still mounted after timeout
-      const verifyElement = elements.getElement('payment');
-      if (!verifyElement) {
-        throw new Error('Payment form has become unmounted during processing. Please refresh the page and try again.');
-      }
-
-      // Log element state for debugging
-      console.log('PaymentElement ready state:', {
-        isElementReady,
-        elementMounted,
-        hasPaymentElement: !!paymentElement,
-        hasVerifyElement: !!verifyElement
-      });
+      console.log('PaymentElement verification passed, proceeding with payment...');
 
       // Submit the elements to validate and collect payment method
       const { error: submitError } = await elements.submit();
@@ -339,13 +325,7 @@ function PaymentForm({
         throw submitError;
       }
 
-      // Final check before confirmation
-      const finalCheck = elements.getElement('payment');
-      if (!finalCheck) {
-        throw new Error('Payment form has become unmounted during submission. Please refresh the page and try again.');
-      }
-
-      // Confirm payment with comprehensive error handling
+      // Confirm payment immediately without additional checks that might cause re-renders
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -454,7 +434,7 @@ function PaymentForm({
             {customerDetails.email && clientSecret ? (
               <div className="space-y-3">
                 <PaymentElement 
-                  key={`payment-${customerDetails.email}-${clientSecret.slice(-8)}`} // Stable key based on email and client secret
+                  key={`payment-stable-${clientSecret.slice(-8)}`} // More stable key to prevent unnecessary re-renders
                   options={{
                     layout: 'accordion',
                     defaultValues: {
@@ -496,11 +476,16 @@ function PaymentForm({
                     console.log('PaymentElement is ready and mounted');
                     setIsElementReady(true);
                     setElementMounted(true);
+                    // Add stability check with delay
+                    setTimeout(() => {
+                      setElementStable(true);
+                    }, 500);
                   }}
                   onLoaderStart={() => {
                     console.log('PaymentElement loading started');
                     setIsElementReady(false);
                     setElementMounted(false);
+                    setElementStable(false);
                   }}
                   onChange={(event) => {
                     console.log('PaymentElement changed:', event.complete);
@@ -512,6 +497,7 @@ function PaymentForm({
                     console.error('PaymentElement load error:', event.error);
                     setIsElementReady(false);
                     setElementMounted(false);
+                    setElementStable(false);
                   }}
                 />
               </div>
@@ -628,10 +614,14 @@ function PaymentForm({
         </div>
         
         <div>
-          <GoogleMapsAutocomplete
-            value={billingDetails.address}
-            onChange={(value) => handleBillingChange('address', value)}
-            placeholder="Start typing your address"
+          <GoogleMapsAddressAutocomplete
+            onAddressSelect={(addressData) => {
+              handleBillingChange('address', addressData.address);
+              handleBillingChange('city', addressData.city);
+              handleBillingChange('postcode', addressData.postcode);
+              handleBillingChange('country', addressData.country);
+            }}
+            initialValue={billingDetails.address}
             className="h-12"
           />
         </div>
@@ -640,11 +630,11 @@ function PaymentForm({
       {/* Place Order Button */}
       <Button
         onClick={handleCardPayment}
-        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName || !customerDetails.email || !clientSecret || !isElementReady}
+        disabled={isProcessing || !billingDetails.firstName || !billingDetails.lastName || !customerDetails.email || !clientSecret || !isElementReady || !elementStable}
         className="w-full bg-[#095D66] hover:bg-[#074952] text-white py-4 text-lg font-semibold rounded-lg h-12"
       >
         {isProcessing ? 'Processing...' : 
-         !isElementReady ? 'Loading payment form...' : 'Place order'}
+         !isElementReady || !elementStable ? 'Loading payment form...' : 'Place order'}
       </Button>
     </div>
   );
