@@ -96,6 +96,8 @@ function StablePaymentForm({
       };
 
       console.log('Starting payment confirmation process...');
+      console.log('Billing details being processed:', billingDetails);
+      console.log('Effective billing details:', effectiveBillingDetails);
       
       // Validate elements are still mounted
       const paymentElement = elements.getElement('payment');
