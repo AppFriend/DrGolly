@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Elements } from "@stripe/react-stripe-js";
@@ -702,10 +702,24 @@ export default function BigBabyPublic() {
   const currency = regionalPricing?.currency || 'USD';
   const currencySymbol = currency === 'AUD' ? '$' : currency === 'USD' ? '$' : '€';
   
-  const finalPrice = appliedCoupon ? 
-    appliedCoupon.amount_off ? parseFloat((originalPrice - (appliedCoupon.amount_off / 100)).toFixed(2)) :
-    appliedCoupon.percent_off ? parseFloat((originalPrice * (1 - appliedCoupon.percent_off / 100)).toFixed(2)) :
-    originalPrice : originalPrice;
+  // Calculate final price with proper coupon handling
+  const finalPrice = useMemo(() => {
+    if (!appliedCoupon) return originalPrice;
+    
+    let discountedPrice = originalPrice;
+    
+    if (appliedCoupon.amount_off) {
+      // Fixed amount discount (amount_off is in cents)
+      discountedPrice = originalPrice - (appliedCoupon.amount_off / 100);
+    } else if (appliedCoupon.percent_off) {
+      // Percentage discount
+      discountedPrice = originalPrice * (1 - appliedCoupon.percent_off / 100);
+    }
+    
+    // Ensure price is not negative and is a valid number
+    const result = Math.max(0, discountedPrice);
+    return isNaN(result) ? originalPrice : parseFloat(result.toFixed(2));
+  }, [originalPrice, appliedCoupon]);
 
   // Create payment intent when customer details are sufficient
   const createPaymentIntent = async (skipCoupon = false) => {
@@ -914,9 +928,14 @@ export default function BigBabyPublic() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
                       <span className="text-sm text-green-600">
-                        -{currencySymbol}{(appliedCoupon.amount_off ? 
-                          (appliedCoupon.amount_off / 100).toFixed(2) : 
-                          (originalPrice * appliedCoupon.percent_off / 100).toFixed(2))}
+                        -{currencySymbol}{(() => {
+                          if (appliedCoupon.amount_off) {
+                            return (appliedCoupon.amount_off / 100).toFixed(2);
+                          } else if (appliedCoupon.percent_off) {
+                            return (originalPrice * appliedCoupon.percent_off / 100).toFixed(2);
+                          }
+                          return '0.00';
+                        })()}
                       </span>
                     </div>
                   )}
