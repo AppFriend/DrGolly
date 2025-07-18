@@ -49,6 +49,7 @@ import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
+import TestCheckout from "@/pages/test-checkout";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -212,6 +213,7 @@ function AuthenticatedApp() {
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/auth-test" component={AuthTestPage} />
+        <Route path="/test-checkout" component={TestCheckout} />
         <Route component={NotFound} />
       </Switch>
       <UpgradeModal
