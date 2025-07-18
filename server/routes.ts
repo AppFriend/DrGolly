@@ -10018,6 +10018,32 @@ Please contact the customer to confirm the appointment.
   // Admin content management routes
   app.use('/api/admin', adminContentRoutes);
 
+  // Stripe verification endpoint for testing
+  app.post('/api/verify-stripe-payment-intent', async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: 'Payment intent ID is required' });
+      }
+      
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      res.json({
+        id: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status,
+        created: paymentIntent.created,
+        description: paymentIntent.description,
+        metadata: paymentIntent.metadata
+      });
+    } catch (error: any) {
+      console.error('Error verifying Stripe payment intent:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
