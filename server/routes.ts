@@ -7628,9 +7628,9 @@ Please contact the customer to confirm the appointment.
       const existingUser = await sql`SELECT * FROM users WHERE email = ${testEmail} LIMIT 1`;
       
       if (existingUser.length > 0) {
-        // Delete existing user for clean test
-        await sql`DELETE FROM users WHERE email = ${testEmail}`;
+        // Delete existing user for clean test - delete temporary passwords first due to foreign key constraint
         await sql`DELETE FROM temporary_passwords WHERE user_id = ${existingUser[0].id}`;
+        await sql`DELETE FROM users WHERE email = ${testEmail}`;
       }
       
       // Create migrated user
