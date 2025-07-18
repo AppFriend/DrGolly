@@ -88,6 +88,7 @@ function StablePaymentForm({
         lastName: billingDetails.lastName || 'Customer', // Default last name since it's required by Stripe
         phone: billingDetails.phone || '',
         address: billingDetails.address || '',
+        addressLine2: billingDetails.addressLine2 || '', // Required by Stripe
         city: billingDetails.city || '',
         postcode: billingDetails.postcode || '',
         state: billingDetails.state || '', // Required by Stripe
@@ -123,6 +124,7 @@ function StablePaymentForm({
               phone: effectiveBillingDetails.phone || '',
               address: {
                 line1: effectiveBillingDetails.address || '',
+                line2: effectiveBillingDetails.addressLine2 || '',
                 city: effectiveBillingDetails.city || '',
                 postal_code: effectiveBillingDetails.postcode || '',
                 state: effectiveBillingDetails.state || '',
