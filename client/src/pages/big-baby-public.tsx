@@ -704,14 +704,15 @@ export default function BigBabyPublic() {
   
   // Calculate final price with proper coupon handling
   const finalPrice = useMemo(() => {
-    if (!appliedCoupon) return originalPrice;
+    if (!appliedCoupon || !originalPrice) return originalPrice;
     
     let discountedPrice = originalPrice;
     
-    if (appliedCoupon.amount_off) {
+    if (appliedCoupon.amount_off && !isNaN(appliedCoupon.amount_off)) {
       // Fixed amount discount (amount_off is in cents)
-      discountedPrice = originalPrice - (appliedCoupon.amount_off / 100);
-    } else if (appliedCoupon.percent_off) {
+      const discountAmount = appliedCoupon.amount_off / 100;
+      discountedPrice = originalPrice - discountAmount;
+    } else if (appliedCoupon.percent_off && !isNaN(appliedCoupon.percent_off)) {
       // Percentage discount
       discountedPrice = originalPrice * (1 - appliedCoupon.percent_off / 100);
     }
@@ -929,19 +930,20 @@ export default function BigBabyPublic() {
                       <span className="text-sm text-gray-600">Discount ({appliedCoupon.name})</span>
                       <span className="text-sm text-green-600">
                         -{currencySymbol}{(() => {
-                          if (appliedCoupon.amount_off) {
-                            return (appliedCoupon.amount_off / 100).toFixed(2);
-                          } else if (appliedCoupon.percent_off) {
-                            return (originalPrice * appliedCoupon.percent_off / 100).toFixed(2);
+                          let discountAmount = 0;
+                          if (appliedCoupon.amount_off && !isNaN(appliedCoupon.amount_off)) {
+                            discountAmount = appliedCoupon.amount_off / 100;
+                          } else if (appliedCoupon.percent_off && !isNaN(appliedCoupon.percent_off)) {
+                            discountAmount = originalPrice * appliedCoupon.percent_off / 100;
                           }
-                          return '0.00';
+                          return isNaN(discountAmount) ? '0.00' : discountAmount.toFixed(2);
                         })()}
                       </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold">Total (incl. GST)</span>
-                    <span className="text-lg font-semibold">{currencySymbol}{finalPrice.toFixed(2)}</span>
+                    <span className="text-lg font-semibold">{currencySymbol}{isNaN(finalPrice) ? '0.00' : finalPrice.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
