@@ -16,6 +16,7 @@ import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, Ca
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import GoogleMapsAddressAutocomplete from "@/components/GoogleMapsAddressAutocomplete";
+import StableStripeElements from "@/components/StableStripeElements";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
@@ -27,62 +28,7 @@ import moneyBackGuarantee from "@assets/money-back-guarantee.png";
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
-// Stable Elements Wrapper Component
-function StableElementsWrapper({ 
-  clientSecret, 
-  onSuccess, 
-  coursePrice, 
-  currencySymbol, 
-  currency, 
-  customerDetails, 
-  appliedCoupon 
-}: {
-  clientSecret: string;
-  onSuccess: (result: any) => void;
-  coursePrice: number;
-  currencySymbol: string;
-  currency: string;
-  customerDetails: any;
-  appliedCoupon: any;
-}) {
-  // Use key-based recreation with a stable clientSecret to prevent mounting issues
-  const stableKey = `elements-${clientSecret.slice(0, 8)}`;
-  
-  const elementsOptions = {
-    clientSecret,
-    appearance: {
-      theme: 'stripe' as const,
-      variables: {
-        colorPrimary: '#095D66',
-        colorBackground: '#ffffff',
-        colorText: '#262626',
-        colorDanger: '#dc2626',
-        fontFamily: 'system-ui, sans-serif',
-        borderRadius: '8px',
-        spacingUnit: '6px'
-      }
-    },
-    loader: 'auto' as const
-  };
-
-  return (
-    <Elements 
-      key={stableKey}
-      stripe={stripePromise} 
-      options={elementsOptions}
-    >
-      <PaymentForm
-        onSuccess={onSuccess}
-        coursePrice={coursePrice}
-        currencySymbol={currencySymbol}
-        currency={currency}
-        customerDetails={customerDetails}
-        appliedCoupon={appliedCoupon}
-        clientSecret={clientSecret}
-      />
-    </Elements>
-  );
-}
+// Removed StableElementsWrapper - now using StableStripeElements component
 
 // Testimonial data
 const testimonials = [
@@ -369,8 +315,17 @@ function PaymentForm({
 
       console.log('Starting payment confirmation process...');
 
-      // Wait for a moment to ensure element is fully ready
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Enhanced element validation before payment confirmation
+      console.log('Validating elements before payment...');
+      
+      // Check if PaymentElement is actually mounted and ready
+      const paymentElement = elements.getElement('payment');
+      if (!paymentElement) {
+        throw new Error('PaymentElement is not mounted. Please refresh the page and try again.');
+      }
+      
+      // Wait for element to be fully ready
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // First, submit the form to validate all fields
       const { error: submitError } = await elements.submit();
@@ -380,6 +335,12 @@ function PaymentForm({
       }
 
       console.log('Form submitted successfully, confirming payment...');
+
+      // Double-check element is still mounted before confirming
+      const paymentElementCheck = elements.getElement('payment');
+      if (!paymentElementCheck) {
+        throw new Error('PaymentElement became unmounted during validation. Please refresh the page and try again.');
+      }
 
       // Confirm payment with the validated elements
       const { error, paymentIntent } = await stripe.confirmPayment({
@@ -951,7 +912,7 @@ export default function BigBabyPublic() {
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               {clientSecret && (
-                <StableElementsWrapper 
+                <StableStripeElements 
                   clientSecret={clientSecret}
                   onSuccess={handlePaymentSuccess}
                   coursePrice={finalPrice}
@@ -959,6 +920,9 @@ export default function BigBabyPublic() {
                   currency={currency}
                   customerDetails={customerDetails}
                   appliedCoupon={appliedCoupon}
+                  billingDetails={billingDetails}
+                  isProcessing={isProcessing}
+                  onProcessingChange={setIsProcessing}
                 />
               )}
               {!clientSecret && customerDetails.email && customerDetails.firstName && (
