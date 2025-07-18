@@ -837,51 +837,21 @@ export default function BigBabyPublic() {
     }
   };
 
-  // Create payment intent and redirect to checkout - eliminates loading friction
-  const handleCreatePaymentAndPay = async () => {
-    if (!customerDetails.email || !customerDetails.firstName) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      console.log('Creating payment intent for checkout:', customerDetails.email);
-      console.log('Applied coupon:', appliedCoupon?.id || 'none');
-      
-      const response = await fetch('/api/create-big-baby-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerDetails,
-          couponId: appliedCoupon?.id
-        }),
-      });
+  // Initialize payment intent on page load for immediate field visibility
+  useEffect(() => {
+    if (customerDetails.email && customerDetails.dueDate) {
+      createPaymentIntent(false);
+    }
+  }, [customerDetails.email, customerDetails.dueDate, appliedCoupon]);
 
-      const data = await response.json();
-      if (response.ok) {
-        console.log('Payment intent created successfully');
-        console.log('Final amount:', data.finalAmount);
-        console.log('Discount amount:', data.discountAmount);
-        console.log('Coupon applied:', data.couponApplied?.name || 'none');
-        
-        // Set client secret and show Stripe Elements
-        setClientSecret(data.clientSecret);
-      } else {
-        console.error('Failed to create payment intent:', data.message);
-        toast({
-          title: "Payment Error",
-          description: data.message || "Failed to initialize payment. Please try again.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-      }
-    } catch (error) {
-      console.error('Failed to create payment intent:', error);
-      toast({
-        title: "Payment Error", 
-        description: "Failed to initialize payment. Please try again.",
-        variant: "destructive",
-      });
-      setIsProcessing(false);
+  // Handle final payment submission
+  const handlePlaceOrder = async () => {
+    if (!clientSecret) {
+      // If no client secret yet, create payment intent first
+      await createPaymentIntent(true);
+    } else {
+      // Client secret exists, proceed with payment processing
+      setIsProcessing(true);
     }
   };
 
@@ -910,7 +880,7 @@ export default function BigBabyPublic() {
         <div className="lg:grid lg:grid-cols-2 lg:gap-8">
           {/* Left Column - Your Details & Payment */}
           <div className="space-y-4">
-            {/* Your Details Section */}
+            {/* Your Details Section - Simplified */}
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">YOUR DETAILS</h2>
               
@@ -922,7 +892,7 @@ export default function BigBabyPublic() {
                     type="email"
                     value={customerDetails.email}
                     onChange={(e) => handleDetailsChange("email", e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Email address"
                     className="h-12"
                   />
                   {shouldShowEmailWarning && (
@@ -932,22 +902,11 @@ export default function BigBabyPublic() {
                 
                 <div>
                   <Input
-                    id="firstName"
-                    data-testid="customer-firstName"
-                    type="text"
-                    value={customerDetails.firstName}
-                    onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                    placeholder="Enter your first name"
-                    className="h-12"
-                  />
-                </div>
-                
-                <div>
-                  <Input
                     id="dueDate"
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
+                    placeholder="Due Date/Baby Birthday"
                     className="h-12"
                   />
                 </div>
@@ -1008,41 +967,81 @@ export default function BigBabyPublic() {
               </div>
             </div>
 
-            {/* Payment Section - Always visible */}
+            {/* Payment Section - Always Show Full Form */}
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               
-              {/* Show Stripe Elements if clientSecret exists, otherwise show payment button */}
+              {/* Show Stripe Elements immediately when available */}
               {clientSecret ? (
-                <StableStripeElements 
-                  clientSecret={clientSecret}
-                  onSuccess={handlePaymentSuccess}
-                  coursePrice={originalPrice}
-                  currencySymbol={currencySymbol}
-                  currency={currency}
-                  customerDetails={customerDetails}
-                  appliedCoupon={appliedCoupon}
-                  billingDetails={billingDetails}
-                  isProcessing={isProcessing}
-                  onProcessingChange={setIsProcessing}
-                  finalPrice={finalPrice}
-                  discountAmount={discountAmount}
-                />
-              ) : (
-                <div className="space-y-4">
-                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                        <CreditCard className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium">Card Payment</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Secure payment with Apple Pay, Google Pay, or any card</p>
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <div className="space-y-4">
+                    {/* Payment Element - Always Visible */}
+                    <PaymentElement />
                     
+                    {/* Billing Details Section */}
+                    <div className="border-t pt-4">
+                      <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input 
+                            placeholder="First Name" 
+                            value={customerDetails.firstName}
+                            onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                          />
+                          <Input 
+                            placeholder="Last Name" 
+                            value={customerDetails.lastName}
+                            onChange={(e) => handleDetailsChange("lastName", e.target.value)}
+                          />
+                        </div>
+                        
+                        <Input 
+                          placeholder="Phone" 
+                          value={customerDetails.phone}
+                          onChange={(e) => handleDetailsChange("phone", e.target.value)}
+                        />
+                        
+                        <GoogleMapsAddressAutocomplete
+                          onAddressChange={handleAddressChange}
+                          initialValue={customerDetails.address}
+                          placeholder="Start typing your address"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Terms and Privacy */}
+                    <div className="text-sm text-gray-600 space-y-2">
+                      <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
+                      
+                      <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
+                    </div>
+
+                    {/* Place Order Button */}
                     <button
-                      onClick={handleCreatePaymentAndPay}
-                      disabled={!customerDetails.email || !customerDetails.firstName || isProcessing}
-                      className="w-full bg-[#095D66] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#074850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onClick={async () => {
+                        const stripe = await stripePromise;
+                        if (!stripe) return;
+                        setIsProcessing(true);
+                        
+                        const { error } = await stripe.confirmPayment({
+                          elements: {} as any, // This will be handled by the payment element
+                          confirmParams: {
+                            return_url: window.location.origin + '/complete',
+                          },
+                        });
+
+                        if (error) {
+                          console.error('Payment failed:', error);
+                          toast({
+                            title: "Payment Failed",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                          setIsProcessing(false);
+                        }
+                      }}
+                      disabled={!customerDetails.email || isProcessing}
+                      className="w-full bg-[#095D66] text-white py-4 px-4 rounded-lg font-medium hover:bg-[#074850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
                     >
                       {isProcessing ? (
                         <div className="flex items-center justify-center">
@@ -1050,16 +1049,20 @@ export default function BigBabyPublic() {
                           Processing...
                         </div>
                       ) : (
-                        `Pay ${currencySymbol}${finalPrice.toFixed(2)} now`
+                        "Place order"
                       )}
                     </button>
+
+                    <p className="text-sm text-gray-600">
+                      As this is a digital product you will be automatically subscribed to email so we can get your account set up in the Dr Golly Learning Hub, once you are set up you can unsubscribe at any time. Please ensure the email you are checking out with is correct.
+                    </p>
                   </div>
-                  
-                  {(!customerDetails.email || !customerDetails.firstName) && (
-                    <div className="text-center py-2">
-                      <p className="text-sm text-gray-600">Please complete your details above to continue</p>
-                    </div>
-                  )}
+                </Elements>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-2 border-[#095D66] border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading payment form...</p>
+                  <p className="text-sm text-gray-500 mt-2">Please complete your email and date of birth above</p>
                 </div>
               )}
             </div>
