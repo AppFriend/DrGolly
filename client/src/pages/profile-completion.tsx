@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,12 @@ import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 export default function ProfileCompletion() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [match] = useRoute('/complete/preferences');
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
+  
+  // Determine step based on URL
+  const isPreferencesRoute = match;
+  const [step, setStep] = useState(isPreferencesRoute ? 2 : 1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -47,6 +51,15 @@ export default function ProfileCompletion() {
       }, 2000);
     }
   }, [user, authLoading, setLocation]);
+
+  // Update step when URL changes
+  useEffect(() => {
+    if (isPreferencesRoute) {
+      setStep(2);
+    } else {
+      setStep(1);
+    }
+  }, [isPreferencesRoute]);
 
   const handleInterestToggle = (interest: string) => {
     setFormData(prev => ({
@@ -98,7 +111,8 @@ export default function ProfileCompletion() {
       return;
     }
 
-    setStep(2);
+    // Navigate to preferences URL
+    setLocation('/complete/preferences');
   };
 
   const handlePreferencesSubmit = (e: React.FormEvent) => {

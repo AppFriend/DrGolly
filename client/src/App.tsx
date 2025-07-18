@@ -215,6 +215,7 @@ function AuthenticatedApp() {
         </Route>
         <Route path="/profile-completion" component={ProfileCompletion} />
         <Route path="/complete" component={ProfileCompletion} />
+        <Route path="/complete/preferences" component={ProfileCompletion} />
         <Route path="/auth-test" component={AuthTestPage} />
         <Route path="/test-checkout" component={TestCheckout} />
         <Route component={NotFound} />
