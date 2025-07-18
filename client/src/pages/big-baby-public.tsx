@@ -310,43 +310,10 @@ function PaymentForm({
         throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       }
 
-      // Get payment element immediately and preserve reference
-      const paymentElement = elements.getElement(PaymentElement);
-      if (!paymentElement) {
-        throw new Error('Payment form is not ready. Please refresh the page and try again.');
-      }
-      
-      // Critical: Wait for element to be fully mounted
-      let elementMountedCount = 0;
-      const maxWaitTime = 3000; // 3 seconds
-      const checkInterval = 100; // 100ms
-      
-      while (elementMountedCount < maxWaitTime / checkInterval) {
-        // Check if element is actually mounted in the DOM
-        const elementContainer = document.querySelector('[data-testid="payment-element"]');
-        if (elementContainer || paymentElement._mounted !== false) {
-          console.log('PaymentElement confirmed mounted');
-          break;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, checkInterval));
-        elementMountedCount++;
-      }
-      
-      if (elementMountedCount >= maxWaitTime / checkInterval) {
-        throw new Error('Payment form failed to mount properly. Please refresh the page and try again.');
-      }
+      console.log('Starting payment confirmation process...');
 
-      console.log('PaymentElement verification passed, proceeding with payment...');
-
-      // Submit the elements to validate and collect payment method
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        console.error('Submit error:', submitError);
-        throw submitError;
-      }
-
-      // Confirm payment immediately without additional checks that might cause re-renders
+      // Use a more direct approach - confirm payment immediately without additional element checks
+      // that might cause reference issues
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -917,7 +884,7 @@ export default function BigBabyPublic() {
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               {clientSecret && (
                 <Elements 
-                  key={`elements-${clientSecret.slice(-12)}`} // Use client secret suffix as stable key
+                  key="stable-elements" // Use stable key to prevent recreation
                   stripe={stripePromise} 
                   options={{ 
                     clientSecret,
