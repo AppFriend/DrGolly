@@ -676,7 +676,7 @@ export default function BigBabyPublic() {
     lastName: '',
     phone: '',
     address: '',
-    country: 'Australia',
+    country: 'AU',
     city: '',
     postcode: ''
   });

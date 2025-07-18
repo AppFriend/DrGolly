@@ -52,7 +52,7 @@ function SimpleCardPayment({
     lastName: customerDetails.lastName || '',
     phone: customerDetails.phone || '',
     address: customerDetails.address || '',
-    country: 'Australia',
+    country: 'AU',
     city: customerDetails.city || '',
     postcode: customerDetails.zipCode || ''
   });
@@ -132,7 +132,7 @@ function SimpleCardPayment({
               line1: billingDetails.address,
               city: billingDetails.city,
               postal_code: billingDetails.postcode,
-              country: billingDetails.country === 'Australia' ? 'AU' : 'US'
+              country: billingDetails.country || 'AU'
             }
           }
         }
@@ -298,7 +298,7 @@ export function PaymentForm({
     lastName: customerDetails.lastName || '',
     phone: customerDetails.phone || '',
     address: customerDetails.address || '',
-    country: 'Australia',
+    country: 'AU',
     city: customerDetails.city || '',
     postcode: customerDetails.zipCode || ''
   });
@@ -481,7 +481,7 @@ export function PaymentForm({
               line1: billingDetails.address,
               city: billingDetails.city,
               postal_code: billingDetails.postcode,
-              country: billingDetails.country === 'Australia' ? 'AU' : 'US'
+              country: billingDetails.country || 'AU'
             }
           }
         }
