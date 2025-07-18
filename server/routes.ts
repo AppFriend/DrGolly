@@ -1939,35 +1939,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Big Baby product information endpoint - fetches authentic product data from database
-  app.get('/api/big-baby-product', async (req, res) => {
-    try {
-      const course = await storage.getCourse(6);
-      if (!course) {
-        return res.status(404).json({ message: "Big Baby course not found" });
-      }
-      
-      // Return authentic product information from database
-      res.json({
-        id: course.id,
-        title: course.title,
-        description: course.description,
-        detailedDescription: course.detailedDescription,
-        price: course.price,
-        imageUrl: course.thumbnailUrl,
-        stripeProductId: course.stripeProductId,
-        keyFeatures: course.keyFeatures,
-        whatsCovered: course.whatsCovered,
-        rating: course.rating,
-        reviewCount: course.reviewCount,
-        ageRange: course.ageRange
-      });
-    } catch (error) {
-      console.error("Error fetching Big Baby product:", error);
-      res.status(500).json({ message: "Failed to fetch product information" });
-    }
-  });
-
   app.get('/api/courses/:id', async (req, res) => {
     try {
       const courseId = parseInt(req.params.id);
