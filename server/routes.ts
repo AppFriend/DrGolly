@@ -4905,6 +4905,7 @@ Please contact the customer to confirm the appointment.
         amount: Math.round(finalAmount * 100), // Convert to cents
         currency: currency.toLowerCase(),
         automatic_payment_methods: { enabled: true },
+        description: 'Big Baby Sleep Program',
         metadata: {
           courseId: courseId.toString(),
           courseName: 'Big baby sleep program',
