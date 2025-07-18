@@ -4785,7 +4785,7 @@ Please contact the customer to confirm the appointment.
   // New clean Big Baby checkout endpoints
   app.post('/api/create-big-baby-payment-intent', async (req, res) => {
     try {
-      const { customerDetails, couponId, courseId } = req.body;
+      const { customerDetails, couponId, courseId = 6 } = req.body;
       
       // Validate required fields
       if (!customerDetails?.email || !customerDetails?.firstName) {
@@ -4865,7 +4865,7 @@ Please contact the customer to confirm the appointment.
           courseId: courseId.toString(),
           courseName: 'Big baby sleep program',
           customerEmail: customerDetails.email,
-          customerName: `${customerDetails.firstName} ${customerDetails.lastName}`,
+          customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
           originalAmount: baseAmount.toString(),
           finalAmount: finalAmount.toString(),
           couponId: couponId || 'none',
@@ -4880,8 +4880,16 @@ Please contact the customer to confirm the appointment.
       res.json({ 
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
-        amount: finalAmount,
-        currency: currency
+        finalAmount: finalAmount,
+        originalAmount: baseAmount,
+        discountAmount: baseAmount - finalAmount,
+        currency: currency,
+        couponApplied: coupon ? {
+          id: coupon.id,
+          name: coupon.name,
+          percent_off: coupon.percent_off,
+          amount_off: coupon.amount_off
+        } : null
       });
     } catch (error: any) {
       console.error('Payment intent creation failed:', error);
@@ -4955,7 +4963,6 @@ Please contact the customer to confirm the appointment.
       
       // Send payment notification to Slack with actual payment data
       try {
-        const slackNotificationService = (await import('./slack')).SlackNotificationService.getInstance();
         await slackNotificationService.sendPaymentNotification({
           name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
           email: customerDetails.email,
@@ -6792,6 +6799,30 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error checking admin status:', error);
       res.status(403).json({ message: 'Forbidden: Admin access required' });
+    }
+  });
+
+  // Test endpoint for Slack notifications
+  app.post('/api/test-slack-payment', async (req, res) => {
+    try {
+      const { customerName, email, actualAmountPaid, discountAmount, promotionalCode } = req.body;
+      
+      const success = await slackNotificationService.sendPaymentNotification({
+        name: customerName,
+        email: email,
+        purchaseDetails: "Single Course Purchase (Big Baby Sleep Program)",
+        paymentAmount: `$${actualAmountPaid} USD`,
+        promotionalCode: promotionalCode || undefined,
+        discountAmount: discountAmount ? `$${discountAmount} USD` : undefined
+      });
+      
+      res.json({ 
+        success, 
+        message: success ? 'Slack notification sent successfully' : 'Failed to send Slack notification'
+      });
+    } catch (error) {
+      console.error('Test Slack notification failed:', error);
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 
