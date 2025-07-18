@@ -57,13 +57,13 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Temporarily disable initialization to fix connection issues
   // Initialize regional pricing service
-  // try {
-  //   await regionalPricingService.initializeRegionalPricing();
-  // } catch (error) {
-  //   console.error('Failed to initialize regional pricing service:', error);
-  // }
+  try {
+    await regionalPricingService.initializeRegionalPricing();
+    console.log('Regional pricing service initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize regional pricing service:', error);
+  }
   
   // Initialize services
   // try {
