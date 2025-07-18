@@ -8,6 +8,7 @@ import { DesktopLayout } from "@/components/DesktopLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import PasswordSetupBanner from "@/components/auth/PasswordSetupBanner";
 import { useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
@@ -52,6 +53,7 @@ import AuthTestPage from "@/pages/auth-test";
 function AuthenticatedApp() {
   const [location] = useLocation();
   const { isOpen, closeUpgradeModal } = useUpgradeModal();
+  const { user, showPasswordSetupBanner, dismissPasswordSetupBanner, completePasswordSetup } = useAuth();
   
   // Determine active tab based on current location
   const getActiveTab = () => {
@@ -70,6 +72,21 @@ function AuthenticatedApp() {
   const handleUpgrade = (billingPeriod: "monthly" | "yearly") => {
     window.location.href = `/checkout-subscription?period=${billingPeriod}&tier=gold`;
   };
+
+  // Get login response data for password setup
+  const getLoginResponseData = () => {
+    const loginResponse = sessionStorage.getItem('loginResponse');
+    if (loginResponse) {
+      try {
+        return JSON.parse(loginResponse);
+      } catch (e) {
+        console.log('Error parsing login response:', e);
+      }
+    }
+    return null;
+  };
+
+  const loginData = getLoginResponseData();
 
   return (
     <div className="min-h-screen bg-white">
@@ -202,6 +219,15 @@ function AuthenticatedApp() {
         onClose={closeUpgradeModal}
         onUpgrade={handleUpgrade}
       />
+      {showPasswordSetupBanner && user && loginData && (
+        <PasswordSetupBanner
+          userId={user.id}
+          userName={user.firstName || user.email}
+          tempPassword={loginData.tempPassword || ""}
+          onComplete={completePasswordSetup}
+          onDismiss={dismissPasswordSetupBanner}
+        />
+      )}
       <Toaster />
     </div>
   );

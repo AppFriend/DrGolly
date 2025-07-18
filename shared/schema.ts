@@ -58,6 +58,7 @@ export const users = pgTable("users", {
   hasSetPassword: boolean("has_set_password").default(false),
   passwordHash: varchar("password_hash"),
   lastPasswordChange: timestamp("last_password_change"),
+  passwordSet: varchar("password_set").default("no"), // "yes" or "no" - tracks migration completion
   // Personalization preferences for enhanced signup flow
   primaryConcerns: text("primary_concerns"), // JSON array of selected concerns (baby-sleep, toddler-sleep, toddler-behaviour, partner-discounts)
   phoneNumber: varchar("phone_number"), // Phone number with country code
