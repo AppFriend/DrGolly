@@ -90,6 +90,7 @@ function StablePaymentForm({
         address: billingDetails.address || '',
         city: billingDetails.city || '',
         postcode: billingDetails.postcode || '',
+        state: billingDetails.state || '', // Required by Stripe
         country: billingDetails.country || 'AU'
       };
 
@@ -124,6 +125,7 @@ function StablePaymentForm({
                 line1: effectiveBillingDetails.address || '',
                 city: effectiveBillingDetails.city || '',
                 postal_code: effectiveBillingDetails.postcode || '',
+                state: effectiveBillingDetails.state || '',
                 country: effectiveBillingDetails.country
               }
             }
