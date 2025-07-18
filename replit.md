@@ -490,6 +490,17 @@ STABLE VERSIONS (for easy rollback reference):
   * VERIFIED: Payment processing now ready with all Stripe integration requirements met
   * TESTED: Comprehensive validation scripts created for development and production environments
   * Status: Production-ready with complete Stripe billing details compliance and zero integration errors
+
+- SAVEPOINT v1.30 (July 18, 2025): CRITICAL DISCOUNT CALCULATION FIX - Complete resolution of Stripe payment amount errors
+  * CRITICAL FIX: Fixed discount calculation bug in /api/create-big-baby-payment-intent endpoint
+  * RESOLVED: Coupon amount_off values were being incorrectly divided by 100 (double conversion from cents to dollars)
+  * IMPLEMENTED: Proper discount calculation - amount_off is already in cents from Stripe, convert once to dollars
+  * ENHANCED: Comprehensive logging for discount calculations with before/after amounts
+  * VERIFIED: 99% discount coupon (ibuO5MIw) now correctly processes $120 → $1.20 instead of full $120
+  * TESTED: Payment intent creation confirmed working with proper discounted amounts sent to Stripe
+  * FIXED: Database schema import errors - corrected coursePurchases table import in server/routes.ts
+  * RESOLVED: Complete checkout flow now operational with proper user creation, course purchase recording, and notifications
+  * Status: Production-ready with complete discount system functionality and accurate payment processing
 ```
 
 ## Changelog
