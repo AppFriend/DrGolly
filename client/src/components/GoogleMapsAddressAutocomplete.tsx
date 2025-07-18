@@ -48,13 +48,29 @@ export default function GoogleMapsAddressAutocomplete({
           return;
         }
 
+        // Check if script is already being loaded
+        const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+        if (existingScript) {
+          // Wait for existing script to load
+          existingScript.addEventListener('load', () => {
+            setIsLoaded(true);
+            setError(null);
+          });
+          existingScript.addEventListener('error', () => {
+            setError('Failed to load address autocomplete. Please enter your address manually.');
+            setIsLoaded(false);
+          });
+          return;
+        }
+
         // Load Google Maps JavaScript API
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
         script.async = true;
         script.defer = true;
         
-        script.onload = () => {
+        // Add global callback function
+        (window as any).initGoogleMaps = () => {
           setIsLoaded(true);
           setError(null);
         };
@@ -62,6 +78,7 @@ export default function GoogleMapsAddressAutocomplete({
         script.onerror = (error) => {
           console.error('Failed to load Google Maps API:', error);
           setError('Failed to load address autocomplete. Please enter your address manually.');
+          setIsLoaded(false);
         };
         
         document.head.appendChild(script);

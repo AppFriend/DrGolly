@@ -311,9 +311,30 @@ function PaymentForm({
       }
 
       // Get payment element immediately and preserve reference
-      const paymentElement = elements.getElement('payment');
+      const paymentElement = elements.getElement(PaymentElement);
       if (!paymentElement) {
         throw new Error('Payment form is not ready. Please refresh the page and try again.');
+      }
+      
+      // Critical: Wait for element to be fully mounted
+      let elementMountedCount = 0;
+      const maxWaitTime = 3000; // 3 seconds
+      const checkInterval = 100; // 100ms
+      
+      while (elementMountedCount < maxWaitTime / checkInterval) {
+        // Check if element is actually mounted in the DOM
+        const elementContainer = document.querySelector('[data-testid="payment-element"]');
+        if (elementContainer || paymentElement._mounted !== false) {
+          console.log('PaymentElement confirmed mounted');
+          break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        elementMountedCount++;
+      }
+      
+      if (elementMountedCount >= maxWaitTime / checkInterval) {
+        throw new Error('Payment form failed to mount properly. Please refresh the page and try again.');
       }
 
       console.log('PaymentElement verification passed, proceeding with payment...');
