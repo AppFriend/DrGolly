@@ -147,7 +147,7 @@ export default function ProfileCompletion() {
             Welcome to Dr. Golly!
           </CardTitle>
           <p className="text-gray-600 mt-2">
-            {step === 1 && "Let's secure your account with a password"}
+            {step === 1 && "Next, Set up your account password to access your course!"}
             {step === 2 && "Tell us about your interests"}
             {step === 3 && "You're all set!"}
           </p>

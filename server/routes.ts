@@ -5486,9 +5486,9 @@ Please contact the customer to confirm the appointment.
   });
 
   // Profile completion endpoint for new users after checkout
-  app.post('/api/auth/complete-profile', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/complete-profile', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { password, interests, marketingOptIn, smsMarketingOptIn, termsAccepted } = req.body;
       
       if (!password || password.length < 8) {
