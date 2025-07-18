@@ -27,6 +27,63 @@ import moneyBackGuarantee from "@assets/money-back-guarantee.png";
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
+// Stable Elements Wrapper Component
+function StableElementsWrapper({ 
+  clientSecret, 
+  onSuccess, 
+  coursePrice, 
+  currencySymbol, 
+  currency, 
+  customerDetails, 
+  appliedCoupon 
+}: {
+  clientSecret: string;
+  onSuccess: (result: any) => void;
+  coursePrice: number;
+  currencySymbol: string;
+  currency: string;
+  customerDetails: any;
+  appliedCoupon: any;
+}) {
+  // Use key-based recreation with a stable clientSecret to prevent mounting issues
+  const stableKey = `elements-${clientSecret.slice(0, 8)}`;
+  
+  const elementsOptions = {
+    clientSecret,
+    appearance: {
+      theme: 'stripe' as const,
+      variables: {
+        colorPrimary: '#095D66',
+        colorBackground: '#ffffff',
+        colorText: '#262626',
+        colorDanger: '#dc2626',
+        fontFamily: 'system-ui, sans-serif',
+        borderRadius: '8px',
+        spacingUnit: '6px'
+      }
+    },
+    loader: 'auto' as const
+  };
+
+  return (
+    <Elements 
+      key={stableKey}
+      stripe={stripePromise} 
+      options={elementsOptions}
+    >
+      <PaymentForm
+        onSuccess={onSuccess}
+        coursePrice={coursePrice}
+        currencySymbol={currencySymbol}
+        currency={currency}
+        customerDetails={customerDetails}
+        appliedCoupon={appliedCoupon}
+        clientSecret={clientSecret}
+      />
+    </Elements>
+  );
+}
+
 // Testimonial data
 const testimonials = [
   {
@@ -312,8 +369,19 @@ function PaymentForm({
 
       console.log('Starting payment confirmation process...');
 
-      // Use a more direct approach - confirm payment immediately without additional element checks
-      // that might cause reference issues
+      // Wait for a moment to ensure element is fully ready
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // First, submit the form to validate all fields
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        console.error('Form submission error:', submitError);
+        throw submitError;
+      }
+
+      console.log('Form submitted successfully, confirming payment...');
+
+      // Confirm payment with the validated elements
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -883,37 +951,15 @@ export default function BigBabyPublic() {
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               {clientSecret && (
-                <Elements 
-                  key="stable-elements" // Use stable key to prevent recreation
-                  stripe={stripePromise} 
-                  options={{ 
-                    clientSecret,
-                    // Enhanced options for better stability
-                    appearance: {
-                      theme: 'stripe',
-                      variables: {
-                        colorPrimary: '#095D66',
-                        colorBackground: '#ffffff',
-                        colorText: '#262626',
-                        colorDanger: '#dc2626',
-                        fontFamily: 'system-ui, sans-serif',
-                        borderRadius: '8px',
-                        spacingUnit: '6px'
-                      }
-                    },
-                    loader: 'auto'
-                  }}
-                >
-                  <PaymentForm
-                    onSuccess={handlePaymentSuccess}
-                    coursePrice={finalPrice}
-                    currencySymbol={currencySymbol}
-                    currency={currency}
-                    customerDetails={customerDetails}
-                    appliedCoupon={appliedCoupon}
-                    clientSecret={clientSecret}
-                  />
-                </Elements>
+                <StableElementsWrapper 
+                  clientSecret={clientSecret}
+                  onSuccess={handlePaymentSuccess}
+                  coursePrice={finalPrice}
+                  currencySymbol={currencySymbol}
+                  currency={currency}
+                  customerDetails={customerDetails}
+                  appliedCoupon={appliedCoupon}
+                />
               )}
               {!clientSecret && customerDetails.email && customerDetails.firstName && (
                 <div className="text-center py-4">
