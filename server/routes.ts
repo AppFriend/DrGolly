@@ -37,6 +37,7 @@ import {
   courseLessons,
   courseChapters,
   lessonContent,
+  coursePurchases,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
@@ -4930,7 +4931,7 @@ Please contact the customer to confirm the appointment.
       }
       
       // Add course to user's purchases using actual payment data
-      await db.insert(schema.userCoursePurchases).values({
+      await db.insert(coursePurchases).values({
         userId: user.id,
         courseId: courseId,
         purchaseDate: new Date(),
