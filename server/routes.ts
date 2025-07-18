@@ -4909,7 +4909,11 @@ Please contact the customer to confirm the appointment.
       if (!user) {
         // Create new user
         isNewUser = true;
+        // Generate unique user ID (using timestamp + random)
+        const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
         user = await storage.createUser({
+          id: uniqueId,
           email: customerDetails.email,
           firstName: customerDetails.firstName,
           lastName: customerDetails.lastName || '',
