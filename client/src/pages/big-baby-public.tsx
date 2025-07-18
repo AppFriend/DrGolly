@@ -773,22 +773,25 @@ export default function BigBabyPublic() {
     try {
       console.log('Payment success handler called with:', paymentIntentId);
       
-      // Verify payment intent on both dev and production
-      const verificationResponse = await fetch('/api/verify-payment-intent', {
+      // Complete the purchase by creating user account and course purchase
+      const completionResponse = await fetch('/api/big-baby-complete-purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentIntentId })
+        body: JSON.stringify({
+          paymentIntentId,
+          customerDetails,
+          courseId: 6, // Big Baby course ID
+          finalPrice: finalPrice,
+          currency: currency,
+          appliedCoupon: appliedCoupon
+        })
       });
       
-      const verification = await verificationResponse.json();
-      console.log('Payment verification result:', verification);
+      const completion = await completionResponse.json();
+      console.log('Purchase completion result:', completion);
       
-      if (!verificationResponse.ok) {
-        throw new Error(verification.error || 'Payment verification failed');
-      }
-      
-      if (!verification.confirmed) {
-        throw new Error('Payment was not confirmed by Stripe');
+      if (!completionResponse.ok) {
+        throw new Error(completion.message || 'Purchase completion failed');
       }
       
       // Track Facebook Pixel purchase event
@@ -803,16 +806,20 @@ export default function BigBabyPublic() {
 
       toast({
         title: "Payment Successful!",
-        description: verification.coursePurchaseCreated 
+        description: completion.isNewUser 
           ? "Your account has been created and you're now logged in."
-          : "Payment processed successfully. Your account is being set up.",
+          : "Course added to your account successfully!",
       });
 
       // Add a small delay to ensure all backend processing completes
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Redirect to home page
-      setLocation("/");
+      // Redirect to profile completion for new users, or home for existing users
+      if (completion.isNewUser) {
+        setLocation("/profile-completion");
+      } else {
+        setLocation("/");
+      }
     } catch (error: any) {
       console.error('Post-payment error:', error);
       toast({

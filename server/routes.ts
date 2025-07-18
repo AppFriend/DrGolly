@@ -4882,12 +4882,25 @@ Please contact the customer to confirm the appointment.
     try {
       const { paymentIntentId, customerDetails, courseId, finalPrice, currency, appliedCoupon } = req.body;
       
-      // Retrieve payment intent to verify payment
+      // Retrieve payment intent to verify payment and get actual payment data
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
       
       if (paymentIntent.status !== 'succeeded') {
         return res.status(400).json({ message: 'Payment not successful' });
       }
+      
+      // Extract actual payment amounts from Stripe data
+      const actualAmountPaid = paymentIntent.amount; // This is the amount actually charged
+      const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+      const discountAmount = originalAmount - actualAmountPaid;
+      const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+      
+      console.log('Payment details:', {
+        actualAmountPaid: actualAmountPaid / 100,
+        originalAmount: originalAmount / 100,
+        discountAmount: discountAmount / 100,
+        promotionalCode: promotionalCode || 'None'
+      });
       
       // Check if user exists
       let user = await storage.getUserByEmail(customerDetails.email);
@@ -4899,7 +4912,7 @@ Please contact the customer to confirm the appointment.
         user = await storage.createUser({
           email: customerDetails.email,
           firstName: customerDetails.firstName,
-          lastName: customerDetails.lastName,
+          lastName: customerDetails.lastName || '',
           phone: customerDetails.phone || null,
           subscriptionTier: 'free',
           planTier: 'free',
@@ -4912,31 +4925,31 @@ Please contact the customer to confirm the appointment.
         console.log('Found existing user:', user.id, 'Email:', user.email);
       }
       
-      // Add course to user's purchases
+      // Add course to user's purchases using actual payment data
       await db.insert(schema.userCoursePurchases).values({
         userId: user.id,
         courseId: courseId,
         purchaseDate: new Date(),
-        amount: finalPrice,
+        amount: actualAmountPaid / 100, // Convert cents to dollars
         currency: currency,
         paymentIntentId: paymentIntentId,
         status: 'completed'
       });
       
-      console.log('Course purchase added for user:', user.id, 'Course:', courseId);
+      console.log('Course purchase added for user:', user.id, 'Course:', courseId, 'Amount:', actualAmountPaid / 100);
       
-      // Send payment notification to Slack
+      // Send payment notification to Slack with actual payment data
       try {
-        await sendPaymentNotification({
-          customerName: `${customerDetails.firstName} ${customerDetails.lastName}`,
-          customerEmail: customerDetails.email,
-          transactionType: 'course_purchase',
-          courseName: 'Big baby sleep program',
-          amount: finalPrice,
-          currency: currency,
-          promotionalCode: appliedCoupon?.name || 'N/A',
-          discountAmount: appliedCoupon ? (120 - finalPrice) : 0
+        const slackNotificationService = (await import('./slack')).SlackNotificationService.getInstance();
+        await slackNotificationService.sendPaymentNotification({
+          name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+          email: customerDetails.email,
+          purchaseDetails: "Single Course Purchase (Big Baby Sleep Program)",
+          paymentAmount: `$${(actualAmountPaid / 100).toFixed(2)} ${currency.toUpperCase()}`,
+          promotionalCode: promotionalCode || undefined,
+          discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency.toUpperCase()}` : undefined
         });
+        console.log('Slack payment notification sent successfully');
       } catch (slackError) {
         console.error('Slack notification failed:', slackError);
         // Don't fail the purchase if Slack fails
@@ -4955,7 +4968,10 @@ Please contact the customer to confirm the appointment.
         success: true, 
         message: isNewUser ? 'Account created and purchase completed!' : 'Course added to your account!',
         userId: user.id,
-        isNewUser: isNewUser
+        isNewUser: isNewUser,
+        actualAmountPaid: actualAmountPaid / 100,
+        discountAmount: discountAmount / 100,
+        promotionalCode: promotionalCode || null
       });
     } catch (error: any) {
       console.error('Purchase completion failed:', error);
@@ -5403,6 +5419,67 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error syncing pending transactions:", error);
       res.status(500).json({ message: "Failed to sync pending transactions" });
+    }
+  });
+
+  // Profile completion endpoint for new users after checkout
+  app.post('/api/auth/complete-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { password, interests, marketingOptIn, smsMarketingOptIn, termsAccepted } = req.body;
+      
+      if (!password || password.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+      }
+      
+      if (!termsAccepted) {
+        return res.status(400).json({ message: 'Terms and conditions must be accepted' });
+      }
+      
+      // Hash the password
+      const hashedPassword = await AuthUtils.hashPassword(password);
+      
+      // Update user with password and preferences
+      await storage.updateUser(userId, {
+        passwordHash: hashedPassword,
+        hasSetPassword: true,
+        isFirstLogin: false,
+        primaryConcerns: interests || [],
+        marketingOptIn: marketingOptIn || false,
+        smsMarketingOptIn: smsMarketingOptIn || false,
+        termsAccepted: termsAccepted,
+        profileCompletedAt: new Date()
+      });
+      
+      // Send signup notification to Slack
+      try {
+        const user = await storage.getUser(userId);
+        await slackNotificationService.sendSignupNotification({
+          name: `${user.firstName} ${user.lastName || ''}`.trim(),
+          email: user.email,
+          marketingOptIn: marketingOptIn,
+          primaryConcerns: interests || [],
+          signupSource: 'big_baby_checkout',
+          signupType: 'new_customer',
+          coursePurchased: 'Big Baby Sleep Program'
+        });
+      } catch (slackError) {
+        console.error('Slack notification failed:', slackError);
+        // Don't fail the profile completion if Slack fails
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Profile completed successfully',
+        user: {
+          id: userId,
+          hasSetPassword: true,
+          profileCompleted: true
+        }
+      });
+    } catch (error: any) {
+      console.error('Profile completion failed:', error);
+      res.status(500).json({ message: error.message });
     }
   });
 
