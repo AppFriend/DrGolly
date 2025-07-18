@@ -816,7 +816,7 @@ export default function BigBabyPublic() {
 
       // Redirect to profile completion for new users, or home for existing users
       if (completion.isNewUser) {
-        setLocation("/profile-completion");
+        setLocation("/complete");
       } else {
         setLocation("/");
       }

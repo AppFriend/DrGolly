@@ -214,6 +214,7 @@ function AuthenticatedApp() {
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/profile-completion" component={ProfileCompletion} />
+        <Route path="/complete" component={ProfileCompletion} />
         <Route path="/auth-test" component={AuthTestPage} />
         <Route path="/test-checkout" component={TestCheckout} />
         <Route component={NotFound} />
