@@ -4750,6 +4750,7 @@ Please contact the customer to confirm the appointment.
           discountAmount: appliedCoupon?.amount_off?.toString() || '',
           promotionCodeId: promotionCode?.id || '',
           promotionCodeCode: promotionCode?.code || '',
+          promotionalCode: promotionCode?.code || couponId || '',
         },
         description: 'Course Purchase: Big Baby Sleep Program',
         receipt_email: customerDetails.email,
@@ -4835,10 +4836,19 @@ Please contact the customer to confirm the appointment.
           
           // Apply discount if coupon is valid
           if (coupon && coupon.valid) {
+            console.log('Applying coupon:', coupon.id, 'Type:', coupon.amount_off ? 'Fixed amount' : 'Percentage', 'Original amount: $' + baseAmount);
+            
             if (coupon.percent_off) {
+              // Percentage discount
+              const originalAmount = baseAmount;
               finalAmount = baseAmount * (1 - coupon.percent_off / 100);
+              console.log('Percentage discount:', coupon.percent_off + '%', 'Original: $' + originalAmount, 'New: $' + finalAmount);
             } else if (coupon.amount_off) {
-              finalAmount = Math.max(0, baseAmount - (coupon.amount_off / 100));
+              // Fixed amount discount - amount_off is already in cents, convert to dollars
+              const originalAmount = baseAmount;
+              const discountInDollars = coupon.amount_off / 100;
+              finalAmount = Math.max(0, baseAmount - discountInDollars);
+              console.log('Fixed amount discount: $' + discountInDollars, 'Original: $' + originalAmount, 'New: $' + finalAmount);
             }
           }
         } catch (error) {
@@ -4894,7 +4904,7 @@ Please contact the customer to confirm the appointment.
       const actualAmountPaid = paymentIntent.amount; // This is the amount actually charged
       const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
       const discountAmount = originalAmount - actualAmountPaid;
-      const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+      const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.promotionalCode || paymentIntent.metadata.couponCode || paymentIntent.metadata.couponId;
       
       console.log('Payment details:', {
         actualAmountPaid: actualAmountPaid / 100,
