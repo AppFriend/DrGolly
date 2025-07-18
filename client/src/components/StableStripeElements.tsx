@@ -188,7 +188,7 @@ function StablePaymentForm({
         <Button 
           type="submit" 
           className="w-full bg-[#6B9CA3] hover:bg-[#5A8A91] text-white font-semibold py-3 rounded-lg transition-colors"
-          disabled={!isElementReady || !elementMounted || isProcessing || !customerDetails.email || !billingDetails.firstName || !billingDetails.lastName}
+          disabled={!isElementReady || !elementMounted || isProcessing || !customerDetails.email}
         >
           {isProcessing ? (
             <div className="flex items-center justify-center">
