@@ -671,6 +671,26 @@ export default function BigBabyPublic() {
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [orderExpanded, setOrderExpanded] = useState(true);
   const [clientSecret, setClientSecret] = useState("");
+  const [billingDetails, setBillingDetails] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    address: '',
+    country: 'Australia',
+    city: '',
+    postcode: ''
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Auto-populate billing details first name from customer details
+  useEffect(() => {
+    if (customerDetails.firstName && !billingDetails.firstName) {
+      setBillingDetails(prev => ({
+        ...prev,
+        firstName: customerDetails.firstName
+      }));
+    }
+  }, [customerDetails.firstName, billingDetails.firstName]);
 
   // Fetch regional pricing
   const { data: regionalPricing } = useQuery({
