@@ -736,14 +736,15 @@ export default function BigBabyPublic() {
   const createPaymentIntent = async (skipCoupon = false) => {
     if (!customerDetails.email || !customerDetails.firstName) return;
     
-    // Don't create new payment intent if one already exists
-    if (clientSecret) {
+    // Don't create new payment intent if one already exists (unless we're forcing recreation)
+    if (clientSecret && !skipCoupon) {
       console.log('Payment intent already exists, skipping creation');
       return;
     }
     
     try {
       console.log('Creating payment intent for:', customerDetails.email);
+      console.log('Applied coupon:', appliedCoupon?.id || 'none');
       const response = await fetch('/api/create-big-baby-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -756,6 +757,9 @@ export default function BigBabyPublic() {
       const data = await response.json();
       if (response.ok) {
         console.log('Payment intent created successfully');
+        console.log('Final amount:', data.finalAmount);
+        console.log('Discount amount:', data.discountAmount);
+        console.log('Coupon applied:', data.couponApplied?.name || 'none');
         setClientSecret(data.clientSecret);
       } else {
         console.error('Failed to create payment intent:', data.message);
@@ -833,12 +837,17 @@ export default function BigBabyPublic() {
     }
   };
 
-  // Create payment intent only once when customer details are ready
+  // Create payment intent when customer details are ready or when coupon changes
   useEffect(() => {
-    if (customerDetails.email && customerDetails.firstName && !clientSecret) {
-      createPaymentIntent(true); // Skip coupon initially
+    if (customerDetails.email && customerDetails.firstName) {
+      // Reset client secret when coupon changes to force recreation
+      if (clientSecret) {
+        setClientSecret("");
+      }
+      // Create payment intent with current coupon state
+      createPaymentIntent(false);
     }
-  }, [customerDetails.email, customerDetails.firstName]);
+  }, [customerDetails.email, customerDetails.firstName, appliedCoupon]);
 
   const canProceedToPayment = customerDetails.email && customerDetails.firstName;
   
