@@ -72,21 +72,51 @@ router.post('/api/checkout-new/create-payment-intent', async (req, res) => {
     let discountAmount = 0;
     let appliedCoupon = null;
     
-    // Validate coupon if provided
+    // Validate coupon if provided - EXACT COPY from validate-coupon endpoint logic
     if (couponCode) {
       try {
-        const coupon = await stripe.coupons.retrieve(couponCode);
-        appliedCoupon = coupon;
+        console.log(`Validating coupon: ${couponCode} for payment intent`);
         
-        if (coupon.percent_off) {
-          discountAmount = Math.round(amount * (coupon.percent_off / 100));
-        } else if (coupon.amount_off) {
-          discountAmount = coupon.amount_off; // Already in cents
+        let coupon = null;
+        let promotionCode = null;
+        
+        // First try to find as promotion code (exact same logic as validate-coupon)
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: couponCode,
+          limit: 1,
+        });
+        
+        if (promotionCodes.data.length > 0) {
+          promotionCode = promotionCodes.data[0];
+          if (promotionCode.active) {
+            coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
+          }
+        } else {
+          // Try direct coupon lookup
+          try {
+            coupon = await stripe.coupons.retrieve(couponCode);
+          } catch (directCouponError) {
+            console.log('No direct coupon found with code:', couponCode);
+          }
         }
         
-        amount = Math.max(amount - discountAmount, 50); // Minimum 50 cents
+        if (coupon && coupon.valid) {
+          appliedCoupon = coupon;
+          
+          if (coupon.percent_off) {
+            discountAmount = Math.round(amount * (coupon.percent_off / 100));
+          } else if (coupon.amount_off) {
+            discountAmount = coupon.amount_off; // Already in cents
+          }
+          
+          amount = Math.max(amount - discountAmount, 50); // Minimum 50 cents
+          
+          console.log(`✓ Valid coupon: ${coupon.id}, discount: ${discountAmount} cents, final: ${amount} cents`);
+        } else {
+          console.log(`No valid coupon found for code: ${couponCode}`);
+        }
       } catch (couponError) {
-        console.log('Invalid coupon:', couponCode);
+        console.error('Coupon validation error:', couponError.message);
         // Continue without discount
       }
     }
