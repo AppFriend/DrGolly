@@ -837,10 +837,14 @@ export default function BigBabyPublic() {
     }
   };
 
-  // Initialize payment intent on page load for immediate field visibility
+  // Initialize payment intent when email is valid for immediate field visibility
   useEffect(() => {
-    if (customerDetails.email && customerDetails.dueDate) {
-      createPaymentIntent(false);
+    if (customerDetails.email && isValidEmail(customerDetails.email) && customerDetails.dueDate) {
+      const timeoutId = setTimeout(() => {
+        createPaymentIntent(false);
+      }, 1000); // Debounce for 1 second
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [customerDetails.email, customerDetails.dueDate, appliedCoupon]);
 
@@ -971,14 +975,162 @@ export default function BigBabyPublic() {
             <div className="bg-white rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               
-              {/* Show Stripe Elements immediately when available */}
-              {clientSecret ? (
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
+              {/* Always show payment options to eliminate loading friction */}
+              <div className="space-y-4">
+                
+                {/* Express Payment Methods */}
+                <div className="space-y-3">
+                  <div className="border border-gray-300 rounded-lg p-4 bg-black text-white flex items-center justify-center">
+                    <div className="flex items-center space-x-2">
+                      <Smartphone className="h-5 w-5" />
+                      <span className="font-medium">Pay</span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center text-sm text-gray-600">or</div>
+                </div>
+
+                {/* Card Payment Section - Always Visible */}
+                {clientSecret ? (
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <div className="space-y-4">
+                      <PaymentElement 
+                        options={{
+                          layout: "tabs",
+                          paymentMethodOrder: ["card", "google_pay", "apple_pay", "link"],
+                        }}
+                      />
+                      
+                      {/* Billing Details */}
+                      <div className="border-t pt-4">
+                        <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input 
+                              placeholder="First Name" 
+                              value={customerDetails.firstName}
+                              onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                            />
+                            <Input 
+                              placeholder="Last Name" 
+                              value={customerDetails.lastName}
+                              onChange={(e) => handleDetailsChange("lastName", e.target.value)}
+                            />
+                          </div>
+                          
+                          <Input 
+                            placeholder="Phone" 
+                            value={customerDetails.phone}
+                            onChange={(e) => handleDetailsChange("phone", e.target.value)}
+                          />
+                          
+                          <GoogleMapsAddressAutocomplete
+                            onAddressChange={handleAddressChange}
+                            initialValue={customerDetails.address}
+                            placeholder="Start typing your address"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Terms and Privacy */}
+                      <div className="text-sm text-gray-600 space-y-2">
+                        <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
+                        
+                        <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
+                      </div>
+
+                      {/* Place Order Button */}
+                      <button
+                        onClick={async () => {
+                          const stripe = await stripePromise;
+                          const elements = {} as any; // Will be handled by Elements context
+                          if (!stripe || !elements) return;
+                          
+                          setIsProcessing(true);
+                          
+                          const { error } = await stripe.confirmPayment({
+                            elements,
+                            confirmParams: {
+                              return_url: window.location.origin + '/complete',
+                            },
+                          });
+
+                          if (error) {
+                            console.error('Payment failed:', error);
+                            toast({
+                              title: "Payment Failed",
+                              description: error.message,
+                              variant: "destructive",
+                            });
+                            setIsProcessing(false);
+                          }
+                        }}
+                        disabled={!customerDetails.email || isProcessing}
+                        className="w-full bg-[#095D66] text-white py-4 px-4 rounded-lg font-medium hover:bg-[#074850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
+                      >
+                        {isProcessing ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                            Processing...
+                          </div>
+                        ) : (
+                          "Place order"
+                        )}
+                      </button>
+
+                      <p className="text-sm text-gray-600">
+                        As this is a digital product you will be automatically subscribed to email so we can get your account set up in the Dr Golly Learning Hub, once you are set up you can unsubscribe at any time. Please ensure the email you are checking out with is correct.
+                      </p>
+                    </div>
+                  </Elements>
+                ) : (
                   <div className="space-y-4">
-                    {/* Payment Element - Always Visible */}
-                    <PaymentElement />
+                    {/* Show static payment form while payment intent loads */}
+                    <div className="border border-gray-300 rounded-lg p-4">
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium">Email</Label>
+                          <Input 
+                            placeholder="Your email address" 
+                            type="email"
+                            className="mt-1"
+                            disabled={true}
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label className="text-sm font-medium">Card information</Label>
+                          <div className="space-y-2">
+                            <Input 
+                              placeholder="1234 1234 1234 1234" 
+                              className="mt-1"
+                              disabled={true}
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input 
+                                placeholder="MM / YY" 
+                                disabled={true}
+                              />
+                              <Input 
+                                placeholder="CVC" 
+                                disabled={true}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label className="text-sm font-medium">Cardholder name</Label>
+                          <Input 
+                            placeholder="Full name on card" 
+                            className="mt-1"
+                            disabled={true}
+                          />
+                        </div>
+                      </div>
+                    </div>
                     
-                    {/* Billing Details Section */}
+                    {/* Billing Details - Always visible */}
                     <div className="border-t pt-4">
                       <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
                       <div className="space-y-4">
@@ -1009,62 +1161,23 @@ export default function BigBabyPublic() {
                       </div>
                     </div>
 
-                    {/* Terms and Privacy */}
-                    <div className="text-sm text-gray-600 space-y-2">
-                      <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
-                      
-                      <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
+                    <div className="text-center py-4">
+                      <div className="inline-flex items-center text-sm text-gray-600">
+                        <div className="animate-spin w-4 h-4 border-2 border-[#095D66] border-t-transparent rounded-full mr-2"></div>
+                        Loading secure payment form...
+                      </div>
                     </div>
-
-                    {/* Place Order Button */}
+                    
                     <button
-                      onClick={async () => {
-                        const stripe = await stripePromise;
-                        if (!stripe) return;
-                        setIsProcessing(true);
-                        
-                        const { error } = await stripe.confirmPayment({
-                          elements: {} as any, // This will be handled by the payment element
-                          confirmParams: {
-                            return_url: window.location.origin + '/complete',
-                          },
-                        });
-
-                        if (error) {
-                          console.error('Payment failed:', error);
-                          toast({
-                            title: "Payment Failed",
-                            description: error.message,
-                            variant: "destructive",
-                          });
-                          setIsProcessing(false);
-                        }
-                      }}
-                      disabled={!customerDetails.email || isProcessing}
-                      className="w-full bg-[#095D66] text-white py-4 px-4 rounded-lg font-medium hover:bg-[#074850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
+                      onClick={handlePlaceOrder}
+                      disabled={true}
+                      className="w-full bg-gray-300 text-gray-500 py-4 px-4 rounded-lg font-medium cursor-not-allowed transition-colors text-lg"
                     >
-                      {isProcessing ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                          Processing...
-                        </div>
-                      ) : (
-                        "Place order"
-                      )}
+                      Complete your details above to proceed
                     </button>
-
-                    <p className="text-sm text-gray-600">
-                      As this is a digital product you will be automatically subscribed to email so we can get your account set up in the Dr Golly Learning Hub, once you are set up you can unsubscribe at any time. Please ensure the email you are checking out with is correct.
-                    </p>
                   </div>
-                </Elements>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="animate-spin w-8 h-8 border-2 border-[#095D66] border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading payment form...</p>
-                  <p className="text-sm text-gray-500 mt-2">Please complete your email and date of birth above</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
