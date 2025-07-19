@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import Stripe from 'stripe';
+import { storage } from '../storage.js';
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -427,7 +428,7 @@ router.post('/api/checkout-new/validate-coupon', async (req, res) => {
   }
 });
 
-// Complete purchase
+// Complete purchase with proper routing and Slack notifications
 router.post('/api/checkout-new/complete-purchase', async (req, res) => {
   try {
     const { paymentIntentId, customerDetails } = req.body;
@@ -440,17 +441,78 @@ router.post('/api/checkout-new/complete-purchase', async (req, res) => {
     }
     
     // Extract metadata
-    const { productId, productName } = paymentIntent.metadata;
+    const { 
+      productId, 
+      productName, 
+      customerEmail, 
+      customerFirstName, 
+      customerLastName,
+      originalAmount,
+      discountAmount,
+      couponCode
+    } = paymentIntent.metadata;
     
-    // Handle user creation/login logic here
-    // For now, return success
+    // Check if user exists (case-insensitive email check)
+    const existingUser = await storage.getUserByEmail(customerEmail.toLowerCase());
+    
+    let redirectTo = '/complete';
+    let userExists = false;
+    
+    if (existingUser) {
+      // Existing user - add purchase to their account and log them in
+      userExists = true;
+      redirectTo = '/home';
+      
+      // Add course to user's purchases
+      await storage.createCoursePurchase({
+        userId: existingUser.id,
+        courseId: parseInt(productId),
+        amount: parseInt(originalAmount), // amount is in cents in the schema
+        currency: 'aud',
+        stripePaymentIntentId: paymentIntentId,
+        status: 'completed'
+      });
+      
+      // Create session for existing user
+      req.session.userId = existingUser.id;
+      req.session.userEmail = existingUser.email;
+      
+    } else {
+      // New user - they'll complete profile at /complete
+      userExists = false;
+      redirectTo = '/complete';
+      
+      // Store purchase info in session for after profile completion
+      req.session.pendingPurchase = {
+        productId: parseInt(productId),
+        paymentIntentId,
+        amount: parseFloat(originalAmount) / 100,
+        discountAmount: parseFloat(discountAmount) / 100,
+        couponCode: couponCode || null
+      };
+    }
+    
+    // Send Slack notification
+    await sendPurchaseSlackNotification({
+      firstName: customerFirstName || 'N/A',
+      lastName: customerLastName || 'N/A',
+      email: customerEmail,
+      courseTitle: productName,
+      originalAmount: parseFloat(originalAmount) / 100,
+      finalAmount: paymentIntent.amount / 100,
+      discountAmount: parseFloat(discountAmount) / 100,
+      couponCode: couponCode || 'N/A',
+      currency: paymentIntent.currency.toUpperCase()
+    });
     
     res.json({
       success: true,
       message: 'Purchase completed successfully',
       productName,
       amount: paymentIntent.amount / 100,
-      currency: paymentIntent.currency.toUpperCase()
+      currency: paymentIntent.currency.toUpperCase(),
+      redirectTo,
+      userExists
     });
   } catch (error) {
     console.error('Error completing purchase:', error);
@@ -467,17 +529,33 @@ router.post('/api/checkout-new/check-email', async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
     
-    // Check if user exists in system (using existing storage)
-    // This would need to be implemented based on your user storage system
-    // For now, return false to default to new user flow
-    const userExists = false; // TODO: Implement actual user lookup
+    console.log('Checking email:', email.toLowerCase());
     
-    res.json({
-      exists: userExists,
-      email
-    });
+    // Check if user exists in system (case-insensitive)
+    try {
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
+      const userExists = !!existingUser;
+      
+      console.log('Email check result:', { email: email.toLowerCase(), exists: userExists });
+      
+      res.json({
+        exists: userExists,
+        email: email.toLowerCase()
+      });
+      return;
+    } catch (dbError) {
+      console.error('Database error during email check:', dbError);
+      // For now, assume user does not exist if database fails
+      // This allows the flow to continue and user can still complete purchase
+      res.json({
+        exists: false,
+        email: email.toLowerCase(),
+        warning: 'Database unavailable - assuming new user'
+      });
+      return;
+    }
   } catch (error) {
-    console.error('Error checking email:', error);
+    console.error('Unexpected error in email check endpoint:', error);
     res.status(500).json({ message: 'Failed to check email' });
   }
 });
@@ -1006,5 +1084,89 @@ router.post('/api/checkout-new/complete-purchase', async (req, res) => {
     res.status(500).json({ message: 'Failed to complete purchase' });
   }
 });
+
+// Send Slack notification for course purchase
+async function sendPurchaseSlackNotification(purchaseData: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  courseTitle: string;
+  originalAmount: number;
+  finalAmount: number;
+  discountAmount: number;
+  couponCode: string;
+  currency: string;
+}) {
+  try {
+    const webhookUrl = process.env.SLACK_WEBHOOK_PAYMENT2;
+    
+    if (!webhookUrl) {
+      console.log('Slack webhook URL not configured, skipping notification');
+      return;
+    }
+    
+    const message = {
+      text: "💰 Single Course Purchase",
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: "*💰 Single Course Purchase*"
+          }
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Customer First Name:*\n${purchaseData.firstName}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Customer Last Name:*\n${purchaseData.lastName}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Email:*\n${purchaseData.email}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Details:*\n${purchaseData.courseTitle}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Transaction Amount:*\n$${purchaseData.finalAmount.toFixed(2)} ${purchaseData.currency}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Promotional Code Used:*\n${purchaseData.couponCode}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Total Discount Amount:*\n$${purchaseData.discountAmount.toFixed(2)} ${purchaseData.currency}`
+            }
+          ]
+        }
+      ]
+    };
+    
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message)
+    });
+    
+    if (response.ok) {
+      console.log('✅ Purchase Slack notification sent successfully');
+    } else {
+      console.error('❌ Failed to send purchase Slack notification:', response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error('❌ Error sending purchase Slack notification:', error);
+  }
+}
 
 export default router;

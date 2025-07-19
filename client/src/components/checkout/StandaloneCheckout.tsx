@@ -93,9 +93,26 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
     try {
       setPaymentProcessing(true);
       
-      // TODO: Implement user flow logic here
-      // - Check if email exists in system
-      // - If new user: redirect to /complete
+      toast({
+        title: "Payment Successful",
+        description: "Thank you for your purchase!",
+      });
+      
+      // Complete purchase flow for express payments
+      const purchaseResponse = await apiRequest('POST', '/api/checkout-new/complete-purchase', {
+        paymentIntentId: paymentResult.paymentIntent.id,
+        customerDetails
+      });
+      
+      const purchaseData = await purchaseResponse.json();
+      
+      // Use the routing information returned from backend
+      if (purchaseData.redirectTo) {
+        window.location.href = purchaseData.redirectTo;
+      } else {
+        // Fallback: redirect based on userExists flag
+        window.location.href = purchaseData.userExists ? '/home' : '/complete';
+      }
       // - If existing user: redirect to /home
       
       console.log('Express payment completed:', paymentResult);
@@ -205,31 +222,31 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
           if (product.type === 'subscription') {
             // Handle subscription completion
             const subscriptionId = localStorage.getItem('pendingSubscriptionId');
-            await apiRequest('POST', '/api/checkout-new/complete-subscription', {
+            const subscriptionResponse = await apiRequest('POST', '/api/checkout-new/complete-subscription', {
               subscriptionId,
               customerDetails
             });
             localStorage.removeItem('pendingSubscriptionId');
             localStorage.removeItem('pendingCustomerId');
+            
+            // Use subscription response for routing (implement if needed)
+            window.location.href = '/home'; // Default for subscriptions
           } else {
-            // Handle one-off purchase completion
-            await apiRequest('POST', '/api/checkout-new/complete-purchase', {
+            // Handle one-off purchase completion with routing logic
+            const purchaseResponse = await apiRequest('POST', '/api/checkout-new/complete-purchase', {
               paymentIntentId: paymentIntent.id,
               customerDetails
             });
-          }
-          
-          // Check if user exists for redirect logic
-          const emailCheckResponse = await apiRequest('POST', '/api/checkout-new/check-email', {
-            email: customerDetails.email
-          });
-          const emailData = await emailCheckResponse.json();
-          
-          // Redirect based on user status
-          if (emailData.exists) {
-            window.location.href = '/home';
-          } else {
-            window.location.href = '/complete';
+            
+            const purchaseData = await purchaseResponse.json();
+            
+            // Use the routing information returned from backend
+            if (purchaseData.redirectTo) {
+              window.location.href = purchaseData.redirectTo;
+            } else {
+              // Fallback: redirect based on userExists flag
+              window.location.href = purchaseData.userExists ? '/home' : '/complete';
+            }
           }
         } catch (error) {
           console.error('Error completing purchase:', error);
