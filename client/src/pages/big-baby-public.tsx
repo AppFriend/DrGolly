@@ -773,13 +773,13 @@ export default function BigBabyPublic() {
     setCustomerDetails(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAddressChange = (address: string, city: string, postcode: string, country: string) => {
+  const handleAddressChange = (addressData: { address: string; city: string; postcode: string; country: string }) => {
     setCustomerDetails(prev => ({
       ...prev,
-      address,
-      city,
-      postcode,
-      country
+      address: addressData.address,
+      city: addressData.city,
+      postcode: addressData.postcode,
+      country: addressData.country
     }));
   };
 
@@ -1037,7 +1037,7 @@ export default function BigBabyPublic() {
                           />
                           
                           <GoogleMapsAddressAutocomplete
-                            onAddressChange={handleAddressChange}
+                            onAddressSelect={handleAddressChange}
                             initialValue={customerDetails.address}
                             placeholder="Start typing your address"
                           />
@@ -1166,7 +1166,7 @@ export default function BigBabyPublic() {
                         />
                         
                         <GoogleMapsAddressAutocomplete
-                          onAddressChange={handleAddressChange}
+                          onAddressSelect={handleAddressChange}
                           initialValue={customerDetails.address}
                           placeholder="Start typing your address"
                         />
