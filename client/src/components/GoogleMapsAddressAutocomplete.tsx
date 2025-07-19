@@ -63,22 +63,31 @@ export default function GoogleMapsAddressAutocomplete({
           return;
         }
 
-        // Load Google Maps JavaScript API
+        // Load Google Maps JavaScript API with timeout protection
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps&loading=async`;
         script.async = true;
         script.defer = true;
-        script.crossOrigin = "anonymous";
+        
+        // Set a timeout to fallback if Google Maps doesn't load
+        const timeout = setTimeout(() => {
+          console.warn('Google Maps API timeout, falling back to manual input');
+          setError('Address autocomplete unavailable. Please enter manually.');
+          setIsLoaded(false);
+        }, 3000);
         
         // Add global callback function
         (window as any).initGoogleMaps = () => {
+          clearTimeout(timeout);
           setIsLoaded(true);
           setError(null);
+          console.log('Google Maps API loaded successfully');
         };
         
         script.onerror = (error) => {
-          console.error('Failed to load Google Maps API:', error);
-          setError('Failed to load address autocomplete. Please enter your address manually.');
+          clearTimeout(timeout);
+          console.warn('Google Maps API failed to load, using manual input fallback:', error);
+          setError('Address autocomplete unavailable. Please enter manually.');
           setIsLoaded(false);
         };
         

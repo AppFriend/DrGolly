@@ -1042,7 +1042,7 @@ export default function BigBabyPublic() {
                           <GoogleMapsAddressAutocomplete
                             onAddressSelect={handleAddressChange}
                             initialValue={customerDetails.address}
-                            placeholder="Start typing your address"
+                            className="w-full"
                           />
                         </div>
                       </div>
