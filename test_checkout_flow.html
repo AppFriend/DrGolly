@@ -1,69 +1,194 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Test Checkout Flow</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout Flow Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ccc; }
+        .results { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 3px; }
+    </style>
 </head>
 <body>
-    <h1>Test Checkout Flow</h1>
-    
-    <h2>1. Login and Update Stripe Products</h2>
-    <button onclick="updateStripeProducts()">Update Stripe Products</button>
-    <div id="stripe-results"></div>
-    
-    <h2>2. Test Checkout URLs</h2>
-    <p><a href="/checkout/5" target="_blank">Checkout for Course ID 5 (Little baby sleep program)</a></p>
-    <p><a href="/checkout/6" target="_blank">Checkout for Course ID 6 (Big baby sleep program)</a></p>
-    
-    <h2>3. Test Course API</h2>
-    <button onclick="testCourseAPI()">Test Course API</button>
-    <div id="course-results"></div>
-    
+    <h1>Comprehensive Checkout Flow Test</h1>
+    <p>Testing the new checkout system according to prompt requirements.</p>
+
+    <div class="test-section">
+        <h3>1. Page Load Test</h3>
+        <button onclick="testPageLoad()">Test Checkout Page Load</button>
+        <div id="pageLoadResults" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. API Endpoints Test</h3>
+        <button onclick="testAPIEndpoints()">Test All API Endpoints</button>
+        <div id="apiResults" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Stripe Integration Test</h3>
+        <button onclick="testStripeIntegration()">Test Stripe Elements</button>
+        <div id="stripeResults" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Live Checkout Page</h3>
+        <p>Interactive checkout page for manual testing:</p>
+        <iframe src="/checkout-new/2" title="Checkout Page"></iframe>
+    </div>
+
     <script>
-        async function updateStripeProducts() {
-            const resultsDiv = document.getElementById('stripe-results');
-            resultsDiv.innerHTML = 'Updating Stripe products...';
+        async function testPageLoad() {
+            const resultsDiv = document.getElementById('pageLoadResults');
+            resultsDiv.innerHTML = 'Testing page load...';
             
             try {
-                const response = await fetch('/api/admin/update-stripe-products', {
+                const response = await fetch('/checkout-new/2');
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Checkout page loads successfully<br>
+                            Status: ${response.status}<br>
+                            Content-Type: ${response.headers.get('content-type')}
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            ❌ Page load failed<br>
+                            Status: ${response.status}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Page load error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testAPIEndpoints() {
+            const resultsDiv = document.getElementById('apiResults');
+            resultsDiv.innerHTML = 'Testing API endpoints...';
+            
+            const tests = [
+                {
+                    name: 'Product API',
+                    url: '/api/checkout-new/products/2',
+                    method: 'GET'
+                },
+                {
+                    name: 'Coupon Validation',
+                    url: '/api/checkout-new/validate-coupon',
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include'
+                    body: { couponCode: 'CHECKOUT-99', amount: 120 }
+                },
+                {
+                    name: 'Regional Pricing',
+                    url: '/api/detect-region',
+                    method: 'GET'
+                },
+                {
+                    name: 'Email Check',
+                    url: '/api/checkout-new/check-email',
+                    method: 'POST',
+                    body: { email: 'test@example.com' }
+                }
+            ];
+            
+            let results = '<h4>API Endpoint Results:</h4>';
+            
+            for (const test of tests) {
+                try {
+                    const options = {
+                        method: test.method,
+                        headers: { 'Content-Type': 'application/json' }
+                    };
+                    
+                    if (test.body) {
+                        options.body = JSON.stringify(test.body);
+                    }
+                    
+                    const response = await fetch(test.url, options);
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        results += `<div class="success">✅ ${test.name}: Working</div>`;
+                    } else {
+                        results += `<div class="error">❌ ${test.name}: Failed (${response.status})</div>`;
+                    }
+                } catch (error) {
+                    results += `<div class="error">❌ ${test.name}: Error - ${error.message}</div>`;
+                }
+            }
+            
+            resultsDiv.innerHTML = results;
+        }
+
+        async function testStripeIntegration() {
+            const resultsDiv = document.getElementById('stripeResults');
+            resultsDiv.innerHTML = 'Testing Stripe integration...';
+            
+            try {
+                // Test payment intent creation
+                const response = await fetch('/api/checkout-new/create-payment-intent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productId: 2,
+                        customerDetails: {
+                            email: 'test@example.com',
+                            firstName: 'Test',
+                            lastName: 'User'
+                        },
+                        couponCode: 'CHECKOUT-99'
+                    })
                 });
                 
                 const data = await response.json();
-                if (response.ok) {
-                    resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                if (response.ok && data.clientSecret) {
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Stripe integration working<br>
+                            Client Secret: ${data.clientSecret.substring(0, 20)}...<br>
+                            Original Amount: ${data.currency} $${data.originalAmount}<br>
+                            Final Amount: ${data.currency} $${data.amount}<br>
+                            Discount Applied: $${data.discountAmount}<br>
+                            <strong>Ready for payment processing!</strong>
+                        </div>
+                    `;
                 } else {
-                    resultsDiv.innerHTML = `<div style="color: red;">Error: ${data.error}</div>`;
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            ❌ Stripe integration failed<br>
+                            Error: ${data.message || 'Unknown error'}
+                        </div>
+                    `;
                 }
             } catch (error) {
-                resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Stripe integration error: ${error.message}
+                    </div>
+                `;
             }
         }
-        
-        async function testCourseAPI() {
-            const resultsDiv = document.getElementById('course-results');
-            resultsDiv.innerHTML = 'Testing course API...';
-            
-            try {
-                const response = await fetch('/api/courses/5');
-                const data = await response.json();
-                
-                const courseData = {
-                    id: data.id,
-                    title: data.title,
-                    thumbnailUrl: data.thumbnailUrl,
-                    price: data.price,
-                    stripe_product_id: data.stripe_product_id
-                };
-                
-                resultsDiv.innerHTML = `<pre>${JSON.stringify(courseData, null, 2)}</pre>`;
-            } catch (error) {
-                resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
-            }
-        }
+
+        // Auto-run tests on page load
+        window.onload = function() {
+            console.log('Auto-running comprehensive tests...');
+            testPageLoad();
+            setTimeout(() => testAPIEndpoints(), 1000);
+            setTimeout(() => testStripeIntegration(), 2000);
+        };
     </script>
 </body>
 </html>
