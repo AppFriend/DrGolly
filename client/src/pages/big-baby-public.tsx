@@ -1000,33 +1000,11 @@ export default function BigBabyPublic() {
                           />
                         </div>
                         
-                        <Input 
-                          placeholder="Phone" 
-                          value={customerDetails.phone}
-                          onChange={(e) => handleDetailsChange("phone", e.target.value)}
-                          className="h-12"
-                        />
-                        
                         <GoogleMapsAddressAutocomplete
                           onAddressSelect={handleAddressChange}
                           initialValue={customerDetails.address}
                           className="w-full"
                         />
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input 
-                            placeholder="City" 
-                            value={customerDetails.city}
-                            onChange={(e) => handleDetailsChange("city", e.target.value)}
-                            className="h-12"
-                          />
-                          <Input 
-                            placeholder="Postcode" 
-                            value={customerDetails.postcode}
-                            onChange={(e) => handleDetailsChange("postcode", e.target.value)}
-                            className="h-12"
-                          />
-                        </div>
                         
                         <select 
                           value={customerDetails.country}
