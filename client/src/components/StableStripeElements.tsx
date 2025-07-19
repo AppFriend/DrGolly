@@ -42,15 +42,17 @@ function PaymentForm({ customerDetails, onSuccess }: PaymentFormProps) {
     try {
       console.log('Starting payment confirmation with Stripe...');
       
-      // Create billing details
+      // Create billing details - ALL fields required when using billingDetails: 'never'
       const billingDetails = {
         name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
         email: customerDetails.email,
-        phone: customerDetails.phone || undefined,
+        phone: customerDetails.phone || '0000000000', // Provide default phone when missing
         address: {
-          line1: customerDetails.address || undefined,
-          city: customerDetails.city || undefined,
-          postal_code: customerDetails.postcode || undefined,
+          line1: customerDetails.address || '123 Main St', // Provide default address when missing
+          line2: '',
+          city: customerDetails.city || 'City',
+          state: customerDetails.state || '',
+          postal_code: customerDetails.postcode || '0000',
           country: customerDetails.country || 'AU'
         }
       };
@@ -100,7 +102,12 @@ function PaymentForm({ customerDetails, onSuccess }: PaymentFormProps) {
           layout: "tabs",
           paymentMethodOrder: ["card", "link"],
           fields: {
-            billingDetails: 'never'
+            billingDetails: {
+              name: 'never',
+              email: 'never',
+              phone: 'never',
+              address: 'never'
+            }
           }
         }}
       />
