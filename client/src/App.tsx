@@ -55,6 +55,7 @@ import CheckoutNew from "@/pages/checkout-new";
 import CheckoutNewFixed from "@/pages/checkout-new-fixed";
 import TestCheckoutSimple from "@/pages/test-checkout-simple";
 import TestMinimal from "@/pages/test-minimal";
+import CheckoutSubscriptionTest from "@/pages/checkout-subscription-test";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -106,6 +107,7 @@ function AuthenticatedApp() {
         <Route path="/manage" component={Manage} />
         <Route path="/feature-demo" component={FeatureDemo} />
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
+        <Route path="/checkout-subscription-test" component={CheckoutSubscriptionTest} />
         <Route path="/admin" component={Admin} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />

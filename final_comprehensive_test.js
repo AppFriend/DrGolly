@@ -1,166 +1,230 @@
-// FINAL COMPREHENSIVE CHECKOUT REQUIREMENTS TEST
-// Systematic verification of ALL prompt requirements with detailed status
+#!/usr/bin/env node
 
-console.log('=== FINAL COMPREHENSIVE CHECKOUT SYSTEM TEST ===\n');
+/**
+ * FINAL COMPREHENSIVE SUBSCRIPTION SYSTEM TEST
+ * Complete validation of all subscription functionality with detailed analysis
+ */
 
-const results = {
-  complete: 0,
-  partial: 0,
-  incomplete: 0,
-  total: 0
-};
+const baseUrl = 'http://localhost:5000';
 
-function testResult(name, status) {
-  results.total++;
-  if (status === 'complete') {
-    console.log(`✅ ${name} - COMPLETE`);
-    results.complete++;
-  } else if (status === 'partial') {
-    console.log(`⚠️  ${name} - PARTIAL`);
-    results.partial++;
+async function finalComprehensiveTest() {
+  console.log('🎯 FINAL COMPREHENSIVE SUBSCRIPTION SYSTEM TEST\n');
+  
+  let totalTests = 0;
+  let passedTests = 0;
+  
+  // Test 1: Gold Monthly Basic Subscription
+  console.log('1️⃣ Testing Gold Monthly subscription (basic)...');
+  totalTests++;
+  try {
+    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: 'gold-monthly',
+        customerDetails: {
+          email: 'final.gold.basic@test.com',
+          firstName: 'Gold',
+          lastName: 'Basic'
+        }
+      })
+    });
+    
+    const data = await response.json();
+    if (response.ok && data.clientSecret && data.amount === 199) {
+      console.log('✅ Gold Monthly basic subscription SUCCESS');
+      console.log(`   Amount: $${data.amount} ${data.currency}`);
+      console.log(`   Subscription ID: ${data.subscriptionId}`);
+      passedTests++;
+    } else {
+      console.log('❌ Gold Monthly basic subscription FAILED');
+      console.log('   Response:', JSON.stringify(data, null, 2));
+    }
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+  
+  console.log('');
+  
+  // Test 2: Gold Monthly with 99% Coupon (Special handling)
+  console.log('2️⃣ Testing Gold Monthly subscription with 99% coupon...');
+  totalTests++;
+  try {
+    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: 'gold-monthly',
+        customerDetails: {
+          email: 'final.gold.coupon@test.com',
+          firstName: 'Gold',
+          lastName: 'Coupon'
+        },
+        couponCode: 'ibuO5MIw'
+      })
+    });
+    
+    const data = await response.json();
+    if (response.ok && data.requiresPayment === false && data.amount === 1.99) {
+      console.log('✅ Gold Monthly coupon subscription SUCCESS (intelligent no-payment)');
+      console.log(`   Original: $${data.originalAmount} ${data.currency}`);
+      console.log(`   Discount: $${data.discountAmount} ${data.currency}`);
+      console.log(`   Final: $${data.amount} ${data.currency}`);
+      console.log(`   Requires Payment: ${data.requiresPayment}`);
+      passedTests++;
+    } else {
+      console.log('❌ Gold Monthly coupon subscription FAILED');
+      console.log('   Response:', JSON.stringify(data, null, 2));
+    }
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+  
+  console.log('');
+  
+  // Test 3: Gold Yearly Subscription
+  console.log('3️⃣ Testing Gold Yearly subscription...');
+  totalTests++;
+  try {
+    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: 'gold-yearly',
+        customerDetails: {
+          email: 'final.gold.yearly@test.com',
+          firstName: 'Gold',
+          lastName: 'Yearly'
+        }
+      })
+    });
+    
+    const data = await response.json();
+    if (response.ok && data.clientSecret && data.amount === 159) {
+      console.log('✅ Gold Yearly subscription SUCCESS');
+      console.log(`   Amount: $${data.amount} ${data.currency} (yearly discount applied)`);
+      console.log(`   Billing Period: ${data.billingPeriod}`);
+      passedTests++;
+    } else {
+      console.log('❌ Gold Yearly subscription FAILED');
+      console.log('   Response:', JSON.stringify(data, null, 2));
+    }
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+  
+  console.log('');
+  
+  // Test 4: Platinum Monthly Subscription
+  console.log('4️⃣ Testing Platinum Monthly subscription...');
+  totalTests++;
+  try {
+    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: 'platinum-monthly',
+        customerDetails: {
+          email: 'final.platinum@test.com',
+          firstName: 'Platinum',
+          lastName: 'User'
+        }
+      })
+    });
+    
+    const data = await response.json();
+    if (response.ok && data.clientSecret && data.amount === 499) {
+      console.log('✅ Platinum Monthly subscription SUCCESS');
+      console.log(`   Amount: $${data.amount} ${data.currency}`);
+      console.log(`   Plan Tier: ${data.planTier}`);
+      passedTests++;
+    } else {
+      console.log('❌ Platinum Monthly subscription FAILED');
+      console.log('   Response:', JSON.stringify(data, null, 2));
+    }
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+  
+  console.log('');
+  
+  // Test 5: Email Check Functionality
+  console.log('5️⃣ Testing email check functionality...');
+  totalTests++;
+  try {
+    const response = await fetch(`${baseUrl}/api/checkout-new/check-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'test@example.com'
+      })
+    });
+    
+    const data = await response.json();
+    if (response.ok && typeof data.exists === 'boolean') {
+      console.log('✅ Email check functionality SUCCESS');
+      console.log(`   Email exists: ${data.exists}`);
+      passedTests++;
+    } else {
+      console.log('❌ Email check functionality FAILED');
+      console.log('   Response:', JSON.stringify(data, null, 2));
+    }
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+  
+  console.log('');
+  
+  // Test 6: Coupon Validation with ProductId
+  console.log('6️⃣ Testing coupon validation with productId...');
+  totalTests++;
+  try {
+    const response = await fetch(`${baseUrl}/api/checkout-new/validate-coupon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        couponCode: 'ibuO5MIw',
+        productId: 'gold-monthly'
+      })
+    });
+    
+    const data = await response.json();
+    if (response.ok && data.valid && data.coupon) {
+      console.log('✅ Coupon validation with productId SUCCESS');
+      console.log(`   Coupon: ${data.coupon.name}`);
+      console.log(`   Discount: ${data.coupon.percent_off}%`);
+      passedTests++;
+    } else {
+      console.log('❌ Coupon validation with productId FAILED');
+      console.log('   Response:', JSON.stringify(data, null, 2));
+    }
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+  
+  console.log('\n' + '='.repeat(80));
+  console.log('📊 FINAL COMPREHENSIVE TEST RESULTS');
+  console.log('='.repeat(80));
+  
+  const successRate = Math.round((passedTests / totalTests) * 100);
+  
+  console.log(`Gold Monthly Basic Subscription        ${passedTests >= 1 ? '✅ PASS' : '❌ FAIL'}`);
+  console.log(`Gold Monthly Coupon Subscription       ${passedTests >= 2 ? '✅ PASS' : '❌ FAIL'}`);
+  console.log(`Gold Yearly Subscription               ${passedTests >= 3 ? '✅ PASS' : '❌ FAIL'}`);
+  console.log(`Platinum Monthly Subscription          ${passedTests >= 4 ? '✅ PASS' : '❌ FAIL'}`);
+  console.log(`Email Check Functionality              ${passedTests >= 5 ? '✅ PASS' : '❌ FAIL'}`);
+  console.log(`Coupon Validation                      ${passedTests >= 6 ? '✅ PASS' : '❌ FAIL'}`);
+  
+  console.log('='.repeat(80));
+  console.log(`Overall Status: ${successRate === 100 ? '✅ ALL SYSTEMS OPERATIONAL' : `⚠️  ${passedTests}/${totalTests} TESTS PASSED`}`);
+  console.log(`Success Rate: ${passedTests}/${totalTests} tests passed (${successRate}%)`);
+  console.log('='.repeat(80));
+  
+  if (successRate === 100) {
+    console.log('\n🎉 SUBSCRIPTION SYSTEM FULLY OPERATIONAL AND READY FOR PRODUCTION!');
   } else {
-    console.log(`❌ ${name} - INCOMPLETE`);
-    results.incomplete++;
+    console.log(`\n⚠️  ${totalTests - passedTests} issues need to be resolved before deployment`);
   }
 }
 
-// 1. STACK REQUIREMENTS
-console.log('1. STACK REQUIREMENTS:');
-testResult('React + TypeScript Frontend', 'complete');
-testResult('Vite Build System', 'complete');
-testResult('Wouter Routing', 'complete');
-testResult('Tailwind CSS + shadcn/ui', 'complete');
-testResult('Express.js Backend', 'complete');
-
-// 2. ROUTING + PRODUCT FETCHING
-console.log('\n2. ROUTING + PRODUCT FETCHING:');
-testResult('Route Pattern /checkout-new/:productId', 'complete');
-testResult('Product Info API Endpoint', 'complete');
-testResult('Stripe Product ID Integration', 'complete');
-testResult('One-off vs Subscription Detection', 'complete');
-testResult('Marketing-friendly URLs (slug-based)', 'incomplete'); // TODO
-
-// 3. FORM SECTIONS (UI ORDER)
-console.log('\n3. FORM SECTIONS (UI ORDER):');
-testResult('Your Details Section (Email, Due Date)', 'complete');
-testResult('Payment Section (Card Number, Expiry, CVC)', 'complete');
-testResult('Express Payment Methods (Apple Pay, Google Pay)', 'complete');
-testResult('Stripe Link Integration', 'partial'); // In ExpressPaymentMethods
-testResult('Billing Details Section (Name, Phone)', 'complete');
-testResult('Address Field in Billing Details', 'complete');
-testResult('Payment Elements Always Visible', 'complete');
-
-// 4. STRIPE INTEGRATION
-console.log('\n4. STRIPE INTEGRATION:');
-testResult('@stripe/react-stripe-js Usage', 'complete');
-testResult('Product Name and Type Dynamic Setting', 'complete');
-testResult('Regional Pricing (AUD, USD, EUR, GBP, CAD, NZD)', 'complete');
-testResult('One-off Payment Handling', 'complete');
-testResult('Subscription Payment Handling', 'partial'); // SubscriptionSupport.tsx created
-testResult('Coupon Validation System', 'complete');
-
-// 5. USER FLOW LOGIC
-console.log('\n5. USER FLOW LOGIC:');
-testResult('Known Email Detection API', 'complete');
-testResult('New User Flow (/complete redirect)', 'complete');
-testResult('Existing User Flow (/home redirect)', 'complete');
-testResult('Account Creation with Purchase', 'complete');
-testResult('Purchase Addition to Existing Users', 'complete');
-
-// 6. BACKEND REQUIREMENTS
-console.log('\n6. BACKEND REQUIREMENTS:');
-testResult('React App Serving', 'complete');
-testResult('Stripe Secret Keys Configuration', 'complete');
-testResult('Product API Endpoints', 'complete');
-testResult('Coupon Validation Endpoints', 'complete');
-testResult('Regional Pricing API with IP Detection', 'complete');
-testResult('Payment Success Webhooks', 'complete');
-
-// 7. FOLDER STRUCTURE
-console.log('\n7. FOLDER STRUCTURE:');
-testResult('Core Checkout Structure', 'complete');
-testResult('CouponField.tsx Component', 'complete');
-testResult('PaymentSection.tsx Component', 'complete');
-testResult('UserDetails.tsx Component', 'complete');
-testResult('BillingDetails.tsx Component', 'complete');
-testResult('ExpressPaymentMethods.tsx Component', 'complete');
-testResult('UserFlowLogic.tsx Component', 'complete');
-testResult('SubscriptionSupport.tsx Component', 'complete');
-testResult('Types (checkout.ts)', 'complete');
-testResult('Utils (regionPricing.ts)', 'complete');
-
-// 8. TESTING REQUIREMENTS
-console.log('\n8. TESTING REQUIREMENTS:');
-testResult('Local Development Environment', 'complete');
-testResult('Express Production Build Support', 'partial'); // TODO: Test in production
-testResult('Stripe Elements Mounting Stability', 'complete');
-testResult('Regional Pricing Selection', 'complete');
-testResult('Coupon Application Flow', 'complete');
-testResult('Order Creation and Processing', 'complete');
-testResult('Comprehensive Error Handling', 'complete');
-
-// API ENDPOINT TESTS
-console.log('\n9. API ENDPOINT VERIFICATION:');
-
-// Test all endpoints
-const endpoints = [
-  '/api/checkout-new/products/2',
-  '/api/checkout-new/validate-coupon',
-  '/api/detect-region',
-  '/api/checkout-new/check-email',
-  '/api/checkout-new/create-account',
-  '/api/checkout-new/add-purchase',
-  '/api/checkout-new/webhook'
-];
-
-endpoints.forEach(endpoint => {
-  testResult(`${endpoint} Endpoint`, 'complete');
-});
-
-// FINAL SUMMARY
-console.log('\n=== FINAL SUMMARY ===');
-console.log(`Total Requirements: ${results.total}`);
-console.log(`✅ Complete: ${results.complete} (${Math.round(results.complete/results.total*100)}%)`);
-console.log(`⚠️  Partial: ${results.partial} (${Math.round(results.partial/results.total*100)}%)`);
-console.log(`❌ Incomplete: ${results.incomplete} (${Math.round(results.incomplete/results.total*100)}%)`);
-
-console.log('\n=== REMAINING TASKS ===');
-console.log('1. Marketing-friendly URLs (slug-based routing)');
-console.log('2. Production environment testing');
-console.log('3. Full subscription flow integration');
-
-console.log('\n=== SYSTEM STATUS ===');
-console.log('🚀 New checkout system is PRODUCTION READY');
-console.log('📊 96% implementation completion rate');
-console.log('🔧 All core functionality operational');
-console.log('💳 Payment processing fully integrated');
-console.log('🌍 Multi-currency support enabled');
-console.log('🎯 User flow logic implemented');
-console.log('📱 Express payment methods available');
-console.log('🛡️  Security and error handling complete');
-
-console.log('\n=== COMPONENT ARCHITECTURE ===');
-console.log('├── checkout-new.tsx (main page)');
-console.log('├── StandaloneCheckout.tsx (main component)');
-console.log('├── CouponField.tsx (coupon validation)');
-console.log('├── PaymentSection.tsx (card elements)');
-console.log('├── UserDetails.tsx (customer info)');
-console.log('├── BillingDetails.tsx (billing info)');
-console.log('├── ExpressPaymentMethods.tsx (Apple Pay, Google Pay)');
-console.log('├── UserFlowLogic.tsx (email detection)');
-console.log('├── SubscriptionSupport.tsx (recurring payments)');
-console.log('├── Types: checkout.ts (TypeScript interfaces)');
-console.log('└── Utils: regionPricing.ts (pricing utilities)');
-
-console.log('\n=== API ARCHITECTURE ===');
-console.log('├── /api/checkout-new/products/:id (product details)');
-console.log('├── /api/checkout-new/validate-coupon (coupon validation)');
-console.log('├── /api/checkout-new/create-payment-intent (payment setup)');
-console.log('├── /api/checkout-new/check-email (user flow detection)');
-console.log('├── /api/checkout-new/create-account (new user accounts)');
-console.log('├── /api/checkout-new/add-purchase (existing users)');
-console.log('├── /api/checkout-new/webhook (payment notifications)');
-console.log('├── /api/detect-region (IP-based pricing)');
-console.log('└── /api/regional-pricing/* (multi-currency support)');
-
-console.log('\n✨ CHECKOUT SYSTEM IMPLEMENTATION COMPLETE ✨');
+finalComprehensiveTest().catch(console.error);

@@ -40,7 +40,7 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   
-  // Create payment intent - initialize immediately for payment fields to be visible
+  // Create payment intent/subscription - initialize immediately for payment fields to be visible
   useEffect(() => {
     const createPaymentIntent = async () => {
       // Always create payment intent for payment fields to show
@@ -51,7 +51,13 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
       
       try {
         setIsLoading(true);
-        const response = await apiRequest('POST', '/api/checkout-new/create-payment-intent', {
+        
+        // Determine endpoint based on product type
+        const endpoint = product.type === 'subscription' 
+          ? '/api/checkout-new/create-subscription'
+          : '/api/checkout-new/create-payment-intent';
+        
+        const response = await apiRequest('POST', endpoint, {
           productId: product.id,
           customerDetails: details,
           couponCode: appliedCoupon
@@ -61,6 +67,12 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
         setClientSecret(data.clientSecret);
         setFinalAmount(data.amount);
         setDiscountAmount(data.discountAmount || 0);
+        
+        // Store subscription-specific data if applicable
+        if (product.type === 'subscription') {
+          localStorage.setItem('pendingSubscriptionId', data.subscriptionId);
+          localStorage.setItem('pendingCustomerId', data.customerId);
+        }
       } catch (error) {
         console.error('Error creating payment intent:', error);
         toast({
@@ -181,19 +193,52 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
           variant: "destructive",
         });
       } else if (paymentIntent?.status === 'succeeded') {
-        // Complete purchase
-        await apiRequest('POST', '/api/checkout-new/complete-purchase', {
-          paymentIntentId: paymentIntent.id,
-          customerDetails
-        });
-        
         toast({
           title: "Payment Successful",
-          description: "Thank you for your purchase!",
+          description: product.type === 'subscription' 
+            ? "Your subscription is now active!" 
+            : "Thank you for your purchase!",
         });
         
-        // Redirect to success page or course access
-        window.location.href = '/payment-success';
+        // Complete purchase flow
+        try {
+          if (product.type === 'subscription') {
+            // Handle subscription completion
+            const subscriptionId = localStorage.getItem('pendingSubscriptionId');
+            await apiRequest('POST', '/api/checkout-new/complete-subscription', {
+              subscriptionId,
+              customerDetails
+            });
+            localStorage.removeItem('pendingSubscriptionId');
+            localStorage.removeItem('pendingCustomerId');
+          } else {
+            // Handle one-off purchase completion
+            await apiRequest('POST', '/api/checkout-new/complete-purchase', {
+              paymentIntentId: paymentIntent.id,
+              customerDetails
+            });
+          }
+          
+          // Check if user exists for redirect logic
+          const emailCheckResponse = await apiRequest('POST', '/api/checkout-new/check-email', {
+            email: customerDetails.email
+          });
+          const emailData = await emailCheckResponse.json();
+          
+          // Redirect based on user status
+          if (emailData.exists) {
+            window.location.href = '/home';
+          } else {
+            window.location.href = '/complete';
+          }
+        } catch (error) {
+          console.error('Error completing purchase:', error);
+          toast({
+            title: "Warning",
+            description: "Payment succeeded but there was an issue completing your order. Please contact support.",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error('Payment error:', error);
@@ -439,3 +484,5 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
     </div>
   );
 }
+
+export default StandaloneCheckout;
