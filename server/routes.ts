@@ -5155,6 +5155,276 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // === NEW CHECKOUT SYSTEM ENDPOINTS ===
+  
+  // Get product information for checkout
+  app.get('/api/products/:productId', async (req, res) => {
+    try {
+      const { productId } = req.params;
+      
+      // Mock product data - replace with real database calls
+      const products = {
+        '1': {
+          id: '1',
+          name: 'Little Baby Sleep Program',
+          description: '0-4 Months',
+          price: 12000,
+          currency: 'AUD',
+          stripeProductId: 'prod_course_1',
+          type: 'one-off',
+          imageUrl: '/attached_assets/IMG_5167_1752574749114.jpeg'
+        },
+        '2': {
+          id: '2', 
+          name: 'Big Baby Sleep Program',
+          description: '4-8 Months',
+          price: 12000,
+          currency: 'AUD',
+          stripeProductId: 'prod_course_2',
+          type: 'one-off',
+          imageUrl: '/attached_assets/IMG_5167_1752574749114.jpeg'
+        }
+      };
+      
+      const product = products[productId as keyof typeof products];
+      
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      res.status(500).json({ message: 'Failed to fetch product' });
+    }
+  });
+
+  // Detect user region for pricing
+  app.get('/api/detect-region', async (req, res) => {
+    try {
+      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      
+      res.json({
+        currency: regionalPricing.currency,
+        country: regionalPricing.country,
+        coursePrice: regionalPricing.coursePrice
+      });
+    } catch (error) {
+      console.error('Error detecting region:', error);
+      res.json({ currency: 'AUD', country: 'AU', coursePrice: 12000 });
+    }
+  });
+
+  // Validate coupon code
+  app.post('/api/validate-coupon', async (req, res) => {
+    try {
+      const { code, productId } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({ message: 'Coupon code is required' });
+      }
+      
+      console.log('Validating coupon code:', code);
+      
+      let coupon = null;
+      let promotionCode = null;
+      
+      try {
+        // First try to find promotion code
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: code,
+          limit: 1,
+        });
+        
+        if (promotionCodes.data.length > 0) {
+          promotionCode = promotionCodes.data[0];
+          if (promotionCode.active) {
+            coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
+          }
+        } else {
+          // Try direct coupon lookup
+          try {
+            coupon = await stripe.coupons.retrieve(code);
+          } catch (directCouponError) {
+            console.log('No direct coupon found with code:', code);
+          }
+        }
+        
+        if (coupon && coupon.valid) {
+          res.json({
+            id: coupon.id,
+            code: code,
+            percent_off: coupon.percent_off,
+            amount_off: coupon.amount_off,
+            valid: true
+          });
+        } else {
+          res.status(400).json({
+            valid: false,
+            message: 'Invalid or expired coupon code'
+          });
+        }
+      } catch (error) {
+        console.error('Error validating coupon:', error);
+        res.status(400).json({
+          valid: false,
+          message: 'Invalid coupon code'
+        });
+      }
+    } catch (error) {
+      console.error('Error in coupon validation:', error);
+      res.status(500).json({ message: 'Failed to validate coupon' });
+    }
+  });
+
+  // Create payment intent for new checkout
+  app.post('/api/create-checkout-new-payment-intent', async (req, res) => {
+    try {
+      const { amount, currency, productId } = req.body;
+      
+      if (!amount || !currency) {
+        return res.status(400).json({ message: 'Amount and currency are required' });
+      }
+      
+      // Get regional pricing
+      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      
+      console.log('Creating checkout-new payment intent:', {
+        amount,
+        currency: currency.toLowerCase(),
+        productId: productId || '2',
+        userIP,
+        regionalPricing
+      });
+      
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: currency.toLowerCase(),
+        metadata: {
+          productId: productId || '2',
+          type: 'checkout_new',
+          userIP,
+          country: regionalPricing.country
+        },
+        description: 'Big Baby Sleep Program'
+      });
+      
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
+      });
+    } catch (error) {
+      console.error('Error creating checkout-new payment intent:', error);
+      res.status(500).json({ message: 'Failed to create payment intent' });
+    }
+  });
+
+  // Complete purchase for new checkout
+  app.post('/api/complete-checkout-new-purchase', async (req, res) => {
+    try {
+      const { paymentIntentId, customerDetails, productId, couponCode } = req.body;
+      
+      if (!paymentIntentId || !customerDetails) {
+        return res.status(400).json({ message: 'Payment intent ID and customer details are required' });
+      }
+      
+      console.log('Completing checkout-new purchase:', { paymentIntentId, email: customerDetails.email });
+      
+      // Verify payment was successful
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: 'Payment not completed' });
+      }
+      
+      // Check if user already exists
+      let existingUser = await storage.getUserByEmail(customerDetails.email);
+      let userId;
+      
+      if (existingUser) {
+        // User exists - add course to their account
+        userId = existingUser.id;
+        console.log('Adding course to existing user:', userId);
+      } else {
+        // Create new user account
+        const tempUserId = AuthUtils.generateUserId();
+        const tempPassword = AuthUtils.generateTemporaryPassword();
+        
+        const userData = {
+          id: tempUserId,
+          email: customerDetails.email,
+          firstName: customerDetails.firstName,
+          lastName: customerDetails.lastName || '',
+          phone: customerDetails.phone || '',
+          subscriptionTier: 'free',
+          subscriptionStatus: 'active',
+          signupSource: 'checkout_new',
+          country: 'AU',
+          profileImageUrl: '',
+          dueDate: customerDetails.dueDate ? new Date(customerDetails.dueDate) : null,
+          hasSetPassword: false,
+          isFirstLogin: true,
+          temporaryPassword: tempPassword
+        };
+        
+        console.log('Creating new user for checkout-new:', { email: customerDetails.email });
+        const user = await storage.upsertUser(userData);
+        userId = user.id;
+        
+        // Create temporary password record
+        await storage.createTemporaryPassword(userId, tempPassword);
+        
+        // Send welcome email via Klaviyo
+        try {
+          await klaviyoService.syncUserToKlaviyo(user);
+          console.log('User synced to Klaviyo successfully');
+        } catch (klaviyoError) {
+          console.error('Error syncing to Klaviyo:', klaviyoError);
+        }
+      }
+      
+      // Create course purchase record
+      await storage.createCoursePurchase({
+        userId: userId,
+        courseId: parseInt(productId) || 2,
+        stripePaymentIntentId: paymentIntent.id,
+        stripeCustomerId: paymentIntent.customer || '',
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: 'completed',
+      });
+      
+      // Send Slack notification
+      try {
+        await slackNotificationService.sendPaymentNotification({
+          type: 'course_purchase',
+          customer: customerDetails.firstName + ' ' + (customerDetails.lastName || ''),
+          email: customerDetails.email,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency.toUpperCase(),
+          courseName: 'Big Baby Sleep Program',
+          discountAmount: couponCode ? 'Applied' : 'N/A',
+          promotionalCode: couponCode || 'N/A'
+        });
+      } catch (slackError) {
+        console.error('Error sending Slack notification:', slackError);
+      }
+      
+      res.json({
+        success: true,
+        message: 'Purchase completed successfully',
+        userId: userId,
+        redirectTo: existingUser ? '/home' : '/complete'
+      });
+    } catch (error) {
+      console.error('Error completing checkout-new purchase:', error);
+      res.status(500).json({ message: 'Failed to complete purchase' });
+    }
+  });
+
   // Test endpoint to verify payment verification system is working
   app.post('/api/test-payment-verification', async (req, res) => {
     try {

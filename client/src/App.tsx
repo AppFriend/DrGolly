@@ -112,6 +112,7 @@ function AuthenticatedApp() {
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
+        <Route path="/checkout-new/:productId?" component={CheckoutNew} />
         <Route path="/checkout-new" component={CheckoutNew} />
         <Route path="/share/:slug" component={Share} />
         
