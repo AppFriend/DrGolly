@@ -63,36 +63,30 @@ export default function SimpleStripeForm({ clientSecret, customerDetails, onSucc
   };
 
   return (
-    <div className="space-y-4">
-      {/* Standalone Stripe Card Element - Available Immediately */}
-      <div className="border border-gray-300 rounded-lg p-4 bg-white">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="border border-gray-300 rounded-lg p-4">
         <CardElement
           options={{
             style: {
               base: {
                 fontSize: '16px',
                 color: '#424770',
-                fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
-                fontSmoothing: 'antialiased',
                 '::placeholder': {
                   color: '#aab7c4',
                 },
               },
             },
-            hidePostalCode: true,
           }}
         />
       </div>
       
-      <form onSubmit={handleSubmit}>
-        <Button
-          type="submit"
-          disabled={!stripe || isProcessing || !customerDetails.email || !customerDetails.firstName}
-          className="w-full h-12 bg-[#095D66] hover:bg-[#074952] text-white font-semibold rounded-lg"
-        >
-          {isProcessing ? "Processing..." : "Place order"}
-        </Button>
-      </form>
-    </div>
+      <Button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className="w-full h-12 bg-[#6B9CA3] hover:bg-[#5a8289] text-white font-semibold rounded-lg"
+      >
+        {isProcessing ? "Processing..." : "Complete Purchase"}
+      </Button>
+    </form>
   );
 }
