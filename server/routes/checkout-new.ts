@@ -11,27 +11,129 @@ router.get('/api/checkout-new/products/:productId', async (req, res) => {
   try {
     const { productId } = req.params;
     
-    // Map productId to course data including subscription plans
+    // Map productId to course data - ALIGNED WITH DATABASE IDs
     const productMapping: Record<string, any> = {
-      '1': {
-        id: 1,
+      // Database courses with exact ID correlation
+      '3': {
+        id: 3,
+        name: "Baby's First Foods",
+        description: 'Complete guide to starting solid foods',
+        price: 120,
+        currency: 'AUD',
+        stripeProductId: 'prod_baby_first_foods',
+        type: 'one-off',
+        category: 'nutrition',
+        ageRange: '6+ Months'
+      },
+      '5': {
+        id: 5,
+        name: 'Little Baby Sleep Program',
+        description: '4-16 Weeks Sleep Program',
+        price: 120,
+        currency: 'AUD',
+        stripeProductId: 'prod_little_baby',
+        type: 'one-off',
+        category: 'sleep',
+        ageRange: '4-16 Weeks'
+      },
+      '6': {
+        id: 6,
         name: 'Big Baby Sleep Program',
         description: '4-8 Months Sleep Program',
         price: 120,
         currency: 'AUD',
         stripeProductId: 'prod_big_baby',
         type: 'one-off',
+        category: 'sleep',
         ageRange: '4-8 Months'
       },
-      '2': {
-        id: 2,
-        name: 'Little Baby Sleep Program', 
-        description: '0-4 Months Sleep Program',
+      '7': {
+        id: 7,
+        name: 'Pre-toddler Sleep Program',
+        description: '8-12 Months Sleep Program',
         price: 120,
         currency: 'AUD',
-        stripeProductId: 'prod_little_baby',
+        stripeProductId: 'prod_pre_toddler',
         type: 'one-off',
-        ageRange: '0-4 Months'
+        category: 'sleep',
+        ageRange: '8-12 Months'
+      },
+      '8': {
+        id: 8,
+        name: 'Toddler Sleep Program',
+        description: '1-2 Years Sleep Program',
+        price: 120,
+        currency: 'AUD',
+        stripeProductId: 'prod_toddler_sleep',
+        type: 'one-off',
+        category: 'sleep',
+        ageRange: '1-2 Years'
+      },
+      '9': {
+        id: 9,
+        name: 'Pre-school Sleep Program',
+        description: '2-5 Years Sleep Program',
+        price: 120,
+        currency: 'AUD',
+        stripeProductId: 'prod_preschool_sleep',
+        type: 'one-off',
+        category: 'sleep',
+        ageRange: '2-5 Years'
+      },
+      '10': {
+        id: 10,
+        name: 'Preparation for Newborns',
+        description: 'Complete newborn preparation course',
+        price: 120,
+        currency: 'AUD',
+        stripeProductId: 'prod_preparation_newborns',
+        type: 'one-off',
+        category: 'sleep',
+        ageRange: 'Newborn'
+      },
+      '11': {
+        id: 11,
+        name: 'New Sibling Supplement',
+        description: 'New Sibling Supplement',
+        price: 25,  // Database shows $25.00
+        currency: 'AUD',
+        stripeProductId: 'prod_new_sibling',
+        type: 'one-off',
+        category: 'sleep',
+        ageRange: 'New Sibling Supplement'
+      },
+      '12': {
+        id: 12,
+        name: 'Twins Supplement',
+        description: 'Twins Supplement',
+        price: 25,  // Database shows $25.00
+        currency: 'AUD',
+        stripeProductId: 'prod_twins',
+        type: 'one-off',
+        category: 'sleep',
+        ageRange: 'Twins Supplement'
+      },
+      '13': {
+        id: 13,
+        name: 'Toddler Toolkit',
+        description: 'Toddler Toolkit',
+        price: 120,  // Database shows $120.00
+        currency: 'AUD',
+        stripeProductId: 'prod_toddler_toolkit',
+        type: 'one-off',
+        category: 'health',
+        ageRange: 'Toddler Toolkit'
+      },
+      '14': {
+        id: 14,
+        name: 'Testing Allergens',
+        description: 'Introduce Allergens with Confidence',
+        price: 0,  // Database shows $0.00 (FREE)
+        currency: 'AUD',
+        stripeProductId: 'prod_testing_allergens',
+        type: 'one-off',
+        category: 'nutrition',
+        ageRange: 'Introduce Allergens with Confidence'
       },
       'gold-monthly': {
         id: 'gold-monthly',
@@ -76,6 +178,27 @@ router.get('/api/checkout-new/products/:productId', async (req, res) => {
         type: 'subscription',
         planTier: 'platinum',
         billingPeriod: 'yearly'
+      },
+
+      'big-baby-book': {
+        id: 'big-baby-book',
+        name: 'Big Baby Sleep Book',
+        description: 'Physical book for 4-8 month sleep solutions',
+        price: 35,
+        currency: 'AUD',
+        stripeProductId: 'prod_big_baby_book',
+        type: 'book',
+        ageRange: '4-8 Months'
+      },
+      'little-baby-book': {
+        id: 'little-baby-book',
+        name: 'Little Baby Sleep Book',
+        description: 'Physical book for 0-4 month sleep solutions',
+        price: 35,
+        currency: 'AUD',
+        stripeProductId: 'prod_little_baby_book',
+        type: 'book',
+        ageRange: '0-4 Months'
       }
     };
     
