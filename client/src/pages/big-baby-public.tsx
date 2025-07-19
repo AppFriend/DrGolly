@@ -974,104 +974,81 @@ export default function BigBabyPublic() {
 
                 {/* Card Payment Section - Always Visible */}
                 {clientSecret ? (
-                  <Elements stripe={stripePromise} options={{ clientSecret }}>
-                    <div className="space-y-4">
-                      <PaymentElement 
-                        options={{
-                          layout: "tabs",
-                          paymentMethodOrder: ["card", "google_pay", "apple_pay", "link"],
-                          fields: {
-                            billingDetails: 'never'
-                          },
-                          readOnly: false
-                        }}
-                      />
-                      
-                      {/* Billing Details */}
-                      <div className="border-t pt-4">
-                        <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <Input 
-                              placeholder="First Name" 
-                              value={customerDetails.firstName}
-                              onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                              className="h-12"
-                            />
-                            <Input 
-                              placeholder="Last Name" 
-                              value={customerDetails.lastName}
-                              onChange={(e) => handleDetailsChange("lastName", e.target.value)}
-                              className="h-12"
-                            />
-                          </div>
-                          
+                  <div className="space-y-4">
+                    <StableStripeElements
+                      clientSecret={clientSecret}
+                      customerDetails={customerDetails}
+                      onSuccess={handlePaymentSuccess}
+                    />
+                    
+                    {/* Billing Details */}
+                    <div className="border-t pt-4">
+                      <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
                           <Input 
-                            placeholder="Phone" 
-                            value={customerDetails.phone}
-                            onChange={(e) => handleDetailsChange("phone", e.target.value)}
+                            placeholder="First Name" 
+                            value={customerDetails.firstName}
+                            onChange={(e) => handleDetailsChange("firstName", e.target.value)}
                             className="h-12"
                           />
-                          
-                          <GoogleMapsAddressAutocomplete
-                            onAddressSelect={handleAddressChange}
-                            initialValue={customerDetails.address}
-                            className="w-full"
+                          <Input 
+                            placeholder="Last Name" 
+                            value={customerDetails.lastName}
+                            onChange={(e) => handleDetailsChange("lastName", e.target.value)}
+                            className="h-12"
                           />
                         </div>
-                      </div>
-
-                      {/* Terms and Privacy */}
-                      <div className="text-sm text-gray-600 space-y-2">
-                        <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
                         
-                        <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
+                        <Input 
+                          placeholder="Phone" 
+                          value={customerDetails.phone}
+                          onChange={(e) => handleDetailsChange("phone", e.target.value)}
+                          className="h-12"
+                        />
+                        
+                        <GoogleMapsAddressAutocomplete
+                          onAddressSelect={handleAddressChange}
+                          initialValue={customerDetails.address}
+                          className="w-full"
+                        />
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input 
+                            placeholder="City" 
+                            value={customerDetails.city}
+                            onChange={(e) => handleDetailsChange("city", e.target.value)}
+                            className="h-12"
+                          />
+                          <Input 
+                            placeholder="Postcode" 
+                            value={customerDetails.postcode}
+                            onChange={(e) => handleDetailsChange("postcode", e.target.value)}
+                            className="h-12"
+                          />
+                        </div>
+                        
+                        <select 
+                          value={customerDetails.country}
+                          onChange={(e) => handleDetailsChange("country", e.target.value)}
+                          className="w-full h-12 border border-gray-300 rounded-lg px-3 text-base bg-white"
+                        >
+                          <option value="AU">Australia</option>
+                          <option value="US">United States</option>
+                          <option value="CA">Canada</option>
+                          <option value="GB">United Kingdom</option>
+                          <option value="NZ">New Zealand</option>
+                        </select>
                       </div>
-
-                      {/* Place Order Button */}
-                      <button
-                        onClick={async () => {
-                          const stripe = await stripePromise;
-                          const elements = {} as any; // Will be handled by Elements context
-                          if (!stripe || !elements) return;
-                          
-                          setIsProcessing(true);
-                          
-                          const { error } = await stripe.confirmPayment({
-                            elements,
-                            confirmParams: {
-                              return_url: window.location.origin + '/complete',
-                            },
-                          });
-
-                          if (error) {
-                            console.error('Payment failed:', error);
-                            toast({
-                              title: "Payment Failed",
-                              description: error.message,
-                              variant: "destructive",
-                            });
-                            setIsProcessing(false);
-                          }
-                        }}
-                        disabled={!customerDetails.email || isProcessing}
-                        className="w-full bg-[#095D66] text-white py-4 px-4 rounded-lg font-medium hover:bg-[#074850] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
-                      >
-                        {isProcessing ? (
-                          <div className="flex items-center justify-center">
-                            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                            Processing...
-                          </div>
-                        ) : (
-                          "Place order"
-                        )}
-                      </button>
-
-                      <p className="text-sm text-gray-600">
-                        As this is a digital product you will be automatically subscribed to email so we can get your account set up in the Dr Golly Learning Hub, once you are set up you can unsubscribe at any time. Please ensure the email you are checking out with is correct.
-                      </p>
                     </div>
-                  </Elements>
+
+                    {/* Terms and Privacy */}
+                    <div className="text-sm text-gray-600 space-y-2">
+                      <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
+                      
+                      <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Show static payment form while payment intent loads */}
