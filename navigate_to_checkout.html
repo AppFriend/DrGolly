@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigate to Checkout Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .demo-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            background: #f8fafc;
+        }
+        .demo-link {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin: 10px 5px;
+            font-weight: 500;
+        }
+        .demo-link:hover {
+            background: #2563eb;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status.working { background: #dcfce7; color: #166534; }
+        .status.implemented { background: #dbeafe; color: #1e40af; }
+        h1 { color: #1e293b; }
+        h2 { color: #475569; }
+    </style>
+</head>
+<body>
+    <h1>🚀 New Checkout Flow Demo</h1>
+    
+    <div class="demo-card">
+        <h2>🎯 Post-Purchase Routing Logic <span class="status implemented">IMPLEMENTED</span></h2>
+        <p><strong>Key Features:</strong></p>
+        <ul>
+            <li>✅ Email existence checking determines new vs existing users</li>
+            <li>✅ New users → /complete page for profile creation</li>
+            <li>✅ Existing users → /home with automatic login</li>
+            <li>✅ Course purchases recorded in database</li>
+            <li>✅ Session management for authentication</li>
+        </ul>
+    </div>
+
+    <div class="demo-card">
+        <h2>🔔 Slack Notification System <span class="status implemented">IMPLEMENTED</span></h2>
+        <p><strong>Notification Details:</strong></p>
+        <ul>
+            <li>✅ Triggered after successful Stripe payment</li>
+            <li>✅ Customer name, email, course title</li>
+            <li>✅ Original amount, final amount, discount</li>
+            <li>✅ Coupon code when applicable</li>
+            <li>✅ Sent to payment notifications channel</li>
+        </ul>
+    </div>
+
+    <div class="demo-card">
+        <h2>💾 Database Integration <span class="status working">WORKING</span></h2>
+        <p><strong>Backend Status:</strong></p>
+        <ul>
+            <li>✅ Email check endpoint: tech@drgolly.com (exists: true)</li>
+            <li>✅ Email check endpoint: newcustomer@example.com (exists: false)</li>
+            <li>✅ Graceful fallback handling for database issues</li>
+            <li>✅ Course purchase schema implemented</li>
+        </ul>
+    </div>
+
+    <div class="demo-card">
+        <h2>🛒 Try the Checkout Pages</h2>
+        <p>Click any product link to see the new checkout system in action:</p>
+        
+        <a href="/checkout-new/6" class="demo-link">
+            Big Baby Sleep Program - $120 AUD
+        </a>
+        
+        <a href="/checkout-new/5" class="demo-link">
+            Little Baby Sleep Program - $120 AUD
+        </a>
+        
+        <a href="/checkout-new/3" class="demo-link">
+            Baby's First Foods - $120 AUD
+        </a>
+        
+        <p><strong>Test the flow:</strong></p>
+        <ol>
+            <li>Click any product link above</li>
+            <li>Enter email: <code>tech@drgolly.com</code> (existing user) or <code>newuser@test.com</code> (new user)</li>
+            <li>Apply coupon: <code>CHECKOUT-99</code> (99% discount - $1.20 final price)</li>
+            <li>Complete payment and see the routing logic in action!</li>
+        </ol>
+    </div>
+
+    <div class="demo-card">
+        <h2>📊 Implementation Status</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px;"><strong>Feature</strong></td>
+                <td style="padding: 8px;"><strong>Status</strong></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px;">Post-purchase routing</td>
+                <td style="padding: 8px;"><span class="status implemented">COMPLETE</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px;">Slack notifications</td>
+                <td style="padding: 8px;"><span class="status implemented">COMPLETE</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px;">Email existence checking</td>
+                <td style="padding: 8px;"><span class="status working">WORKING</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px;">Database integration</td>
+                <td style="padding: 8px;"><span class="status working">WORKING</span></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px;">Session management</td>
+                <td style="padding: 8px;"><span class="status implemented">COMPLETE</span></td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        // Show current page info
+        console.log('Demo page loaded successfully');
+        console.log('Available checkout links:');
+        console.log('- /checkout-new/6 (Big Baby Sleep Program)');
+        console.log('- /checkout-new/5 (Little Baby Sleep Program)');
+        console.log('- /checkout-new/3 (Baby\'s First Foods)');
+    </script>
+</body>
+</html>
