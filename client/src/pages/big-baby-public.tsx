@@ -266,10 +266,7 @@ function PaymentForm({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         paymentIntentId,
-        customerDetails: {
-          ...customerDetails,
-          ...billingDetails
-        }
+        customerDetails: customerDetails
       }),
     });
 
@@ -305,12 +302,9 @@ function PaymentForm({
     setIsProcessing(true);
     
     try {
-      // Ensure all required billing details are present
-      const requiredFields = ['firstName', 'lastName'];
-      const missingFields = requiredFields.filter(field => !billingDetails[field]);
-      
-      if (missingFields.length > 0) {
-        throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      // Only require email and firstName for payment processing
+      if (!customerDetails.email || !customerDetails.firstName) {
+        throw new Error('Please enter your email and first name to proceed.');
       }
 
       console.log('Starting payment confirmation process...');
@@ -318,47 +312,36 @@ function PaymentForm({
       // Enhanced element validation before payment confirmation
       console.log('Validating elements before payment...');
       
-      // Check if PaymentElement is actually mounted and ready
+      // Get the payment element and verify it's mounted
       const paymentElement = elements.getElement('payment');
       if (!paymentElement) {
-        throw new Error('PaymentElement is not mounted. Please refresh the page and try again.');
+        throw new Error('Payment form is not ready. Please wait a moment and try again.');
       }
       
-      // Wait for element to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('Payment element found, proceeding with confirmation...');
 
-      // First, submit the form to validate all fields
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        console.error('Form submission error:', submitError);
-        throw submitError;
-      }
+      // Create proper billing details object from customerDetails
+      const billingDetailsObj = {
+        name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+        email: customerDetails.email,
+        phone: customerDetails.phone || undefined,
+        address: {
+          line1: customerDetails.address || undefined,
+          city: customerDetails.city || undefined,
+          postal_code: customerDetails.postcode || undefined,
+          country: customerDetails.country || 'AU'
+        }
+      };
 
-      console.log('Form submitted successfully, confirming payment...');
+      console.log('Confirming payment with billing details:', billingDetailsObj);
 
-      // Double-check element is still mounted before confirming
-      const paymentElementCheck = elements.getElement('payment');
-      if (!paymentElementCheck) {
-        throw new Error('PaymentElement became unmounted during validation. Please refresh the page and try again.');
-      }
-
-      // Confirm payment with the validated elements
+      // Confirm payment with proper elements reference
       const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
+        elements: elements,
         confirmParams: {
           return_url: `${window.location.origin}/big-baby-public`,
           payment_method_data: {
-            billing_details: {
-              name: `${billingDetails.firstName} ${billingDetails.lastName}`,
-              email: customerDetails.email,
-              phone: billingDetails.phone || undefined,
-              address: {
-                line1: billingDetails.address || undefined,
-                city: billingDetails.city || undefined,
-                postal_code: billingDetails.postcode || undefined,
-                country: billingDetails.country || 'AU'
-              }
-            }
+            billing_details: billingDetailsObj
           }
         },
         redirect: 'if_required',
@@ -666,31 +649,18 @@ export default function BigBabyPublic() {
     email: "",
     firstName: "",
     dueDate: "",
+    lastName: "",
+    phone: "",
+    address: "",
+    city: "",
+    postcode: "",
+    country: "AU"
   });
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [orderExpanded, setOrderExpanded] = useState(true);
   const [clientSecret, setClientSecret] = useState("");
-  const [billingDetails, setBillingDetails] = useState({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    address: '',
-    country: 'AU',
-    city: '',
-    postcode: ''
-  });
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Auto-populate billing details first name from customer details
-  useEffect(() => {
-    if (customerDetails.firstName && !billingDetails.firstName) {
-      setBillingDetails(prev => ({
-        ...prev,
-        firstName: customerDetails.firstName
-      }));
-    }
-  }, [customerDetails.firstName, billingDetails.firstName]);
 
   // Fetch regional pricing
   const { data: regionalPricing } = useQuery({
@@ -1012,7 +982,8 @@ export default function BigBabyPublic() {
                           paymentMethodOrder: ["card", "google_pay", "apple_pay", "link"],
                           fields: {
                             billingDetails: 'never'
-                          }
+                          },
+                          readOnly: false
                         }}
                       />
                       
@@ -1025,11 +996,13 @@ export default function BigBabyPublic() {
                               placeholder="First Name" 
                               value={customerDetails.firstName}
                               onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                              className="h-12"
                             />
                             <Input 
                               placeholder="Last Name" 
                               value={customerDetails.lastName}
                               onChange={(e) => handleDetailsChange("lastName", e.target.value)}
+                              className="h-12"
                             />
                           </div>
                           
@@ -1037,6 +1010,7 @@ export default function BigBabyPublic() {
                             placeholder="Phone" 
                             value={customerDetails.phone}
                             onChange={(e) => handleDetailsChange("phone", e.target.value)}
+                            className="h-12"
                           />
                           
                           <GoogleMapsAddressAutocomplete
