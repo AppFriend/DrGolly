@@ -16,7 +16,7 @@ import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, Ca
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import GoogleMapsAddressAutocomplete from "@/components/GoogleMapsAddressAutocomplete";
-import StableStripeElements from "@/components/StableStripeElements";
+import SimpleStripeForm from "@/components/SimpleStripeForm";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
@@ -975,11 +975,13 @@ export default function BigBabyPublic() {
                 {/* Card Payment Section - Always Visible */}
                 {clientSecret ? (
                   <div className="space-y-4">
-                    <StableStripeElements
-                      clientSecret={clientSecret}
-                      customerDetails={customerDetails}
-                      onSuccess={handlePaymentSuccess}
-                    />
+                    <Elements stripe={stripePromise} options={{ clientSecret }}>
+                      <SimpleStripeForm
+                        clientSecret={clientSecret}
+                        customerDetails={customerDetails}
+                        onSuccess={handlePaymentSuccess}
+                      />
+                    </Elements>
                     
                     {/* Billing Details */}
                     <div className="border-t pt-4">
