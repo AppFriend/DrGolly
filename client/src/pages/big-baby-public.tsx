@@ -773,6 +773,18 @@ export default function BigBabyPublic() {
     setCustomerDetails(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleAddressChange = (address: string, city: string, postcode: string, country: string) => {
+    setCustomerDetails(prev => ({
+      ...prev,
+      address,
+      city,
+      postcode,
+      country
+    }));
+  };
+
+
+
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     try {
       console.log('Payment success handler called with:', paymentIntentId);
