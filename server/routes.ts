@@ -10048,6 +10048,158 @@ Please contact the customer to confirm the appointment.
   // Admin content management routes
   app.use('/api/admin', adminContentRoutes);
 
+  // New Checkout API Endpoints (standalone implementation)
+  
+  // Create payment intent for new checkout system
+  app.post('/api/create-checkout-new-payment-intent', async (req, res) => {
+    try {
+      const { amount, currency = 'aud' } = req.body;
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: 'Valid amount is required' });
+      }
+      
+      console.log('Creating payment intent for new checkout:', { amount, currency });
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount), // Amount in cents
+        currency: currency.toLowerCase(),
+        description: 'Big Baby Sleep Program - New Checkout',
+        metadata: {
+          source: 'checkout-new',
+          courseId: '2', // Big Baby Sleep Program
+          courseName: 'Big Baby Sleep Program'
+        },
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never'
+        },
+      });
+      
+      console.log('Payment intent created successfully:', paymentIntent.id);
+      
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
+      });
+    } catch (error: any) {
+      console.error('Error creating payment intent for new checkout:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Complete purchase for new checkout system
+  app.post('/api/complete-checkout-new-purchase', async (req, res) => {
+    try {
+      const { paymentIntentId, customerDetails } = req.body;
+      
+      if (!paymentIntentId || !customerDetails) {
+        return res.status(400).json({ error: 'Payment intent ID and customer details are required' });
+      }
+      
+      console.log('Completing purchase for new checkout:', paymentIntentId);
+      
+      // Retrieve the payment intent to get payment details
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ error: 'Payment has not succeeded' });
+      }
+      
+      // Create or find user
+      let user = await storage.getUserByEmail(customerDetails.email);
+      let isNewUser = false;
+      
+      if (!user) {
+        console.log('Creating new user for checkout-new purchase');
+        
+        // Generate temporary user ID and password
+        const tempUserId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const tempPassword = Math.random().toString(36).substring(2, 15);
+        const passwordHash = await AuthUtils.hashPassword(tempPassword);
+        
+        const userData = {
+          id: tempUserId,
+          email: customerDetails.email,
+          firstName: customerDetails.firstName,
+          lastName: customerDetails.lastName || '',
+          phone: customerDetails.phone || '',
+          address: customerDetails.address || '',
+          city: customerDetails.city || '',
+          postcode: customerDetails.postcode || '',
+          country: customerDetails.country || 'AU',
+          passwordHash,
+          temporaryPassword: tempPassword,
+          isFirstLogin: true,
+          hasSetPassword: false,
+          signupSource: 'checkout-new',
+          profileImageUrl: '',
+        };
+        
+        user = await storage.upsertUser(userData);
+        isNewUser = true;
+        console.log('New user created:', user.id);
+        
+        // Create Stripe customer
+        const stripeCustomer = await stripe.customers.create({
+          email: customerDetails.email,
+          name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+          metadata: {
+            userId: user.id,
+            signupSource: 'checkout-new',
+          },
+        });
+        
+        await storage.updateUserStripeCustomerId(user.id, stripeCustomer.id);
+        
+        // Send notifications for new users
+        try {
+          await slackNotificationService.sendSignupNotification({
+            name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+            email: customerDetails.email,
+            marketingOptIn: false,
+            primaryConcerns: [],
+            signupSource: 'checkout-new page',
+            signupType: 'new_customer',
+            coursePurchased: 'Big Baby Sleep Program'
+          });
+        } catch (slackError) {
+          console.error('Failed to send Slack notification:', slackError);
+        }
+      }
+      
+      // Create course purchase record
+      const courseId = parseInt(paymentIntent.metadata.courseId || '2');
+      
+      await storage.createCoursePurchase({
+        userId: user.id,
+        courseId: courseId,
+        paymentIntentId: paymentIntentId,
+        status: 'completed',
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        purchaseDate: new Date(),
+        courseName: paymentIntent.metadata.courseName || 'Big Baby Sleep Program',
+        customerEmail: customerDetails.email,
+        customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+      });
+      
+      console.log('Course purchase recorded successfully');
+      
+      res.json({
+        message: 'Purchase completed successfully',
+        userId: user.id,
+        isNewUser,
+        courseId,
+        courseName: paymentIntent.metadata.courseName || 'Big Baby Sleep Program'
+      });
+      
+    } catch (error: any) {
+      console.error('Error completing checkout-new purchase:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Stripe verification endpoint for testing
   app.post('/api/verify-stripe-payment-intent', async (req, res) => {
     try {
