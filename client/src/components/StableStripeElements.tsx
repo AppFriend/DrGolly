@@ -1,152 +1,86 @@
-import React, { useState, useEffect, useRef } from 'react';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
-// Initialize Stripe outside component to prevent recreation
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
-interface StablePaymentFormProps {
+interface PaymentFormProps {
   clientSecret: string;
-  onSuccess: (result: any) => void;
-  coursePrice: number;
-  currencySymbol: string;
-  currency: string;
   customerDetails: any;
-  appliedCoupon: any;
-  billingDetails: any;
-  isProcessing: boolean;
-  onProcessingChange: (processing: boolean) => void;
-  finalPrice?: number;
-  discountAmount?: number;
+  onSuccess: (paymentIntentId: string) => void;
 }
 
-// Inner payment form component that uses the stable Elements context
-function StablePaymentForm({ 
-  clientSecret, 
-  onSuccess, 
-  coursePrice, 
-  currencySymbol, 
-  currency, 
-  customerDetails, 
-  appliedCoupon, 
-  billingDetails,
-  isProcessing,
-  onProcessingChange,
-  finalPrice = coursePrice,
-  discountAmount = 0
-}: StablePaymentFormProps) {
+function PaymentForm({ customerDetails, onSuccess }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
-  const [isElementReady, setIsElementReady] = useState(false);
-  const [elementMounted, setElementMounted] = useState(false);
-  const paymentElementRef = useRef<HTMLDivElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (elements) {
-      const paymentElement = elements.getElement('payment');
-      if (paymentElement) {
-        setElementMounted(true);
-        // Listen for element readiness
-        paymentElement.on('ready', () => {
-          console.log('PaymentElement is ready and mounted');
-          setIsElementReady(true);
-        });
-        
-        paymentElement.on('change', (event) => {
-          console.log('PaymentElement changed:', event.complete);
-        });
-      }
+    if (stripe && elements) {
+      setIsReady(true);
     }
-  }, [elements]);
+  }, [stripe, elements]);
 
-  const handlePayment = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!stripe || !elements || isProcessing || !clientSecret || !customerDetails.email) {
-      console.error('Missing required components for payment');
-      return;
-    }
-
-    if (!isElementReady || !elementMounted) {
+    if (!stripe || !elements || !isReady) {
       toast({
         title: "Payment Loading",
-        description: "Please wait for the payment form to finish loading.",
+        description: "Please wait for the payment form to load completely.",
         variant: "destructive",
       });
       return;
     }
 
-    onProcessingChange(true);
-    
+    setIsProcessing(true);
+
     try {
-      // Use customer details for billing if billing details are not provided
-      const effectiveBillingDetails = {
-        firstName: billingDetails.firstName || customerDetails.firstName || '',
-        lastName: billingDetails.lastName || 'Customer', // Default last name since it's required by Stripe
-        phone: billingDetails.phone || '',
-        address: billingDetails.address || '',
-        addressLine2: billingDetails.addressLine2 || '', // Required by Stripe
-        city: billingDetails.city || '',
-        postcode: billingDetails.postcode || '',
-        state: billingDetails.state || '', // Required by Stripe
-        country: billingDetails.country || 'AU'
+      console.log('Starting payment confirmation with Stripe...');
+      
+      // Create billing details
+      const billingDetails = {
+        name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+        email: customerDetails.email,
+        phone: customerDetails.phone || undefined,
+        address: {
+          line1: customerDetails.address || undefined,
+          city: customerDetails.city || undefined,
+          postal_code: customerDetails.postcode || undefined,
+          country: customerDetails.country || 'AU'
+        }
       };
 
-      console.log('Starting payment confirmation process...');
-      console.log('Billing details being processed:', billingDetails);
-      console.log('Effective billing details:', effectiveBillingDetails);
-      
-      // Validate elements are still mounted
-      const paymentElement = elements.getElement('payment');
-      if (!paymentElement) {
-        throw new Error('PaymentElement is not available. Please refresh the page and try again.');
-      }
+      console.log('Confirming payment with billing details:', billingDetails);
 
-      // Submit the form to validate all fields
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        console.error('Form submission error:', submitError);
-        throw submitError;
-      }
-
-      console.log('Form submitted successfully, confirming payment...');
-
-      // Confirm payment
+      // Confirm payment using the Elements instance
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/big-baby-public`,
           payment_method_data: {
-            billing_details: {
-              name: `${effectiveBillingDetails.firstName} ${effectiveBillingDetails.lastName}`,
-              email: customerDetails.email,
-              phone: effectiveBillingDetails.phone || '',
-              address: {
-                line1: effectiveBillingDetails.address || '',
-                line2: effectiveBillingDetails.addressLine2 || '',
-                city: effectiveBillingDetails.city || '',
-                postal_code: effectiveBillingDetails.postcode || '',
-                state: effectiveBillingDetails.state || '',
-                country: effectiveBillingDetails.country
-              }
-            }
+            billing_details: billingDetails
           }
         },
         redirect: 'if_required',
       });
 
       if (error) {
-        console.error('Payment error:', error);
-        throw error;
+        console.error('Stripe payment error:', error);
+        throw new Error(error.message || 'Payment failed');
       }
 
       if (paymentIntent && paymentIntent.status === 'succeeded') {
-        console.log('Payment succeeded:', paymentIntent.id);
+        console.log('Payment successful:', paymentIntent.id);
         onSuccess(paymentIntent.id);
+      } else {
+        throw new Error('Payment was not completed successfully');
       }
+
     } catch (error: any) {
       console.error('Payment processing error:', error);
       toast({
@@ -155,130 +89,44 @@ function StablePaymentForm({
         variant: "destructive",
       });
     } finally {
-      onProcessingChange(false);
+      setIsProcessing(false);
     }
   };
 
-  // Use the passed finalPrice and discountAmount instead of calculating here
-  const displayFinalPrice = finalPrice || coursePrice;
-  const displayDiscountAmount = discountAmount || 0;
-
   return (
-    <form onSubmit={handlePayment} className="space-y-4">
-      <div className="space-y-4">
-        <div ref={paymentElementRef}>
-          <PaymentElement 
-            options={{
-              layout: 'accordion',
-              paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'card'],
-              fields: {
-                billingDetails: 'never'
-              }
-            }}
-          />
-        </div>
-      </div>
-
-      {appliedCoupon && (
-        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-          <div className="flex justify-between items-center">
-            <span className="text-green-700 font-medium">Coupon Applied: {appliedCoupon.code}</span>
-            <span className="text-green-700 font-medium">-{currencySymbol}{displayDiscountAmount.toFixed(2)}</span>
-          </div>
-        </div>
-      )}
-
-      <div className="border-t pt-4">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-lg font-semibold">Total:</span>
-          <span className="text-2xl font-bold text-[#6B9CA3]">{currencySymbol}{displayFinalPrice.toFixed(2)}</span>
-        </div>
-        
-        <Button 
-          type="submit" 
-          className="w-full bg-[#6B9CA3] hover:bg-[#5A8A91] text-white font-semibold py-3 rounded-lg transition-colors"
-          disabled={!isElementReady || !elementMounted || isProcessing || !customerDetails.email}
-        >
-          {isProcessing ? (
-            <div className="flex items-center justify-center">
-              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-              Processing payment...
-            </div>
-          ) : (
-            `Place order • ${currencySymbol}${displayFinalPrice.toFixed(2)}`
-          )}
-        </Button>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement 
+        options={{
+          layout: "tabs",
+          paymentMethodOrder: ["card", "link"],
+          fields: {
+            billingDetails: 'never'
+          }
+        }}
+      />
+      
+      <Button
+        type="submit"
+        disabled={!isReady || isProcessing || !stripe || !elements}
+        className="w-full h-12 bg-[#6B9CA3] hover:bg-[#5a8289] text-white font-semibold rounded-lg"
+      >
+        {isProcessing ? "Processing..." : "Complete Purchase"}
+      </Button>
     </form>
   );
 }
 
-// Main component that creates a stable Elements wrapper
-export default function StableStripeElements({ 
-  clientSecret, 
-  onSuccess, 
-  coursePrice, 
-  currencySymbol, 
-  currency, 
-  customerDetails, 
-  appliedCoupon, 
-  billingDetails,
-  isProcessing,
-  onProcessingChange,
-  finalPrice,
-  discountAmount
-}: StablePaymentFormProps) {
-  const [initialClientSecret] = useState(clientSecret);
-  const [isInitialized, setIsInitialized] = useState(false);
-  
-  useEffect(() => {
-    if (initialClientSecret && !isInitialized) {
-      setIsInitialized(true);
-    }
-  }, [initialClientSecret, isInitialized]);
-
-  if (!initialClientSecret || !isInitialized) {
-    return (
-      <div className="text-center py-8">
-        <div className="animate-spin w-8 h-8 border-4 border-[#095D66] border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading secure payment form...</p>
-      </div>
-    );
-  }
-
-  const elementsOptions = {
-    clientSecret: initialClientSecret,
+export default function StableStripeElements({ clientSecret, customerDetails, onSuccess }: PaymentFormProps) {
+  const options = {
+    clientSecret,
     appearance: {
       theme: 'stripe' as const,
-      variables: {
-        colorPrimary: '#095D66',
-        colorBackground: '#ffffff',
-        colorText: '#262626',
-        colorDanger: '#dc2626',
-        fontFamily: 'system-ui, sans-serif',
-        borderRadius: '8px',
-        spacingUnit: '6px'
-      }
     },
-    loader: 'auto' as const
   };
 
   return (
-    <Elements stripe={stripePromise} options={elementsOptions}>
-      <StablePaymentForm
-        clientSecret={initialClientSecret}
-        onSuccess={onSuccess}
-        coursePrice={coursePrice}
-        currencySymbol={currencySymbol}
-        currency={currency}
-        customerDetails={customerDetails}
-        appliedCoupon={appliedCoupon}
-        billingDetails={billingDetails}
-        isProcessing={isProcessing}
-        onProcessingChange={onProcessingChange}
-        finalPrice={finalPrice}
-        discountAmount={discountAmount}
-      />
+    <Elements stripe={stripePromise} options={options}>
+      <PaymentForm customerDetails={customerDetails} onSuccess={onSuccess} />
     </Elements>
   );
 }
