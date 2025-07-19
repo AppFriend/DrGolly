@@ -1,111 +1,106 @@
+// Dedicated coupon field component for checkout-new
 import { useState } from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
-import { CouponData } from '@/types/checkout';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 
 interface CouponFieldProps {
-  appliedCoupon: CouponData | null;
-  onCouponApplied: (coupon: CouponData | null) => void;
-  productId: string;
+  onCouponApplied: (couponCode: string, discount: number) => void;
+  productPrice: number;
+  disabled?: boolean;
 }
 
-export function CouponField({ appliedCoupon, onCouponApplied, productId }: CouponFieldProps) {
-  const [showField, setShowField] = useState(true); // Expanded by default as per prompt
+export function CouponField({ onCouponApplied, productPrice, disabled }: CouponFieldProps) {
   const [couponCode, setCouponCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const { toast } = useToast();
 
   const applyCoupon = async () => {
-    if (!couponCode.trim()) return;
+    if (!couponCode.trim() || disabled) return;
     
-    setIsLoading(true);
+    setIsValidating(true);
+    
     try {
-      const response = await apiRequest('POST', '/api/validate-coupon', {
-        code: couponCode,
-        productId
+      const response = await apiRequest('POST', '/api/checkout-new/validate-coupon', {
+        couponCode: couponCode.trim(),
+        amount: productPrice
       });
       
-      const couponData = await response.json();
+      const data = await response.json();
       
-      if (couponData.valid) {
-        onCouponApplied(couponData);
+      if (data.valid) {
+        setAppliedCoupon(couponCode.trim());
+        onCouponApplied(couponCode.trim(), data.discountAmount);
+        
         toast({
-          title: "Coupon Applied!",
-          description: `${couponData.percent_off ? `${couponData.percent_off}% discount` : `$${(couponData.amount_off / 100).toFixed(2)} discount`} has been applied.`,
+          title: "Coupon Applied",
+          description: `Saved $${data.discountAmount.toFixed(2)}!`,
         });
       } else {
         toast({
           title: "Invalid Coupon",
-          description: "The coupon code you entered is not valid.",
+          description: data.message || "This coupon code is not valid.",
           variant: "destructive",
         });
       }
     } catch (error) {
+      console.error('Coupon validation error:', error);
       toast({
         title: "Error",
-        description: "Failed to validate coupon. Please try again.",
+        description: "Failed to validate coupon code.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsValidating(false);
     }
   };
 
   const removeCoupon = () => {
-    onCouponApplied(null);
     setCouponCode('');
+    setAppliedCoupon(null);
+    onCouponApplied('', 0);
+    
+    toast({
+      title: "Coupon Removed",
+      description: "Coupon code has been removed.",
+    });
   };
 
   return (
-    <div className="mb-6">
-      <button
-        type="button"
-        onClick={() => setShowField(!showField)}
-        className="flex items-center space-x-2 text-gray-600 text-sm mb-3"
-      >
-        <ChevronDown className={`w-4 h-4 transition-transform ${showField ? 'rotate-180' : ''}`} />
-        <span>Have a coupon or gift card?</span>
-      </button>
+    <div className="space-y-3">
+      <Label htmlFor="couponCode">Promo Code</Label>
+      <div className="flex gap-2">
+        <Input
+          id="couponCode"
+          type="text"
+          value={couponCode}
+          onChange={(e) => setCouponCode(e.target.value)}
+          placeholder="Enter coupon code"
+          className="flex-1"
+          disabled={disabled || isValidating}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              applyCoupon();
+            }
+          }}
+        />
+        <Button 
+          type="button" 
+          onClick={appliedCoupon ? removeCoupon : applyCoupon}
+          variant={appliedCoupon ? "destructive" : "outline"}
+          disabled={(!couponCode.trim() && !appliedCoupon) || disabled || isValidating}
+        >
+          {isValidating ? 'Checking...' : appliedCoupon ? 'Remove' : 'Apply'}
+        </Button>
+      </div>
       
-      {showField && (
-        <div className="space-y-3">
-          <div className="flex space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter coupon code (try CHECKOUT-99)"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              onClick={applyCoupon}
-              disabled={isLoading || !couponCode.trim()}
-              variant="outline"
-              size="sm"
-            >
-              {isLoading ? 'Applying...' : 'Apply'}
-            </Button>
-          </div>
-          
-          {appliedCoupon && (
-            <div className="flex items-center justify-between text-sm bg-green-50 p-3 rounded border">
-              <span className="text-green-700">
-                ✓ Coupon: {appliedCoupon.code} 
-                ({appliedCoupon.percent_off ? `${appliedCoupon.percent_off}% off` : `$${(appliedCoupon.amount_off! / 100).toFixed(2)} off`})
-              </span>
-              <button
-                type="button"
-                onClick={removeCoupon}
-                className="text-red-500 hover:text-red-700 font-medium"
-              >
-                Remove
-              </button>
-            </div>
-          )}
+      {appliedCoupon && (
+        <div className="text-sm text-green-600 font-medium">
+          ✓ Coupon "{appliedCoupon}" applied successfully
         </div>
       )}
     </div>

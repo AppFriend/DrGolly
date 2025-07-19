@@ -49,6 +49,8 @@ import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
 import checkoutNewRoutes from "./routes/checkout-new";
+import { createTestCoupons } from "./routes/stripe-coupons";
+import regionalPricingRoutes from "./routes/regional-pricing";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -10497,6 +10499,15 @@ Please contact the customer to confirm the appointment.
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Mount checkout new routes
+  app.use('/', checkoutNewRoutes);
+  
+  // Mount regional pricing routes
+  app.use('/', regionalPricingRoutes);
+  
+  // Initialize test coupons for development
+  createTestCoupons();
 
   const httpServer = createServer(app);
   return httpServer;

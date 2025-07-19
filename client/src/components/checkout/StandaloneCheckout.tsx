@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { Product } from '@/types/product';
+import { ExpressPaymentMethods } from './ExpressPaymentMethods';
+import { detectUserRegion, getRegionalPrice } from '@/utils/regionPricing';
 import { Loader2 } from 'lucide-react';
 
 interface StandaloneCheckoutProps {
@@ -28,7 +30,8 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
     firstName: '',
     lastName: '',
     phone: '',
-    dueDate: ''
+    dueDate: '',
+    address: ''
   });
   
   // Pricing state
@@ -37,16 +40,20 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   
-  // Create payment intent when customer details are provided
+  // Create payment intent - initialize immediately for payment fields to be visible
   useEffect(() => {
     const createPaymentIntent = async () => {
-      if (!customerDetails.email || !customerDetails.firstName) return;
+      // Always create payment intent for payment fields to show
+      const details = {
+        email: customerDetails.email || 'placeholder@example.com',
+        firstName: customerDetails.firstName || 'Placeholder'
+      };
       
       try {
         setIsLoading(true);
         const response = await apiRequest('POST', '/api/checkout-new/create-payment-intent', {
           productId: product.id,
-          customerDetails,
+          customerDetails: details,
           couponCode: appliedCoupon
         });
         
@@ -67,8 +74,35 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
     };
 
     createPaymentIntent();
-  }, [customerDetails.email, customerDetails.firstName, appliedCoupon, product.id]);
+  }, [appliedCoupon, product.id]); // Remove dependency on customer details so payment fields always show
   
+  // Handle express payment success
+  const handleExpressPaymentSuccess = async (paymentResult: any) => {
+    try {
+      setPaymentProcessing(true);
+      
+      // TODO: Implement user flow logic here
+      // - Check if email exists in system
+      // - If new user: redirect to /complete
+      // - If existing user: redirect to /home
+      
+      console.log('Express payment completed:', paymentResult);
+      toast({
+        title: "Payment Successful",
+        description: "Express payment completed successfully!",
+      });
+    } catch (error) {
+      console.error('Express payment processing error:', error);
+      toast({
+        title: "Error",
+        description: "Express payment processing failed",
+        variant: "destructive",
+      });
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
+
   // Apply coupon
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -265,6 +299,16 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
                     placeholder="Enter your phone number"
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    type="text"
+                    value={customerDetails.address || ''}
+                    onChange={(e) => setCustomerDetails(prev => ({ ...prev, address: e.target.value }))}
+                    placeholder="Enter your address manually"
+                  />
+                </div>
               </div>
             </div>
             
@@ -297,12 +341,35 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
               )}
             </div>
             
-            {/* Payment Section */}
-            {clientSecret && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-6 uppercase tracking-wide">
-                  PAYMENT DETAILS
-                </h2>
+            {/* Express Payment Methods */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4 uppercase tracking-wide">
+                EXPRESS CHECKOUT
+              </h2>
+              <ExpressPaymentMethods 
+                product={product}
+                customerDetails={customerDetails}
+                onPaymentSuccess={handleExpressPaymentSuccess}
+              />
+            </div>
+
+            {/* Payment Section - Always visible as per requirements */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-6 uppercase tracking-wide">
+                PAYMENT DETAILS
+              </h2>
+              {!clientSecret ? (
+                <div className="space-y-4">
+                  <div className="animate-pulse">
+                    <div className="h-12 bg-gray-200 rounded mb-4"></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="h-12 bg-gray-200 rounded"></div>
+                      <div className="h-12 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500">Loading payment options...</p>
+                </div>
+              ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <Label>Card Number</Label>
@@ -340,8 +407,8 @@ export function StandaloneCheckout({ product }: StandaloneCheckoutProps) {
                     )}
                   </Button>
                 </form>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           
           {/* Right Column - Order Summary */}
