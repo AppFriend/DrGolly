@@ -16,7 +16,7 @@ import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, Ca
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import GoogleMapsAddressAutocomplete from "@/components/GoogleMapsAddressAutocomplete";
-import { StableStripeElements } from "@/components/StableStripeElements";
+import StableStripeElements from "@/components/StableStripeElements";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
@@ -1122,7 +1122,6 @@ export default function BigBabyPublic() {
             </div>
           </div>
         </div>
-      </div>
 
         {/* Money Back Guarantee */}
         <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 mb-4 border border-teal-100">
