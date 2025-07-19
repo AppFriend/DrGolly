@@ -68,6 +68,7 @@ export default function GoogleMapsAddressAutocomplete({
         script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
         script.async = true;
         script.defer = true;
+        script.crossOrigin = "anonymous";
         
         // Add global callback function
         (window as any).initGoogleMaps = () => {
@@ -174,7 +175,6 @@ export default function GoogleMapsAddressAutocomplete({
 
   return (
     <div className={className}>
-      <Label htmlFor="address">Address</Label>
       <Input
         ref={inputRef}
         id="address"
@@ -182,13 +182,10 @@ export default function GoogleMapsAddressAutocomplete({
         placeholder="Start typing your address..."
         value={address}
         onChange={handleInputChange}
-        className="mt-1"
+        className="h-12"
       />
       {error && (
-        <p className="text-sm text-orange-600 mt-1">{error}</p>
-      )}
-      {!isLoaded && !error && (
-        <p className="text-sm text-gray-500 mt-1">Loading address autocomplete...</p>
+        <p className="text-sm text-orange-600 mt-1">Failed to load address autocomplete. Please enter your address manually.</p>
       )}
     </div>
   );

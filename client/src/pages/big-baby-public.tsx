@@ -851,14 +851,14 @@ export default function BigBabyPublic() {
 
   // Initialize payment intent when email is valid for immediate field visibility
   useEffect(() => {
-    if (customerDetails.email && isValidEmail(customerDetails.email) && customerDetails.dueDate) {
+    if (customerDetails.email && isValidEmail(customerDetails.email) && customerDetails.firstName) {
       const timeoutId = setTimeout(() => {
         createPaymentIntent(false);
-      }, 1000); // Debounce for 1 second
+      }, 500); // Reduced debounce for faster responsiveness
       
       return () => clearTimeout(timeoutId);
     }
-  }, [customerDetails.email, customerDetails.dueDate, appliedCoupon]);
+  }, [customerDetails.email, customerDetails.firstName, appliedCoupon]);
 
   // Handle final payment submission
   const handlePlaceOrder = async () => {
@@ -1010,6 +1010,9 @@ export default function BigBabyPublic() {
                         options={{
                           layout: "tabs",
                           paymentMethodOrder: ["card", "google_pay", "apple_pay", "link"],
+                          fields: {
+                            billingDetails: 'never'
+                          }
                         }}
                       />
                       
