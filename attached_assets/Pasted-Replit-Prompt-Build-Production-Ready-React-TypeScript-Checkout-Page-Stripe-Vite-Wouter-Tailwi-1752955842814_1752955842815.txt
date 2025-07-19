@@ -1,0 +1,104 @@
+Replit Prompt: Build Production-Ready React + TypeScript Checkout Page (Stripe, Vite, Wouter, Tailwind + shadcn/ui)
+Objective: Build a modern, high-performance checkout page using React with TypeScript, powered by Vite, Wouter, and styled with Tailwind CSS and shadcn/ui. The page must fully replicate the layout and field order shown in the attached screenshots from https://drgolly.com/checkout, and integrate cleanly with our Express.js backend and Stripe.
+
+ Stack Requirements
+Use the following technologies:
+* Frontend: React + TypeScript
+* Bundler: Vite
+* Routing: Wouter
+* Styling: Tailwind CSS + shadcn/ui components
+* Backend: Express.js (serving app + Stripe logic)
+
+Routing + Product Fetching
+* Route pattern: /checkout-new/:productId (handled via Wouter)
+* productId should:
+    * Fetch course info (name, price, description) from backend
+    * Match Stripe product ID
+    * Determine if one-off or subscription
+* Support marketing-friendly dynamic URLs for each course
+
+ Form Sections (Must Match UI Order Exactly)
+Your Details
+* Email
+* Due Date / Baby Birthday
+Payment
+* Stripe Credit/Debit Card fields (using Stripe Elements)
+* Also support:
+    * Apple Pay
+    * Google Pay
+    * Stripe Link
+Billing Details
+* First Name
+* Last Name
+* Phone
+* Address (with option to enter manually)
+⚠️ All payment elements must be mounted and visible on first load, regardless of whether other fields are filled.
+
+Stripe Integration (Best Practice)
+* Use @stripe/react-stripe-js for all payment functionality
+* Dynamically set:
+    * Product name and type
+    * Regional pricing based on IP or locale
+        * AUD: $120
+        * USD: $120
+        * EUR: €60
+* Handle both:
+    * One-off purchases (create invoice)
+    * Subscriptions
+* Fully validate coupon codes (test with CHECKOUT-99)
+    * Use Stripe API to verify and apply
+    * Update total price in real-time
+    * Apply pricing protection on backend to avoid incorrect charges
+    * Display discount breakdown visually on screen
+    * Coupon field should be expanded by default, but collapsible
+
+User Flow Logic
+* If known email entered: prompt login before proceeding
+* If new user:
+    * Allow checkout
+    * Post-payment redirect to /complete (to finish profile)
+* If logged-in user:
+    * Enable multi-item cart
+    * Post-payment redirect to /home
+
+Backend (Express.js)
+* Serve the React app
+* Securely handle:
+    * Stripe secret keys
+    * Product & coupon fetch endpoints
+    * Regional pricing logic
+    * Payment success webhooks
+* All Stripe interactions should be routed through Express to ensure security
+
+Folder & Component Structure (Suggested)
+/src
+  /components
+    CheckoutForm.tsx
+    CouponField.tsx
+    PaymentSection.tsx
+    UserDetails.tsx
+    BillingDetails.tsx
+  /pages
+    CheckoutPage.tsx
+  /routes
+    index.tsx (Wouter)
+  /utils
+    stripeHelpers.ts
+    regionPricing.ts
+  /types
+    product.ts
+    checkout.ts
+
+Testing Requirements
+* Test all flows in:
+    * Local development (via Vite dev)
+    * Production build (via Express)
+* Validate:
+    * Stripe Elements mounting
+    * Regional pricing selection
+    * Coupon application
+    * Accurate order creation (with discounted values parsed correctly)
+* Add:
+    * Clear error handling (frontend + backend)
+    * Console logs for failures
+    * Success logs for completed payment + redirects
