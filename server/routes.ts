@@ -2961,6 +2961,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test Slack notification endpoint
+  app.post('/api/test-slack-notification', async (req, res) => {
+    try {
+      const {
+        customerName,
+        customerEmail,
+        courseName,
+        originalAmount,
+        finalAmount,
+        discountAmount,
+        couponCode,
+        currency,
+        transactionType
+      } = req.body;
+
+      console.log('Sending test Slack notification...');
+      
+      // Send the notification using the existing service
+      await slackNotificationService.sendPaymentNotification({
+        customerName,
+        customerEmail,
+        courseName,
+        originalAmount,
+        finalAmount,
+        discountAmount,
+        couponCode,
+        currency
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Test Slack notification sent successfully',
+        details: {
+          customer: `${customerName} (${customerEmail})`,
+          course: courseName,
+          amount: `${currency} ${finalAmount}`,
+          discount: discountAmount > 0 ? `${currency} ${discountAmount}` : 'None',
+          coupon: couponCode || 'None'
+        }
+      });
+    } catch (error) {
+      console.error('Error sending test Slack notification:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to send test notification',
+        error: error.message
+      });
+    }
+  });
+
   app.post('/api/seed/discounts', async (req, res) => {
     try {
       const sampleDiscounts = [
