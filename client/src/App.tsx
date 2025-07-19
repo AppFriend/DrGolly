@@ -51,6 +51,7 @@ import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
 import TestCheckout from "@/pages/test-checkout";
 import ProfileCompletion from "@/pages/profile-completion";
+import CheckoutNew from "@/pages/checkout-new";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -111,6 +112,7 @@ function AuthenticatedApp() {
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
+        <Route path="/checkout-new" component={CheckoutNew} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
