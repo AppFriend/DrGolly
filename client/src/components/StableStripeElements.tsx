@@ -1,4 +1,4 @@
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ interface PaymentFormProps {
   onSuccess: (paymentIntentId: string) => void;
 }
 
-function PaymentForm({ customerDetails, onSuccess }: PaymentFormProps) {
+function PaymentForm({ clientSecret, customerDetails, onSuccess }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -59,17 +59,16 @@ function PaymentForm({ customerDetails, onSuccess }: PaymentFormProps) {
 
       console.log('Confirming payment with billing details:', billingDetails);
 
-      // Confirm payment using the Elements instance
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/big-baby-public`,
-          payment_method_data: {
+      // Confirm payment using CardElement (for standalone credit card fields)
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card: elements.getElement(CardElement)!,
             billing_details: billingDetails
           }
-        },
-        redirect: 'if_required',
-      });
+        }
+      );
 
       if (error) {
         console.error('Stripe payment error:', error);
@@ -97,20 +96,21 @@ function PaymentForm({ customerDetails, onSuccess }: PaymentFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement 
-        options={{
-          layout: "tabs",
-          paymentMethodOrder: ["card", "link"],
-          fields: {
-            billingDetails: {
-              name: 'never',
-              email: 'never',
-              phone: 'never',
-              address: 'never'
-            }
-          }
-        }}
-      />
+      <div className="border border-gray-300 rounded-lg p-4">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': {
+                  color: '#aab7c4',
+                },
+              },
+            },
+          }}
+        />
+      </div>
       
       <Button
         type="submit"
@@ -133,7 +133,7 @@ export default function StableStripeElements({ clientSecret, customerDetails, on
 
   return (
     <Elements stripe={stripePromise} options={options}>
-      <PaymentForm customerDetails={customerDetails} onSuccess={onSuccess} />
+      <PaymentForm clientSecret={clientSecret} customerDetails={customerDetails} onSuccess={onSuccess} />
     </Elements>
   );
 }

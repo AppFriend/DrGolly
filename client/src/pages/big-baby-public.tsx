@@ -16,7 +16,7 @@ import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, Ca
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
 import GoogleMapsAddressAutocomplete from "@/components/GoogleMapsAddressAutocomplete";
-import SimpleStripeForm from "@/components/SimpleStripeForm";
+import { StableStripeElements } from "@/components/StableStripeElements";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 import paymentLoaderGif from "@assets/Light Green Baby 01 (2)_1752452180911.gif";
 import appleLogo from "@assets/apple_1752294500140.png";
@@ -974,61 +974,15 @@ export default function BigBabyPublic() {
 
                 {/* Card Payment Section - Always Visible */}
                 {clientSecret ? (
-                  <div className="space-y-4">
-                    <Elements stripe={stripePromise} options={{ clientSecret }}>
-                      <SimpleStripeForm
-                        clientSecret={clientSecret}
-                        customerDetails={customerDetails}
-                        onSuccess={handlePaymentSuccess}
-                      />
-                    </Elements>
-                    
-                    {/* Billing Details */}
-                    <div className="border-t pt-4">
-                      <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input 
-                            placeholder="First Name" 
-                            value={customerDetails.firstName}
-                            onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                            className="h-12"
-                          />
-                          <Input 
-                            placeholder="Last Name" 
-                            value={customerDetails.lastName}
-                            onChange={(e) => handleDetailsChange("lastName", e.target.value)}
-                            className="h-12"
-                          />
-                        </div>
-                        
-                        <GoogleMapsAddressAutocomplete
-                          onAddressSelect={handleAddressChange}
-                          initialValue={customerDetails.address}
-                          className="w-full"
-                        />
-                        
-                        <select 
-                          value={customerDetails.country}
-                          onChange={(e) => handleDetailsChange("country", e.target.value)}
-                          className="w-full h-12 border border-gray-300 rounded-lg px-3 text-base bg-white"
-                        >
-                          <option value="AU">Australia</option>
-                          <option value="US">United States</option>
-                          <option value="CA">Canada</option>
-                          <option value="GB">United Kingdom</option>
-                          <option value="NZ">New Zealand</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Terms and Privacy */}
-                    <div className="text-sm text-gray-600 space-y-2">
-                      <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
-                      
-                      <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
-                    </div>
-                  </div>
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <StableStripeElements
+                      finalPrice={finalPrice}
+                      discountAmount={discountAmount}
+                      customerDetails={customerDetails}
+                      handlePaymentSuccess={handlePaymentSuccess}
+                      currencySymbol={currencySymbol}
+                    />
+                  </Elements>
                 ) : (
                   <div className="space-y-4">
                     {/* Show static payment form while payment intent loads */}
@@ -1078,66 +1032,97 @@ export default function BigBabyPublic() {
                       </div>
                     </div>
                     
-                    {/* Billing Details - Always visible */}
-                    <div className="border-t pt-4">
-                      <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input 
-                            placeholder="First Name" 
-                            value={customerDetails.firstName}
-                            onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                            className="h-12"
-                          />
-                          <Input 
-                            placeholder="Last Name" 
-                            value={customerDetails.lastName}
-                            onChange={(e) => handleDetailsChange("lastName", e.target.value)}
-                            className="h-12"
-                          />
-                        </div>
-                        
-                        <Input 
-                          placeholder="Phone" 
-                          value={customerDetails.phone}
-                          onChange={(e) => handleDetailsChange("phone", e.target.value)}
-                          className="h-12"
-                        />
-                        
-                        <GoogleMapsAddressAutocomplete
-                          onAddressSelect={handleAddressChange}
-                          initialValue={customerDetails.address}
-                          placeholder="Start typing your address"
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="text-center py-4">
-                      <div className="inline-flex items-center text-sm text-gray-600">
-                        <div className="animate-spin w-4 h-4 border-2 border-[#095D66] border-t-transparent rounded-full mr-2"></div>
-                        Loading secure payment form...
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={handlePlaceOrder}
+                    <Button 
                       disabled={true}
-                      className="w-full bg-gray-300 text-gray-500 py-4 px-4 rounded-lg font-medium cursor-not-allowed transition-colors text-lg"
+                      className="w-full bg-gray-300 text-gray-500 py-4 text-lg font-semibold rounded-lg h-12"
                     >
-                      Complete your details above to proceed
-                    </button>
+                      Complete your details above to continue
+                    </Button>
                   </div>
                 )}
+
+                {/* Billing Details - Always visible */}
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input 
+                        placeholder="First Name" 
+                        value={customerDetails.firstName}
+                        onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                        className="h-12"
+                      />
+                      <Input 
+                        placeholder="Last Name" 
+                        value={customerDetails.lastName}
+                        onChange={(e) => handleDetailsChange("lastName", e.target.value)}
+                        className="h-12"
+                      />
+                    </div>
+                    
+                    <Input 
+                      placeholder="Phone" 
+                      value={customerDetails.phone}
+                      onChange={(e) => handleDetailsChange("phone", e.target.value)}
+                      className="h-12"
+                    />
+                    
+                    <GoogleMapsAddressAutocomplete
+                      onAddressSelect={handleAddressChange}
+                      initialValue={customerDetails.address}
+                      placeholder="Start typing your address"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Terms and Privacy */}
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
+                  
+                  <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Empty on desktop or additional content */}
-          <div className="space-y-4 hidden lg:block">
-            {/* This column can be used for additional content or left empty */}
+          {/* Right Column - Course Info */}
+          <div className="lg:block hidden">
+            <div className="bg-white rounded-lg p-6 sticky top-4">
+              <div className="flex items-start space-x-4 mb-6">
+                <img 
+                  src={BIG_BABY_COURSE.thumbnailUrl} 
+                  alt={BIG_BABY_COURSE.title}
+                  className="w-20 h-20 rounded-lg object-cover"
+                />
+                <div>
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">{BIG_BABY_COURSE.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{BIG_BABY_COURSE.description}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-5 w-5 text-[#6B9CA3]" />
+                  <span className="text-sm text-gray-700">Instant access after purchase</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-5 w-5 text-[#6B9CA3]" />
+                  <span className="text-sm text-gray-700">Watch on any device</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-5 w-5 text-[#6B9CA3]" />
+                  <span className="text-sm text-gray-700">Lifetime access</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-5 w-5 text-[#6B9CA3]" />
+                  <span className="text-sm text-gray-700">Expert pediatric guidance</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
         {/* Money Back Guarantee */}
         <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 mb-4 border border-teal-100">
