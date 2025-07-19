@@ -15,7 +15,7 @@ import { CustomerDetails, CouponData } from '@/types/checkout';
 import { Product } from '@/types/product';
 import { detectUserRegion, getRegionalPricing, formatCurrency } from '@/utils/regionPricing';
 
-import drGollyLogo from '@assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png';
+// import drGollyLogo from '@assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png';
 
 export function CheckoutForm() {
   const stripe = useStripe();
