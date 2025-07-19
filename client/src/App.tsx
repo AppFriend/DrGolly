@@ -52,6 +52,8 @@ import AuthTestPage from "@/pages/auth-test";
 import TestCheckout from "@/pages/test-checkout";
 import ProfileCompletion from "@/pages/profile-completion";
 import CheckoutNew from "@/pages/checkout-new";
+import CheckoutNewFixed from "@/pages/checkout-new-fixed";
+import TestCheckoutSimple from "@/pages/test-checkout-simple";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -112,6 +114,8 @@ function AuthenticatedApp() {
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
+        <Route path="/test-checkout-simple" component={TestCheckoutSimple} />
+        <Route path="/checkout-new-fixed" component={CheckoutNewFixed} />
         <Route path="/checkout-new/:productId?" component={CheckoutNew} />
         <Route path="/checkout-new" component={CheckoutNew} />
         <Route path="/share/:slug" component={Share} />
