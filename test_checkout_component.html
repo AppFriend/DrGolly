@@ -4,23 +4,19 @@
     <title>Test Checkout Component</title>
 </head>
 <body>
-    <h1>Testing Checkout Component Direct Access</h1>
-    <p>This is a test to see if we can load the checkout page directly</p>
+    <div id="root">Loading checkout...</div>
     <script>
-        // Test loading the checkout page directly
-        console.log('Testing checkout-new route access');
-        fetch('/checkout-new')
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.text();
-            })
-            .then(text => {
-                console.log('Response includes checkout content:', text.includes('CheckoutForm'));
-                console.log('Response includes landing content:', text.includes('Hi, I\'m Dr Golly'));
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+        console.log('Testing checkout component rendering...');
+        setTimeout(() => {
+            const content = document.getElementById('root').innerHTML;
+            console.log('Root content:', content.substring(0, 200));
+            if (content.includes('Big Baby Sleep Program')) {
+                console.log('✓ Checkout component renders successfully');
+            } else {
+                console.log('❌ Checkout component not rendering');
+            }
+        }, 3000);
     </script>
+    <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
