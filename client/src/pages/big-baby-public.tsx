@@ -972,157 +972,68 @@ export default function BigBabyPublic() {
                   <div className="text-center text-sm text-gray-600">or</div>
                 </div>
 
-                {/* Card Payment Section - Always Visible */}
+                {/* Simple Standalone Credit Card Form */}
                 {clientSecret ? (
-                  <div className="space-y-4">
-                    <Elements stripe={stripePromise} options={{ clientSecret }}>
-                      <SimpleStripeForm
-                        clientSecret={clientSecret}
-                        customerDetails={customerDetails}
-                        onSuccess={handlePaymentSuccess}
-                      />
-                    </Elements>
-                    
-                    {/* Billing Details */}
-                    <div className="border-t pt-4">
-                      <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input 
-                            placeholder="First Name" 
-                            value={customerDetails.firstName}
-                            onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                            className="h-12"
-                          />
-                          <Input 
-                            placeholder="Last Name" 
-                            value={customerDetails.lastName}
-                            onChange={(e) => handleDetailsChange("lastName", e.target.value)}
-                            className="h-12"
-                          />
-                        </div>
-                        
-                        <GoogleMapsAddressAutocomplete
-                          onAddressSelect={handleAddressChange}
-                          initialValue={customerDetails.address}
-                          className="w-full"
-                        />
-                        
-                        <select 
-                          value={customerDetails.country}
-                          onChange={(e) => handleDetailsChange("country", e.target.value)}
-                          className="w-full h-12 border border-gray-300 rounded-lg px-3 text-base bg-white"
-                        >
-                          <option value="AU">Australia</option>
-                          <option value="US">United States</option>
-                          <option value="CA">Canada</option>
-                          <option value="GB">United Kingdom</option>
-                          <option value="NZ">New Zealand</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Terms and Privacy */}
-                    <div className="text-sm text-gray-600 space-y-2">
-                      <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
-                      
-                      <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
-                    </div>
-                  </div>
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <SimpleStripeForm
+                      clientSecret={clientSecret}
+                      customerDetails={customerDetails}
+                      onSuccess={handlePaymentSuccess}
+                    />
+                  </Elements>
                 ) : (
-                  <div className="space-y-4">
-                    {/* Show static payment form while payment intent loads */}
-                    <div className="border border-gray-300 rounded-lg p-4">
-                      <div className="space-y-4">
-                        <div>
-                          <Label className="text-sm font-medium">Email</Label>
-                          <Input 
-                            placeholder="Your email address" 
-                            type="email"
-                            className="mt-1"
-                            disabled={true}
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label className="text-sm font-medium">Card information</Label>
-                          <div className="space-y-2">
-                            <Input 
-                              placeholder="1234 1234 1234 1234" 
-                              className="mt-1"
-                              disabled={true}
-                            />
-                            <div className="grid grid-cols-2 gap-2">
-                              <Input 
-                                placeholder="MM / YY" 
-                                disabled={true}
-                              />
-                              <Input 
-                                placeholder="CVC" 
-                                disabled={true}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <Label className="text-sm font-medium">Cardholder name</Label>
-                          <Input 
-                            placeholder="Full name on card" 
-                            className="mt-1"
-                            disabled={true}
-                          />
-                        </div>
-                      </div>
+                  <div className="border border-gray-300 rounded-lg p-4">
+                    <div className="text-gray-400 py-8 text-center">
+                      Credit card form will load once you enter your email and first name above
                     </div>
-                    
-                    {/* Billing Details - Always visible */}
-                    <div className="border-t pt-4">
-                      <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input 
-                            placeholder="First Name" 
-                            value={customerDetails.firstName}
-                            onChange={(e) => handleDetailsChange("firstName", e.target.value)}
-                          />
-                          <Input 
-                            placeholder="Last Name" 
-                            value={customerDetails.lastName}
-                            onChange={(e) => handleDetailsChange("lastName", e.target.value)}
-                          />
-                        </div>
-                        
-                        <Input 
-                          placeholder="Phone" 
-                          value={customerDetails.phone}
-                          onChange={(e) => handleDetailsChange("phone", e.target.value)}
-                        />
-                        
-                        <GoogleMapsAddressAutocomplete
-                          onAddressSelect={handleAddressChange}
-                          initialValue={customerDetails.address}
-                          placeholder="Start typing your address"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="text-center py-4">
-                      <div className="inline-flex items-center text-sm text-gray-600">
-                        <div className="animate-spin w-4 h-4 border-2 border-[#095D66] border-t-transparent rounded-full mr-2"></div>
-                        Loading secure payment form...
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={handlePlaceOrder}
-                      disabled={true}
-                      className="w-full bg-gray-300 text-gray-500 py-4 px-4 rounded-lg font-medium cursor-not-allowed transition-colors text-lg"
-                    >
-                      Complete your details above to proceed
-                    </button>
                   </div>
                 )}
+
+                {/* Billing Details */}
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">BILLING DETAILS</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input 
+                        placeholder="First Name" 
+                        value={customerDetails.firstName}
+                        onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                        className="h-12"
+                      />
+                      <Input 
+                        placeholder="Last Name" 
+                        value={customerDetails.lastName}
+                        onChange={(e) => handleDetailsChange("lastName", e.target.value)}
+                        className="h-12"
+                      />
+                    </div>
+                    
+                    <GoogleMapsAddressAutocomplete
+                      onAddressSelect={handleAddressChange}
+                      initialValue={customerDetails.address}
+                      className="w-full"
+                    />
+                    
+                    <select 
+                      value={customerDetails.country}
+                      onChange={(e) => handleDetailsChange("country", e.target.value)}
+                      className="w-full h-12 border border-gray-300 rounded-lg px-3 text-base bg-white"
+                    >
+                      <option value="AU">Australia</option>
+                      <option value="US">United States</option>
+                      <option value="CA">Canada</option>
+                      <option value="GB">United Kingdom</option>
+                      <option value="NZ">New Zealand</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Terms and Privacy */}
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p>Your personal data will be used to process your order, support your experience throughout this website, and for other purposes described in our <a href="#" className="text-blue-600 underline">privacy policy</a>.</p>
+                  
+                  <p>You will automatically be subscribed to emails so we can get you started with your course. You can unsubscribe any time once you're set up.</p>
+                </div>
               </div>
             </div>
           </div>
