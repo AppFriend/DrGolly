@@ -1,4 +1,4 @@
-import { Elements, PaymentElement, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -6,13 +6,15 @@ import { useToast } from '@/hooks/use-toast';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
-interface PaymentFormProps {
-  clientSecret: string;
+interface StableStripeElementsProps {
+  finalPrice: number;
+  discountAmount: number;
   customerDetails: any;
-  onSuccess: (paymentIntentId: string) => void;
+  handlePaymentSuccess: (paymentIntentId: string) => void;
+  currencySymbol: string;
 }
 
-function PaymentForm({ clientSecret, customerDetails, onSuccess }: PaymentFormProps) {
+function PaymentForm({ finalPrice, discountAmount, customerDetails, handlePaymentSuccess, currencySymbol }: StableStripeElementsProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -59,16 +61,17 @@ function PaymentForm({ clientSecret, customerDetails, onSuccess }: PaymentFormPr
 
       console.log('Confirming payment with billing details:', billingDetails);
 
-      // Confirm payment using CardElement (for standalone credit card fields)
-      const { error, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: elements.getElement(CardElement)!,
+      // Confirm payment using the Elements instance
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/big-baby-public`,
+          payment_method_data: {
             billing_details: billingDetails
           }
-        }
-      );
+        },
+        redirect: 'if_required',
+      });
 
       if (error) {
         console.error('Stripe payment error:', error);
@@ -77,7 +80,7 @@ function PaymentForm({ clientSecret, customerDetails, onSuccess }: PaymentFormPr
 
       if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment successful:', paymentIntent.id);
-        onSuccess(paymentIntent.id);
+        handlePaymentSuccess(paymentIntent.id);
       } else {
         throw new Error('Payment was not completed successfully');
       }
@@ -97,19 +100,7 @@ function PaymentForm({ clientSecret, customerDetails, onSuccess }: PaymentFormPr
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="border border-gray-300 rounded-lg p-4">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
-                },
-              },
-            },
-          }}
-        />
+        <PaymentElement />
       </div>
       
       <Button
@@ -123,17 +114,14 @@ function PaymentForm({ clientSecret, customerDetails, onSuccess }: PaymentFormPr
   );
 }
 
-export default function StableStripeElements({ clientSecret, customerDetails, onSuccess }: PaymentFormProps) {
-  const options = {
-    clientSecret,
-    appearance: {
-      theme: 'stripe' as const,
-    },
-  };
-
+export default function StableStripeElements({ finalPrice, discountAmount, customerDetails, handlePaymentSuccess, currencySymbol }: StableStripeElementsProps) {
   return (
-    <Elements stripe={stripePromise} options={options}>
-      <PaymentForm clientSecret={clientSecret} customerDetails={customerDetails} onSuccess={onSuccess} />
-    </Elements>
+    <PaymentForm 
+      finalPrice={finalPrice}
+      discountAmount={discountAmount}
+      customerDetails={customerDetails} 
+      handlePaymentSuccess={handlePaymentSuccess}
+      currencySymbol={currencySymbol}
+    />
   );
 }
