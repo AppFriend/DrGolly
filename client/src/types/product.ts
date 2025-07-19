@@ -1,16 +1,37 @@
 export interface Product {
-  id: string;
+  id: number;
   name: string;
   description: string;
   price: number;
   currency: string;
   stripeProductId: string;
   type: 'one-off' | 'subscription';
-  imageUrl?: string;
+  ageRange?: string;
+  regionalPricing?: {
+    amount: number;
+    currency: string;
+    region: string;
+  };
 }
 
-export interface RegionalPricing {
-  AUD: number;
-  USD: number;
-  EUR: number;
+export interface PaymentIntent {
+  clientSecret: string;
+  amount: number;
+  originalAmount: number;
+  discountAmount: number;
+  currency: string;
+  appliedCoupon: string | null;
+}
+
+export interface CouponValidation {
+  valid: boolean;
+  coupon?: {
+    id: string;
+    name: string;
+    percent_off: number | null;
+    amount_off: number | null;
+  };
+  discountAmount?: number;
+  finalAmount?: number;
+  message?: string;
 }

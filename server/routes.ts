@@ -48,6 +48,7 @@ import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
+import checkoutNewRoutes from "./routes/checkout-new";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -10317,6 +10318,7 @@ Please contact the customer to confirm the appointment.
 
   // Admin content management routes
   app.use('/api/admin', adminContentRoutes);
+  app.use('/', checkoutNewRoutes);
 
   // New Checkout API Endpoints (standalone implementation)
   

@@ -17,22 +17,25 @@ import { detectUserRegion, getRegionalPricing, formatCurrency } from '@/utils/re
 
 // import drGollyLogo from '@assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png';
 
-export function CheckoutForm() {
+interface CheckoutFormProps {
+  product: Product;
+}
+
+export function CheckoutForm({ product }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
   const params = useParams();
   
   // Core state
-  const [product, setProduct] = useState<Product | null>(null);
   const [clientSecret, setClientSecret] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [paymentIntentCreated, setPaymentIntentCreated] = useState(false);
   
   // Pricing state
-  const [currency, setCurrency] = useState('AUD');
-  const [originalAmount, setOriginalAmount] = useState(0);
-  const [finalAmount, setFinalAmount] = useState(0);
+  const [currency, setCurrency] = useState(product?.currency || 'AUD');
+  const [originalAmount, setOriginalAmount] = useState(product?.price || 0);
+  const [finalAmount, setFinalAmount] = useState(product?.price || 0);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
   
   // Form state
