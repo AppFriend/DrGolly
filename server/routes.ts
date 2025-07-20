@@ -5902,6 +5902,132 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Profile completion endpoint for new users with pending purchase (no authentication required)
+  app.post('/api/auth/complete-new-user-profile', async (req, res) => {
+    try {
+      const { firstName, lastName, email, password, interests, marketingOptIn, smsMarketingOptIn, termsAccepted, pendingPurchase } = req.body;
+      
+      if (!password || password.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+      }
+      
+      if (!termsAccepted) {
+        return res.status(400).json({ message: 'Terms and conditions must be accepted' });
+      }
+
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: 'First name, last name, and email are required' });
+      }
+
+      if (!pendingPurchase) {
+        return res.status(400).json({ message: 'No pending purchase found' });
+      }
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
+      if (existingUser) {
+        return res.status(400).json({ message: 'User already exists with this email' });
+      }
+      
+      // Generate user ID and hash password
+      const userId = AuthUtils.generateUserId();
+      const hashedPassword = await AuthUtils.hashPassword(password);
+      
+      // Create user with full profile data
+      const userData = {
+        id: userId,
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        passwordHash: hashedPassword,
+        hasSetPassword: true,
+        isFirstLogin: false,
+        subscriptionTier: 'free',
+        planTier: 'free',
+        primaryConcerns: interests || [],
+        marketingOptIn: marketingOptIn || false,
+        smsMarketingOptIn: smsMarketingOptIn || false,
+        termsAccepted: termsAccepted,
+        profileCompletedAt: new Date(),
+        lastLoginAt: new Date()
+      };
+
+      const user = await storage.createUser(userData);
+      
+      // Add pending purchase to user's account
+      await storage.createCoursePurchase({
+        userId: user.id,
+        courseId: pendingPurchase.productId,
+        amount: Math.round(pendingPurchase.amount * 100), // Convert to cents
+        currency: 'aud',
+        stripePaymentIntentId: pendingPurchase.paymentIntentId,
+        status: 'completed'
+      });
+      
+      // Create session for immediate login
+      const sessionData = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName
+        }
+      };
+      
+      req.session.passport = { user: sessionData };
+      req.session.userId = user.id;
+      
+      // Clear pending purchase from session
+      delete req.session.pendingPurchase;
+      
+      // Force session save
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error during new user profile completion:', err);
+        } else {
+          console.log('Session saved successfully for new user:', user.id);
+        }
+      });
+
+      // Send signup notification to Slack
+      try {
+        await slackNotificationService.sendSignupNotification({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          marketingOptIn: marketingOptIn,
+          primaryConcerns: interests || [],
+          signupSource: 'checkout_completion',
+          signupType: 'new_customer',
+          coursePurchased: 'Course Purchase'
+        });
+      } catch (slackError) {
+        console.error('Slack notification failed:', slackError);
+      }
+
+      // Sync to Klaviyo
+      try {
+        const coursePurchases = await storage.getUserCoursePurchases(user.id);
+        await klaviyoService.syncUserToKlaviyo(user, undefined, coursePurchases);
+      } catch (klaviyoError) {
+        console.error('Klaviyo sync failed:', klaviyoError);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Account created and profile completed successfully',
+        user: {
+          id: userId,
+          hasSetPassword: true,
+          profileCompleted: true,
+          coursePurchaseCompleted: true
+        }
+      });
+    } catch (error: any) {
+      console.error('New user profile completion failed:', error);
+      res.status(500).json({ message: error.message || 'Failed to complete profile' });
+    }
+  });
+
   // Profile management routes
   app.get('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
