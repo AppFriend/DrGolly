@@ -488,7 +488,10 @@ router.post('/api/checkout-new/complete-purchase', async (req, res) => {
         paymentIntentId,
         amount: parseFloat(originalAmount) / 100,
         discountAmount: parseFloat(discountAmount) / 100,
-        couponCode: couponCode || null
+        couponCode: couponCode || null,
+        customerEmail: customerEmail,
+        customerFirstName: customerFirstName || '',
+        customerLastName: customerLastName || ''
       };
     }
     
@@ -653,6 +656,28 @@ router.post('/api/checkout-new/webhook', express.raw({ type: 'application/json' 
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ message: 'Webhook processing failed' });
+  }
+});
+
+// Get pending purchase data for new users
+router.get('/pending-purchase', (req, res) => {
+  try {
+    const pendingPurchase = req.session.pendingPurchase;
+    
+    if (pendingPurchase) {
+      res.json({
+        success: true,
+        pendingPurchase
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'No pending purchase found'
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching pending purchase:', error);
+    res.status(500).json({ message: 'Failed to fetch pending purchase data' });
   }
 });
 

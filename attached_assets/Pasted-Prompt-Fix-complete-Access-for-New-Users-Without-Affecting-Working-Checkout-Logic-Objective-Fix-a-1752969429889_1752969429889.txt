@@ -1,0 +1,105 @@
+Prompt: Fix /complete Access for New Users Without Affecting Working Checkout Logic
+Objective:
+Fix an issue where the /complete route is incorrectly requiring login for new users after a successful checkout. This route must be made publicly accessible to allow new users to complete their profile and be logged in. The solution must not impact any other parts of the existing checkout logic, which is working correctly.
+
+Current Issue
+After a successful checkout with a new email, users are redirected to /complete to finalise their profile.
+
+Instead of seeing the profile form, they are incorrectly shown a login screen.
+
+This indicates that the /complete route is protected by authentication logic, which it should not be for new users.
+
+Expected Behaviour
+For New Users:
+/complete must be accessible without login.
+
+When accessed after a successful purchase:
+
+Render the full profile completion form (first name, last name, password, children details, etc.)
+
+On submit:
+
+Create the user in the database using the email from checkout
+
+Store the course purchase under their profile
+
+Automatically log them in and initiate a session
+
+Redirect them to /home
+
+On /home, ensure:
+
+The user is authenticated
+
+The course they purchased appears under "Purchases"
+
+For Existing Users:
+After successful checkout, if the email matches an existing user:
+
+Auto-log the user in
+
+Redirect them directly to /home
+
+Ensure the course they purchased is stored and visible under "Purchases"
+
+Implementation Requirements
+Make /complete a public route
+
+Remove or bypass any authentication middleware on this route.
+
+Ensure it can be loaded by users without an active session.
+
+Enable guest profile completion
+
+Accept the email address passed from checkout to the /complete screen (via secure query param or backend reference).
+
+Allow profile fields to be filled and submitted.
+
+On submit:
+
+Create the user account
+
+Attach the Stripe purchase to their new profile in the database
+
+Automatically log them in (start session or token)
+
+Redirect to /home
+
+Preserve existing functionality
+
+Do not alter any of the working checkout logic:
+
+Payments
+
+Routing for existing users
+
+Slack notifications
+
+Course linking in the database
+
+Coupon/discount handling
+
+Testing Instructions
+New User Flow
+
+Start a checkout with a new email
+
+Confirm /complete loads with no auth required
+
+Submit the profile form
+
+Confirm user is created and logged in
+
+Confirm user lands on /home with their course visible in "Purchases"
+
+Existing User Flow
+
+Complete a checkout with a known email
+
+Confirm user is logged in automatically
+
+Confirm user lands on /home with course visible in "Purchases"
+
+Regression Test
+
+Ensure no change to any other parts of the checkout flow (including payment, Slack notifications, regional pricing, and discounts)
