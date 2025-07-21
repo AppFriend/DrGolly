@@ -1,0 +1,62 @@
+Prompt: Chapter-to-Lesson Matching & Review Table Generation (Manual Validation Only)
+You are completing a scoped matching exercise for Chapter 1.3 Routine to ensure that all lessons are correctly associated with their intended content.
+
+There are known mismatches between database records and frontend displays — however, the correct content is believed to already exist within the system.
+
+This task will produce a read-only, structured table for manual review and approval before any updates are applied to the database.
+
+Objective
+Identify and reconcile all lessons that should belong to Chapter 1.3 Routine.
+
+Ensure each lesson is matched to the correct, original authored content, based on a comparison with the approved lesson structure.
+
+Present results in a table for manual validation and approval.
+
+Rules and Requirements
+No AI-generated or fallback content is allowed
+You must not fabricate, extend, infer or supplement any content. This material has been professionally authored and must remain authentic. Only display content that already exists in the database.
+
+No rewriting or placeholder content
+If a lesson match is not found, leave the “Content” column empty and flag as Unmatched.
+
+No database updates during this step
+This is a validation and matching task only. Wait for approval before executing updates.
+
+Use the provided examples to guide validation
+Two lessons — “Sleep Required by Age” and “Tired Signs” — have been shared to guide the matching process. Use their titles and content structure as reference for correct matches.
+
+Matching Logic
+Source all lessons currently tagged or associated with Chapter 1.3 Routine
+
+Compare against the correct lesson structure from the admin UI
+
+Use metadata (titles, slugs, tags) and a content preview (first 100–150 characters) to evaluate correctness
+
+Identify misfiled or orphaned lessons that match by title or theme but are not currently mapped
+
+Flag duplicates, mismatches, and suggested corrections
+
+Output Format (Table)
+Present the result in the following format for manual review:
+
+Chapter	Lesson Title	Content Preview (100–150 chars)	Match Status
+1.3 Routine	Sleep Required by Age	"The table below is intended to be used as a guide only..."	Correctly Mapped
+1.3 Routine	Tired Signs	"Tired signs vary from baby to baby... your baby may exhibit..."	Correctly Mapped
+1.3 Routine	Nap Timing	"Understanding when to nap can be tricky, especially..."	Suggested Match
+1.3 Routine	Managing Overtiredness	""	Unmatched
+
+All content must be pulled as-is from the database. Do not infer or substitute text.
+
+Scope Protection
+Do not modify:
+
+Any non-admin code, user interface, routing, or global styles
+
+Any content in other chapters
+
+The wording of any content
+
+Backend logic, auth, payment, or profile modules
+
+This prompt is strictly limited to validating and preparing a correction for lesson mappings under Chapter 1.3 Routine.
+
