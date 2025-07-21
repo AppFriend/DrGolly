@@ -781,6 +781,11 @@ Changelog:
 - July 13, 2025. RESOLVED: Authentication middleware and API endpoint issues:
   * Fixed authentication middleware to work with both Dr. Golly and Replit Auth structures
   * Updated all course endpoints (chapters, lessons) to use consistent authentication approach
+- July 21, 2025. FIXED: Broken breadcrumb navigation in lesson view (/lesson/:id):
+  * Fixed 404 error when clicking "Back to Chapters" breadcrumb in lesson pages
+  * Updated navigation paths from `/course-overview/` to `/courses/` to match actual routing configuration
+  * Applied fix to all lesson navigation handlers: handleBackToChapters, handleMarkComplete, and handleChapterCompleteModalClose
+  * Breadcrumb now correctly links to parent course page (e.g., /lesson/433 → /courses/6) based on lesson's courseId
   * Fixed admin panel access by updating admin check and metrics endpoints with raw SQL
   * Resolved database connection issues by implementing raw SQL fallbacks for all endpoints
   * Updated all course thumbnail URLs with working Unsplash images to replace broken placeholder images

@@ -170,13 +170,13 @@ export default function LessonPage() {
     
     // For last lesson in course, navigate back to course overview
     if (lessonData?.lesson.courseId) {
-      setLocation(`/course-overview/${lessonData.lesson.courseId}`);
+      setLocation(`/courses/${lessonData.lesson.courseId}`);
     }
   };
 
   const handleBackToChapters = () => {
     if (lessonData?.lesson.courseId) {
-      setLocation(`/course-overview/${lessonData.lesson.courseId}`);
+      setLocation(`/courses/${lessonData.lesson.courseId}`);
     } else {
       setLocation('/courses');
     }
@@ -186,7 +186,7 @@ export default function LessonPage() {
     setShowChapterCompleteModal(false);
     // Navigate back to course overview
     if (lessonData?.lesson.courseId) {
-      setLocation(`/course-overview/${lessonData.lesson.courseId}`);
+      setLocation(`/courses/${lessonData.lesson.courseId}`);
     }
   };
 
