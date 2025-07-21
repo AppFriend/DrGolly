@@ -1643,15 +1643,8 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
           />
         </div>
         
-        {/* Modal Footer - Sticky Actions */}
-        <div 
-          className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0"
-          style={{
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 10
-          }}
-        >
+        {/* Modal Footer - Fixed at Bottom */}
+        <div className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0 mt-auto">
           <Button variant="outline" onClick={handleCancelEditModal}>
             Cancel
           </Button>
@@ -1785,15 +1778,8 @@ function AddLessonDialog({
           </div>
         </div>
         
-        {/* Modal Footer - Sticky Actions */}
-        <div 
-          className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0"
-          style={{
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 10
-          }}
-        >
+        {/* Modal Footer - Fixed at Bottom */}
+        <div className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0 mt-auto">
           <Button 
             variant="outline" 
             onClick={() => {
