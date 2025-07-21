@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Play, Clock, Users, Star, CheckCircle, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,15 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { isUnauthorizedError } from '@/lib/authUtils';
-import { InlineEditTitle } from '@/components/admin/InlineEditTitle';
-import { apiRequest } from '@/lib/queryClient';
 
 export default function CourseOverview() {
   const { courseId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   
   // Early return for testing - render basic content
   if (!courseId) {
@@ -25,46 +22,6 @@ export default function CourseOverview() {
   
   // State for managing expanded chapters
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
-
-  // Check if user is admin
-  const { data: adminCheck } = useQuery({
-    queryKey: ["/api/admin/check"],
-    enabled: !!user,
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  const isAdmin = adminCheck?.isAdmin || false;
-
-  // Admin functions for updating titles
-  const updateCourseTitle = async (newTitle: string) => {
-    if (!course) return;
-    
-    await apiRequest("PUT", `/api/courses/${course.id}`, {
-      title: newTitle
-    });
-    
-    // Invalidate and refetch course data
-    queryClient.invalidateQueries({ queryKey: [`/api/courses/${courseId}`] });
-  };
-
-  const updateChapterTitle = async (chapterId: number, newTitle: string) => {
-    await apiRequest("PATCH", `/api/chapters/${chapterId}`, {
-      title: newTitle
-    });
-    
-    // Invalidate and refetch chapter data
-    queryClient.invalidateQueries({ queryKey: [`/api/courses/${courseId}/chapters`] });
-  };
-
-  const updateLessonTitle = async (lessonId: number, newTitle: string) => {
-    await apiRequest("PATCH", `/api/lessons/${lessonId}`, {
-      title: newTitle
-    });
-    
-    // Invalidate and refetch lesson data
-    queryClient.invalidateQueries({ queryKey: [`/api/courses/${courseId}/lessons`] });
-  };
 
   // Fetch course details
   const { data: course, isLoading: courseLoading } = useQuery({
@@ -265,19 +222,9 @@ export default function CourseOverview() {
           </div>
           
           {/* Course Title */}
-          <div className="mb-4">
-            {isAdmin ? (
-              <InlineEditTitle
-                title={course.title}
-                onSave={updateCourseTitle}
-                className="text-2xl md:text-3xl font-bold text-gray-900 capitalize leading-tight"
-              />
-            ) : (
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 capitalize leading-tight">
-                {course.title}
-              </h1>
-            )}
-          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 capitalize leading-tight">
+            {course.title}
+          </h1>
           
           {/* Description */}
           <p className="text-base md:text-lg text-gray-700 mb-6 leading-relaxed">
@@ -377,17 +324,9 @@ export default function CourseOverview() {
                         
                         {/* Chapter Content */}
                         <div className="flex-1 min-w-0">
-                          {isAdmin ? (
-                            <InlineEditTitle
-                              title={chapter.title}
-                              onSave={(newTitle) => updateChapterTitle(chapter.id, newTitle)}
-                              className="text-sm font-medium text-gray-900"
-                            />
-                          ) : (
-                            <h4 className="text-sm font-medium text-gray-900">
-                              {chapter.title}
-                            </h4>
-                          )}
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {chapter.title}
+                          </h4>
                           {hasLessons && (
                             <p className="text-xs text-gray-500 mt-0.5">
                               {chapterLessons.length} lesson{chapterLessons.length !== 1 ? 's' : ''}
@@ -424,17 +363,9 @@ export default function CourseOverview() {
                                 
                                 {/* Lesson Content */}
                                 <div className="flex-1 min-w-0">
-                                  {isAdmin ? (
-                                    <InlineEditTitle
-                                      title={lesson.title}
-                                      onSave={(newTitle) => updateLessonTitle(lesson.id, newTitle)}
-                                      className="text-sm font-medium text-gray-800"
-                                    />
-                                  ) : (
-                                    <h5 className="text-sm font-medium text-gray-800">
-                                      {lesson.title}
-                                    </h5>
-                                  )}
+                                  <h5 className="text-sm font-medium text-gray-800">
+                                    {lesson.title}
+                                  </h5>
                                   {lesson.description && (
                                     <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">
                                       {lesson.description}

@@ -135,6 +135,8 @@ export default function Profile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAddPaymentMethodOpen, setIsAddPaymentMethodOpen] = useState(false);
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null);
 
@@ -196,6 +198,8 @@ export default function Profile() {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setIsEditing(false);
+      setImageFile(null);
+      setImagePreview(null);
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
@@ -303,8 +307,8 @@ export default function Profile() {
     window.location.href = "/api/logout";
   };
 
-  // Simplified image upload - stores directly to database
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle image upload
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       // Check file size (limit to 5MB)
@@ -317,35 +321,19 @@ export default function Profile() {
         return;
       }
 
-      // Convert to base64 for storage
+      setImageFile(file);
+      
+      // Create preview
       const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64Result = e.target?.result as string;
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setImagePreview(result);
         
-        // Update profile with new image immediately
-        try {
-          await updateProfileMutation.mutateAsync({
-            ...profileData,
-            profileImageUrl: base64Result
-          });
-          
-          // Update local state for immediate display
-          setProfileData(prev => prev ? {
-            ...prev,
-            profileImageUrl: base64Result
-          } : null);
-          
-          toast({
-            title: "Profile Picture Updated",
-            description: "Your profile picture has been successfully updated.",
-          });
-        } catch (error) {
-          toast({
-            title: "Upload Failed",
-            description: "Failed to upload profile picture. Please try again.",
-            variant: "destructive",
-          });
-        }
+        // Update profile data with the preview URL for immediate display
+        setProfileData(prev => prev ? {
+          ...prev,
+          profileImageUrl: result
+        } : null);
       };
       reader.readAsDataURL(file);
     }
@@ -356,7 +344,12 @@ export default function Profile() {
   // Handle profile save
   const handleSaveProfile = () => {
     if (profileData) {
-      updateProfileMutation.mutate(profileData);
+      // If there's a new image, use the preview URL; otherwise keep existing
+      const dataToSave = {
+        ...profileData,
+        profileImageUrl: imagePreview || profileData.profileImageUrl
+      };
+      updateProfileMutation.mutate(dataToSave);
     }
   };
 
@@ -451,7 +444,7 @@ export default function Profile() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={profileData?.profileImageUrl} />
+                  <AvatarImage src={imagePreview || profileData?.profileImageUrl} />
                   <AvatarFallback className="bg-dr-teal text-white text-xl">
                     {profileData?.firstName?.[0]}{profileData?.lastName?.[0]}
                   </AvatarFallback>
@@ -491,6 +484,8 @@ export default function Profile() {
                 if (isEditing) {
                   // Reset form when canceling
                   setProfileData(profile);
+                  setImageFile(null);
+                  setImagePreview(null);
                 }
                 setIsEditing(!isEditing);
               }}
@@ -901,12 +896,12 @@ export default function Profile() {
           </TabsContent>
         </Tabs>
 
-        {/* Logout Button - Moved higher for better mobile accessibility */}
-        <div className="mt-6 pt-4 border-t pb-20">
+        {/* Logout Button */}
+        <div className="mt-6 pt-4 border-t">
           <Button
             variant="outline"
             onClick={handleLogout}
-            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 w-full justify-center"
+            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
           >
             <LogOut className="h-4 w-4" />
             Log Out

@@ -58,7 +58,6 @@ export const users = pgTable("users", {
   hasSetPassword: boolean("has_set_password").default(false),
   passwordHash: varchar("password_hash"),
   lastPasswordChange: timestamp("last_password_change"),
-  passwordSet: varchar("password_set").default("no"), // "yes" or "no" - tracks migration completion
   // Personalization preferences for enhanced signup flow
   primaryConcerns: text("primary_concerns"), // JSON array of selected concerns (baby-sleep, toddler-sleep, toddler-behaviour, partner-discounts)
   phoneNumber: varchar("phone_number"), // Phone number with country code
@@ -84,16 +83,6 @@ export const temporaryPasswords = pgTable("temporary_passwords", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id),
   tempPassword: varchar("temp_password").notNull(),
-  isUsed: boolean("is_used").default(false),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Password reset tokens for proper password reset flow
-export const passwordResetTokens = pgTable("password_reset_tokens", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id),
-  token: varchar("token").notNull().unique(),
   isUsed: boolean("is_used").default(false),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -715,11 +704,6 @@ export const insertCourseChapterSchema = createInsertSchema(courseChapters).omit
   createdAt: true,
 });
 
-export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
-  id: true,
-  createdAt: true,
-});
-
 export const insertUserChapterProgressSchema = createInsertSchema(userChapterProgress).omit({
   id: true,
   createdAt: true,
@@ -804,8 +788,6 @@ export type InsertCourseChapter = z.infer<typeof insertCourseChapterSchema>;
 export type InsertCourseLesson = z.infer<typeof insertCourseLessonSchema>;
 export type InsertLessonContent = z.infer<typeof insertLessonContentSchema>;
 export type InsertUserChapterProgress = z.infer<typeof insertUserChapterProgressSchema>;
-export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
-export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type InsertUserLessonProgress = z.infer<typeof insertUserLessonProgressSchema>;
 export type InsertUserLessonContentProgress = z.infer<typeof insertUserLessonContentProgressSchema>;
 export type InsertUserCourseProgress = z.infer<typeof insertUserCourseProgressSchema>;
