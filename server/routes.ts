@@ -37,6 +37,7 @@ import {
   courseLessons,
   courseChapters,
   lessonContent,
+  userLessonProgress,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
@@ -2376,6 +2377,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { lessonId } = req.params;
       
+      // First, delete any user progress records for this lesson
+      await db.delete(userLessonProgress).where(eq(userLessonProgress.lessonId, parseInt(lessonId)));
+      
+      // Then delete the lesson itself
       const [deletedLesson] = await db
         .delete(courseLessons)
         .where(eq(courseLessons.id, parseInt(lessonId)))
