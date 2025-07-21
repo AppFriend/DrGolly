@@ -6771,7 +6771,40 @@ Please contact the customer to confirm the appointment.
     try {
       const { userId } = req.params;
       const updates = req.body;
+      
+      console.log('🔧 Admin updating user:', userId, 'with updates:', JSON.stringify(updates, null, 2));
+      
+      // Get current user data for comparison
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update user in database
       const updatedUser = await storage.updateUser(userId, updates);
+      console.log('✅ User updated in database');
+      
+      // Check if subscription tier changed
+      const oldTier = currentUser.subscriptionTier;
+      const newTier = updates.subscriptionTier;
+      
+      if (newTier && oldTier !== newTier) {
+        console.log(`🔄 Subscription tier changed: ${oldTier} → ${newTier}`);
+        
+        // Sync updated subscription info to Klaviyo
+        try {
+          await klaviyoService.createOrUpdateProfile(updatedUser);
+          console.log('✅ Klaviyo sync successful');
+        } catch (error) {
+          console.error('⚠️ Klaviyo sync failed (non-blocking):', error);
+        }
+        
+        // TODO: Add Stripe subscription update logic here
+        // Note: This would require creating/updating Stripe subscriptions based on the tier change
+        // For now, focusing on database and Klaviyo sync as requested
+        console.log('ℹ️ Stripe integration would be added here for production use');
+      }
+      
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
