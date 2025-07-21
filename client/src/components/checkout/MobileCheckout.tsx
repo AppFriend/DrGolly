@@ -257,6 +257,9 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
       base: {
         fontSize: '16px',
         color: '#424770',
+        lineHeight: '40px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSmoothing: 'antialiased',
         '::placeholder': {
           color: '#aab7c4',
         },
@@ -266,6 +269,7 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
       },
     },
     disabled: false,
+    hidePostalCode: true,
   };
 
   return (
@@ -395,8 +399,8 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
         </Card>
 
         {/* Section 3: Payment Details */}
-        <Card>
-          <CardContent className="p-6">
+        <Card style={{ position: 'relative', zIndex: 5 }}>
+          <CardContent className="p-6" style={{ position: 'relative', zIndex: 6 }}>
             <h2 className="text-xl font-bold text-teal-600 mb-6 uppercase tracking-wide">
               PAYMENT
             </h2>
@@ -439,21 +443,51 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
               <form onSubmit={handleSubmit} className="space-y-4" style={{ position: 'relative', zIndex: 1 }}>
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Card number</Label>
-                  <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative z-10" style={{ pointerEvents: 'auto' }}>
-                    <CardNumberElement options={cardElementOptions} />
+                  <div 
+                    className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative"
+                    style={{ 
+                      pointerEvents: 'auto',
+                      zIndex: 10,
+                      isolation: 'isolate',
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{ width: '100%', pointerEvents: 'auto' }}>
+                      <CardNumberElement options={cardElementOptions} />
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Expiration date</Label>
-                    <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative z-10" style={{ pointerEvents: 'auto' }}>
-                      <CardExpiryElement options={cardElementOptions} />
+                    <div 
+                      className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative"
+                      style={{ 
+                        pointerEvents: 'auto',
+                        zIndex: 10,
+                        isolation: 'isolate',
+                        position: 'relative'
+                      }}
+                    >
+                      <div style={{ width: '100%', pointerEvents: 'auto' }}>
+                        <CardExpiryElement options={cardElementOptions} />
+                      </div>
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Security code</Label>
-                    <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative z-10" style={{ pointerEvents: 'auto' }}>
-                      <CardCvcElement options={cardElementOptions} />
+                    <div 
+                      className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative"
+                      style={{ 
+                        pointerEvents: 'auto',
+                        zIndex: 10,
+                        isolation: 'isolate',
+                        position: 'relative'
+                      }}
+                    >
+                      <div style={{ width: '100%', pointerEvents: 'auto' }}>
+                        <CardCvcElement options={cardElementOptions} />
+                      </div>
                     </div>
                   </div>
                 </div>
