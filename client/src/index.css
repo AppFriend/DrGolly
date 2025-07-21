@@ -72,37 +72,6 @@
   }
 }
 
-/* Stripe Elements Override - Ensure Credit Card Fields Are Always Clickable */
-.__PrivateStripeElement {
-  pointer-events: auto !important;
-  user-select: auto !important;
-  cursor: text !important;
-  z-index: 999 !important;
-  position: relative !important;
-}
-
-.__PrivateStripeElement iframe {
-  pointer-events: auto !important;
-  user-select: auto !important;
-  cursor: text !important;
-  z-index: 999 !important;
-}
-
-.StripeElement {
-  pointer-events: auto !important;
-  user-select: auto !important;
-  cursor: text !important;
-  z-index: 999 !important;
-  position: relative !important;
-}
-
-.StripeElement iframe {
-  pointer-events: auto !important;
-  user-select: auto !important;
-  cursor: text !important;
-  z-index: 999 !important;
-}
-
 @layer utilities {
   /* Custom prose styles for lesson content */
   .prose-lesson {

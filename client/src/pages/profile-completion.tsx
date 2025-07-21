@@ -24,9 +24,6 @@ export default function ProfileCompletion() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
     password: '',
     confirmPassword: '',
     interests: [] as string[],
@@ -43,49 +40,17 @@ export default function ProfileCompletion() {
     'Partner Discounts'
   ];
 
-  // Check for pending purchase data - if exists, allow access without authentication
-  const [pendingPurchase, setPendingPurchase] = useState(null);
-  const [isNewUserFlow, setIsNewUserFlow] = useState(false);
-
+  // Redirect if user is not logged in (with delay for cache refresh)
   useEffect(() => {
-    // Check if we have pending purchase data (indicates new user from checkout)
-    const checkPendingPurchase = async () => {
-      try {
-        const response = await apiRequest('GET', '/api/checkout-new/pending-purchase');
-        if (response.status === 200) {
-          const data = await response.json();
-          if (data.pendingPurchase) {
-            setPendingPurchase(data.pendingPurchase);
-            setIsNewUserFlow(true);
-            
-            // Pre-populate form data from pending purchase if available
-            if (data.pendingPurchase.customerEmail) {
-              setFormData(prev => ({
-                ...prev,
-                email: data.pendingPurchase.customerEmail,
-                firstName: data.pendingPurchase.customerFirstName || '',
-                lastName: data.pendingPurchase.customerLastName || ''
-              }));
-            }
-            return; // Don't redirect if we have pending purchase
-          }
+    if (!authLoading && !user) {
+      // Add a small delay to allow authentication cache to refresh
+      setTimeout(() => {
+        if (!user) {
+          setLocation('/');
         }
-      } catch (error) {
-        console.log('No pending purchase found');
-      }
-
-      // Only redirect if no authenticated user AND no pending purchase
-      if (!authLoading && !user && !isNewUserFlow) {
-        setTimeout(() => {
-          if (!user && !isNewUserFlow) {
-            setLocation('/');
-          }
-        }, 2000);
-      }
-    };
-
-    checkPendingPurchase();
-  }, [user, authLoading, setLocation, isNewUserFlow]);
+      }, 2000);
+    }
+  }, [user, authLoading, setLocation]);
 
   // Update step when URL changes
   useEffect(() => {
@@ -107,32 +72,14 @@ export default function ProfileCompletion() {
 
   const passwordSetupMutation = useMutation({
     mutationFn: async (data: any) => {
-      if (isNewUserFlow && pendingPurchase) {
-        // Create new user account with pending purchase
-        const response = await apiRequest('POST', '/api/auth/complete-new-user-profile', {
-          ...data,
-          pendingPurchase
-        });
-        return response;
-      } else {
-        // Regular profile completion for existing users
-        return await apiRequest('POST', '/api/auth/complete-profile', data);
-      }
+      return await apiRequest('POST', '/api/auth/complete-profile', data);
     },
     onSuccess: () => {
       toast({
-        title: isNewUserFlow ? "Account created successfully!" : "Profile Setup Complete!",
-        description: isNewUserFlow ? "Welcome to Dr. Golly Sleep! Your purchase has been added to your account." : "Your account is now ready. Welcome to Dr. Golly!",
+        title: "Profile Setup Complete!",
+        description: "Your account is now ready. Welcome to Dr. Golly!",
       });
-      
-      // Force authentication cache refresh for new users
-      if (isNewUserFlow) {
-        setTimeout(() => {
-          window.location.href = '/home';
-        }, 1000);
-      } else {
-        setStep(3); // Move to completion step for existing users
-      }
+      setStep(3); // Move to completion step
     },
     onError: (error: any) => {
       toast({
@@ -180,22 +127,13 @@ export default function ProfileCompletion() {
       return;
     }
 
-    const submissionData = {
+    passwordSetupMutation.mutate({
       password: formData.password,
       interests: formData.interests,
       marketingOptIn: formData.marketingOptIn,
       smsMarketingOptIn: formData.smsMarketingOptIn,
       termsAccepted: formData.termsAccepted
-    };
-
-    // Add name and email for new users
-    if (isNewUserFlow) {
-      submissionData.firstName = formData.firstName;
-      submissionData.lastName = formData.lastName;
-      submissionData.email = formData.email;
-    }
-
-    passwordSetupMutation.mutate(submissionData);
+    });
   };
 
   const handleCompleteSetup = () => {
@@ -211,7 +149,7 @@ export default function ProfileCompletion() {
     );
   }
 
-  if (!user && !isNewUserFlow) {
+  if (!user) {
     return null;
   }
 
@@ -220,11 +158,10 @@ export default function ProfileCompletion() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-[#095D66]">
-            {isNewUserFlow ? "Complete Your Account" : "Welcome to Dr. Golly!"}
+            Welcome to Dr. Golly!
           </CardTitle>
           <p className="text-gray-600 mt-2">
-            {step === 1 && isNewUserFlow && "Complete your account details to access your course"}
-            {step === 1 && !isNewUserFlow && "Next, Set up your account password to access your course!"}
+            {step === 1 && "Next, Set up your account password to access your course!"}
             {step === 2 && "Tell us about your interests"}
             {step === 3 && "You're all set!"}
           </p>
@@ -234,47 +171,6 @@ export default function ProfileCompletion() {
           {/* Step 1: Password Setup */}
           {step === 1 && (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              {/* Show name and email fields for new users */}
-              {isNewUserFlow && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      value={formData.firstName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                      placeholder="Enter your first name"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      value={formData.lastName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                      placeholder="Enter your last name"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="Enter your email address"
-                      required
-                    />
-                  </div>
-                </>
-              )}
-              
               <div className="space-y-2">
                 <Label htmlFor="password">Create Password</Label>
                 <div className="relative">

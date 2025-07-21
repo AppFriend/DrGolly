@@ -409,48 +409,7 @@ export const blogPosts = pgTable("blog_posts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Unified products table for all product types with checkout links
-export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
-  // Basic product information
-  name: varchar("name").notNull(),
-  description: text("description"),
-  productType: varchar("product_type").notNull(), // 'course', 'subscription', 'book', 'service'
-  category: varchar("category"), // 'sleep', 'nutrition', 'health', 'freebies'
-  
-  // Pricing information
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency").default("AUD"),
-  
-  // Checkout and payment integration
-  checkoutLink: varchar("checkout_link").notNull(), // Primary checkout URL using new system like '/checkout-new/6'
-  legacyCheckoutLink: varchar("legacy_checkout_link"), // Legacy checkout URL like '/checkout/6'
-  stripeProductId: varchar("stripe_product_id").unique(),
-  stripePriceId: varchar("stripe_price_id"),
-  
-  // Product-specific fields
-  ageRange: varchar("age_range"), // For courses and books
-  duration: integer("duration"), // For courses (in minutes)
-  billingPeriod: varchar("billing_period"), // For subscriptions: 'monthly', 'yearly'
-  subscriptionTier: varchar("subscription_tier"), // For subscriptions: 'gold', 'platinum'
-  
-  // Course relationship (for course products)
-  courseId: integer("course_id").references(() => courses.id),
-  
-  // Content and marketing
-  thumbnailUrl: varchar("thumbnail_url"),
-  features: text("features").array(), // Key features for marketing
-  isActive: boolean("is_active").default(true),
-  isFeatured: boolean("is_featured").default(false),
-  sortOrder: integer("sort_order").default(0), // For custom ordering
-  
-  // Metadata
-  metadata: jsonb("metadata"), // Additional flexible data
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Legacy Stripe products table - kept for backward compatibility
+// Stripe products table - sync between app and Stripe
 export const stripeProducts = pgTable("stripe_products", {
   id: serial("id").primaryKey(),
   stripeProductId: varchar("stripe_product_id").unique().notNull(),
@@ -466,8 +425,6 @@ export const stripeProducts = pgTable("stripe_products", {
   isActive: boolean("is_active").default(true),
   // Link to existing courses for course products
   courseId: integer("course_id").references(() => courses.id),
-  // Link to new unified products table
-  productId: integer("product_id").references(() => products.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1182,30 +1139,6 @@ export const insertCartItemSchema = createInsertSchema(cartItems).omit({
 // Cart types
 export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
-
-// Product relations
-export const productRelations = relations(products, ({ one }) => ({
-  course: one(courses, {
-    fields: [products.courseId],
-    references: [courses.id],
-  }),
-}));
-
-// Course relations with products
-export const courseProductRelations = relations(courses, ({ many }) => ({
-  products: many(products),
-}));
-
-// Product schemas
-export const insertProductSchema = createInsertSchema(products).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-// Product types
-export type Product = typeof products.$inferSelect;
-export type InsertProduct = z.infer<typeof insertProductSchema>;
 
 // Stripe product types
 export type StripeProduct = typeof stripeProducts.$inferSelect;

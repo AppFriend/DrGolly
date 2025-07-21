@@ -1,58 +1,65 @@
-// Direct test using the working checkout infrastructure
-async function testSlackNotificationDirectly() {
-  console.log('🔔 Testing Slack Notification via Existing Infrastructure\n');
-  
-  const baseUrl = 'http://localhost:5000';
+#!/usr/bin/env node
+
+/**
+ * Test the Slack notification fix for promotional codes and discount amounts
+ */
+
+const BASE_URL = 'http://localhost:5000';
+
+async function testSlackNotificationFix() {
+  console.log('🧪 Testing Slack Notification Fix');
+  console.log('=' .repeat(50));
   
   try {
-    console.log('Testing via existing checkout completion endpoint...');
+    // Test data with coupon applied
+    const testData = {
+      name: 'Test User',
+      email: 'test.user@example.com',
+      purchaseDetails: 'Single Course Purchase (Big Baby Sleep Program)',
+      paymentAmount: '$1.20 AUD',
+      promotionalCode: 'App_Checkout-Test$1',
+      discountAmount: '$118.80 AUD'
+    };
     
-    // Use the existing purchase completion endpoint which triggers Slack notifications
-    const response = await fetch(`${baseUrl}/api/checkout-new/complete-purchase`, {
+    console.log('Test data being sent:');
+    console.log('- Name:', testData.name);
+    console.log('- Email:', testData.email);
+    console.log('- Amount:', testData.paymentAmount);
+    console.log('- Promotional Code:', testData.promotionalCode);
+    console.log('- Discount Amount:', testData.discountAmount);
+    
+    const response = await fetch(`${BASE_URL}/api/test/slack-payment-notification`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'testcustomer@example.com',
-        firstName: 'Test',
-        lastName: 'Customer',
-        phone: '+61400000000',
-        address: '123 Test Street',
-        city: 'Sydney',
-        postcode: '2000',
-        country: 'AU',
-        productId: '6', // Big Baby Sleep Program
-        finalAmount: 1.20,
-        originalAmount: 120.00,
-        couponCode: 'CHECKOUT-99',
-        stripePaymentIntentId: 'pi_test_1234567890'
-      })
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testData)
     });
     
     if (response.ok) {
       const result = await response.json();
-      console.log('✅ Purchase completion successful!');
-      console.log('Response:', result);
+      console.log('\\n✅ Test notification sent successfully!');
+      console.log('Check your Slack channel for the notification');
+      console.log('Expected to see:');
+      console.log('- Promotional Code: App_Checkout-Test$1');
+      console.log('- Discount Amount: $118.80 AUD');
+      console.log('- Payment Amount: $1.20 AUD');
       
-      console.log('\n📊 This should trigger:');
-      console.log('• Course purchase recording in database');
-      console.log('• Slack notification with transaction details');
-      console.log('• User creation or update');
-      console.log('• Session setup for authentication');
-      
-      if (result.redirect) {
-        console.log(`• User redirect to: ${result.redirect}`);
-      }
-      
+      return true;
     } else {
-      console.log('❌ Purchase completion failed');
+      console.log('❌ Test notification failed:', response.status);
       const error = await response.text();
       console.log('Error:', error);
+      return false;
     }
     
   } catch (error) {
     console.error('❌ Test failed:', error.message);
+    return false;
   }
 }
 
 // Run the test
-testSlackNotificationDirectly();
+testSlackNotificationFix().then(success => {
+  process.exit(success ? 0 : 1);
+}).catch(console.error);

@@ -1,230 +1,167 @@
 #!/usr/bin/env node
 
 /**
- * FINAL COMPREHENSIVE SUBSCRIPTION SYSTEM TEST
- * Complete validation of all subscription functionality with detailed analysis
+ * Final Comprehensive Test Suite
+ * 
+ * Tests both critical issues reported by user:
+ * 1. Payment should be charged $1.20 (not $120) with 99% coupon
+ * 2. Payment should be in AUD (not USD) for Australian IP
  */
 
-const baseUrl = 'http://localhost:5000';
+const BASE_URL = 'http://localhost:5000';
+const AUSTRALIAN_IP = '203.30.42.100';
 
-async function finalComprehensiveTest() {
-  console.log('🎯 FINAL COMPREHENSIVE SUBSCRIPTION SYSTEM TEST\n');
+async function testRegionalPricing() {
+  console.log('🌍 Testing Regional Pricing (Australian IP)...');
   
-  let totalTests = 0;
-  let passedTests = 0;
-  
-  // Test 1: Gold Monthly Basic Subscription
-  console.log('1️⃣ Testing Gold Monthly subscription (basic)...');
-  totalTests++;
   try {
-    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        productId: 'gold-monthly',
-        customerDetails: {
-          email: 'final.gold.basic@test.com',
-          firstName: 'Gold',
-          lastName: 'Basic'
-        }
-      })
+    const response = await fetch(`${BASE_URL}/api/regional-pricing`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Forwarded-For': AUSTRALIAN_IP
+      }
     });
     
-    const data = await response.json();
-    if (response.ok && data.clientSecret && data.amount === 199) {
-      console.log('✅ Gold Monthly basic subscription SUCCESS');
-      console.log(`   Amount: $${data.amount} ${data.currency}`);
-      console.log(`   Subscription ID: ${data.subscriptionId}`);
-      passedTests++;
-    } else {
-      console.log('❌ Gold Monthly basic subscription FAILED');
-      console.log('   Response:', JSON.stringify(data, null, 2));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-  } catch (error) {
-    console.log(`❌ Error: ${error.message}`);
-  }
-  
-  console.log('');
-  
-  // Test 2: Gold Monthly with 99% Coupon (Special handling)
-  console.log('2️⃣ Testing Gold Monthly subscription with 99% coupon...');
-  totalTests++;
-  try {
-    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        productId: 'gold-monthly',
-        customerDetails: {
-          email: 'final.gold.coupon@test.com',
-          firstName: 'Gold',
-          lastName: 'Coupon'
-        },
-        couponCode: 'ibuO5MIw'
-      })
-    });
     
     const data = await response.json();
-    if (response.ok && data.requiresPayment === false && data.amount === 1.99) {
-      console.log('✅ Gold Monthly coupon subscription SUCCESS (intelligent no-payment)');
-      console.log(`   Original: $${data.originalAmount} ${data.currency}`);
-      console.log(`   Discount: $${data.discountAmount} ${data.currency}`);
-      console.log(`   Final: $${data.amount} ${data.currency}`);
-      console.log(`   Requires Payment: ${data.requiresPayment}`);
-      passedTests++;
-    } else {
-      console.log('❌ Gold Monthly coupon subscription FAILED');
-      console.log('   Response:', JSON.stringify(data, null, 2));
-    }
-  } catch (error) {
-    console.log(`❌ Error: ${error.message}`);
-  }
-  
-  console.log('');
-  
-  // Test 3: Gold Yearly Subscription
-  console.log('3️⃣ Testing Gold Yearly subscription...');
-  totalTests++;
-  try {
-    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        productId: 'gold-yearly',
-        customerDetails: {
-          email: 'final.gold.yearly@test.com',
-          firstName: 'Gold',
-          lastName: 'Yearly'
-        }
-      })
-    });
+    console.log('✅ Regional pricing response:', data);
     
-    const data = await response.json();
-    if (response.ok && data.clientSecret && data.amount === 159) {
-      console.log('✅ Gold Yearly subscription SUCCESS');
-      console.log(`   Amount: $${data.amount} ${data.currency} (yearly discount applied)`);
-      console.log(`   Billing Period: ${data.billingPeriod}`);
-      passedTests++;
+    // Verify Australian IP returns AUD
+    if (data.currency === 'AUD' && data.region === 'AU') {
+      console.log('✅ PASS: Australian IP correctly returns AUD currency');
     } else {
-      console.log('❌ Gold Yearly subscription FAILED');
-      console.log('   Response:', JSON.stringify(data, null, 2));
+      console.log('❌ FAIL: Expected AUD currency for Australian IP, got:', data.currency);
+      return false;
     }
-  } catch (error) {
-    console.log(`❌ Error: ${error.message}`);
-  }
-  
-  console.log('');
-  
-  // Test 4: Platinum Monthly Subscription
-  console.log('4️⃣ Testing Platinum Monthly subscription...');
-  totalTests++;
-  try {
-    const response = await fetch(`${baseUrl}/api/checkout-new/create-subscription`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        productId: 'platinum-monthly',
-        customerDetails: {
-          email: 'final.platinum@test.com',
-          firstName: 'Platinum',
-          lastName: 'User'
-        }
-      })
-    });
     
-    const data = await response.json();
-    if (response.ok && data.clientSecret && data.amount === 499) {
-      console.log('✅ Platinum Monthly subscription SUCCESS');
-      console.log(`   Amount: $${data.amount} ${data.currency}`);
-      console.log(`   Plan Tier: ${data.planTier}`);
-      passedTests++;
-    } else {
-      console.log('❌ Platinum Monthly subscription FAILED');
-      console.log('   Response:', JSON.stringify(data, null, 2));
-    }
+    return true;
   } catch (error) {
-    console.log(`❌ Error: ${error.message}`);
-  }
-  
-  console.log('');
-  
-  // Test 5: Email Check Functionality
-  console.log('5️⃣ Testing email check functionality...');
-  totalTests++;
-  try {
-    const response = await fetch(`${baseUrl}/api/checkout-new/check-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'test@example.com'
-      })
-    });
-    
-    const data = await response.json();
-    if (response.ok && typeof data.exists === 'boolean') {
-      console.log('✅ Email check functionality SUCCESS');
-      console.log(`   Email exists: ${data.exists}`);
-      passedTests++;
-    } else {
-      console.log('❌ Email check functionality FAILED');
-      console.log('   Response:', JSON.stringify(data, null, 2));
-    }
-  } catch (error) {
-    console.log(`❌ Error: ${error.message}`);
-  }
-  
-  console.log('');
-  
-  // Test 6: Coupon Validation with ProductId
-  console.log('6️⃣ Testing coupon validation with productId...');
-  totalTests++;
-  try {
-    const response = await fetch(`${baseUrl}/api/checkout-new/validate-coupon`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        couponCode: 'ibuO5MIw',
-        productId: 'gold-monthly'
-      })
-    });
-    
-    const data = await response.json();
-    if (response.ok && data.valid && data.coupon) {
-      console.log('✅ Coupon validation with productId SUCCESS');
-      console.log(`   Coupon: ${data.coupon.name}`);
-      console.log(`   Discount: ${data.coupon.percent_off}%`);
-      passedTests++;
-    } else {
-      console.log('❌ Coupon validation with productId FAILED');
-      console.log('   Response:', JSON.stringify(data, null, 2));
-    }
-  } catch (error) {
-    console.log(`❌ Error: ${error.message}`);
-  }
-  
-  console.log('\n' + '='.repeat(80));
-  console.log('📊 FINAL COMPREHENSIVE TEST RESULTS');
-  console.log('='.repeat(80));
-  
-  const successRate = Math.round((passedTests / totalTests) * 100);
-  
-  console.log(`Gold Monthly Basic Subscription        ${passedTests >= 1 ? '✅ PASS' : '❌ FAIL'}`);
-  console.log(`Gold Monthly Coupon Subscription       ${passedTests >= 2 ? '✅ PASS' : '❌ FAIL'}`);
-  console.log(`Gold Yearly Subscription               ${passedTests >= 3 ? '✅ PASS' : '❌ FAIL'}`);
-  console.log(`Platinum Monthly Subscription          ${passedTests >= 4 ? '✅ PASS' : '❌ FAIL'}`);
-  console.log(`Email Check Functionality              ${passedTests >= 5 ? '✅ PASS' : '❌ FAIL'}`);
-  console.log(`Coupon Validation                      ${passedTests >= 6 ? '✅ PASS' : '❌ FAIL'}`);
-  
-  console.log('='.repeat(80));
-  console.log(`Overall Status: ${successRate === 100 ? '✅ ALL SYSTEMS OPERATIONAL' : `⚠️  ${passedTests}/${totalTests} TESTS PASSED`}`);
-  console.log(`Success Rate: ${passedTests}/${totalTests} tests passed (${successRate}%)`);
-  console.log('='.repeat(80));
-  
-  if (successRate === 100) {
-    console.log('\n🎉 SUBSCRIPTION SYSTEM FULLY OPERATIONAL AND READY FOR PRODUCTION!');
-  } else {
-    console.log(`\n⚠️  ${totalTests - passedTests} issues need to be resolved before deployment`);
+    console.error('❌ Regional pricing test failed:', error.message);
+    return false;
   }
 }
 
-finalComprehensiveTest().catch(console.error);
+async function testPaymentIntentWithDiscount() {
+  console.log('\n💳 Testing Payment Intent Creation (99% Discount)...');
+  
+  try {
+    const response = await fetch(`${BASE_URL}/api/create-big-baby-payment-intent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': AUSTRALIAN_IP
+      },
+      body: JSON.stringify({
+        customerDetails: {
+          firstName: 'Test',
+          lastName: 'User',
+          email: 'test@example.com',
+          phone: '1234567890',
+          address: {
+            line1: '123 Test St',
+            city: 'Sydney',
+            postalCode: '2000',
+            country: 'AU'
+          }
+        },
+        couponId: 'ibuO5MIw', // 99% discount coupon
+        courseId: 6
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Payment intent response:', data);
+    
+    // Test 1: Verify AUD currency
+    if (data.currency === 'AUD') {
+      console.log('✅ PASS: Payment intent uses AUD currency');
+    } else {
+      console.log('❌ FAIL: Expected AUD currency, got:', data.currency);
+      return false;
+    }
+    
+    // Test 2: Verify 99% discount is applied correctly
+    const expectedDiscountedAmount = 1.20; // $120 with 99% discount = $1.20
+    const actualAmount = data.finalAmount;
+    
+    if (Math.abs(actualAmount - expectedDiscountedAmount) < 0.01) {
+      console.log('✅ PASS: 99% discount correctly applied - charging $1.20');
+    } else {
+      console.log('❌ FAIL: Expected $1.20 after 99% discount, got:', actualAmount);
+      return false;
+    }
+    
+    // Test 3: Verify original amount is $120
+    if (data.originalAmount === 120) {
+      console.log('✅ PASS: Original amount is $120 AUD');
+    } else {
+      console.log('❌ FAIL: Expected original amount $120, got:', data.originalAmount);
+      return false;
+    }
+    
+    // Test 4: Verify discount amount calculation
+    const expectedDiscountAmount = 118.8; // $120 - $1.20 = $118.80
+    if (Math.abs(data.discountAmount - expectedDiscountAmount) < 0.01) {
+      console.log('✅ PASS: Discount amount correctly calculated as $118.80');
+    } else {
+      console.log('❌ FAIL: Expected discount amount $118.80, got:', data.discountAmount);
+      return false;
+    }
+    
+    // Test 5: Verify coupon information
+    if (data.couponApplied && data.couponApplied.percent_off === 99) {
+      console.log('✅ PASS: 99% coupon correctly applied');
+    } else {
+      console.log('❌ FAIL: Expected 99% coupon, got:', data.couponApplied);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Payment intent test failed:', error.message);
+    return false;
+  }
+}
+
+async function runComprehensiveTests() {
+  console.log('🧪 Starting Final Comprehensive Test Suite');
+  console.log('=' .repeat(60));
+  
+  const results = {
+    regionalPricing: await testRegionalPricing(),
+    paymentIntent: await testPaymentIntentWithDiscount()
+  };
+  
+  console.log('\n📊 Final Test Results:');
+  console.log('=' .repeat(60));
+  
+  Object.entries(results).forEach(([test, passed]) => {
+    const status = passed ? '✅ PASS' : '❌ FAIL';
+    console.log(`${status}: ${test}`);
+  });
+  
+  const allPassed = Object.values(results).every(result => result);
+  
+  if (allPassed) {
+    console.log('\n🎉 SUCCESS: All critical issues resolved!');
+    console.log('✅ Issue 1: Payment now charges $1.20 (not $120) with 99% discount');
+    console.log('✅ Issue 2: Payment now uses AUD (not USD) for Australian IP');
+    console.log('\n✨ System is ready for production deployment');
+  } else {
+    console.log('\n❌ FAILURE: Some tests failed');
+    console.log('Please check the failed tests above and fix the issues');
+  }
+  
+  process.exit(allPassed ? 0 : 1);
+}
+
+// Run the tests
+runComprehensiveTests().catch(console.error);

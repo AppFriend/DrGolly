@@ -406,27 +406,19 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      console.log('Searching for user with email:', email);
       const [user] = await db.select().from(users).where(eq(users.email, email));
-      console.log('Database query result:', user ? 'User found' : 'User not found');
       return user;
     } catch (error) {
       console.error('Database error in getUserByEmail:', error);
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      
       // Fallback to raw SQL query
       try {
-        console.log('Attempting raw SQL fallback for getUserByEmail');
         const { neon } = await import('@neondatabase/serverless');
         const sql = neon(process.env.DATABASE_URL!);
-        const result = await sql`SELECT * FROM users WHERE LOWER(email) = LOWER(${email}) LIMIT 1`;
-        console.log('Raw SQL query result:', result.length > 0 ? 'User found' : 'User not found');
-        return result[0] as User | undefined;
+        const result = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
+        return result[0] as User;
       } catch (fallbackError) {
         console.error('Fallback query also failed:', fallbackError);
-        // Return undefined instead of throwing to allow graceful handling
-        return undefined;
+        throw error;
       }
     }
   }

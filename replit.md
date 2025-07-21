@@ -584,67 +584,13 @@ STABLE VERSIONS (for easy rollback reference):
   * RESOLVED: Customer payment issue - discounts now apply correctly when coupon codes are entered
   * Status: Production-ready with fully functional coupon discount system
 
-- SAVEPOINT v1.39 (July 19, 2025): COMPREHENSIVE NEW CHECKOUT SYSTEM COMPLETE - 96% implementation achieved
-  * BREAKTHROUGH: Complete new checkout system with comprehensive component architecture
-  * IMPLEMENTED: 54 of 58 total requirements with systematic verification and compliance reporting
-  * COMPONENT ARCHITECTURE: 10 separate components (StandaloneCheckout, CouponField, PaymentSection, UserDetails, BillingDetails, ExpressPaymentMethods, UserFlowLogic, SubscriptionSupport, Types, Utils)
-  * PAYMENT PROCESSING: Multi-currency support (AUD, USD, EUR, GBP, CAD, NZD) with IP-based regional detection
-  * USER FLOW LOGIC: Complete email detection, new user (/complete) and existing user (/home) redirect flows
-  * API INFRASTRUCTURE: 9 comprehensive endpoints covering products, coupons, regional pricing, user flow, payment webhooks
-  * STRIPE INTEGRATION: Separate card fields (CardNumber, CardExpiry, CardCvc), express payments (Apple Pay, Google Pay), coupon validation
-  * TESTING: Comprehensive validation system with detailed requirement compliance tracking
-  * ACHIEVEMENTS: Production-ready system with 96% completion rate, all core functionality operational
-  * STATUS: Production ready with complete multi-faceted checkout system implementation
-
-- SAVEPOINT v1.40 (July 20, 2025 - 9:09 AM): STABLE NEW CHECKOUT SYSTEM - 100% Database URL Correlation Achieved
-  * CRITICAL BREAKTHROUGH: Perfect database-URL correlation - Product IDs now directly match database course IDs (3,5,6,7,8,9,10,11,12,13,14)
-  * RESOLVED: All pricing alignment issues - ID 11 ($25), ID 12 ($25), ID 14 ($0 FREE) now correctly reflect database pricing
-  * VALIDATED: 15/15 product URLs working with 100% correct pricing from authentic database sources
-  * ELIMINATED: All arbitrary ID mapping - URLs now use exact database course IDs for complete data integrity
-  * VERIFIED: Complete checkout flow operational with database-aligned products and accurate Stripe payment processing
-  * MAINTAINED: Original frontend design preserved exactly - no unauthorized design changes
-  * TESTED: Comprehensive validation confirms 100% URL-database correlation and pricing accuracy
-  * TRANSACTION PROCESSING: New checkout successfully processing transactions as expected with proper payment intent creation and completion
-  * COUPON SYSTEM: 99% discount coupons (CHECKOUT-99) working correctly, charging $1.20 instead of $120 as intended
-  * SYSTEM STATUS: Production-ready with perfect database alignment and zero frontend modifications
-  * NEXT PHASE: Ready for frontend design implementation
-  * STATUS: Stable new checkout system with complete database integrity and functional transaction processing
-
-- SAVEPOINT v1.41 (July 21, 2025): COMPLETE CHECKOUT-NEW MIGRATION - All Links Migrated to New System
-  * CRITICAL MIGRATION: Complete migration of all 17 products to use checkout-new as primary checkout system
-  * DATABASE INTEGRATION: Created comprehensive products table with all 17 products including courses, subscriptions, and books
-  * URL STRUCTURE: All products now use /checkout-new/ URLs as primary with legacy /checkout/ URLs as fallback
-  * PRODUCT CATALOG: Complete product catalog with 11 courses, 4 subscription plans, 2 physical books
-  * SCHEMA ENHANCEMENT: Enhanced database schema with products table supporting full product management
-  * SERVICE LAYER: Created ProductService for centralized product database operations and management
-  * MIGRATION SCRIPT: Automated populate-products-table.ts script successfully populated all product data
-  * STRIPE INTEGRATION: Unique Stripe product IDs for all products with proper billing period handling
-  * DOCUMENTATION: Updated COMPLETE_PRODUCT_URL_TABLE.md with comprehensive product catalog
-  * TESTING: Verified checkout-new endpoints working correctly with proper product data retrieval
-  * STATUS: Production-ready with complete checkout-new system as primary and legacy system as fallback
-
-- SAVEPOINT: Stable, Working checkout - 21st July Timestamped 1148AM AEST
-  * VERIFIED: Complete checkout-new system fully operational with all 17 products migrated
-  * TESTED: Live transaction processing confirmed - Baby's First Foods ($120) with 99% discount coupon (CHECKOUT-99) correctly charges $1.20
-  * VALIDATED: Payment intent creation, coupon validation, and purchase completion working correctly
-  * CONFIRMED: Slack notifications sending successfully for purchase transactions
-  * DATABASE: Products table populated and functioning with proper Stripe integration
-  * API ENDPOINTS: All checkout-new endpoints responding correctly with accurate product data
-  * PAYMENT FLOW: Complete payment processing from product selection to purchase completion operational
-  * USER CREATION: New user account creation and auto-login functionality working correctly
-  * COUPON SYSTEM: Discount validation and application working perfectly (99% discount applied correctly)
-  * STATUS: Production-ready system with stable, working checkout functionality across all product types
-
-- SAVEPOINT v1.42 (July 21, 2025 - 1:23 PM AEST): STABLE CHECKOUT + FRONTEND UI FIXED - Complete credit card field clickability resolution
-  * CRITICAL BREAKTHROUGH: Fixed credit card field clickability issue - all fields now fully interactive regardless of coupon state
-  * COMPREHENSIVE SOLUTION: Multi-layered technical fix with enhanced Stripe configuration, container isolation, and global CSS overrides
-  * FRONTEND UI COMPLETE: First time achieving fully working checkout system with proper UX/UI frontend implementation
-  * TECHNICAL IMPLEMENTATION: Enhanced cardElementOptions with proper font settings, individual container z-index management, global Stripe element overrides with !important rules
-  * VALIDATED: All three card fields (card number, expiry date, CVC) fully clickable and interactive in all scenarios
-  * TESTED: Live transaction confirmed - $120 course with 99% discount coupon correctly processes $1.20 payment
-  * PRESERVED: All existing functionality including UI layout, checkout routing, course activation, payment processing, and coupon system
-  * MILESTONE: First fully operational checkout system with complete frontend UI and backend functionality
-  * STATUS: Production-ready with comprehensive credit card field interaction and complete e-commerce functionality
+- SAVEPOINT v1.38 (July 19, 2025): NEW CHECKOUT DEVELOPMENT BRANCH - feature/checkout-new preparation
+  * REQUIREMENT: Create entirely new checkout page with standalone Stripe credit card fields
+  * CONSTRAINT: Preserve original frontend design exactly - NO design changes allowed
+  * APPROACH: New feature branch for clean development without impacting existing stable code
+  * ARCHITECTURE: Separate checkout component and API endpoints to avoid conflicts
+  * GOAL: Implement immediately accessible Stripe credit card fields without dependencies
+  * STATUS: Ready for feature branch creation and new checkout development
 ```
 
 ## Changelog

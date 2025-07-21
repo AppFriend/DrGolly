@@ -51,11 +51,6 @@ import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
 import TestCheckout from "@/pages/test-checkout";
 import ProfileCompletion from "@/pages/profile-completion";
-import CheckoutNew from "@/pages/checkout-new";
-import CheckoutNewFixed from "@/pages/checkout-new-fixed";
-import TestCheckoutSimple from "@/pages/test-checkout-simple";
-import TestMinimal from "@/pages/test-minimal";
-import CheckoutSubscriptionTest from "@/pages/checkout-subscription-test";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -107,7 +102,6 @@ function AuthenticatedApp() {
         <Route path="/manage" component={Manage} />
         <Route path="/feature-demo" component={FeatureDemo} />
         <Route path="/checkout-subscription" component={CheckoutSubscription} />
-        <Route path="/checkout-subscription-test" component={CheckoutSubscriptionTest} />
         <Route path="/admin" component={Admin} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
@@ -220,6 +214,8 @@ function AuthenticatedApp() {
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
         <Route path="/profile-completion" component={ProfileCompletion} />
+        <Route path="/complete" component={ProfileCompletion} />
+        <Route path="/complete/preferences" component={ProfileCompletion} />
         <Route path="/auth-test" component={AuthTestPage} />
         <Route path="/test-checkout" component={TestCheckout} />
         <Route component={NotFound} />
@@ -267,13 +263,6 @@ function Router() {
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route path="/big-baby-checkout" component={BigBabyCheckout} />
-          <Route path="/test-minimal" component={TestMinimal} />
-          <Route path="/test-checkout-simple" component={TestCheckoutSimple} />
-          <Route path="/checkout-new-fixed" component={CheckoutNewFixed} />
-          <Route path="/checkout-new/:productId?" component={CheckoutNew} />
-          <Route path="/checkout-new" component={CheckoutNew} />
-          <Route path="/complete" component={ProfileCompletion} />
-          <Route path="/complete/preferences" component={ProfileCompletion} />
           <Route path="/share/:slug" component={Share} />
           <Route component={Landing} />
         </Switch>
