@@ -1,0 +1,112 @@
+QA Testing Prompt: Validate Credit Card Functionality and Dual Profile Flows in checkout-new
+Purpose:
+Ensure the credit card input field is fully functional in all checkout scenarios, and confirm that the experience works correctly for both new and existing user types. All layout, logic, and integrations must remain unchanged.
+
+Profile Flow Requirements
+1. New Users (Unauthenticated)
+
+Flow: User completes checkout-new → Completes profile form → Redirects to /home
+
+Profile is automatically created with:
+
+Email
+
+Due Date or Baby Birthday
+
+First Name, Last Name, Phone, Address
+
+User is logged in immediately after profile completion
+
+Purchased course is stored and visible under “Purchased” (in database field Purchased_Courses)
+
+2. Existing Users (Email Match)
+
+Flow: User enters checkout with known email → Email is recognised → User is logged in automatically → Redirected to /home
+
+No duplicate profile is created
+
+Newly purchased course is added to the existing user's “Purchased” list (stored in Purchased_Courses)
+
+All data syncs correctly and existing profile is preserved
+
+Test Scenarios (All Must Pass)
+A. No Promo Code (Full Price Checkout)
+
+Credit card field renders and is fully interactive
+
+Field accepts input, processes payment, and completes checkout
+
+Profile flow (new or existing) completes correctly
+
+Redirection to /home works
+
+Course appears under “Purchased”
+
+B. Promo Code with Partial Discount
+
+Promo is applied correctly (e.g. $120 becomes $40)
+
+Credit card remains required and interactive
+
+All payment and routing flows work
+
+Profile logic is consistent for both user types
+
+C. Promo Code with Full Discount
+
+Order total becomes $0
+
+Credit card field behaves appropriately (still mounted or clearly bypassed)
+
+Order completes
+
+Profile flow is triggered or recognised correctly
+
+Course appears under “Purchased”
+
+Additional Test Validations
+Credit card field always allows interaction when visible
+
+Stripe integration processes payment without error
+
+Coupon validation and price recalculation work in real time
+
+Address fields and other form inputs validate and submit correctly
+
+No duplication of users or purchases
+
+Profile is enriched properly on new user completion
+
+Environment Coverage
+Development Environment
+
+Run full test matrix in local or staging dev environment
+
+Check console for warnings or errors
+
+Verify correct handling of /api/user and other backend calls
+
+Confirm all checkout states behave as expected
+
+Production Environment
+
+Repeat all tests in the production deployment
+
+Validate Stripe payments with real or test mode cards
+
+Confirm users land on /home and data is persisted
+
+Ensure real courses show under “Purchased” and no logic breaks occur
+
+What Must Not Change
+UI layout and spacing
+
+Form structure and field ordering
+
+Redirects and routing paths
+
+Stripe API logic or session configuration
+
+Profile creation and enrichment logic
+
+Any visual or content elements (e.g. testimonials, headers, logos)
