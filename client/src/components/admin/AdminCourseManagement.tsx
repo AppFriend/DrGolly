@@ -1074,8 +1074,7 @@ interface CourseAccordionViewProps {
 function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: CourseAccordionViewProps) {
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
   const [expandedLessons, setExpandedLessons] = useState<Record<number, boolean>>({});
-  const [editingLesson, setEditingLesson] = useState<number | null>(null);
-  const [editContent, setEditContent] = useState('');
+  const [editingLessonModal, setEditingLessonModal] = useState<{ lessonId: number; title: string; content: string } | null>(null);
   const [showAddChapterDialog, setShowAddChapterDialog] = useState(false);
   const [showAddLessonDialog, setShowAddLessonDialog] = useState(false);
   const [addChapterTitle, setAddChapterTitle] = useState('');
@@ -1116,8 +1115,7 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
         title: "Success",
         description: "Lesson content updated successfully",
       });
-      setEditingLesson(null);
-      setEditContent('');
+      setEditingLessonModal(null);
     },
     onError: (error) => {
       toast({
@@ -1315,18 +1313,22 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     }));
   };
 
-  const handleEditLesson = (lessonId: number, currentContent: string) => {
-    setEditingLesson(lessonId);
-    setEditContent(currentContent || '');
+  const handleEditLesson = (lesson: any) => {
+    setEditingLessonModal({
+      lessonId: lesson.id,
+      title: lesson.title,
+      content: lesson.content || ''
+    });
   };
 
-  const handleSaveLesson = (lessonId: number) => {
-    updateLessonMutation.mutate({ lessonId, content: editContent });
+  const handleSaveLessonModal = (content: string) => {
+    if (editingLessonModal) {
+      updateLessonMutation.mutate({ lessonId: editingLessonModal.lessonId, content });
+    }
   };
 
-  const handleCancelEdit = () => {
-    setEditingLesson(null);
-    setEditContent('');
+  const handleCancelEditModal = () => {
+    setEditingLessonModal(null);
   };
 
   const handleCreateChapter = () => {
@@ -1550,12 +1552,12 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                           onToggle={() => toggleLesson(lesson.id)}
                           onUpdateTitle={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
                           onDeleteLesson={handleDeleteLesson}
-                          onEditContent={() => handleEditLesson(lesson.id, lesson.content || '')}
-                          isEditing={editingLesson === lesson.id}
-                          editContent={editContent}
-                          onContentChange={setEditContent}
-                          onSave={() => handleSaveLesson(lesson.id)}
-                          onCancel={handleCancelEdit}
+                          onEditContent={() => handleEditLesson(lesson)}
+                          isEditing={false}
+                          editContent=""
+                          onContentChange={() => {}}
+                          onSave={() => {}}
+                          onCancel={() => {}}
                         />
                       ))}
                     </SortableContext>
@@ -1613,6 +1615,45 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
         setAddingToChapterId={setAddingToChapterId}
       />
     )}
+
+    {/* Lesson Edit Modal */}
+    <Dialog open={!!editingLessonModal} onOpenChange={(open) => !open && handleCancelEditModal()}>
+      <DialogContent className="sm:max-w-[900px] sm:max-h-[80vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle>Edit Lesson: {editingLessonModal?.title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 min-h-0">
+            <RichTextEditor
+              content={editingLessonModal?.content || ''}
+              onChange={(content) => {
+                if (editingLessonModal) {
+                  setEditingLessonModal({
+                    ...editingLessonModal,
+                    content
+                  });
+                }
+              }}
+              className="h-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t bg-white flex-shrink-0">
+            <Button variant="outline" onClick={handleCancelEditModal}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => handleSaveLessonModal(editingLessonModal?.content || '')}
+              disabled={updateLessonMutation.isPending}
+            >
+              {updateLessonMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </>
   );
 }
