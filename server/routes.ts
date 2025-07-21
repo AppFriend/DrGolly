@@ -8423,13 +8423,6 @@ Please contact the customer to confirm the appointment.
       const { chapterId } = req.params;
       const { lessons } = req.body;
       
-      console.log('Lesson reorder request received:', {
-        chapterId,
-        lessons,
-        lessonsLength: lessons?.length,
-        firstLesson: lessons?.[0]
-      });
-      
       if (!lessons || !Array.isArray(lessons)) {
         return res.status(400).json({ 
           message: "Invalid payload - lessons array is required",
@@ -8441,7 +8434,6 @@ Please contact the customer to confirm the appointment.
       res.json({ message: "Lesson order updated successfully" });
     } catch (error) {
       console.error("Error reordering lessons:", error);
-      console.error("Error details:", error.message);
       res.status(500).json({ 
         message: "Failed to reorder lessons",
         error: error.message 

@@ -1969,20 +1969,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async reorderCourseLessons(chapterId: number, lessons: any[]): Promise<void> {
-    console.log('Storage: reorderCourseLessons called with:', { chapterId, lessons });
-    
-    try {
-      for (const lesson of lessons) {
-        console.log('Updating lesson:', lesson);
-        const result = await db.update(courseLessons)
-          .set({ orderIndex: lesson.orderIndex })
-          .where(eq(courseLessons.id, lesson.id));
-        console.log('Update result:', result);
-      }
-      console.log('Storage: All lesson updates completed successfully');
-    } catch (error) {
-      console.error('Storage: Error in reorderCourseLessons:', error);
-      throw error;
+    for (const lesson of lessons) {
+      await db.update(courseLessons)
+        .set({ orderIndex: lesson.orderIndex })
+        .where(eq(courseLessons.id, lesson.id));
     }
   }
 
