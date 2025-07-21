@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useState, useEffect } from "react";
-import { validateRoutingConfiguration, getRedirectPath } from "@/utils/authGuards";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -43,6 +42,7 @@ import Refunds from "@/pages/refunds";
 import Contact from "@/pages/contact";
 import Shipping from "@/pages/shipping";
 import ResetPassword from "@/pages/reset-password";
+import ResetPasswordConfirm from "@/pages/reset-password-confirm";
 import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
@@ -207,23 +207,8 @@ function AuthenticatedApp() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
-  const [location, setLocation] = useLocation();
-
-  // Validate routing configuration on mount
-  useEffect(() => {
-    if (!validateRoutingConfiguration()) {
-      console.error('Routing configuration validation failed');
-    }
-  }, []);
-
-  // Handle redirects based on authentication state
-  useEffect(() => {
-    const redirectPath = getRedirectPath(location, { isAuthenticated, isLoading, user });
-    if (redirectPath && redirectPath !== location) {
-      setLocation(redirectPath);
-    }
-  }, [location, isAuthenticated, isLoading, user, setLocation]);
+  const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -240,6 +225,7 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
           <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />
           <Route path="/terms" component={Terms} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />

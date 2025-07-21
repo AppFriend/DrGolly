@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { apiRequest } from "@/lib/queryClient";
@@ -31,10 +32,204 @@ import {
   Grid3X3,
   BookOpen,
   X,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Trash2,
+  Minimize2,
+  Maximize2
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import AdminCoursesAccordion from './AdminCoursesAccordionNew';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { InlineEditTitle } from "./InlineEditTitle";
+
+interface SortableChapterProps {
+  chapter: any;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdateTitle: (title: string) => void;
+  onDeleteChapter: (chapterId: number) => void;
+  onAddLesson: (chapterId: number) => void;
+  children: React.ReactNode;
+}
+
+function SortableChapter({ chapter, isExpanded, onToggle, onUpdateTitle, onDeleteChapter, onAddLesson, children }: SortableChapterProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: chapter.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="border rounded-lg mb-2">
+      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-t-lg">
+        <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-gray-400" />
+        </div>
+        <Book className="h-4 w-4 text-green-600" />
+        <InlineEditTitle
+          title={chapter.title}
+          onSave={onUpdateTitle}
+          onDelete={() => onDeleteChapter(chapter.id)}
+          className="text-sm font-medium flex-1"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="hover:bg-gray-200"
+        >
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+      {isExpanded && (
+        <div className="p-3 border-t">
+          {children}
+          <div className="mt-4 flex justify-center">
+            <Button
+              onClick={() => onAddLesson(chapter.id)}
+              size="sm"
+              variant="outline"
+              className="text-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lesson
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface SortableLessonProps {
+  lesson: any;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdateTitle: (title: string) => void;
+  onDeleteLesson: (lessonId: number) => void;
+  onEditContent: () => void;
+  isEditing: boolean;
+  editContent: string;
+  onContentChange: (content: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+function SortableLesson({ 
+  lesson, 
+  isExpanded, 
+  onToggle, 
+  onUpdateTitle, 
+  onDeleteLesson,
+  onEditContent, 
+  isEditing, 
+  editContent, 
+  onContentChange, 
+  onSave, 
+  onCancel 
+}: SortableLessonProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: lesson.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="border rounded-lg mb-2 ml-6">
+      <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-t-lg">
+        <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-gray-400" />
+        </div>
+        <FileText className="h-4 w-4 text-blue-600" />
+        <InlineEditTitle
+          title={lesson.title}
+          onSave={onUpdateTitle}
+          onDelete={() => onDeleteLesson(lesson.id)}
+          className="text-sm font-medium flex-1"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onEditContent}
+          className="hover:bg-blue-200"
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="hover:bg-blue-200"
+        >
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+      {isExpanded && (
+        <div className="p-3 border-t">
+          {isEditing ? (
+            <div className="space-y-3">
+              <RichTextEditor
+                content={editContent}
+                onChange={onContentChange}
+                placeholder="Enter lesson content..."
+              />
+              <div className="flex gap-2">
+                <Button onClick={onSave} size="sm">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+                <Button onClick={onCancel} variant="outline" size="sm">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="prose-lesson text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+              <div dangerouslySetInnerHTML={{ __html: lesson.content || "No content available" }} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Course {
   id: number;
@@ -108,7 +303,7 @@ export function AdminCourseManagement() {
   const queryClient = useQueryClient();
 
   const { data: courses, isLoading } = useQuery({
-    queryKey: ["/api/courses"],
+    queryKey: ["/api/admin/courses/detailed"],
   });
 
   const createCourseMutation = useMutation({
@@ -874,11 +1069,26 @@ interface CourseAccordionViewProps {
 
 function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: CourseAccordionViewProps) {
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
+  const [expandedLessons, setExpandedLessons] = useState<Record<number, boolean>>({});
   const [editingLesson, setEditingLesson] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [showAddChapterDialog, setShowAddChapterDialog] = useState(false);
+  const [showAddLessonDialog, setShowAddLessonDialog] = useState(false);
+  const [addChapterTitle, setAddChapterTitle] = useState('');
+  const [addLessonTitle, setAddLessonTitle] = useState('');
+  const [addLessonContent, setAddLessonContent] = useState('');
+  const [addingToChapterId, setAddingToChapterId] = useState<number | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Fetch course chapters
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery({
@@ -914,6 +1124,186 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     },
   });
 
+  // Title update mutations
+  const updateCourseTitleMutation = useMutation({
+    mutationFn: (newTitle: string) =>
+      apiRequest("PATCH", `/api/courses/${course.id}`, { title: newTitle }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/courses/detailed"] });
+      toast({
+        title: "Success",
+        description: "Course title updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateChapterTitleMutation = useMutation({
+    mutationFn: ({ chapterId, newTitle }: { chapterId: number; newTitle: string }) =>
+      apiRequest("PATCH", `/api/chapters/${chapterId}`, { title: newTitle }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      toast({
+        title: "Success",
+        description: "Chapter title updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateLessonTitleMutation = useMutation({
+    mutationFn: ({ lessonId, newTitle }: { lessonId: number; newTitle: string }) =>
+      apiRequest("PATCH", `/api/lessons/${lessonId}`, { title: newTitle }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson title updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete mutations
+  const deleteChapterMutation = useMutation({
+    mutationFn: (chapterId: number) =>
+      apiRequest("DELETE", `/api/chapters/${chapterId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Chapter deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteLessonMutation = useMutation({
+    mutationFn: (lessonId: number) =>
+      apiRequest("DELETE", `/api/lessons/${lessonId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reorderChaptersMutation = useMutation({
+    mutationFn: (orderedChapters: any[]) =>
+      apiRequest("PUT", `/api/courses/${course.id}/chapters/reorder`, { chapters: orderedChapters }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      toast({
+        title: "Success",
+        description: "Chapter order updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reorderLessonsMutation = useMutation({
+    mutationFn: ({ chapterId, orderedLessons }: { chapterId: number; orderedLessons: any[] }) =>
+      apiRequest("PUT", `/api/chapters/${chapterId}/lessons/reorder`, { lessons: orderedLessons }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson order updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createChapterMutation = useMutation({
+    mutationFn: (chapterData: { title: string; courseId: number }) =>
+      apiRequest("POST", `/api/courses/${course.id}/chapters`, chapterData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/chapters`] });
+      toast({
+        title: "Success",
+        description: "Chapter created successfully",
+      });
+      setShowAddChapterDialog(false);
+      setAddChapterTitle('');
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createLessonMutation = useMutation({
+    mutationFn: (lessonData: { title: string; content: string; chapterId: number }) =>
+      apiRequest("POST", `/api/chapters/${lessonData.chapterId}/lessons`, lessonData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
+      toast({
+        title: "Success",
+        description: "Lesson created successfully",
+      });
+      setShowAddLessonDialog(false);
+      setAddLessonTitle('');
+      setAddLessonContent('');
+      setAddingToChapterId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const toggleChapter = (chapterId: number) => {
     setExpandedChapters(prev => ({
       ...prev,
@@ -935,9 +1325,61 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     setEditContent('');
   };
 
+  const handleCreateChapter = () => {
+    if (!addChapterTitle.trim()) return;
+    
+    createChapterMutation.mutate({
+      title: addChapterTitle,
+      courseId: course.id,
+    });
+  };
+
+  const handleDeleteChapter = (chapterId: number) => {
+    deleteChapterMutation.mutate(chapterId);
+  };
+
+  const handleDeleteLesson = (lessonId: number) => {
+    deleteLessonMutation.mutate(lessonId);
+  };
+
+  const handleCreateLesson = () => {
+    if (!addLessonTitle.trim() || !addingToChapterId) return;
+    
+    createLessonMutation.mutate({
+      title: addLessonTitle,
+      content: addLessonContent,
+      chapterId: addingToChapterId,
+    });
+  };
+
+  const handleAddLessonToChapter = (chapterId: number) => {
+    setAddingToChapterId(chapterId);
+    setShowAddLessonDialog(true);
+  };
+
+  // Title update handlers
+  const handleUpdateCourseTitle = async (newTitle: string) => {
+    await updateCourseTitleMutation.mutateAsync(newTitle);
+  };
+
+  const handleUpdateChapterTitle = async (chapterId: number, newTitle: string) => {
+    await updateChapterTitleMutation.mutateAsync({ chapterId, newTitle });
+  };
+
+  const handleUpdateLessonTitle = async (lessonId: number, newTitle: string) => {
+    await updateLessonTitleMutation.mutateAsync({ lessonId, newTitle });
+  };
+
+  const toggleLesson = (lessonId: number) => {
+    setExpandedLessons(prev => ({
+      ...prev,
+      [lessonId]: !prev[lessonId]
+    }));
+  };
+
   const getLessonsForChapter = (chapterId: number) => {
-    return lessons.filter((lesson: any) => lesson.chapterId === chapterId)
-      .sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+    return lessons.filter((lesson: any) => lesson.chapter_id === chapterId || lesson.chapterId === chapterId)
+      .sort((a: any, b: any) => (a.order_index || a.orderIndex) - (b.order_index || b.orderIndex));
   };
 
   const getCategoryColor = (category: string) => {
@@ -955,6 +1397,41 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     }
   };
 
+  const handleChapterDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeIndex = chapters.findIndex((c: any) => c.id === active.id);
+    const overIndex = chapters.findIndex((c: any) => c.id === over.id);
+
+    if (activeIndex !== -1 && overIndex !== -1) {
+      const newChapters = arrayMove(chapters, activeIndex, overIndex);
+      const orderedChapters = newChapters.map((chapter: any, index: number) => ({
+        id: chapter.id,
+        orderIndex: index + 1,
+      }));
+      reorderChaptersMutation.mutate(orderedChapters);
+    }
+  };
+
+  const handleLessonDragEnd = (event: DragEndEvent, chapterId: number) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const chapterLessons = getLessonsForChapter(chapterId);
+    const activeIndex = chapterLessons.findIndex((l: any) => l.id === active.id);
+    const overIndex = chapterLessons.findIndex((l: any) => l.id === over.id);
+
+    if (activeIndex !== -1 && overIndex !== -1) {
+      const newLessons = arrayMove(chapterLessons, activeIndex, overIndex);
+      const orderedLessons = newLessons.map((lesson: any, index: number) => ({
+        id: lesson.id,
+        orderIndex: index + 1,
+      }));
+      reorderLessonsMutation.mutate({ chapterId, orderedLessons });
+    }
+  };
+
   if (chaptersLoading || lessonsLoading) {
     return (
       <Card>
@@ -969,178 +1446,306 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   }
 
   return (
-    <Card>
-      <CardHeader className="p-3 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
-              <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-base sm:text-lg truncate">{course.title}</CardTitle>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
-                <Badge className={`${getCategoryColor(course.category)} text-xs w-fit`}>
-                  {course.category}
-                </Badge>
-                <span className="text-sm text-gray-500">
-                  {chapters.length} chapters • {lessons.length} lessons
-                </span>
+    <>
+      <Card>
+        <CardHeader className="p-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <InlineEditTitle
+                  title={course.title}
+                  onSave={handleUpdateCourseTitle}
+                  className="text-base sm:text-lg font-bold"
+                />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                  <Badge className={`${getCategoryColor(course.category)} text-xs w-fit`}>
+                    {course.category}
+                  </Badge>
+                  <span className="text-sm text-gray-500">
+                    {chapters.length} chapters • {lessons.length} lessons
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge variant="outline" className="text-xs">
-              ${typeof course.price === 'number' ? course.price.toFixed(2) : course.price}
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPreviewCourse(course)}
-              className="h-8 w-8 p-0"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                // TODO: Add course editing functionality
-                toast({
-                  title: "Coming Soon",
-                  description: "Course editing functionality will be added soon",
-                });
-              }}
-              className="h-8 w-8 p-0"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Accordion type="multiple" value={Object.keys(expandedChapters).filter(k => expandedChapters[parseInt(k)])} onValueChange={() => {}}>
-          {chapters.map((chapter: any) => (
-            <AccordionItem key={chapter.id} value={chapter.id.toString()}>
-              <AccordionTrigger 
-                className="text-left hover:no-underline py-3"
-                onClick={() => toggleChapter(chapter.id)}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Badge variant="outline" className="text-xs">
+                ${typeof course.price === 'number' ? course.price.toFixed(2) : course.price}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPreviewCourse(course)}
+                className="h-8 w-8 p-0"
               >
-                <div className="flex items-center justify-between w-full mr-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Book className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{chapter.title}</h3>
-                      <p className="text-sm text-gray-500">
-                        {getLessonsForChapter(chapter.id).length} lessons
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="pl-11 space-y-2">
-                  {getLessonsForChapter(chapter.id).map((lesson: any) => (
-                    <div key={lesson.id} className="border border-gray-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
-                            <FileText className="h-3 w-3 text-green-600" />
-                          </div>
-                          <h4 className="font-medium text-sm">{lesson.title}</h4>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {lesson.videoUrl && (
-                            <Badge variant="outline" className="text-xs">
-                              <Play className="h-3 w-3 mr-1" />
-                              Video
-                            </Badge>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditLesson(lesson.id, lesson.content || '')}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {editingLesson === lesson.id ? (
-                        <div className="space-y-2">
-                          <RichTextEditor
-                            content={editContent}
-                            onChange={(content) => setEditContent(content)}
-                            placeholder="Enter lesson content..."
-                            className="min-h-[120px] text-sm"
-                          />
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleSaveLesson(lesson.id)}
-                              disabled={updateLessonMutation.isPending}
-                              className="h-7 bg-green-700 hover:bg-green-800 text-white"
-                            >
-                              {updateLessonMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              ) : (
-                                <Save className="h-3 w-3 mr-1" />
-                              )}
-                              Save
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleCancelEdit}
-                              className="h-7"
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-600">
-                          {lesson.content ? (
-                            <div dangerouslySetInnerHTML={{ __html: lesson.content.substring(0, 200) + (lesson.content.length > 200 ? '...' : '') }} />
-                          ) : (
-                            <p className="text-gray-400 italic">No content available</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {getLessonsForChapter(chapter.id).length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-sm">No lessons in this chapter yet</p>
-                      <Button variant="outline" size="sm" className="mt-2">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Lesson
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-        
-        {chapters.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <Book className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm">No chapters in this course yet</p>
-            <Button variant="outline" size="sm" className="mt-2">
-              <Plus className="h-4 w-4 mr-1" />
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="h-8 w-8 p-0"
+                title={isMinimized ? "Expand course" : "Minimize course"}
+              >
+                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // TODO: Add course editing functionality
+                  toast({
+                    title: "Coming Soon",
+                    description: "Course editing functionality will be added soon",
+                  });
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      {!isMinimized && (
+        <CardContent>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleChapterDragEnd}
+          >
+            <SortableContext
+              items={chapters.map((c: any) => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {chapters.map((chapter: any) => (
+                <SortableChapter
+                  key={chapter.id}
+                  chapter={chapter}
+                  isExpanded={expandedChapters[chapter.id]}
+                  onToggle={() => toggleChapter(chapter.id)}
+                  onUpdateTitle={(newTitle) => handleUpdateChapterTitle(chapter.id, newTitle)}
+                  onDeleteChapter={handleDeleteChapter}
+                  onAddLesson={handleAddLessonToChapter}
+                >
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => handleLessonDragEnd(event, chapter.id)}
+                  >
+                    <SortableContext
+                      items={getLessonsForChapter(chapter.id).map((l: any) => l.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {getLessonsForChapter(chapter.id).map((lesson: any) => (
+                        <SortableLesson
+                          key={lesson.id}
+                          lesson={lesson}
+                          isExpanded={expandedLessons[lesson.id]}
+                          onToggle={() => toggleLesson(lesson.id)}
+                          onUpdateTitle={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
+                          onDeleteLesson={handleDeleteLesson}
+                          onEditContent={() => handleEditLesson(lesson.id, lesson.content || '')}
+                          isEditing={editingLesson === lesson.id}
+                          editContent={editContent}
+                          onContentChange={setEditContent}
+                          onSave={() => handleSaveLesson(lesson.id)}
+                          onCancel={handleCancelEdit}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </SortableChapter>
+              ))}
+            </SortableContext>
+          </DndContext>
+          
+          <div className="mt-4 flex justify-center">
+            <Button
+              onClick={() => setShowAddChapterDialog(true)}
+              size="sm"
+              variant="outline"
+              className="text-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
               Add Chapter
             </Button>
           </div>
-        )}
-      </CardContent>
+          
+          {chapters.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Book className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">No chapters in this course yet</p>
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
+    
+    {/* Add Chapter Dialog - only show when not minimized */}
+    {!isMinimized && (
+      <AddChapterDialog
+        open={showAddChapterDialog}
+        onOpenChange={setShowAddChapterDialog}
+        addChapterTitle={addChapterTitle}
+        setAddChapterTitle={setAddChapterTitle}
+        handleCreateChapter={handleCreateChapter}
+        createChapterMutation={createChapterMutation}
+      />
+    )}
+    
+    {/* Add Lesson Dialog - only show when not minimized */}
+    {!isMinimized && (
+      <AddLessonDialog
+        open={showAddLessonDialog}
+        onOpenChange={setShowAddLessonDialog}
+        addLessonTitle={addLessonTitle}
+        setAddLessonTitle={setAddLessonTitle}
+        addLessonContent={addLessonContent}
+        setAddLessonContent={setAddLessonContent}
+        handleCreateLesson={handleCreateLesson}
+        createLessonMutation={createLessonMutation}
+        setAddingToChapterId={setAddingToChapterId}
+      />
+    )}
+  </>
+  );
+}
+
+// Add Chapter Dialog Component
+function AddChapterDialog({
+  open,
+  onOpenChange,
+  addChapterTitle,
+  setAddChapterTitle,
+  handleCreateChapter,
+  createChapterMutation
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  addChapterTitle: string;
+  setAddChapterTitle: (title: string) => void;
+  handleCreateChapter: () => void;
+  createChapterMutation: any;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New Chapter</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="chapter-title">Chapter Title</Label>
+            <Input
+              id="chapter-title"
+              value={addChapterTitle}
+              onChange={(e) => setAddChapterTitle(e.target.value)}
+              placeholder="Enter chapter title..."
+              className="mt-1"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateChapter}
+              disabled={!addChapterTitle.trim() || createChapterMutation.isPending}
+            >
+              {createChapterMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Chapter
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Lesson Dialog Component
+function AddLessonDialog({
+  open,
+  onOpenChange,
+  addLessonTitle,
+  setAddLessonTitle,
+  addLessonContent,
+  setAddLessonContent,
+  handleCreateLesson,
+  createLessonMutation,
+  setAddingToChapterId
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  addLessonTitle: string;
+  setAddLessonTitle: (title: string) => void;
+  addLessonContent: string;
+  setAddLessonContent: (content: string) => void;
+  handleCreateLesson: () => void;
+  createLessonMutation: any;
+  setAddingToChapterId: (id: number | null) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Add New Lesson</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="lesson-title">Lesson Title</Label>
+            <Input
+              id="lesson-title"
+              value={addLessonTitle}
+              onChange={(e) => setAddLessonTitle(e.target.value)}
+              placeholder="Enter lesson title..."
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="lesson-content">Lesson Content</Label>
+            <RichTextEditor
+              content={addLessonContent}
+              onChange={setAddLessonContent}
+              placeholder="Enter lesson content..."
+              className="mt-1 min-h-[200px]"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                onOpenChange(false);
+                setAddLessonTitle('');
+                setAddLessonContent('');
+                setAddingToChapterId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateLesson}
+              disabled={!addLessonTitle.trim() || createLessonMutation.isPending}
+            >
+              {createLessonMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Lesson
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1157,8 +1762,8 @@ function CoursePreview({ course }: { course: Course }) {
   });
 
   const getLessonsForChapter = (chapterId: number) => {
-    return lessons.filter((lesson: any) => lesson.chapterId === chapterId)
-      .sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+    return lessons.filter((lesson: any) => lesson.chapter_id === chapterId || lesson.chapterId === chapterId)
+      .sort((a: any, b: any) => (a.order_index || a.orderIndex) - (b.order_index || b.orderIndex));
   };
 
   return (

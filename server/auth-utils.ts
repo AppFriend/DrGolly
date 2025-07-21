@@ -70,6 +70,13 @@ export class AuthUtils {
   }
 
   /**
+   * Generate a secure password reset token
+   */
+  static generatePasswordResetToken(): string {
+    return nanoid(32);
+  }
+
+  /**
    * Create expiration date for temporary passwords (30 days)
    */
   static createTempPasswordExpiry(): Date {

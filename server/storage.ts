@@ -117,6 +117,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
+  createUser(user: any): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserSubscription(userId: string, tier: string, billingPeriod: string, nextBillingDate: Date): Promise<User>;
   updateUserPersonalization(userId: string, personalizationData: any): Promise<User>;
@@ -125,7 +126,9 @@ export interface IStorage {
   
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
+  getAllCourses(): Promise<Course[]>;
   getCourse(id: number): Promise<Course | undefined>;
+  getCoursesByIds(ids: number[]): Promise<Course[]>;
   createCourse(course: InsertCourse): Promise<Course>;
   updateCourseStats(courseId: number, likes?: number, views?: number): Promise<void>;
   
@@ -141,6 +144,7 @@ export interface IStorage {
   getChapterLessons(chapterId: number): Promise<CourseLesson[]>;
   createCourseLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
   updateLessonContent(lessonId: number, content: string): Promise<CourseLesson>;
+  updateLessonTitle(lessonId: number, title: string): Promise<CourseLesson>;
   getAllLessons(): Promise<CourseLesson[]>;
   createLesson(lesson: InsertCourseLesson): Promise<CourseLesson>;
   updateLesson(id: number, updates: Partial<CourseLesson>): Promise<CourseLesson>;
@@ -299,6 +303,11 @@ export interface IStorage {
   createBulkCoursePurchases(purchases: InsertCoursePurchase[]): Promise<CoursePurchase[]>;
   setUserPassword(userId: string, passwordHash: string): Promise<void>;
   authenticateWithTemporaryPassword(email: string, tempPassword: string): Promise<User | null>;
+  
+  // Password reset token operations
+  createPasswordResetToken(userId: string, token: string): Promise<PasswordResetToken>;
+  verifyPasswordResetToken(token: string): Promise<PasswordResetToken | null>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
 
   // Family invite operations
   getFamilyMembers(familyOwnerId: string): Promise<FamilyMember[]>;
@@ -417,6 +426,49 @@ export class DatabaseStorage implements IStorage {
   async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId));
     return user;
+  }
+
+  async createUser(userData: any): Promise<User> {
+    try {
+      console.log('🔧 STORAGE: Creating user with data:', JSON.stringify(userData, null, 2));
+      
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .returning();
+      
+      console.log('✅ STORAGE: User created successfully:', user.id);
+      return user;
+    } catch (error) {
+      console.error('❌ STORAGE: Database error in createUser:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Try raw SQL fallback
+      try {
+        console.log('🔧 STORAGE: Attempting raw SQL fallback for createUser');
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        const result = await sql`
+          INSERT INTO users (
+            id, email, first_name, last_name, password_hash, has_set_password, 
+            subscription_tier, plan_tier, last_login_at, created_at, updated_at
+          ) VALUES (
+            ${userData.id}, ${userData.email}, ${userData.firstName}, ${userData.lastName}, 
+            ${userData.passwordHash}, ${userData.hasSetPassword}, ${userData.subscriptionTier}, 
+            ${userData.planTier}, ${userData.lastLoginAt}, ${new Date()}, ${new Date()}
+          )
+          RETURNING *
+        `;
+        
+        console.log('✅ STORAGE: User created via raw SQL fallback:', result[0]?.id);
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('❌ STORAGE: Raw SQL fallback also failed:', fallbackError);
+        throw error;
+      }
+    }
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -733,6 +785,40 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getAllCourses(): Promise<Course[]> {
+    try {
+      const coursesList = await db.select().from(courses).orderBy(courses.createdAt);
+      
+      // Convert price from string to number if needed
+      return coursesList.map(course => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
+      }));
+    } catch (error) {
+      console.error('Drizzle ORM failed for getAllCourses, using raw SQL fallback');
+      // Use raw SQL as fallback
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const result = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                      duration, age_range, is_published, likes, views, created_at, updated_at,
+                                      price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                      status, detailed_description, website_content, key_features, whats_covered,
+                                      rating, review_count, overview_description, learning_objectives,
+                                      completion_criteria, course_structure_notes
+                               FROM courses 
+                               ORDER BY created_at`;
+      
+      // Convert price from string to number if needed
+      return result.map((course: any) => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discounted_price
+      }));
+    }
+  }
+
   async getCourse(id: number): Promise<Course | undefined> {
     const [course] = await db.select().from(courses).where(eq(courses.id, id));
     if (!course) return undefined;
@@ -743,6 +829,44 @@ export class DatabaseStorage implements IStorage {
       price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
       discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
     };
+  }
+
+  async getCoursesByIds(ids: number[]): Promise<Course[]> {
+    if (ids.length === 0) return [];
+    
+    try {
+      const coursesList = await db.select().from(courses).where(sql`id = ANY(${ids})`);
+      
+      // Convert price from string to number if needed
+      return coursesList.map(course => ({
+        ...course,
+        price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+        discountedPrice: typeof course.discountedPrice === 'string' ? parseFloat(course.discountedPrice) : course.discountedPrice
+      }));
+    } catch (error) {
+      console.error('Error in getCoursesByIds:', error);
+      // Fallback to raw SQL
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT id, title, description, category, thumbnail_url, video_url, 
+                                        duration, age_range, is_published, likes, views, created_at, updated_at,
+                                        price, discounted_price, skill_level, stripe_product_id, unique_id,
+                                        status, detailed_description, website_content, key_features, whats_covered,
+                                        rating, review_count, overview_description, learning_objectives,
+                                        completion_criteria, course_structure_notes
+                                 FROM courses WHERE id = ANY(${ids})`;
+        
+        return result.map((course: any) => ({
+          ...course,
+          price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
+          discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice
+        }));
+      } catch (fallbackError) {
+        console.error('Fallback getCoursesByIds query failed:', fallbackError);
+        return [];
+      }
+    }
   }
 
   async createCourse(course: InsertCourse): Promise<Course> {
@@ -1138,6 +1262,134 @@ export class DatabaseStorage implements IStorage {
       populated_lessons: Number(row.populated_lessons),
       population_percentage: Number(row.population_percentage)
     }));
+  }
+
+  async getCourseEngagement(): Promise<any[]> {
+    try {
+      // Use raw SQL to get real user engagement data
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const result = await sql`
+        SELECT 
+          c.id as course_id,
+          c.title as course_title,
+          COUNT(DISTINCT cl.id) as total_lessons,
+          COUNT(DISTINCT ucp.user_id) as users_started,
+          COUNT(DISTINCT ulp.user_id) as users_with_progress,
+          COUNT(DISTINCT CASE WHEN ulp.completed_at IS NOT NULL THEN ulp.user_id END) as users_completed,
+          ROUND(
+            CASE 
+              WHEN COUNT(DISTINCT ucp.user_id) > 0 THEN 
+                (COUNT(DISTINCT CASE WHEN ulp.completed_at IS NOT NULL THEN ulp.user_id END) * 100.0 / COUNT(DISTINCT ucp.user_id))
+              ELSE 0 
+            END, 
+            1
+          ) as engagement_percentage
+        FROM courses c
+        LEFT JOIN course_lessons cl ON c.id = cl.course_id
+        LEFT JOIN user_course_progress ucp ON c.id = ucp.course_id
+        LEFT JOIN user_lesson_progress ulp ON cl.id = ulp.lesson_id
+        WHERE c.id BETWEEN 5 AND 14
+        GROUP BY c.id, c.title
+        ORDER BY c.id
+      `;
+      
+      return result.map(row => ({
+        course_id: row.course_id,
+        course_title: row.course_title,
+        total_lessons: Number(row.total_lessons),
+        users_started: Number(row.users_started),
+        users_with_progress: Number(row.users_with_progress),
+        users_completed: Number(row.users_completed),
+        engagement_percentage: Number(row.engagement_percentage)
+      }));
+    } catch (error) {
+      console.error("Error in getCourseEngagement:", error);
+      return [];
+    }
+  }
+
+  async getUserTransactions(userId: string): Promise<any[]> {
+    try {
+      // Use raw SQL to get comprehensive user transaction data
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const result = await sql`
+        SELECT 
+          cp.id,
+          cp.amount,
+          cp.purchased_at,
+          cp.status,
+          cp.stripe_payment_intent_id,
+          c.title as course_title,
+          c.thumbnail_url
+        FROM course_purchases cp
+        LEFT JOIN courses c ON cp.course_id = c.id
+        WHERE cp.user_id = ${userId}
+        AND cp.status = 'completed'
+        ORDER BY cp.purchased_at DESC
+      `;
+      
+      return result.map(row => ({
+        id: row.id,
+        amount: parseFloat(row.amount) / 100,
+        purchasedAt: row.purchased_at,
+        status: row.status,
+        stripePaymentIntentId: row.stripe_payment_intent_id,
+        courseTitle: row.course_title,
+        thumbnailUrl: row.thumbnail_url
+      }));
+    } catch (error) {
+      console.error("Error in getUserTransactions:", error);
+      return [];
+    }
+  }
+
+  async getAllCoursesWithLessons(): Promise<any[]> {
+    try {
+      // Use raw SQL to get all courses with actual lesson counts
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const result = await sql`
+        SELECT 
+          c.id,
+          c.title,
+          c.description,
+          c.category,
+          c.thumbnail_url,
+          c.price,
+          c.discounted_price,
+          c.skill_level,
+          c.status,
+          COUNT(cl.id) as lesson_count,
+          COUNT(DISTINCT cl.chapter_id) as chapter_count
+        FROM courses c
+        LEFT JOIN course_lessons cl ON c.id = cl.course_id
+        WHERE c.id BETWEEN 5 AND 14
+        GROUP BY c.id, c.title, c.description, c.category, c.thumbnail_url, c.price, c.discounted_price, c.skill_level, c.status
+        ORDER BY c.id
+      `;
+      
+      return result.map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        thumbnailUrl: row.thumbnail_url,
+        price: parseFloat(row.price) || 0,
+        discountedPrice: row.discounted_price ? parseFloat(row.discounted_price) : null,
+        skillLevel: row.skill_level,
+        status: row.status,
+        lessonCount: Number(row.lesson_count),
+        chapterCount: Number(row.chapter_count)
+      }));
+    } catch (error) {
+      console.error("Error in getAllCoursesWithLessons:", error);
+      return [];
+    }
   }
 
   async getAllChapters(): Promise<CourseChapter[]> {
@@ -1716,6 +1968,14 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async reorderCourseLessons(chapterId: number, lessons: any[]): Promise<void> {
+    for (const lesson of lessons) {
+      await db.update(courseLessons)
+        .set({ orderIndex: lesson.orderIndex })
+        .where(eq(courseLessons.id, lesson.id));
+    }
+  }
+
   async updateBlogPostStats(postId: number, views?: number, likes?: number): Promise<void> {
     const updateData: any = {};
     if (views !== undefined) updateData.views = views;
@@ -1802,125 +2062,139 @@ export class DatabaseStorage implements IStorage {
     weekOnWeekChange: number;
     monthOnMonthChange: number;
   }> {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const lastWeekStart = new Date(today);
-    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-    
-    const lastMonthStart = new Date(today);
-    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
-    
-    const twoWeeksAgo = new Date(today);
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-    
-    const twoMonthsAgo = new Date(today);
-    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-
-    // Start of day boundaries
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-    const yesterdayEnd = new Date(todayStart.getTime() - 1);
-
-    // Get completed purchases only
-    const completedPurchases = await db
-      .select()
-      .from(coursePurchases)
-      .where(eq(coursePurchases.status, 'completed'));
-
-    const totalRevenue = completedPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100; // Convert from cents
-    const totalOrders = completedPurchases.length;
-
-    // Today's data
-    const todayPurchases = completedPurchases.filter(p => 
-      new Date(p.purchasedAt) >= todayStart
-    );
-    const todayRevenue = todayPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
-    const todayOrders = todayPurchases.length;
-
-    // Yesterday's data
-    const yesterdayPurchases = completedPurchases.filter(p => {
-      const purchaseDate = new Date(p.purchasedAt);
-      return purchaseDate >= yesterdayStart && purchaseDate <= yesterdayEnd;
-    });
-    const yesterdayRevenue = yesterdayPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
-    const yesterdayOrders = yesterdayPurchases.length;
-
-    // Last week's data
-    const lastWeekPurchases = completedPurchases.filter(p => 
-      new Date(p.purchasedAt) >= lastWeekStart
-    );
-    const lastWeekRevenue = lastWeekPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
-    const lastWeekOrders = lastWeekPurchases.length;
-
-    // Previous week's data (for comparison)
-    const prevWeekPurchases = completedPurchases.filter(p => {
-      const purchaseDate = new Date(p.purchasedAt);
-      return purchaseDate >= twoWeeksAgo && purchaseDate < lastWeekStart;
-    });
-    const prevWeekRevenue = prevWeekPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
-
-    // Last month's data
-    const lastMonthPurchases = completedPurchases.filter(p => 
-      new Date(p.purchasedAt) >= lastMonthStart
-    );
-    const lastMonthRevenue = lastMonthPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
-    const lastMonthOrders = lastMonthPurchases.length;
-
-    // Previous month's data (for comparison)
-    const prevMonthPurchases = completedPurchases.filter(p => {
-      const purchaseDate = new Date(p.purchasedAt);
-      return purchaseDate >= twoMonthsAgo && purchaseDate < lastMonthStart;
-    });
-    const prevMonthRevenue = prevMonthPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
-
-    // Daily revenue data for the last 7 days
-    const dailyRevenueData = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const dateEnd = new Date(dateStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+    try {
+      // Use raw SQL to get comprehensive purchase data including both local and Stripe data
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
       
-      const dayPurchases = completedPurchases.filter(p => {
-        const purchaseDate = new Date(p.purchasedAt);
-        return purchaseDate >= dateStart && purchaseDate <= dateEnd;
-      });
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
       
-      dailyRevenueData.push({
-        date: date.toISOString().split('T')[0],
-        revenue: dayPurchases.reduce((sum, p) => sum + (p.amount || 0), 0) / 100,
-        orders: dayPurchases.length
-      });
+      const lastWeekStart = new Date(today);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      
+      const lastMonthStart = new Date(today);
+      lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+
+      // Get all completed purchases with comprehensive data
+      const ordersResult = await sql`
+        SELECT 
+          amount,
+          purchased_at,
+          status,
+          stripe_payment_intent_id
+        FROM course_purchases 
+        WHERE status = 'completed'
+        AND amount > 0
+        ORDER BY purchased_at DESC
+      `;
+
+      const orders = ordersResult.map((order: any) => ({
+        amount: parseFloat(order.amount) || 0,
+        purchasedAt: new Date(order.purchased_at),
+        status: order.status,
+        stripePaymentIntentId: order.stripe_payment_intent_id
+      }));
+
+      // Calculate totals
+      const totalRevenue = orders.reduce((sum, p) => sum + (p.amount / 100), 0);
+      const totalOrders = orders.length;
+
+      // Today's data
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayOrders = orders.filter(p => p.purchasedAt >= todayStart);
+      const todayRevenue = todayOrders.reduce((sum, p) => sum + (p.amount / 100), 0);
+
+      // Yesterday's data
+      const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+      const yesterdayEnd = new Date(todayStart.getTime() - 1);
+      const yesterdayOrders = orders.filter(p => p.purchasedAt >= yesterdayStart && p.purchasedAt <= yesterdayEnd);
+      const yesterdayRevenue = yesterdayOrders.reduce((sum, p) => sum + (p.amount / 100), 0);
+
+      // Last week's data
+      const lastWeekOrders = orders.filter(p => p.purchasedAt >= lastWeekStart);
+      const lastWeekRevenue = lastWeekOrders.reduce((sum, p) => sum + (p.amount / 100), 0);
+
+      // Previous week's data for comparison
+      const twoWeeksAgo = new Date(today);
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      const prevWeekOrders = orders.filter(p => p.purchasedAt >= twoWeeksAgo && p.purchasedAt < lastWeekStart);
+      const prevWeekRevenue = prevWeekOrders.reduce((sum, p) => sum + (p.amount / 100), 0);
+
+      // Last month's data
+      const lastMonthOrders = orders.filter(p => p.purchasedAt >= lastMonthStart);
+      const lastMonthRevenue = lastMonthOrders.reduce((sum, p) => sum + (p.amount / 100), 0);
+
+      // Previous month's data for comparison
+      const twoMonthsAgo = new Date(today);
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      const prevMonthOrders = orders.filter(p => p.purchasedAt >= twoMonthsAgo && p.purchasedAt < lastMonthStart);
+      const prevMonthRevenue = prevMonthOrders.reduce((sum, p) => sum + (p.amount / 100), 0);
+
+      // Daily revenue data for the last 7 days
+      const dailyRevenueData = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const dateEnd = new Date(dateStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+        
+        const dayOrders = orders.filter(p => p.purchasedAt >= dateStart && p.purchasedAt <= dateEnd);
+        
+        dailyRevenueData.push({
+          date: date.toISOString().split('T')[0],
+          revenue: dayOrders.reduce((sum, p) => sum + (p.amount / 100), 0),
+          orders: dayOrders.length
+        });
+      }
+
+      // Calculate percentage changes
+      const dayOnDayChange = yesterdayRevenue > 0 ? 
+        ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : 0;
+      
+      const weekOnWeekChange = prevWeekRevenue > 0 ? 
+        ((lastWeekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100 : 0;
+      
+      const monthOnMonthChange = prevMonthRevenue > 0 ? 
+        ((lastMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100 : 0;
+
+      return {
+        totalRevenue,
+        totalOrders,
+        todayRevenue,
+        todayOrders: todayOrders.length,
+        yesterdayRevenue,
+        yesterdayOrders: yesterdayOrders.length,
+        lastWeekRevenue,
+        lastWeekOrders: lastWeekOrders.length,
+        lastMonthRevenue,
+        lastMonthOrders: lastMonthOrders.length,
+        dailyRevenueData,
+        dayOnDayChange,
+        weekOnWeekChange,
+        monthOnMonthChange
+      };
+    } catch (error) {
+      console.error("Error in getOrderAnalytics:", error);
+      // Return fallback data instead of failing
+      return {
+        totalRevenue: 0,
+        totalOrders: 0,
+        todayRevenue: 0,
+        todayOrders: 0,
+        yesterdayRevenue: 0,
+        yesterdayOrders: 0,
+        lastWeekRevenue: 0,
+        lastWeekOrders: 0,
+        lastMonthRevenue: 0,
+        lastMonthOrders: 0,
+        dailyRevenueData: [],
+        dayOnDayChange: 0,
+        weekOnWeekChange: 0,
+        monthOnMonthChange: 0
+      };
     }
-
-    // Calculate percentage changes
-    const dayOnDayChange = yesterdayRevenue > 0 ? 
-      ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : 0;
-    
-    const weekOnWeekChange = prevWeekRevenue > 0 ? 
-      ((lastWeekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100 : 0;
-    
-    const monthOnMonthChange = prevMonthRevenue > 0 ? 
-      ((lastMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100 : 0;
-
-    return {
-      totalRevenue,
-      totalOrders,
-      todayRevenue,
-      todayOrders,
-      yesterdayRevenue,
-      yesterdayOrders,
-      lastWeekRevenue,
-      lastWeekOrders,
-      lastMonthRevenue,
-      lastMonthOrders,
-      dailyRevenueData,
-      dayOnDayChange,
-      weekOnWeekChange,
-      monthOnMonthChange
-    };
   }
 
   async getDailyOrders(page: number = 1, limit: number = 20): Promise<{
@@ -1938,61 +2212,116 @@ export class DatabaseStorage implements IStorage {
     totalPages: number;
     currentPage: number;
   }> {
-    const offset = (page - 1) * limit;
-    
-    // Get orders with course and user details
-    const ordersQuery = db
-      .select({
-        id: coursePurchases.id,
-        orderNumber: coursePurchases.stripePaymentIntentId,
-        userId: coursePurchases.userId,
-        courseId: coursePurchases.courseId,
-        amount: coursePurchases.amount,
-        status: coursePurchases.status,
-        purchasedAt: coursePurchases.purchasedAt,
-        stripePaymentIntentId: coursePurchases.stripePaymentIntentId,
-        courseTitle: courses.title,
-        userFirstName: users.firstName,
-        userLastName: users.lastName,
-        userEmail: users.email
-      })
-      .from(coursePurchases)
-      .leftJoin(courses, eq(coursePurchases.courseId, courses.id))
-      .leftJoin(users, eq(coursePurchases.userId, users.id))
-      .where(eq(coursePurchases.status, 'completed'))
-      .orderBy(desc(coursePurchases.purchasedAt))
-      .limit(limit)
-      .offset(offset);
+    try {
+      const offset = (page - 1) * limit;
+      
+      // Get orders with course and user details
+      const ordersQuery = db
+        .select({
+          id: coursePurchases.id,
+          orderNumber: coursePurchases.stripePaymentIntentId,
+          userId: coursePurchases.userId,
+          courseId: coursePurchases.courseId,
+          amount: coursePurchases.amount,
+          status: coursePurchases.status,
+          purchasedAt: coursePurchases.purchasedAt,
+          stripePaymentIntentId: coursePurchases.stripePaymentIntentId,
+          courseTitle: courses.title,
+          userFirstName: users.firstName,
+          userLastName: users.lastName,
+          userEmail: users.email
+        })
+        .from(coursePurchases)
+        .leftJoin(courses, eq(coursePurchases.courseId, courses.id))
+        .leftJoin(users, eq(coursePurchases.userId, users.id))
+        .where(eq(coursePurchases.status, 'completed'))
+        .orderBy(desc(coursePurchases.purchasedAt))
+        .limit(limit)
+        .offset(offset);
 
-    const orders = await ordersQuery;
-    
-    // Get total count for pagination
-    const totalCountResult = await db
-      .select({ count: count() })
-      .from(coursePurchases)
-      .where(eq(coursePurchases.status, 'completed'));
-    
-    const totalCount = totalCountResult[0]?.count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
+      const orders = await ordersQuery;
+      
+      // Get total count for pagination
+      const totalCountResult = await db
+        .select({ count: count() })
+        .from(coursePurchases)
+        .where(eq(coursePurchases.status, 'completed'));
+      
+      const totalCount = totalCountResult[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / limit);
 
-    // Format orders
-    const formattedOrders = orders.map(order => ({
-      id: order.id,
-      orderNumber: order.orderNumber || `#${order.id}`,
-      customerName: `${order.userFirstName || ''} ${order.userLastName || ''}`.trim() || order.userEmail || 'Unknown',
-      courseTitle: order.courseTitle || 'Unknown Course',
-      amount: (order.amount || 0) / 100, // Convert from cents
-      status: order.status,
-      purchasedAt: order.purchasedAt,
-      stripePaymentIntentId: order.stripePaymentIntentId || ''
-    }));
+      // Format orders
+      const formattedOrders = orders.map(order => ({
+        id: order.id,
+        orderNumber: order.orderNumber || `#${order.id}`,
+        customerName: `${order.userFirstName || ''} ${order.userLastName || ''}`.trim() || order.userEmail || 'Unknown',
+        courseTitle: order.courseTitle || 'Unknown Course',
+        amount: (order.amount || 0) / 100, // Convert from cents
+        status: order.status,
+        purchasedAt: order.purchasedAt,
+        stripePaymentIntentId: order.stripePaymentIntentId || ''
+      }));
 
-    return {
-      orders: formattedOrders,
-      totalCount,
-      totalPages,
-      currentPage: page
-    };
+      return {
+        orders: formattedOrders,
+        totalCount,
+        totalPages,
+        currentPage: page
+      };
+    } catch (error) {
+      console.error("Drizzle ORM failed for daily orders, using raw SQL fallback");
+      
+      // Raw SQL fallback
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const offset = (page - 1) * limit;
+      
+      const orders = await sql`
+        SELECT 
+          cp.id,
+          cp.stripe_payment_intent_id as stripe_payment_intent_id,
+          cp.user_id,
+          cp.course_id,
+          cp.amount,
+          cp.status,
+          cp.purchased_at,
+          c.title as course_title,
+          u.first_name,
+          u.last_name,
+          u.email
+        FROM course_purchases cp
+        LEFT JOIN courses c ON cp.course_id = c.id
+        LEFT JOIN users u ON cp.user_id = u.id
+        WHERE cp.status = 'completed'
+        ORDER BY cp.purchased_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+      
+      const totalCountResult = await sql`
+        SELECT COUNT(*) as count FROM course_purchases WHERE status = 'completed'
+      `;
+      
+      const totalCount = parseInt(totalCountResult[0].count) || 0;
+      const totalPages = Math.ceil(totalCount / limit);
+
+      const formattedOrders = orders.map(order => ({
+        id: order.id,
+        orderNumber: order.stripe_payment_intent_id || `#${order.id}`,
+        customerName: `${order.first_name || ''} ${order.last_name || ''}`.trim() || order.email || 'Unknown',
+        courseTitle: order.course_title || 'Unknown Course',
+        amount: (order.amount || 0) / 100, // Convert from cents
+        status: order.status,
+        purchasedAt: order.purchased_at,
+        stripePaymentIntentId: order.stripe_payment_intent_id || ''
+      }));
+
+      return {
+        orders: formattedOrders,
+        totalCount,
+        totalPages,
+        currentPage: page
+      };
+    }
   }
 
   async updateUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {
@@ -2165,6 +2494,63 @@ export class DatabaseStorage implements IStorage {
       console.error('Error creating/updating admin user:', error);
       throw error;
     }
+  }
+
+  // Title editing methods
+  async updateCourseTitle(courseId: number, title: string): Promise<void> {
+    await db.update(courses).set({ title }).where(eq(courses.id, courseId));
+  }
+
+  async updateChapterTitle(chapterId: number, title: string): Promise<void> {
+    await db.update(courseChapters).set({ title }).where(eq(courseChapters.id, chapterId));
+  }
+
+  async updateLessonTitle(lessonId: number, title: string): Promise<void> {
+    await db.update(courseLessons).set({ title }).where(eq(courseLessons.id, lessonId));
+  }
+
+  // Content restoration methods
+  async identifyAIGeneratedContent(): Promise<CourseLesson[]> {
+    const aiLessons = await db.select()
+      .from(courseLessons)
+      .where(or(
+        like(courseLessons.content, '%Key Learning Objectives%'),
+        like(courseLessons.content, '%This lesson provides important information%'),
+        like(courseLessons.content, '%Evidence-Based Approach%')
+      ));
+    return aiLessons;
+  }
+
+  async restoreAuthenticContent(lessonId: number, content: string, videoUrl?: string): Promise<void> {
+    const updateData: any = { content };
+    if (videoUrl) {
+      updateData.videoUrl = videoUrl;
+    }
+    await db.update(courseLessons).set(updateData).where(eq(courseLessons.id, lessonId));
+  }
+
+  async getContentIntegrityReport(): Promise<{
+    totalLessons: number;
+    aiGeneratedCount: number;
+    authenticVideoCount: number;
+    authenticContentCount: number;
+  }> {
+    const [stats] = await db.execute(sql`
+      SELECT 
+        COUNT(*) as total_lessons,
+        COUNT(CASE WHEN content LIKE '%Key Learning Objectives%' THEN 1 END) as ai_generated_count,
+        COUNT(CASE WHEN content LIKE '%Vimeo%' OR content LIKE '%iframe%' THEN 1 END) as authentic_video_count,
+        COUNT(CASE WHEN content NOT LIKE '%Key Learning Objectives%' AND content NOT LIKE '%This lesson provides important information%' AND content IS NOT NULL THEN 1 END) as authentic_content_count
+      FROM course_lessons
+      WHERE content IS NOT NULL
+    `);
+    
+    return {
+      totalLessons: Number(stats.total_lessons),
+      aiGeneratedCount: Number(stats.ai_generated_count),
+      authenticVideoCount: Number(stats.authentic_video_count),
+      authenticContentCount: Number(stats.authentic_content_count)
+    };
   }
 
   async getAllAdminUsers(): Promise<User[]> {
@@ -3034,6 +3420,40 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  // Password reset token operations
+  async createPasswordResetToken(userId: string, token: string): Promise<PasswordResetToken> {
+    const [result] = await db
+      .insert(passwordResetTokens)
+      .values({
+        userId,
+        token,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        isUsed: false
+      })
+      .returning();
+    return result;
+  }
+
+  async verifyPasswordResetToken(token: string): Promise<PasswordResetToken | null> {
+    const [tokenRecord] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.token, token),
+        eq(passwordResetTokens.isUsed, false),
+        gt(passwordResetTokens.expiresAt, new Date())
+      ));
+    
+    return tokenRecord || null;
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ isUsed: true })
+      .where(eq(passwordResetTokens.token, token));
+  }
+
   // Shopping product operations
   async getShoppingProducts(): Promise<ShoppingProduct[]> {
     try {
@@ -3165,6 +3585,106 @@ export class DatabaseStorage implements IStorage {
       .from(cartItems)
       .where(eq(cartItems.userId, userId));
     return result.reduce((total, item) => total + item.quantity, 0);
+  }
+
+  // Admin content management methods
+  async getContentIntegrityReport() {
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const stats = await sql`
+        SELECT 
+          COUNT(*) as total_lessons,
+          COUNT(CASE WHEN content LIKE '%evidence-based%' AND content LIKE '%template%' THEN 1 END) as ai_generated_count,
+          COUNT(CASE WHEN video_url IS NOT NULL THEN 1 END) as authentic_video_count,
+          COUNT(CASE WHEN content IS NOT NULL AND content NOT LIKE '%evidence-based%' THEN 1 END) as authentic_content_count
+        FROM course_lessons
+        WHERE content IS NOT NULL
+      `;
+      
+      return {
+        totalLessons: Number(stats[0].total_lessons),
+        aiGeneratedCount: Number(stats[0].ai_generated_count),
+        authenticVideoCount: Number(stats[0].authentic_video_count),
+        authenticContentCount: Number(stats[0].authentic_content_count)
+      };
+    } catch (error) {
+      console.error('Error fetching content integrity report:', error);
+      throw error;
+    }
+  }
+
+  async getAIGeneratedLessons() {
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const lessons = await sql`
+        SELECT id, title, content, course_id, chapter_id, created_at
+        FROM course_lessons
+        WHERE content LIKE '%evidence-based%' AND content LIKE '%template%'
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
+      
+      return lessons.map(lesson => ({
+        id: lesson.id,
+        title: lesson.title,
+        content: lesson.content,
+        courseId: lesson.course_id,
+        chapterId: lesson.chapter_id,
+        createdAt: lesson.created_at
+      }));
+    } catch (error) {
+      console.error('Error fetching AI generated lessons:', error);
+      throw error;
+    }
+  }
+
+  async updateCourseTitle(courseId: number, title: string) {
+    try {
+      const [updatedCourse] = await db
+        .update(courses)
+        .set({ title })
+        .where(eq(courses.id, courseId))
+        .returning();
+      
+      return updatedCourse;
+    } catch (error) {
+      console.error('Error updating course title:', error);
+      throw error;
+    }
+  }
+
+  async updateChapterTitle(chapterId: number, title: string) {
+    try {
+      const [updatedChapter] = await db
+        .update(courseChapters)
+        .set({ title })
+        .where(eq(courseChapters.id, chapterId))
+        .returning();
+      
+      return updatedChapter;
+    } catch (error) {
+      console.error('Error updating chapter title:', error);
+      throw error;
+    }
+  }
+
+  async updateLessonTitle(lessonId: number, title: string) {
+    try {
+      const [updatedLesson] = await db
+        .update(courseLessons)
+        .set({ title })
+        .where(eq(courseLessons.id, lessonId))
+        .returning();
+      
+      return updatedLesson;
+    } catch (error) {
+      console.error('Error updating lesson title:', error);
+      throw error;
+    }
   }
 }
 

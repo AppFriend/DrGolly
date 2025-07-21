@@ -38,11 +38,13 @@ export function getSession() {
     resave: true, // Force session save even if not modified
     saveUninitialized: true, // Save uninitialized sessions
     rolling: true, // Reset expiration on each request
+    name: 'connect.sid', // Explicit session name for consistency
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
       sameSite: 'lax', // Help with CSRF protection
+      domain: process.env.NODE_ENV === "production" ? undefined : undefined, // Let browser handle domain
     },
   });
 }

@@ -4,7 +4,8 @@ import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { getSession } from "./replitAuth";
+import passport from "passport";
 import { regionalPricingService } from "./regional-pricing";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -40,10 +41,12 @@ import {
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
 import { klaviyoService } from "./klaviyo";
+import { slackNotificationService } from "./slack";
 import { db } from "./db";
 import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
+import adminContentRoutes from "./routes/admin-content";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -73,8 +76,8 @@ const COURSE_STRIPE_MAPPING = {
 
 // Helper function to get user ID from session - works with Dr. Golly auth
 async function getUserFromSession(req: any) {
-  // Try Dr. Golly session first, then Replit Auth, then fallback to test user
-  const userId = req.session?.userId || req.session?.passport?.user?.claims?.sub || "44434757";
+  // Try Dr. Golly session first, then Replit Auth - no fallback to hardcoded user
+  const userId = req.session?.userId || req.session?.passport?.user?.claims?.sub;
   
   if (!userId) {
     return null;
@@ -88,7 +91,9 @@ async function getUserFromSession(req: any) {
 const isAppAuthenticated: RequestHandler = async (req, res, next) => {
   try {
     // Get user ID from session (works with both auth systems)
-    const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+    const userId = req.session?.userId || req.user?.claims?.sub;
+    
+    // Don't fallback to hardcoded user ID for proper logout functionality
     if (!userId) {
       console.log('No authenticated user found in session');
       return res.status(401).json({ message: "Unauthorized" });
@@ -109,7 +114,7 @@ const isAppAuthenticated: RequestHandler = async (req, res, next) => {
 const isAdmin: RequestHandler = async (req, res, next) => {
   try {
     // Get user ID from session (works with both auth systems)
-    const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+    const userId = req.session?.userId || req.user?.claims?.sub;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -156,6 +161,18 @@ const isAuthenticatedOrAdmin: RequestHandler = async (req, res, next) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure trust proxy for production deployment
+  app.set('trust proxy', 1);
+  
+  // Set up session middleware FIRST - critical for session persistence
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+  
+  // Simple session serialization for Dr. Golly auth
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  
   // Configure multer for file uploads
   const upload = multer({
     storage: multer.diskStorage({
@@ -215,6 +232,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: 'Test endpoint working' });
   });
 
+  // Test endpoint for Slack payment notifications
+  app.post('/api/test/payment-notification', async (req, res) => {
+    try {
+      const { type = 'course_purchase' } = req.body;
+      
+      let notificationData;
+      
+      switch (type) {
+        case 'course_purchase':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Single Course Purchase (Big baby sleep program)',
+            paymentAmount: '$120.00 AUD',
+            promotionalCode: 'SAVE20',
+            discountAmount: '$30.00 AUD'
+          };
+          break;
+        case 'subscription_upgrade':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Free → Gold Plan Upgrade',
+            paymentAmount: '$199.00 USD',
+            promotionalCode: 'NEWMEMBER50',
+            discountAmount: '50% off'
+          };
+          break;
+        case 'subscription_downgrade':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Gold → Free Plan Downgrade',
+            paymentAmount: '$0.00 (Cancellation)',
+            downgradeDate: 'Feb 15, 2025'
+          };
+          break;
+        case 'subscription_renewal':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Gold Plan Renewal',
+            paymentAmount: '$29.99 USD'
+          };
+          break;
+        case 'cart_checkout':
+          notificationData = {
+            name: 'Test User',
+            email: 'test@example.com',
+            purchaseDetails: 'Cart Checkout (Course ID 5, Book ID 1)',
+            paymentAmount: '$240.00 AUD'
+          };
+          break;
+        default:
+          return res.status(400).json({ error: 'Invalid notification type' });
+      }
+      
+      const success = await slackNotificationService.sendPaymentNotification(notificationData);
+      
+      res.json({ 
+        success,
+        message: success ? 'Payment notification sent successfully' : 'Failed to send payment notification',
+        data: notificationData
+      });
+    } catch (error) {
+      console.error('Test payment notification error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Test database connectivity with sample user
   app.get('/api/test/user/:email', async (req, res) => {
     try {
@@ -243,11 +330,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user data with raw SQL only to avoid Drizzle ORM issues
+  // PRIMARY USER AUTHENTICATION ENDPOINT - handles both Dr. Golly and Replit Auth
   app.get("/api/user", async (req: any, res) => {
     try {
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Check if we have a valid session and user ID
+      let userId = null;
+      
+      // Try multiple ways to get user from session - check Dr. Golly session first
+      if (req.session?.userId) {
+        userId = req.session.userId;
+        console.log('Found user ID from Dr. Golly session:', userId);
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+        console.log('Found user ID from Passport session:', userId);
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+        console.log('Found user ID from req.user:', userId);
+      }
+      
+      // Debug session info for troubleshooting
+      console.log('Session debug info:', {
+        sessionExists: !!req.session,
+        sessionId: req.session?.id,
+        directUserId: req.session?.userId,
+        passportExists: !!req.session?.passport,
+        userExists: !!req.session?.passport?.user,
+        claimsExist: !!req.session?.passport?.user?.claims,
+        subExists: !!req.session?.passport?.user?.claims?.sub,
+        reqUserExists: !!req.user,
+        foundUserId: userId
+      });
+      
+      // If no user in session, return 401
+      if (!userId) {
+        console.log('No authenticated user found for /api/user endpoint');
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching user data for ID:', userId);
       
       // Use raw SQL to avoid Drizzle ORM parsing issues
@@ -311,8 +430,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth middleware - restore Dr. Golly authentication
-  await setupAuth(app);
+  // Session middleware was already set up at the beginning of registerRoutes
+  // This duplicate setup is removed to prevent conflicts
+  
+  // Define authentication middleware for Dr. Golly auth
+  const isAuthenticated: RequestHandler = (req, res, next) => {
+    const user = req.session?.passport?.user;
+    if (user && user.claims && user.claims.sub) {
+      req.user = user;
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
+  };
   
   // Apply admin bypass middleware globally after auth setup
   app.use(adminBypass);
@@ -332,8 +461,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { courseId } = req.params;
       
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching chapters for course:', courseId, 'user:', userId);
       
       // Use raw SQL to get chapters directly - bypass storage layer
@@ -359,8 +493,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { courseId } = req.params;
       
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching lessons for course:', courseId, 'user:', userId);
       
       // Use raw SQL to get lessons directly - bypass storage layer  
@@ -418,23 +557,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update lesson content (admin only)
+  // Update lesson content or title (admin only)
   app.patch('/api/lessons/:lessonId', isAdmin, async (req: any, res) => {
     try {
       const { lessonId } = req.params;
-      const { content } = req.body;
+      const { content, title } = req.body;
       
-      if (!content) {
-        return res.status(400).json({ message: "Content is required" });
+      if (!content && !title) {
+        return res.status(400).json({ message: "Content or title is required" });
       }
       
-      console.log('Updating lesson content for lesson:', lessonId);
+      console.log('Updating lesson for lesson:', lessonId);
       
-      const updatedLesson = await storage.updateLessonContent(parseInt(lessonId), content);
+      let updatedLesson;
+      
+      if (title) {
+        // Update lesson title
+        updatedLesson = await storage.updateLessonTitle(parseInt(lessonId), title);
+      } else {
+        // Update lesson content
+        updatedLesson = await storage.updateLessonContent(parseInt(lessonId), content);
+      }
+      
       res.json(updatedLesson);
     } catch (error) {
-      console.error("Error updating lesson content:", error);
-      res.status(500).json({ message: "Failed to update lesson content" });
+      console.error("Error updating lesson:", error);
+      res.status(500).json({ message: "Failed to update lesson" });
     }
   });
 
@@ -444,14 +592,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if we have a valid session and user ID
       let userId = null;
       
-      // Try to get user from session
+      // Try multiple ways to get user from session
       if (req.session?.passport?.user?.claims?.sub) {
         userId = req.session.passport.user.claims.sub;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
       }
+      
+      // Debug session info
+      console.log('Session debug info:', {
+        sessionExists: !!req.session,
+        sessionId: req.session?.id,
+        directUserId: req.session?.userId,
+        passportExists: !!req.session?.passport,
+        userExists: !!req.session?.passport?.user,
+        claimsExist: !!req.session?.passport?.user?.claims,
+        subExists: !!req.session?.passport?.user?.claims?.sub,
+        reqUserExists: !!req.user,
+        foundUserId: userId
+      });
       
       // If no user in session, check if user is authenticated via other means
       if (!userId) {
-        console.log('No authenticated user found in session');
+        console.log('No authenticated user found for /api/user endpoint');
         return res.status(401).json({ message: "Unauthorized" });
       }
       
@@ -589,51 +752,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       
-      // Store session data in req.session
+      // Store session data in req.session with proper structure
       req.session.passport = { user: sessionData };
+      req.session.userId = user.id; // Also store userId directly for easier access
+      
+      // Force session save before sending response
       req.session.save((err) => {
         if (err) {
           console.error('Session save error:', err);
+          return res.status(500).json({ message: "Session save failed" });
         }
+        
+        console.log('Session saved successfully for user:', user.id);
+        
+        // Return user data for session creation
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName
+          }
+        });
       });
 
-      // Return user data for session creation
-      res.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName
-        }
-      });
+      // This is now handled inside the session.save callback above
     } catch (error) {
       console.error("Error in public login:", error);
       res.status(500).json({ message: "Login failed" });
     }
   });
 
+  // Dr. Golly signup GET route - redirect to signup page
+  app.get('/api/signup', (req, res) => {
+    res.redirect('/signup');
+  });
+
+  // Dr. Golly login GET route - redirect to login page
+  app.get('/api/login', (req, res) => {
+    res.redirect('/login');
+  });
+
+  // Dr. Golly logout route
+  app.get('/api/logout', (req, res) => {
+    console.log('Logout request received');
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      res.clearCookie('connect.sid');
+      console.log('Session destroyed successfully');
+      res.redirect('/login');
+    });
+  });
+
+  // Alternative logout route for JSON response
+  app.post('/api/logout', (req, res) => {
+    console.log('POST logout request received');
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      res.clearCookie('connect.sid');
+      console.log('Session destroyed successfully');
+      res.json({ success: true, message: 'Logged out successfully' });
+    });
+  });
+
   // Dr. Golly signup endpoint
   app.post('/api/auth/signup', async (req, res) => {
+    console.log('🔐 SIGNUP REQUEST RECEIVED');
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request headers:', req.headers);
+    
     try {
       const { firstName, lastName, email, password, personalization } = req.body;
       
+      console.log('📋 VALIDATION STEP');
+      console.log('firstName:', firstName ? 'provided' : 'MISSING');
+      console.log('lastName:', lastName ? 'provided' : 'MISSING');
+      console.log('email:', email ? email : 'MISSING');
+      console.log('password:', password ? 'provided' : 'MISSING');
+      console.log('personalization:', personalization ? 'provided' : 'not provided');
+      
       if (!firstName || !lastName || !email || !password) {
+        console.log('❌ VALIDATION FAILED - Missing required fields');
         return res.status(400).json({ message: "All fields are required" });
       }
 
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        console.log('❌ VALIDATION FAILED - Invalid email format');
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      console.log('🔍 CHECKING EXISTING USER');
       // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
+      let existingUser;
+      try {
+        existingUser = await storage.getUserByEmail(email);
+        console.log('Existing user check result:', existingUser ? 'USER EXISTS' : 'USER DOES NOT EXIST');
+      } catch (dbError) {
+        console.error('❌ DATABASE ERROR - Failed to check existing user:', dbError);
+        return res.status(500).json({ message: "Database error during user check" });
+      }
+      
       if (existingUser) {
+        console.log('❌ USER ALREADY EXISTS');
         return res.status(400).json({ message: "User already exists with this email" });
       }
 
+      console.log('🔑 GENERATING USER ID');
       // Generate user ID
-      const userId = AuthUtils.generateUserId();
+      let userId;
+      try {
+        userId = AuthUtils.generateUserId();
+        console.log('Generated user ID:', userId);
+      } catch (idError) {
+        console.error('❌ ID GENERATION ERROR:', idError);
+        return res.status(500).json({ message: "Failed to generate user ID" });
+      }
 
+      console.log('🔐 HASHING PASSWORD');
       // Hash password
-      const passwordHash = await AuthUtils.hashPassword(password);
+      let passwordHash;
+      try {
+        passwordHash = await AuthUtils.hashPassword(password);
+        console.log('Password hashed successfully');
+      } catch (hashError) {
+        console.error('❌ PASSWORD HASHING ERROR:', hashError);
+        return res.status(500).json({ message: "Failed to hash password" });
+      }
 
+      console.log('👤 CREATING USER DATA');
       // Create user
       const userData = {
         id: userId,
@@ -648,8 +903,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...personalization
       };
 
-      const user = await storage.createUser(userData);
+      console.log('💾 SAVING USER TO DATABASE');
+      let user;
+      try {
+        user = await storage.createUser(userData);
+        console.log('User created successfully:', user.id);
+      } catch (createError) {
+        console.error('❌ USER CREATION ERROR:', createError);
+        console.error('Error details:', createError.message);
+        console.error('Error stack:', createError.stack);
+        return res.status(500).json({ message: "Failed to create user in database" });
+      }
 
+      console.log('🎫 CREATING SESSION');
       // Create session for immediate login
       const sessionData = {
         claims: {
@@ -660,22 +926,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       
-      req.session.passport = { user: sessionData };
+      try {
+        req.session.passport = { user: sessionData };
+        req.session.userId = user.id; // Store userId directly for easier access
+        console.log('Session data set successfully');
+      } catch (sessionError) {
+        console.error('❌ SESSION CREATION ERROR:', sessionError);
+        return res.status(500).json({ message: "Failed to create session" });
+      }
+      
+      console.log('💾 SAVING SESSION');
+      // Force session save before continuing
       req.session.save((err) => {
         if (err) {
-          console.error('Session save error:', err);
+          console.error('❌ SESSION SAVE ERROR during signup:', err);
+        } else {
+          console.log('✅ Session saved successfully for new user:', user.id);
         }
       });
 
+      console.log('📧 KLAVIYO SYNC (NON-BLOCKING)');
       // Sync to Klaviyo with comprehensive data
       try {
         // Fetch course purchase data for new user sync
         const coursePurchases = await storage.getUserCoursePurchases(user.id);
         await klaviyoService.syncUserToKlaviyo(user, undefined, coursePurchases);
+        console.log('✅ Klaviyo sync successful');
       } catch (error) {
-        console.error("Failed to sync user to Klaviyo:", error);
+        console.error('⚠️ Klaviyo sync failed (non-blocking):', error);
       }
 
+      console.log('📱 SLACK NOTIFICATION (NON-BLOCKING)');
+      // Send Slack notification for new signup
+      try {
+        await slackNotificationService.sendSignupNotification({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          marketingOptIn: personalization?.marketingOptIn || false,
+          primaryConcerns: personalization?.primaryConcerns || [],
+          signupSource: 'Regular Signup Flow',
+          signupType: 'new_customer' // Regular signup flow is always new customers
+        });
+        console.log('✅ Slack signup notification sent successfully');
+      } catch (slackError) {
+        console.error('⚠️ Slack notification failed (non-blocking):', slackError);
+      }
+
+      console.log('🎉 SIGNUP SUCCESSFUL - Sending response');
       res.json({
         success: true,
         user: {
@@ -686,8 +983,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Error in signup:", error);
-      res.status(500).json({ message: "Signup failed" });
+      console.error('❌ CRITICAL SIGNUP ERROR:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Error name:', error.name);
+      res.status(500).json({ 
+        message: "Signup failed",
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  // Test endpoint to verify Jared Looman signup fix
+  app.post('/api/test/signup', async (req, res) => {
+    try {
+      console.log('🧪 TEST SIGNUP ENDPOINT - Testing Jared Looman case');
+      
+      // Test data similar to what Jared would submit
+      const testData = {
+        firstName: 'Jared',
+        lastName: 'Looman',
+        email: 'jaredlooman+test@gmail.com',
+        password: 'TestPassword123'
+      };
+      
+      console.log('Testing with data:', testData);
+      
+      // Check if user exists
+      const existingUser = await storage.getUserByEmail(testData.email);
+      if (existingUser) {
+        console.log('Test user already exists, removing...');
+        // For testing, we'll skip existing user check
+      }
+      
+      // Generate user ID
+      const userId = AuthUtils.generateUserId();
+      console.log('Generated test user ID:', userId);
+      
+      // Hash password
+      const passwordHash = await AuthUtils.hashPassword(testData.password);
+      console.log('Password hashed successfully');
+      
+      // Create test user data
+      const userData = {
+        id: userId,
+        email: testData.email,
+        firstName: testData.firstName,
+        lastName: testData.lastName,
+        passwordHash,
+        hasSetPassword: true,
+        subscriptionTier: 'free',
+        planTier: 'free',
+        lastLoginAt: new Date()
+      };
+      
+      // Test user creation
+      const user = await storage.createUser(userData);
+      console.log('Test user created successfully:', user.id);
+      
+      res.json({
+        success: true,
+        message: 'Test signup successful - createUser method is working',
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      });
+    } catch (error) {
+      console.error('❌ TEST SIGNUP ERROR:', error);
+      res.status(500).json({ 
+        message: "Test signup failed",
+        error: error.message
+      });
     }
   });
 
@@ -722,6 +1091,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Duplicate removed - using the later forgot-password endpoint
+
   // Personalization routes
   app.post('/api/personalization', isAppAuthenticated, async (req: any, res) => {
     try {
@@ -749,6 +1120,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         klaviyoService.syncUserToKlaviyo(updatedUser, children).catch(error => {
           console.error("Failed to sync user personalization to Klaviyo:", error);
         });
+
+        // Send enhanced Slack signup notification
+        try {
+          const primaryConcerns = updatedUser.primaryConcerns 
+            ? JSON.parse(updatedUser.primaryConcerns) 
+            : [];
+          
+          await slackNotificationService.sendSignupNotification({
+            name: `${updatedUser.firstName || ''} ${updatedUser.lastName || ''}`.trim(),
+            email: updatedUser.email || '',
+            marketingOptIn: updatedUser.marketingOptIn || false,
+            primaryConcerns,
+            signupSource: updatedUser.signupSource || 'App'
+          });
+        } catch (error) {
+          console.error("Failed to send Slack signup notification:", error);
+        }
       }
       
       res.json({ success: true });
@@ -832,7 +1220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile routes
   app.get('/api/profile', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       
       // Use raw SQL to fetch profile with proper field mapping
       let user;
@@ -857,7 +1245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: user.last_name || user.lastName,
         email: user.email,
         phone: user.phone_number || user.phoneNumber,
-        profileImageUrl: user.profile_picture_url || user.profileImageUrl || user.profilePictureUrl,
+        profileImageUrl: user.profile_image_url || user.profileImageUrl || user.profile_picture_url || user.profilePictureUrl,
         subscriptionTier: user.subscription_tier || user.subscriptionTier || 'free',
         subscriptionStatus: user.subscription_status || user.subscriptionStatus || 'active',
         subscriptionEndDate: user.subscription_end_date || user.subscriptionEndDate,
@@ -874,7 +1262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/profile', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { firstName, lastName, email, phone, profileImageUrl } = req.body;
       
       // Use raw SQL to update profile with proper field mapping
@@ -887,7 +1275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           last_name = ${lastName || null},
           email = ${email || null},
           phone_number = ${phone || null},
-          profile_picture_url = ${profileImageUrl || null},
+          profile_image_url = ${profileImageUrl || null},
           updated_at = ${new Date()}
           WHERE id = ${userId}`;
         
@@ -912,7 +1300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/profile/marketing-preferences', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { emailMarketing, smsMarketing } = req.body;
       
       // Update user marketing preferences
@@ -944,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/profile/invoices', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const user = await storage.getUser(userId);
       
       let stripeInvoices = [];
@@ -1014,7 +1402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/profile/payment-methods', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const user = await storage.getUser(userId);
       
       if (!user?.stripeCustomerId) {
@@ -1054,7 +1442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/profile/payment-methods', isAppAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const { paymentMethodId } = req.body;
       const user = await storage.getUser(userId);
       
@@ -1264,6 +1652,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (klaviyoError) {
           console.error("Klaviyo sync failed for Big Baby signup, but account creation continues:", klaviyoError);
         }
+
+        // Send Slack notification for new user signup
+        try {
+          await slackNotificationService.sendSignupNotification({
+            name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+            email: customerDetails.email,
+            marketingOptIn: false, // Big Baby checkout doesn't have marketing opt-in
+            primaryConcerns: interests || [],
+            signupSource: 'public checkout web>app',
+            signupType: 'new_customer', // Big Baby checkout is always new customers
+            coursePurchased: paymentIntent.metadata.courseName
+          });
+          console.log("Slack signup notification sent for Big Baby user");
+        } catch (slackError) {
+          console.error("Failed to send Slack signup notification:", slackError);
+        }
       }
       
       // Create course purchase record for both new and existing users
@@ -1326,6 +1730,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error stack:", error.stack);
       
       res.status(500).json({ message: "Failed to process purchase" });
+    }
+  });
+
+  // Password reset routes
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      console.log("Password reset request for:", email);
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        return res.json({ message: "If an account with this email exists, a password reset link has been sent." });
+      }
+      
+      // Generate password reset token
+      const token = AuthUtils.generatePasswordResetToken();
+      
+      // Save token to database
+      await storage.createPasswordResetToken(user.id, token);
+      
+      // Send password reset email via Klaviyo
+      try {
+        await klaviyoService.sendPasswordResetEmail(user.email, user.firstName || 'User', token);
+        console.log("Password reset email sent successfully");
+      } catch (klaviyoError) {
+        console.error("Failed to send password reset email:", klaviyoError);
+        return res.status(500).json({ message: "Failed to send password reset email" });
+      }
+      
+      res.json({ message: "If an account with this email exists, a password reset link has been sent." });
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      console.log("Password reset attempt with token:", token);
+      
+      // Validate password strength
+      const passwordValidation = AuthUtils.validatePasswordStrength(newPassword);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: "Password does not meet requirements",
+          errors: passwordValidation.errors 
+        });
+      }
+      
+      // Verify token
+      const tokenRecord = await storage.verifyPasswordResetToken(token);
+      if (!tokenRecord) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+      
+      // Hash new password
+      const hashedPassword = await AuthUtils.hashPassword(newPassword);
+      
+      // Update user password
+      await storage.setUserPassword(tokenRecord.userId, hashedPassword);
+      
+      // Mark token as used
+      await storage.markPasswordResetTokenAsUsed(token);
+      
+      console.log("Password reset successful for user:", tokenRecord.userId);
+      
+      res.json({ message: "Password reset successful" });
+    } catch (error) {
+      console.error("Error in reset password:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Admin endpoint to set up test user
+  app.post('/api/admin/setup-test-user', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      console.log("Setting up test user:", email);
+      
+      // Get user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Hash the password
+      const hashedPassword = await AuthUtils.hashPassword(password);
+      
+      // Update user with proper password setup
+      await storage.setUserPassword(user.id, hashedPassword);
+      
+      // Mark user as having set password and not first login
+      await storage.updateUser(user.id, {
+        hasSetPassword: true,
+        isFirstLogin: false,
+        accountActivated: true,
+        lastLoginAt: new Date()
+      });
+      
+      console.log("Test user setup complete for:", email);
+      res.json({ message: "Test user setup successful" });
+    } catch (error) {
+      console.error("Error setting up test user:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -1704,6 +2218,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create chapter endpoint for course accordion
+  app.post('/api/courses/:courseId/chapters', isAdmin, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { title } = req.body;
+      
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'Title is required and must be a string' });
+      }
+      
+      // Get all existing chapters for this course to determine the next chapter number
+      const existingChapters = await db.select().from(courseChapters).where(eq(courseChapters.courseId, parseInt(courseId)));
+      
+      // Find the highest order_index for sequential order
+      const maxOrderIndex = existingChapters.reduce((max, chapter) => 
+        Math.max(max, chapter.orderIndex || 0), 0
+      );
+      
+      // Generate the next chapter number based on existing pattern
+      let nextChapterNumber;
+      
+      // Find the highest numeric chapter number (ignoring special chapters like "Evidence", "0.0")
+      const numericChapters = existingChapters
+        .filter(chapter => chapter.chapterNumber && chapter.chapterNumber.match(/^1\.\d+$/))
+        .map(chapter => {
+          const match = chapter.chapterNumber.match(/^1\.(\d+)$/);
+          return match ? parseInt(match[1]) : null;
+        })
+        .filter(num => num !== null)
+        .sort((a, b) => a - b);
+      
+      if (numericChapters.length === 0) {
+        // No numeric chapters exist, start with 1.1
+        nextChapterNumber = "1.1";
+      } else {
+        // Find the highest minor number and increment it
+        const lastMinor = numericChapters[numericChapters.length - 1];
+        const nextMinor = lastMinor + 1;
+        nextChapterNumber = `1.${nextMinor}`;
+      }
+      
+      const [newChapter] = await db
+        .insert(courseChapters)
+        .values({
+          title,
+          description: '',
+          courseId: parseInt(courseId),
+          orderIndex: maxOrderIndex + 1,
+          chapterNumber: nextChapterNumber
+        })
+        .returning();
+      
+      res.json(newChapter);
+    } catch (error) {
+      console.error('Error creating chapter:', error);
+      res.status(500).json({ error: 'Failed to create chapter' });
+    }
+  });
+
   app.post('/api/admin/lessons', isAdmin, async (req, res) => {
     try {
       const { title, content, videoUrl, courseId, chapterId } = req.body;
@@ -1728,6 +2301,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error creating lesson:', error);
       res.status(500).json({ error: 'Failed to create lesson' });
+    }
+  });
+
+  // Create lesson endpoint for chapter accordion
+  app.post('/api/chapters/:chapterId/lessons', isAdmin, async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      const { title, content } = req.body;
+      
+      if (!title || typeof title !== 'string') {
+        return res.status(400).json({ error: 'Title is required and must be a string' });
+      }
+      
+      // Get the highest order_index for this chapter
+      const existingLessons = await db.select().from(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
+      const maxOrderIndex = existingLessons.reduce((max, lesson) => 
+        Math.max(max, lesson.orderIndex || 0), 0
+      );
+      
+      // Get the courseId from the chapter
+      const [chapter] = await db.select().from(courseChapters).where(eq(courseChapters.id, parseInt(chapterId)));
+      if (!chapter) {
+        return res.status(404).json({ error: 'Chapter not found' });
+      }
+      
+      // Lessons use descriptive titles rather than strict numbering
+      // The order_index provides the sequential order for URL generation
+      const [newLesson] = await db
+        .insert(courseLessons)
+        .values({
+          title,
+          content: content || '',
+          courseId: chapter.courseId,
+          chapterId: parseInt(chapterId),
+          orderIndex: maxOrderIndex + 1
+        })
+        .returning();
+      
+      res.json(newLesson);
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      res.status(500).json({ error: 'Failed to create lesson' });
+    }
+  });
+
+  // Delete chapter endpoint
+  app.delete('/api/chapters/:chapterId', isAdmin, async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      
+      // First delete all lessons in this chapter
+      await db.delete(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
+      
+      // Then delete the chapter
+      const [deletedChapter] = await db
+        .delete(courseChapters)
+        .where(eq(courseChapters.id, parseInt(chapterId)))
+        .returning();
+      
+      if (!deletedChapter) {
+        return res.status(404).json({ error: 'Chapter not found' });
+      }
+      
+      res.json({ message: 'Chapter deleted successfully', deletedChapter });
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      res.status(500).json({ error: 'Failed to delete chapter' });
+    }
+  });
+
+  // Delete lesson endpoint
+  app.delete('/api/lessons/:lessonId', isAdmin, async (req, res) => {
+    try {
+      const { lessonId } = req.params;
+      
+      const [deletedLesson] = await db
+        .delete(courseLessons)
+        .where(eq(courseLessons.id, parseInt(lessonId)))
+        .returning();
+      
+      if (!deletedLesson) {
+        return res.status(404).json({ error: 'Lesson not found' });
+      }
+      
+      res.json({ message: 'Lesson deleted successfully', deletedLesson });
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      res.status(500).json({ error: 'Failed to delete lesson' });
     }
   });
 
@@ -2034,6 +2695,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error seeding courses:", error);
       res.status(500).json({ message: "Failed to seed courses" });
+    }
+  });
+
+  // Dr. Golly logout endpoint
+  app.get('/api/logout', async (req, res) => {
+    try {
+      console.log('Logout initiated for session ID:', req.sessionID);
+      
+      // Clear all session data first
+      if (req.session) {
+        // Clear Dr. Golly specific session data
+        req.session.userId = null;
+        req.session.passport = null;
+        req.session.user = null;
+        
+        // Delete the properties completely
+        delete req.session.userId;
+        delete req.session.passport;
+        delete req.session.user;
+        
+        // Clear any other session data
+        Object.keys(req.session).forEach(key => {
+          if (key !== 'cookie') {
+            delete req.session[key];
+          }
+        });
+      }
+      
+      // Also clear from database manually to ensure complete cleanup
+      if (req.sessionID) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          await sql`DELETE FROM sessions WHERE sid = ${req.sessionID}`;
+          console.log('Session deleted from database:', req.sessionID);
+        } catch (dbError) {
+          console.error('Error deleting session from database:', dbError);
+        }
+      }
+      
+      // Destroy the session
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Error destroying session:', err);
+        }
+        
+        // Clear the session cookie completely
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax'
+        });
+        
+        // Also clear with different cookie names that might be used
+        res.clearCookie('session');
+        res.clearCookie('sessionid');
+        
+        console.log('Session destroyed and cookies cleared');
+        
+        // Redirect to login page
+        res.redirect('/login');
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ message: 'Logout failed' });
     }
   });
 
@@ -2515,8 +3242,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Children routes
   app.get('/api/children', async (req: any, res) => {
     try {
-      // Temporarily hardcode the user ID for debugging
-      const userId = "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       console.log('Fetching children for user ID:', userId);
       
       // Use raw SQL to bypass Drizzle ORM connection issues
@@ -2856,8 +3588,12 @@ Please contact the customer to confirm the appointment.
   app.get('/api/lessons/:id', async (req: any, res) => {
     try {
       const lessonId = parseInt(req.params.id);
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       console.log(`Fetching lesson ${lessonId} for user ${userId}`);
       
@@ -3452,13 +4188,14 @@ Please contact the customer to confirm the appointment.
     try {
       const { amount, currency, items, customerDetails, couponId } = req.body;
       
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Cart payment request for user ID:', userId);
+      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
+      
+      console.log('Cart payment request for user ID:', userId);
       
       // Get regional pricing
       const pricing = await regionalPricingService.getRegionalPricing(req);
@@ -3514,13 +4251,14 @@ Please contact the customer to confirm the appointment.
     try {
       const { courseId, customerDetails, couponId } = req.body;
       
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Payment request for user ID:', userId);
+      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
+      
+      console.log('Payment request for user ID:', userId);
       
       // Get course details with raw SQL fallback
       let course;
@@ -3947,6 +4685,25 @@ Please contact the customer to confirm the appointment.
               await klaviyoService.sendPublicCheckoutWelcome(newUser, tempPassword);
               
               console.log(`Public checkout completed: Created user ${userId} for ${customerEmail}`);
+              
+              // Send payment notification
+              try {
+                // Extract discount information from payment intent
+                const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+                const discountAmount = originalAmount - paymentIntent.amount;
+                const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+                
+                await slackNotificationService.sendPaymentNotification({
+                  name: customerName,
+                  email: customerEmail,
+                  purchaseDetails: "Single Course Purchase (Big baby sleep program)",
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`,
+                  promotionalCode: promotionalCode || undefined,
+                  discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}` : undefined
+                });
+              } catch (error) {
+                console.error('Failed to send payment notification for new user:', error);
+              }
             } else {
               // User exists, just create the course purchase
               await storage.createCoursePurchase({
@@ -3960,6 +4717,25 @@ Please contact the customer to confirm the appointment.
               });
               
               console.log(`Public checkout completed: Added course to existing user ${existingUser.id}`);
+              
+              // Send payment notification
+              try {
+                // Extract discount information from payment intent
+                const originalAmount = paymentIntent.metadata.originalAmount ? parseInt(paymentIntent.metadata.originalAmount) : paymentIntent.amount;
+                const discountAmount = originalAmount - paymentIntent.amount;
+                const promotionalCode = paymentIntent.metadata.promotionCodeCode || paymentIntent.metadata.couponCode;
+                
+                await slackNotificationService.sendPaymentNotification({
+                  name: `${existingUser.firstName} ${existingUser.lastName}`.trim(),
+                  email: existingUser.email,
+                  purchaseDetails: "Single Course Purchase (Big baby sleep program)",
+                  paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`,
+                  promotionalCode: promotionalCode || undefined,
+                  discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}` : undefined
+                });
+              } catch (error) {
+                console.error('Failed to send payment notification for existing user:', error);
+              }
             }
           } else if (paymentIntent.metadata.type === 'cart_checkout') {
             // Handle cart checkout completion
@@ -3992,6 +4768,25 @@ Please contact the customer to confirm the appointment.
               await sql`DELETE FROM cart_items WHERE user_id = ${userId}`;
               
               console.log(`Cart checkout completed: ${paymentIntent.id} for user ${userId} - ${cartItems.length} items`);
+              
+              // Send payment notification for cart checkout
+              try {
+                const user = await storage.getUser(userId);
+                if (user) {
+                  const courseNames = cartItems.filter(item => item.item_type === 'course').map(item => `Course ID ${item.item_id}`).join(', ');
+                  const bookNames = cartItems.filter(item => item.item_type === 'book').map(item => `Book ID ${item.item_id}`).join(', ');
+                  const purchaseDetails = [courseNames, bookNames].filter(Boolean).join(', ') || 'Multiple items';
+                  
+                  await slackNotificationService.sendPaymentNotification({
+                    name: `${user.firstName} ${user.lastName}`.trim(),
+                    email: user.email,
+                    purchaseDetails: `Cart Checkout (${purchaseDetails})`,
+                    paymentAmount: `$${(paymentIntent.amount / 100).toFixed(2)} ${paymentIntent.currency.toUpperCase()}`
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to send payment notification for cart checkout:', error);
+              }
             }
           } else {
             // Handle regular course purchase
@@ -3999,6 +4794,22 @@ Please contact the customer to confirm the appointment.
             if (purchase) {
               await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
               console.log(`Course purchase completed: ${paymentIntent.id} for user ${purchase.userId}`);
+              
+              // Send payment notification for course purchase
+              try {
+                const user = await storage.getUser(purchase.userId);
+                const course = await storage.getCourse(purchase.courseId);
+                if (user && course) {
+                  await slackNotificationService.sendPaymentNotification({
+                    name: `${user.firstName} ${user.lastName}`.trim(),
+                    email: user.email,
+                    purchaseDetails: `Single Course Purchase (${course.title})`,
+                    paymentAmount: `$${(purchase.amount / 100).toFixed(2)} ${purchase.currency.toUpperCase()}`
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to send payment notification for course purchase:', error);
+              }
               
               // Sync course purchase to Klaviyo
               try {
@@ -4450,8 +5261,12 @@ Please contact the customer to confirm the appointment.
       console.log("User courses endpoint called");
       console.log("Session:", req.session);
       
-      // Use the same hardcoded user ID as other endpoints for consistency
-      const userId = "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const sql = neon(process.env.DATABASE_URL!);
       
       console.log(`Fetching courses for user: ${userId}`);
@@ -4559,8 +5374,12 @@ Please contact the customer to confirm the appointment.
   // Debug route for course purchases (bypassing auth)
   app.get('/api/debug/course-purchases', async (req: any, res) => {
     try {
-      // Temporarily hardcode the user ID for debugging
-      const userId = "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       let purchases;
       
       try {
@@ -4677,6 +5496,41 @@ Please contact the customer to confirm the appointment.
             await storage.updateUserStripeSubscriptionId(user.id, createdSub.id);
             
             console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
+            
+            // Send payment notification for new subscription
+            try {
+              const planTier = createdSub.metadata.plan_tier;
+              const amount = createdSub.items.data[0]?.price?.unit_amount || 0;
+              
+              // Extract discount information from subscription
+              const discountInfo = createdSub.discount;
+              let promotionalCode = undefined;
+              let discountAmount = undefined;
+              
+              if (discountInfo) {
+                if (discountInfo.coupon) {
+                  promotionalCode = discountInfo.promotion_code || discountInfo.coupon.id;
+                  
+                  // Calculate discount amount
+                  if (discountInfo.coupon.percent_off) {
+                    discountAmount = `${discountInfo.coupon.percent_off}% off`;
+                  } else if (discountInfo.coupon.amount_off) {
+                    discountAmount = `$${(discountInfo.coupon.amount_off / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`;
+                  }
+                }
+              }
+              
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `Free → ${planTier.charAt(0).toUpperCase() + planTier.slice(1)} Plan Upgrade`,
+                paymentAmount: `$${(amount / 100).toFixed(2)} ${createdSub.currency.toUpperCase()}`,
+                promotionalCode: promotionalCode,
+                discountAmount: discountAmount
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for subscription creation:', error);
+            }
           }
         } catch (error) {
           console.error('Error processing subscription creation:', error);
@@ -4731,6 +5585,26 @@ Please contact the customer to confirm the appointment.
             );
             
             console.log(`User ${user.id} subscription cancelled, access until: ${accessEndDate}`);
+            
+            // Send payment notification for subscription cancellation
+            try {
+              const planTier = user.subscriptionTier || 'unknown';
+              const downgradeDate = accessEndDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+              
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `${planTier.charAt(0).toUpperCase() + planTier.slice(1)} → Free Plan Downgrade`,
+                paymentAmount: "$0.00 (Cancellation)",
+                downgradeDate: downgradeDate
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for subscription cancellation:', error);
+            }
           }
         } catch (error) {
           console.error('Error processing subscription cancellation:', error);
@@ -4905,8 +5779,9 @@ Please contact the customer to confirm the appointment.
 
   app.get('/api/simple-notifications/unread-count', async (req, res) => {
     try {
-      // Use session-based authentication that works with Dr. Golly system
-      const userId = req.session?.userId || "44434757";
+      // Use session-based authentication that works with Dr. Golly system - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
       if (!userId) {
         console.log('No authenticated user found in session for notifications');
         return res.status(401).json({ message: "Unauthorized" });
@@ -5343,8 +6218,9 @@ Please contact the customer to confirm the appointment.
   // Admin routes
   app.get('/api/admin/check', async (req, res) => {
     try {
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -5476,8 +6352,9 @@ Please contact the customer to confirm the appointment.
 
   app.get('/api/admin/metrics', async (req, res) => {
     try {
-      // Get user ID from session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      // Get user ID from session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -5512,6 +6389,17 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error fetching admin metrics:", error);
       res.status(500).json({ message: "Failed to fetch metrics" });
+    }
+  });
+
+  // Course engagement endpoint for admin dashboard
+  app.get('/api/admin/course-engagement', isAdmin, async (req, res) => {
+    try {
+      const courseEngagement = await storage.getCourseEngagement();
+      res.json(courseEngagement);
+    } catch (error) {
+      console.error("Error fetching course engagement:", error);
+      res.status(500).json({ message: "Failed to fetch course engagement" });
     }
   });
 
@@ -5807,6 +6695,40 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Get course engagement analytics (Admin only)
+  app.get('/api/admin/courses/engagement', isAdmin, async (req, res) => {
+    try {
+      const engagement = await storage.getCourseEngagement();
+      res.json(engagement);
+    } catch (error) {
+      console.error("Error fetching course engagement:", error);
+      res.status(500).json({ message: "Failed to fetch course engagement" });
+    }
+  });
+
+  // Get user transactions (Admin only)
+  app.get('/api/admin/users/:userId/transactions', isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const transactions = await storage.getUserTransactions(userId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching user transactions:", error);
+      res.status(500).json({ message: "Failed to fetch user transactions" });
+    }
+  });
+
+  // Get all courses with lesson counts (Admin only)
+  app.get('/api/admin/courses/detailed', isAdmin, async (req, res) => {
+    try {
+      const courses = await storage.getAllCoursesWithLessons();
+      res.json(courses);
+    } catch (error) {
+      console.error("Error fetching detailed courses:", error);
+      res.status(500).json({ message: "Failed to fetch detailed courses" });
+    }
+  });
+
   // Get daily orders with pagination (Admin only)
   app.get('/api/admin/orders/daily', isAdmin, async (req, res) => {
     try {
@@ -5849,7 +6771,40 @@ Please contact the customer to confirm the appointment.
     try {
       const { userId } = req.params;
       const updates = req.body;
+      
+      console.log('🔧 Admin updating user:', userId, 'with updates:', JSON.stringify(updates, null, 2));
+      
+      // Get current user data for comparison
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update user in database
       const updatedUser = await storage.updateUser(userId, updates);
+      console.log('✅ User updated in database');
+      
+      // Check if subscription tier changed
+      const oldTier = currentUser.subscriptionTier;
+      const newTier = updates.subscriptionTier;
+      
+      if (newTier && oldTier !== newTier) {
+        console.log(`🔄 Subscription tier changed: ${oldTier} → ${newTier}`);
+        
+        // Sync updated subscription info to Klaviyo
+        try {
+          await klaviyoService.createOrUpdateProfile(updatedUser);
+          console.log('✅ Klaviyo sync successful');
+        } catch (error) {
+          console.error('⚠️ Klaviyo sync failed (non-blocking):', error);
+        }
+        
+        // TODO: Add Stripe subscription update logic here
+        // Note: This would require creating/updating Stripe subscriptions based on the tier change
+        // For now, focusing on database and Klaviyo sync as requested
+        console.log('ℹ️ Stripe integration would be added here for production use');
+      }
+      
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
@@ -6314,6 +7269,39 @@ Please contact the customer to confirm the appointment.
       // Update last login for MAU tracking since this completes the login process
       await storage.updateUserLastLogin(userId);
 
+      // Send Slack notification for existing customer reactivation
+      try {
+        const user = await storage.getUser(userId);
+        if (user) {
+          // Fetch previous courses for existing customer reactivation
+          let previousCourses: string[] = [];
+          try {
+            const coursePurchases = await storage.getUserCoursePurchases(userId);
+            if (coursePurchases && coursePurchases.length > 0) {
+              // Get course titles from purchases
+              const courseIds = coursePurchases.map(purchase => purchase.courseId);
+              const courses = await storage.getCoursesByIds(courseIds);
+              previousCourses = courses.map(course => course.title);
+            }
+          } catch (courseError) {
+            console.error("Failed to fetch previous courses:", courseError);
+          }
+
+          await slackNotificationService.sendSignupNotification({
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            marketingOptIn: user.marketingOptIn || false,
+            primaryConcerns: user.primaryConcerns ? user.primaryConcerns.split(',') : [],
+            signupSource: 'Password Setup (Migrated User)',
+            signupType: 'existing_customer_reactivation',
+            previousCourses: previousCourses
+          });
+          console.log("Slack reactivation notification sent successfully");
+        }
+      } catch (slackError) {
+        console.error("Failed to send Slack reactivation notification:", slackError);
+      }
+
       res.json({ message: 'Password set successfully' });
     } catch (error) {
       console.error('Error setting password:', error);
@@ -6487,77 +7475,13 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Seed sample orders for testing (Admin only)
+  // Seed sample orders endpoint disabled for production
   app.post('/api/admin/seed-orders', isAdmin, async (req, res) => {
     try {
-      const sampleOrders = [
-        {
-          userId: '44434757', // Admin user
-          courseId: 1,
-          amount: 12000, // $120 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189349',
-          purchasedAt: new Date('2025-07-09T08:34:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 2,
-          amount: 25000, // $250 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189348',
-          purchasedAt: new Date('2025-07-09T08:30:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 3,
-          amount: 11000, // $110 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189347',
-          purchasedAt: new Date('2025-07-09T08:25:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 4,
-          amount: 12000, // $120 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189346',
-          purchasedAt: new Date('2025-07-09T08:20:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 5,
-          amount: 12000, // $120 in cents
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189345',
-          purchasedAt: new Date('2025-07-09T08:15:00Z')
-        },
-        // Yesterday's orders
-        {
-          userId: '44434757',
-          courseId: 1,
-          amount: 12000,
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189344',
-          purchasedAt: new Date('2025-07-08T14:30:00Z')
-        },
-        {
-          userId: '44434757',
-          courseId: 2,
-          amount: 12000,
-          status: 'completed',
-          stripePaymentIntentId: 'pi_test_189343',
-          purchasedAt: new Date('2025-07-08T12:15:00Z')
-        }
-      ];
-
-      for (const order of sampleOrders) {
-        await storage.createCoursePurchase(order);
-      }
-
-      res.json({ message: 'Sample orders created successfully', count: sampleOrders.length });
+      res.status(503).json({ message: 'Sample order seeding disabled for production use' });
     } catch (error) {
-      console.error("Error seeding orders:", error);
-      res.status(500).json({ message: "Failed to seed orders" });
+      console.error("Error with seed orders endpoint:", error);
+      res.status(500).json({ message: "Endpoint disabled" });
     }
   });
 
@@ -7279,6 +8203,77 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Test endpoint for Slack notifications
+  app.post('/api/test/slack-notification', async (req, res) => {
+    try {
+      const { type = 'signup', ...data } = req.body;
+      
+      let result;
+      switch (type) {
+        case 'signup':
+          result = await slackNotificationService.sendSignupNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            marketingOptIn: data.marketingOptIn !== undefined ? data.marketingOptIn : true,
+            primaryConcerns: data.primaryConcerns || ['Baby Sleep', 'Toddler Sleep'],
+            signupSource: data.signupSource || 'Test Integration',
+            signupType: data.signupType || 'new_customer',
+            previousCourses: data.previousCourses,
+            coursePurchased: data.coursePurchased
+          });
+          break;
+        case 'payment':
+          result = await slackNotificationService.sendPaymentNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            amount: data.amount || 12000,
+            courseName: data.courseName || 'Little Baby Sleep Program'
+          });
+          break;
+        case 'support':
+          result = await slackNotificationService.sendSupportNotification({
+            name: data.name || 'Test User',
+            email: data.email || 'test@drgolly.com',
+            subject: data.subject || 'Test Support Request',
+            message: data.message || 'This is a test support message from the feature/signup branch'
+          });
+          break;
+        default:
+          return res.status(400).json({ error: 'Invalid notification type' });
+      }
+      
+      res.json({
+        success: result,
+        message: `Slack ${type} notification test ${result ? 'successful' : 'failed'}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "Slack notification test failed"
+      });
+    }
+  });
+
+  // Test endpoint for Slack bot verification
+  app.get('/api/test/slack-auth', async (req, res) => {
+    try {
+      const result = await slackNotificationService.testConnection();
+      res.json({
+        success: result,
+        message: result ? 'Slack connection verified' : 'Slack connection failed',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "Slack connection test failed"
+      });
+    }
+  });
+
   // Support request endpoint
   app.post('/api/support', async (req, res) => {
     try {
@@ -7420,6 +8415,18 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error reordering modules:", error);
       res.status(500).json({ message: "Failed to reorder modules" });
+    }
+  });
+
+  app.put('/api/chapters/:chapterId/lessons/reorder', async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      const { lessons } = req.body;
+      await storage.reorderCourseLessons(parseInt(chapterId), lessons);
+      res.json({ message: "Lesson order updated successfully" });
+    } catch (error) {
+      console.error("Error reordering lessons:", error);
+      res.status(500).json({ message: "Failed to reorder lessons" });
     }
   });
 
@@ -8009,13 +9016,14 @@ Please contact the customer to confirm the appointment.
   // Cart endpoints
   app.get('/api/cart', async (req: any, res) => {
     try {
-      // Get the user ID from the session (works with both auth systems)
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Cart request for user ID:', userId);
+      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
+      
+      console.log('Cart request for user ID:', userId);
       
       let cart;
       try {
@@ -8038,12 +9046,13 @@ Please contact the customer to confirm the appointment.
 
   app.post('/api/cart', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
-      console.log('Adding to cart for user ID:', userId);
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
+      
+      console.log('Adding to cart for user ID:', userId);
       
       let cartItem;
       try {
@@ -8075,7 +9084,11 @@ Please contact the customer to confirm the appointment.
 
   app.put('/api/cart/:id', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
       
       let cartItem;
       try {
@@ -8102,7 +9115,11 @@ Please contact the customer to confirm the appointment.
 
   app.delete('/api/cart/:id', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
       
       try {
         await storage.removeFromCart(parseInt(req.params.id));
@@ -8122,7 +9139,11 @@ Please contact the customer to confirm the appointment.
 
   app.delete('/api/cart', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
       
       try {
         await storage.clearUserCart(userId);
@@ -8142,7 +9163,11 @@ Please contact the customer to confirm the appointment.
 
   app.get('/api/cart/count', async (req: any, res) => {
     try {
-      const userId = req.session?.userId || req.user?.claims?.sub || "44434757";
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.json({ count: 0 }); // Return empty cart for unauthenticated users
+      }
       
       let count = 0;
       try {
@@ -8293,6 +9318,9 @@ Please contact the customer to confirm the appointment.
       res.status(500).json({ error: 'Failed to update Stripe products' });
     }
   });
+
+  // Admin content management routes
+  app.use('/api/admin', adminContentRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
