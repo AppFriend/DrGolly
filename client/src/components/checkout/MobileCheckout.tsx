@@ -265,6 +265,7 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
         color: '#9e2146',
       },
     },
+    disabled: false,
   };
 
   return (
@@ -435,23 +436,23 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
                 <p className="text-sm text-gray-500">Loading payment options...</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4" style={{ position: 'relative', zIndex: 1 }}>
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Card number</Label>
-                  <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center">
+                  <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative z-10" style={{ pointerEvents: 'auto' }}>
                     <CardNumberElement options={cardElementOptions} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Expiration date</Label>
-                    <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center">
+                    <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative z-10" style={{ pointerEvents: 'auto' }}>
                       <CardExpiryElement options={cardElementOptions} />
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Security code</Label>
-                    <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center">
+                    <div className="border border-gray-300 rounded-md p-3 h-12 flex items-center relative z-10" style={{ pointerEvents: 'auto' }}>
                       <CardCvcElement options={cardElementOptions} />
                     </div>
                   </div>
