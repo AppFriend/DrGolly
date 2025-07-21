@@ -1753,11 +1753,17 @@ function AddLessonDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[900px] flex flex-col p-0 max-h-[85vh]">
+        {/* Modal Header - Fixed */}
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
           <DialogTitle>Add New Lesson</DialogTitle>
+          <DialogDescription>
+            Create a new lesson with title and rich content. The lesson will be added to the selected chapter.
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        
+        {/* Modal Body - Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ maxHeight: '70vh' }}>
           <div>
             <Label htmlFor="lesson-title">Lesson Title</Label>
             <Input
@@ -1774,33 +1780,42 @@ function AddLessonDialog({
               content={addLessonContent}
               onChange={setAddLessonContent}
               placeholder="Enter lesson content..."
-              className="mt-1 min-h-[200px]"
+              className="mt-1 min-h-[400px]"
             />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                onOpenChange(false);
-                setAddLessonTitle('');
-                setAddLessonContent('');
-                setAddingToChapterId(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateLesson}
-              disabled={!addLessonTitle.trim() || createLessonMutation.isPending}
-            >
-              {createLessonMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
-              Create Lesson
-            </Button>
-          </div>
+        </div>
+        
+        {/* Modal Footer - Sticky Actions */}
+        <div 
+          className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0"
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 10
+          }}
+        >
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              onOpenChange(false);
+              setAddLessonTitle('');
+              setAddLessonContent('');
+              setAddingToChapterId(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleCreateLesson}
+            disabled={!addLessonTitle.trim() || createLessonMutation.isPending}
+          >
+            {createLessonMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Plus className="h-4 w-4 mr-2" />
+            )}
+            Create Lesson
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
