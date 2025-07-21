@@ -1,0 +1,143 @@
+Part 1: Protect Working Checkout Code Before Making Frontend Changes
+Prompt: Prepare safe Git structure for layout redesign (React for Web)
+
+Before making any frontend layout changes to the checkout page, follow these steps to protect the working functionality:
+
+Create a Git savepoint
+
+Commit all current working code
+
+Tag the commit as: checkout-stable-v1.0
+
+Create a new Git branch for the visual redesign
+
+Branch name: checkout-ui-redesign
+
+Ensure rollback is simple
+
+Confirm we can easily reset to the tagged savepoint if any regressions occur during redesign
+
+Scope of changes:
+
+This branch is strictly for layout and style updates
+
+Do not change any checkout logic, validation, Stripe integration, form handling, API calls, or notifications
+
+Part 2: React Web – Mobile-First Checkout UI Redesign (Layout-Only)
+Prompt: Visually restructure the mobile layout of the checkout page using Tailwind CSS and shadcn/ui components, based on the screenshots provided. Do not change any backend logic or functional code.
+
+Framework Setup
+React (Web) with TypeScript
+
+Tailwind CSS for layout
+
+shadcn/ui for UI components
+
+Vite (frontend tooling)
+
+Express backend
+
+Wouter for routing
+
+File References
+Please refer to the following design screenshots, included in the project:
+
+Section 1 Screenshot.png – Banner, email, and due date fields
+
+Section 2 Screenshot New.png – Cart item, coupon input, and total breakdown
+
+Section 3 screenshot.png – Payment (Stripe Elements)
+
+Section 4 Screenshot.png – Billing details, terms, and Place Order CTA
+
+Section 5 Screenshot.png – Guarantee, reviews, and customer testimonial
+
+Required Mobile Layout (Top to Bottom)
+Section 1: Your Details
+Refer to: Section 1 Screenshot.png
+
+Add a full-width grey banner:
+“You’re one step closer to better sleep for your baby!”
+
+Beneath, display:
+
+Email Address field
+
+Due Date / Baby Birthday field
+
+Section 2: Your Order
+Refer to: Section 2 Screenshot New.png
+
+Display cart summary:
+
+Course image, name, price, and remove button
+
+Coupon section:
+
+Expandable area with coupon input and Add button
+
+Below: show subtotal, discount (if applied), and total
+
+Section 3: Payment Details
+Refer to: Section 3 screenshot.png
+
+Leave Stripe Elements logic untouched
+
+Maintain payment options layout and ensure card field renders cleanly on mobile
+
+Section 4: Billing Details
+Refer to: Section 4 Screenshot.png
+
+Show:
+
+First Name
+
+Last Name
+
+Phone
+
+Address (with manual entry)
+
+Below form:
+
+Terms and Conditions text
+
+“Place Order” button
+
+Section 5: Guarantees and Testimonials
+Refer to: Section 5 Screenshot.png
+
+Display:
+
+“30-Day Guarantee” banner
+
+Reviews card (include photos + star ratings)
+
+Customer testimonial carousel (statically inserted)
+
+Development Guidelines
+Use Tailwind utility classes (flex, grid, gap, px, py) to handle layout
+
+Structure layout into clearly separated wrapper components or sections (e.g. <Section1Details />)
+
+Use shadcn/ui components wherever applicable (Inputs, Accordion, Card, Button)
+
+Do not reimplement or break existing form/state logic — only reflow the DOM structure visually
+
+Testing and QA
+Test on common mobile devices:
+
+iPhone SE / 13 Pro (Safari)
+
+Android Chrome
+
+Confirm all interactive fields work: coupon, card entry, T&Cs, submission
+
+Validate that:
+
+Payments go through
+
+Slack messages still send
+
+No regressions are introduced in cart or checkout behaviour
+
