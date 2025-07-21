@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'wouter';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/utils/stripeHelpers';
-import { StandaloneCheckout } from '@/components/checkout/StandaloneCheckout';
+import { MobileCheckout } from '@/components/checkout/MobileCheckout';
 import { Product } from '@/types/product';
 
 export default function CheckoutNew() {
@@ -58,7 +58,7 @@ export default function CheckoutNew() {
 
   return (
     <Elements stripe={stripePromise}>
-      <StandaloneCheckout product={product} />
+      <MobileCheckout product={product} />
     </Elements>
   );
 }
