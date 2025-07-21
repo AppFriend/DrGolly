@@ -204,15 +204,17 @@ function SortableLesson({
       {isExpanded && (
         <div className="p-3 border-t">
           {isEditing ? (
-            <div className="space-y-3">
-              <div className="max-h-[400px] overflow-y-auto border rounded-md">
-                <RichTextEditor
-                  content={editContent}
-                  onChange={onContentChange}
-                  placeholder="Enter lesson content..."
-                />
+            <div className="flex flex-col h-[500px]">
+              <div className="flex-1 overflow-hidden border rounded-md">
+                <div className="h-full overflow-y-auto">
+                  <RichTextEditor
+                    content={editContent}
+                    onChange={onContentChange}
+                    placeholder="Enter lesson content..."
+                  />
+                </div>
               </div>
-              <div className="flex gap-2 pt-2 bg-white border-t sticky bottom-0">
+              <div className="flex gap-2 mt-3 pt-2 border-t bg-white">
                 <Button onClick={onSave} size="sm">
                   <Save className="h-4 w-4 mr-2" />
                   Save
@@ -1244,12 +1246,9 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
   });
 
   const reorderLessonsMutation = useMutation({
-    mutationFn: ({ chapterId, orderedLessons }: { chapterId: number; orderedLessons: any[] }) => {
-      console.log('Reordering lessons - chapterId:', chapterId, 'payload:', { lessons: orderedLessons });
-      return apiRequest("PUT", `/api/chapters/${chapterId}/lessons/reorder`, { lessons: orderedLessons });
-    },
+    mutationFn: ({ chapterId, orderedLessons }: { chapterId: number; orderedLessons: any[] }) =>
+      apiRequest("PUT", `/api/chapters/${chapterId}/lessons/reorder`, { lessons: orderedLessons }),
     onSuccess: () => {
-      console.log('Lesson reorder successful');
       queryClient.invalidateQueries({ queryKey: [`/api/courses/${course.id}/lessons`] });
       toast({
         title: "Success",
@@ -1257,7 +1256,6 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
       });
     },
     onError: (error) => {
-      console.error('Lesson reorder failed:', error);
       toast({
         title: "Error",
         description: `Failed to reorder lessons: ${error.message}`,
