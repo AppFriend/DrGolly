@@ -1,0 +1,141 @@
+Absolutely — here is the **clean, icon-free version** of the full development prompt, formatted for clarity and ready to use in Replit or with your team.
+
+---
+
+## Admin Panel Modal Fix – Full Development Prompt
+
+You are working in the `admin` section of a React web app, specifically improving the **course lesson editor modal**.
+
+Recently, we moved from an inline structure to a modular dialog. While this is the right long-term structure, it has introduced UI issues where:
+
+* Rich content overflows vertically
+* The **Save** button becomes inaccessible
+* There is **no scroll** within the modal
+
+Your task is to fix the layout and scrolling within the lesson editing modal only, without impacting any other part of the app.
+
+---
+
+### Objective
+
+Fix the admin lesson editing modal so that:
+
+* Long content (text or images) does **not spill outside** the modal
+* The modal itself is **scrollable** when content overflows
+* The **Save** button is always visible and accessible
+
+---
+
+### Scope Protection Instructions
+
+What you **can** work on:
+
+* The course management modal in the `/admin` panel
+* Internal modal layout and structure
+* Styling only within the modal component or its immediate children
+
+What you **must not** touch:
+
+* Any non-admin code (e.g., homepage, auth, blog, profile, user dashboards)
+* Shared modal components used elsewhere
+* Global styles or CSS resets
+* Backend logic or API structure
+* Any routing or navigation logic
+
+---
+
+### Suggested Implementation (React Web)
+
+**If using MUI or similar dialog framework:**
+
+```jsx
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+} from '@mui/material';
+
+export default function LessonEditorModal({ open, onClose, onSave }) {
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>Edit Lesson</DialogTitle>
+
+      <DialogContent
+        dividers
+        style={{
+          maxHeight: '70vh',
+          overflowY: 'auto',
+          paddingRight: '16px',
+        }}
+      >
+        {/* Rich content editor goes here */}
+      </DialogContent>
+
+      <DialogActions
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          background: '#fff',
+          padding: '8px 16px',
+          borderTop: '1px solid #eee',
+          zIndex: 1,
+        }}
+      >
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" onClick={onSave}>Save</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+```
+
+**If using custom components or raw CSS:**
+
+```jsx
+<div className="modal">
+  <div className="modal-header">Edit Lesson</div>
+
+  <div className="modal-body scroll-container">
+    {/* Long-form content here */}
+  </div>
+
+  <div className="modal-footer">
+    <button onClick={onClose}>Cancel</button>
+    <button onClick={onSave}>Save</button>
+  </div>
+</div>
+```
+
+```css
+.scroll-container {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 1rem;
+  border-top: 1px solid #ddd;
+  z-index: 10;
+}
+```
+
+---
+
+### Testing Checklist
+
+Before merging:
+
+* Add a long lesson with text and images — test that scrolling works
+* Resize window to small laptop and mobile width
+* Ensure Save/Cancel buttons are always visible
+* Confirm that no global components or shared layout styles are affected
+
+---
+
+Let me know if you'd like a version tailored for Tailwind or a specific CSS framework you're using.

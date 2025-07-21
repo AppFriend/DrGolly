@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -1618,39 +1618,52 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
 
     {/* Lesson Edit Modal */}
     <Dialog open={!!editingLessonModal} onOpenChange={(open) => !open && handleCancelEditModal()}>
-      <DialogContent className="sm:max-w-[900px] sm:max-h-[80vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="sm:max-w-[900px] flex flex-col p-0 max-h-[85vh]">
+        {/* Modal Header - Fixed */}
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
           <DialogTitle>Edit Lesson: {editingLessonModal?.title}</DialogTitle>
+          <DialogDescription>
+            Edit the lesson content using the rich text editor below.
+          </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 min-h-0">
-            <RichTextEditor
-              content={editingLessonModal?.content || ''}
-              onChange={(content) => {
-                if (editingLessonModal) {
-                  setEditingLessonModal({
-                    ...editingLessonModal,
-                    content
-                  });
-                }
-              }}
-              className="h-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t bg-white flex-shrink-0">
-            <Button variant="outline" onClick={handleCancelEditModal}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => handleSaveLessonModal(editingLessonModal?.content || '')}
-              disabled={updateLessonMutation.isPending}
-            >
-              {updateLessonMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Save Changes
-            </Button>
-          </div>
+        
+        {/* Modal Body - Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: '70vh' }}>
+          <RichTextEditor
+            content={editingLessonModal?.content || ''}
+            onChange={(content) => {
+              if (editingLessonModal) {
+                setEditingLessonModal({
+                  ...editingLessonModal,
+                  content
+                });
+              }
+            }}
+            className="min-h-[400px]"
+          />
+        </div>
+        
+        {/* Modal Footer - Sticky Actions */}
+        <div 
+          className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0"
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 10
+          }}
+        >
+          <Button variant="outline" onClick={handleCancelEditModal}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => handleSaveLessonModal(editingLessonModal?.content || '')}
+            disabled={updateLessonMutation.isPending}
+          >
+            {updateLessonMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Save
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
