@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStripe, useElements, CardNumberElement, CardExpiryElement, CardCvcElement } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,32 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponExpanded, setCouponExpanded] = useState(false);
+  
+  // Testimonial carousel state
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const testimonialRef = useRef<HTMLDivElement>(null);
+  
+  // Testimonial data
+  const testimonials = [
+    {
+      name: "Crystal K",
+      product: "Little baby sleep program",
+      review: "Using the Dr Golly program with my first baby was an absolute godsend. He became a dream sleeper, and I loved how easy the routines were to follow and adapt. The program never felt strict - just a simple, effective framework that made everything feel manageable...",
+      timeAgo: "2 months ago"
+    },
+    {
+      name: "Sarah M",
+      product: "Big baby sleep program",
+      review: "This program completely transformed our family's sleep. My 18-month-old went from waking 5 times a night to sleeping through consistently. The gentle approach really worked for us and I couldn't be happier with the results!",
+      timeAgo: "1 month ago"
+    },
+    {
+      name: "Emma R",
+      product: "Preparation for newborns",
+      review: "I started this program during pregnancy and felt so prepared when our baby arrived. The techniques worked from day one and gave me confidence as a new parent. Worth every penny for the peace of mind it provided.",
+      timeAgo: "3 weeks ago"
+    }
+  ];
   
   // Create payment intent
   useEffect(() => {
@@ -86,6 +112,15 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
 
     createPaymentIntent();
   }, [appliedCoupon, product.id]);
+  
+  // Auto-scroll testimonials every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [testimonials.length]);
   
   // Apply coupon
   const applyCoupon = async () => {
@@ -237,14 +272,15 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
       {/* Section 1: Banner and Your Details */}
       <div className="bg-gray-200 px-4 py-6 mb-6">
         <div className="flex items-center mb-4">
-          <div className="text-2xl font-bold text-teal-600 mr-4">
-            dr.
-            <span className="text-gray-600">Golly</span>
-          </div>
+          <img 
+            src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png" 
+            alt="Dr. Golly Sleep Logo" 
+            className="h-8 mr-3"
+          />
+          <p className="text-gray-700 text-lg font-medium">
+            You're one step closer to better sleep for your baby!
+          </p>
         </div>
-        <p className="text-gray-700 text-lg font-medium">
-          You're one step closer to better sleep for your baby!
-        </p>
       </div>
 
       <div className="px-4 space-y-6">
@@ -292,7 +328,7 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
             <div className="flex items-start gap-4 mb-6">
               <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0">
                 <img 
-                  src="/attached_assets/IMG_5167_1752574749114.jpeg" 
+                  src="/attached_assets/Big Baby Image_1753064944336.png" 
                   alt={product.name}
                   className="w-full h-full object-cover rounded-lg"
                 />
@@ -369,9 +405,9 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
               <div className="w-4 h-4 rounded-full border-2 border-teal-500 bg-teal-500"></div>
               <span className="font-medium">Credit / Debit Card</span>
               <div className="flex gap-1 ml-auto">
-                <div className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold">VISA</div>
-                <div className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">MC</div>
-                <div className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold">AMEX</div>
+                <img src="/attached_assets/Visa_Logo_1753065063735.png" alt="Visa" className="h-6" />
+                <img src="/attached_assets/MasterCard_Logo.svg_1753065119402.png" alt="Mastercard" className="h-6" />
+                <img src="/attached_assets/American-Express-Color_1753065143686.png" alt="American Express" className="h-6" />
               </div>
             </div>
 
@@ -490,7 +526,7 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
                   Processing...
                 </>
               ) : (
-                "Place order"
+                `Place order - $${finalAmount.toFixed(2)}`
               )}
             </Button>
           </CardContent>
@@ -500,15 +536,12 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
         <Card>
           <CardContent className="p-6">
             {/* 30-Day Guarantee */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-teal-600 font-bold text-xs">30 DAYS</span>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">
-                  <strong>No results after completing the program? Get a full refund within 30 days!</strong>
-                </p>
-              </div>
+            <div className="mb-6">
+              <img 
+                src="/attached_assets/Screen Shot 2025-07-21 at 12.19.43 pm_1753064939819.png" 
+                alt="30 Day Money Back Guarantee" 
+                className="w-full h-auto"
+              />
             </div>
 
             {/* Reviews Section */}
@@ -540,32 +573,51 @@ export function MobileCheckout({ product }: MobileCheckoutProps) {
                 ))}
               </div>
 
-              {/* Customer Testimonial */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-medium">Crystal K</span>
-                  <div className="flex gap-1">
-                    {[1,2,3,4,5].map((star) => (
-                      <Star key={star} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
+              {/* Customer Testimonial Carousel */}
+              <div className="bg-gray-50 rounded-lg p-4 relative overflow-hidden" ref={testimonialRef}>
+                <div 
+                  className="flex transition-transform duration-500 ease-in-out"
+                  style={{ transform: `translateX(-${currentTestimonial * 100}%)` }}
+                >
+                  {testimonials.map((testimonial, index) => (
+                    <div key={index} className="w-full flex-shrink-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-medium">{testimonial.name}</span>
+                        <div className="flex gap-1">
+                          {[1,2,3,4,5].map((star) => (
+                            <Star key={star} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                        <span className="text-sm text-gray-600">Verified Customer</span>
+                      </div>
+                      <p className="text-sm text-blue-600 mb-2">{testimonial.product}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {testimonial.review}
+                      </p>
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                        <span className="text-xs text-gray-500">{testimonial.timeAgo}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  </div>
-                  <span className="text-sm text-gray-600">Verified Customer</span>
-                </div>
-                <p className="text-sm text-blue-600 mb-2">Little baby sleep program</p>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Using the Dr Golly program with my first baby was an absolute godsend. 
-                  He became a dream sleeper, and I loved how easy the routines were to 
-                  follow and adapt. The program never felt strict - just a simple, 
-                  effective framework that made everything feel manageable...
-                </p>
-                <div className="flex items-center justify-between mt-3">
-                  <div className="w-8 h-8 bg-gray-300 rounded"></div>
-                  <span className="text-xs text-gray-500">2 months ago</span>
+                
+                {/* Carousel indicators */}
+                <div className="flex justify-center mt-4 gap-2">
+                  {testimonials.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentTestimonial(index)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        index === currentTestimonial ? 'bg-teal-600' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
