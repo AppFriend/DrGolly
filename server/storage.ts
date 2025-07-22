@@ -123,6 +123,7 @@ export interface IStorage {
   updateUserPersonalization(userId: string, personalizationData: any): Promise<User>;
   updateUserProfile(userId: string, profileData: Partial<User>): Promise<User>;
   updateUserLastLogin(userId: string): Promise<User>;
+  getTemporaryPassword(userId: string): Promise<TemporaryPassword | undefined>;
   
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
@@ -2898,6 +2899,15 @@ export class DatabaseStorage implements IStorage {
         expiresAt: AuthUtils.createTempPasswordExpiry(),
       })
       .returning();
+    return result;
+  }
+
+  async getTemporaryPassword(userId: string): Promise<TemporaryPassword | undefined> {
+    const [result] = await db
+      .select()
+      .from(temporaryPasswords)
+      .where(eq(temporaryPasswords.userId, userId))
+      .orderBy(desc(temporaryPasswords.createdAt));
     return result;
   }
 

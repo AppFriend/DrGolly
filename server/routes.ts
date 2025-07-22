@@ -728,16 +728,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      // Check if user has a permanent password set
-      if (!user.hasSetPassword || !user.passwordHash) {
-        return res.status(400).json({ message: "Account not fully set up. Please use password reset." });
-      }
+      // Check if user has a permanent password set, if not check for temporary password
+      if (!user.passwordHash) {
+        // Check if user has a valid temporary password
+        const tempPassword = await storage.getTemporaryPassword(user.id);
+        if (!tempPassword || tempPassword.isUsed) {
+          return res.status(400).json({ message: "Please use password reset to set up your account." });
+        }
 
-      // Verify password
-      const isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
-      
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        // Check if temporary password has expired
+        if (new Date() > tempPassword.expiresAt) {
+          return res.status(400).json({ message: "Temporary password has expired. Please use password reset." });
+        }
+
+        // Verify temporary password (plain text comparison)
+        if (password !== tempPassword.tempPassword) {
+          return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // Temporary password is valid, proceed with login
+        console.log('User authenticated with temporary password:', user.id);
+      } else {
+        // Verify permanent password
+        const isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
+        if (!isValidPassword) {
+          return res.status(401).json({ message: "Invalid email or password" });
+        }
       }
 
       // Update last login
