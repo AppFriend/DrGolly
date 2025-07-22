@@ -716,6 +716,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public login for existing users from checkout
   app.post('/api/auth/public-login', async (req, res) => {
     try {
+      // Add cache-busting headers to prevent caching of auth responses
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+
       const { email, password } = req.body;
       
       if (!email || !password) {
@@ -733,12 +740,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if user has a valid temporary password
         const tempPassword = await storage.getTemporaryPassword(user.id);
         if (!tempPassword || tempPassword.isUsed) {
-          return res.status(400).json({ message: "Please use password reset to set up your account." });
+          return res.status(401).json({ message: "Invalid email or password" });
         }
 
         // Check if temporary password has expired
         if (new Date() > tempPassword.expiresAt) {
-          return res.status(400).json({ message: "Temporary password has expired. Please use password reset." });
+          return res.status(401).json({ message: "Invalid email or password" });
         }
 
         // Verify temporary password (plain text comparison)
