@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { cartTrackingService } from "@/services/cartTracking";
 import { useStripe, useElements, PaymentRequestButtonElement, CardElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
@@ -829,6 +830,9 @@ export default function Checkout() {
   };
 
   const handlePaymentSuccess = () => {
+    // Mark purchase as completed to prevent abandoned cart tracking
+    cartTrackingService.markPurchaseCompleted();
+    
     toast({
       title: "Payment Successful!",
       description: "Your course has been added to your account.",

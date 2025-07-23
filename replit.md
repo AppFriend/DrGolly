@@ -397,6 +397,26 @@ STABLE VERSIONS (for easy rollback reference):
   * TESTED: Admin panel subscription plan dropdown changes now persist correctly with full external service integration
   * STABLE: Checkout functionality confirmed working with course loading, user authentication, and payment processing
   * Status: Production-ready with complete admin subscription management and stable checkout system
+
+- SAVEPOINT v1.22 (July 23, 2025): ENHANCED KLAVIYO INTEGRATION - App_Purchase and Abandoned_Cart event tracking
+  * BREAKTHROUGH: Complete Klaviyo event tracking system with App_Purchase and Abandoned_Cart events
+  * IMPLEMENTED: App_Purchase event tracking across all purchase completion flows:
+    - Big Baby checkout completion with course details and pricing
+    - Stripe webhook payment confirmation with real-time course data
+    - Admin course grants with $0 value and admin source tracking
+  * CREATED: Client-side Abandoned_Cart tracking service with configurable timeout and smart detection:
+    - 10-minute inactivity timeout for cart abandonment detection
+    - Purchase completion prevention to avoid false abandonment triggers
+    - Page exit detection via beforeunload event handling
+    - LocalStorage-based cart data persistence for cross-session tracking
+  * INTEGRATED: Cart tracking into cart.tsx and checkout.tsx pages with automatic lifecycle management
+  * ENHANCED: Klaviyo service with dedicated trackAppPurchase() and trackAbandonedCart() methods
+  * ADDED: Comprehensive test endpoints for App_Purchase and Abandoned_Cart event validation
+  * UPDATED: Klaviyo test page with new event tracking test buttons and authentication requirements
+  * VERIFIED: All purchase flows now automatically trigger App_Purchase events with complete metadata
+  * TESTED: Cart abandonment tracking works across multiple scenarios (timeout, page exit, purchase completion)
+  * DOCUMENTED: Complete event structure for both App_Purchase and Abandoned_Cart with all required properties
+  * Status: Production-ready with comprehensive Klaviyo event tracking for advanced marketing automation
 ```
 
 ## Changelog
