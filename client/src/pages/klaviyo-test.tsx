@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { CheckCircle, XCircle, CreditCard, DollarSign } from "lucide-react";
+import { CheckCircle, XCircle, CreditCard, DollarSign, ShoppingCart, AlertTriangle } from "lucide-react";
 
 export default function KlaviyoTest() {
   const { isAuthenticated } = useAuth();
@@ -215,6 +215,37 @@ export default function KlaviyoTest() {
               >
                 Test OTP Email
               </Button>
+            </div>
+
+            {/* New Event Tracking Tests */}
+            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-900">
+                <ShoppingCart className="h-4 w-4" />
+                Event Tracking Tests (Requires Authentication)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button 
+                  onClick={() => runTest('/api/test/klaviyo/app-purchase', 'App_Purchase Event')}
+                  disabled={loading || !isAuthenticated}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Test App_Purchase Event
+                </Button>
+                <Button 
+                  onClick={() => runTest('/api/test/klaviyo/abandoned-cart', 'Abandoned_Cart Event')}
+                  disabled={loading || !isAuthenticated}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Test Abandoned_Cart Event
+                </Button>
+              </div>
+              {!isAuthenticated && (
+                <p className="text-sm text-blue-700 mt-2">
+                  Please log in to test event tracking endpoints.
+                </p>
+              )}
             </div>
 
             <div className="border-t pt-4">

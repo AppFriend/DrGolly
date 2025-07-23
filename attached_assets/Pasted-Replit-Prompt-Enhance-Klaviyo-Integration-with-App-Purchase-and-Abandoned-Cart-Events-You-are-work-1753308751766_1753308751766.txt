@@ -1,0 +1,140 @@
+Replit Prompt: Enhance Klaviyo Integration with App_Purchase and Abandoned_Cart Events
+
+You are working on a React Web App that already includes a functioning Klaviyo integration. Extend the integration by implementing two new event types, in line with Klaviyo documentation and best practice:
+
+App_Purchase — triggered when a user successfully completes a purchase (e.g. a course)
+
+Abandoned_Cart — triggered when a user adds items to the in-app cart but exits without completing the purchase
+
+These events must be sent via the Klaviyo Track Events API and structured to support revenue tracking and lifecycle journey triggers.
+
+Requirements:
+
+Create an Event Tracking Utility
+
+Build or reuse a function that sends events to Klaviyo’s server-side API. It should accept:
+
+Event name (e.g. App_Purchase, Abandoned_Cart)
+
+User email (used as the profile key in Klaviyo)
+
+Event properties (e.g. item details, value, timestamp)
+
+Example:
+
+js
+Copy
+Edit
+async function trackKlaviyoEvent(eventName, userEmail, properties = {}) {
+  await fetch("https://a.klaviyo.com/api/events/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer <YOUR_KLAVIYO_PRIVATE_API_KEY>"
+    },
+    body: JSON.stringify({
+      data: {
+        type: "event",
+        attributes: {
+          metric: { name: eventName },
+          customer_properties: { email: userEmail },
+          properties: properties,
+          timestamp: new Date().toISOString()
+        }
+      }
+    })
+  });
+}
+Trigger App_Purchase Event
+
+Send this event immediately after a successful purchase. Include:
+
+item_names: array of purchased course names
+
+item_ids: array of course IDs
+
+total_value: purchase amount (AUD)
+
+currency: "AUD"
+
+purchase_channel: "App"
+
+course_count: number of items
+
+purchase_date: ISO timestamp
+
+Trigger Abandoned_Cart Event
+
+Trigger this when a user adds items to the cart but does not complete checkout. Use either:
+
+a beforeunload event listener
+
+an inactivity timeout (e.g. 10 minutes)
+
+Trigger only if:
+
+The cart is not empty
+
+A purchase has not been completed in the current session
+
+Include:
+
+cart_items: array of { id, name, price }
+
+cart_value: total cart value
+
+cart_course_count: number of items
+
+abandoned_at: ISO timestamp
+
+Validate Profile Sync on Signup and Login
+
+Ensure that the full set of profile data is correctly sent to Klaviyo:
+
+At signup: create a full profile
+
+At login: update with the latest data, including family info, Stripe data, and course history
+
+The list of fields currently being sent includes:
+
+Core user data (email, name, phone, country)
+
+Signup metadata (date, source, login history)
+
+Subscription and Stripe data
+
+Purchased courses and total spend
+
+Child profile information (if provided)
+
+Custom fields such as user role, onboarding status, concerns, marketing preferences
+
+Also ensure that:
+
+The user is added to both the Superapp List (XBRBuN) and the App Signups List (WyGwy9)
+
+Real-time events keep Klaviyo up to date as user actions occur in the app
+
+Testing
+
+Run manual tests to validate:
+
+Purchasing a course triggers the App_Purchase event with correct metadata and revenue value
+
+Adding items to cart then exiting triggers the Abandoned_Cart event
+
+Signup and login flows create or update user profiles correctly
+
+All expected fields are present and accurate in the Klaviyo profile
+
+Expected Outcome
+
+Klaviyo should receive:
+
+Profile data that is always current
+
+Revenue attributed to App_Purchase events
+
+Accurate Abandoned_Cart events that can power retargeting flows
+
+Full support for journey and segment triggers based on user behaviour in-app

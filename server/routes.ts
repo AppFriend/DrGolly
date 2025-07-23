@@ -1698,7 +1698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const courseId = parseInt(paymentIntent.metadata.courseId);
       console.log("Creating course purchase record for course:", courseId);
       
-      await storage.createCoursePurchase({
+      const coursePurchase = await storage.createCoursePurchase({
         userId: userId,
         courseId: courseId,
         paymentIntentId: paymentIntentId,
@@ -1711,6 +1711,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
       });
       console.log("Course purchase record created successfully");
+
+      // Track App_Purchase event to Klaviyo
+      try {
+        await klaviyoService.trackAppPurchase(customerDetails.email, {
+          item_names: [paymentIntent.metadata.courseName || 'Course'],
+          item_ids: [courseId.toString()],
+          total_value: paymentIntent.amount / 100, // Convert from cents
+          currency: paymentIntent.currency.toUpperCase(),
+          course_count: 1,
+          purchase_date: new Date().toISOString()
+        });
+        console.log("✅ App_Purchase event tracked to Klaviyo");
+      } catch (error) {
+        console.error("⚠️ Failed to track App_Purchase event (non-blocking):", error);
+      }
       
       // Get the user for login session
       const user = await storage.getUser(userId);
@@ -5648,11 +5663,23 @@ Please contact the customer to confirm the appointment.
         if (purchase) {
           await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
           
-          // Sync course purchase to Klaviyo
+          // Sync course purchase to Klaviyo and track App_Purchase event
           try {
             const user = await storage.getUser(purchase.userId);
             if (user) {
               await klaviyoService.syncCoursePurchaseToKlaviyo(user, purchase);
+              
+              // Track App_Purchase event
+              const course = await storage.getCourse(purchase.courseId);
+              await klaviyoService.trackAppPurchase(user.email, {
+                item_names: [course?.title || purchase.courseName || 'Course'],
+                item_ids: [purchase.courseId.toString()],
+                total_value: purchase.amount / 100, // Convert from cents
+                currency: purchase.currency.toUpperCase(),
+                course_count: 1,
+                purchase_date: new Date().toISOString()
+              });
+              console.log("✅ App_Purchase event tracked via Stripe webhook");
             }
           } catch (error) {
             console.error("Failed to sync course purchase to Klaviyo:", error);
@@ -6655,6 +6682,24 @@ Please contact the customer to confirm the appointment.
           RETURNING *
         `;
         purchase = newPurchase;
+      }
+      
+      // Track App_Purchase event for admin grants
+      try {
+        const user = await storage.getUser(userId);
+        if (user && user.email) {
+          await klaviyoService.trackAppPurchase(user.email, {
+            item_names: [course.title || 'Course'],
+            item_ids: [courseId.toString()],
+            total_value: 0, // Admin grant is free
+            currency: 'USD',
+            course_count: 1,
+            purchase_date: new Date().toISOString()
+          });
+          console.log("✅ App_Purchase event tracked for admin course grant");
+        }
+      } catch (error) {
+        console.error("⚠️ Failed to track App_Purchase event for admin grant (non-blocking):", error);
       }
       
       res.json({ success: true, purchase });
@@ -7925,6 +7970,98 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error updating marketing opt-in:', error);
       res.status(500).json({ error: 'Failed to update marketing preferences' });
+    }
+  });
+
+  // Klaviyo Event Tracking Endpoints
+  app.post('/api/klaviyo/track-abandoned-cart', isAppAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { cart_items, cart_value, cart_course_count } = req.body;
+      
+      // Get user email for Klaviyo tracking
+      const user = await storage.getUser(userId);
+      if (!user || !user.email) {
+        return res.status(400).json({ message: 'User email required for tracking' });
+      }
+      
+      // Track abandoned cart event
+      const result = await klaviyoService.trackAbandonedCart(user.email, {
+        cart_items,
+        cart_value,
+        cart_course_count
+      });
+      
+      if (result) {
+        res.json({ success: true, message: 'Abandoned cart event tracked successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to track abandoned cart event' });
+      }
+    } catch (error) {
+      console.error('Error tracking abandoned cart:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Test App_Purchase event tracking
+  app.post('/api/test/klaviyo/app-purchase', isAppAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.email) {
+        return res.status(400).json({ message: 'User email required for testing' });
+      }
+      
+      // Test App_Purchase event with sample data
+      const result = await klaviyoService.trackAppPurchase(user.email, {
+        item_names: ["Test Course"],
+        item_ids: ["999"],
+        total_value: 120.00,
+        currency: "AUD",
+        course_count: 1,
+        purchase_date: new Date().toISOString()
+      });
+      
+      res.json({ 
+        success: result, 
+        message: result ? 'App_Purchase event tracked successfully' : 'Failed to track App_Purchase event',
+        email: user.email
+      });
+    } catch (error) {
+      console.error('Error testing App_Purchase event:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Test Abandoned_Cart event tracking
+  app.post('/api/test/klaviyo/abandoned-cart', isAppAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.email) {
+        return res.status(400).json({ message: 'User email required for testing' });
+      }
+      
+      // Test Abandoned_Cart event with sample data
+      const result = await klaviyoService.trackAbandonedCart(user.email, {
+        cart_items: [
+          { id: "1", name: "Big baby sleep program", price: 120.00 },
+          { id: "2", name: "Sleep Stories Book", price: 25.00 }
+        ],
+        cart_value: 145.00,
+        cart_course_count: 2
+      });
+      
+      res.json({ 
+        success: result, 
+        message: result ? 'Abandoned_Cart event tracked successfully' : 'Failed to track Abandoned_Cart event',
+        email: user.email
+      });
+    } catch (error) {
+      console.error('Error testing Abandoned_Cart event:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 
