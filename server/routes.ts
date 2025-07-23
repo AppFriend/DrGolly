@@ -8065,6 +8065,51 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Direct test endpoints for Klaviyo events (no auth required for testing)
+  app.post('/api/test/klaviyo/direct-purchase', async (req, res) => {
+    try {
+      const { userEmail, purchaseData } = req.body;
+      
+      if (!userEmail || !purchaseData) {
+        return res.status(400).json({ message: 'userEmail and purchaseData required' });
+      }
+      
+      const result = await klaviyoService.trackAppPurchase(userEmail, purchaseData);
+      
+      res.json({ 
+        success: result, 
+        message: result ? 'App_Purchase event tracked successfully' : 'Failed to track App_Purchase event',
+        email: userEmail,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error testing direct App_Purchase event:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/test/klaviyo/direct-abandonment', async (req, res) => {
+    try {
+      const { userEmail, cartData } = req.body;
+      
+      if (!userEmail || !cartData) {
+        return res.status(400).json({ message: 'userEmail and cartData required' });
+      }
+      
+      const result = await klaviyoService.trackAbandonedCart(userEmail, cartData);
+      
+      res.json({ 
+        success: result, 
+        message: result ? 'Abandoned_Cart event tracked successfully' : 'Failed to track Abandoned_Cart event',
+        email: userEmail,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error testing direct Abandoned_Cart event:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // Klaviyo Testing Endpoints
   app.post('/api/test/klaviyo/signup', async (req, res) => {
     try {
