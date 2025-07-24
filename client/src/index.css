@@ -72,6 +72,50 @@
   }
 }
 
+/* Desktop Checkout Optimization - Large Screens Only */
+@media screen and (min-width: 1440px) {
+  .checkout-desktop-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 4rem;
+  }
+  
+  .checkout-desktop-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: flex-start;
+  }
+  
+  .checkout-desktop-form {
+    padding-right: 1rem;
+  }
+  
+  .checkout-desktop-summary {
+    padding-left: 1rem;
+    position: sticky;
+    top: 2rem;
+  }
+  
+  /* Enhanced spacing for large screen elements */
+  .checkout-desktop-section {
+    margin-bottom: 2rem;
+  }
+  
+  .checkout-desktop-section .bg-white {
+    padding: 2rem;
+  }
+  
+  /* Improved form element spacing */
+  .checkout-desktop-form .space-y-3 > * + * {
+    margin-top: 1rem;
+  }
+  
+  .checkout-desktop-form .space-y-4 > * + * {
+    margin-top: 1.5rem;
+  }
+}
+
 @layer utilities {
   /* Custom prose styles for lesson content */
   .prose-lesson {
