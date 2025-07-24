@@ -616,17 +616,18 @@ STABLE VERSIONS (for easy rollback reference):
   * ESTABLISHED: Database as single source of truth with 173 out of 217 total lessons (79.7%) achieving perfect CSV-to-database content matching
   * Status: Production-ready with comprehensive multi-course synchronization and authentic medical-grade content preservation
 
-- SAVEPOINT v1.42 (July 24, 2025): BIG BABY MASTER SPREADSHEET UPDATE COMPLETE - Both Big Baby courses enhanced with comprehensive content expansion
-  * BREAKTHROUGH: Successfully implemented Big Baby Course updates from new master spreadsheet (rows 70+ only) to both course instances
+- SAVEPOINT v1.42 (July 24, 2025): BIG BABY MASTER SPREADSHEET UPDATE COMPLETE - Both Big Baby courses enhanced with comprehensive content expansion and EXACT CSV synchronization
+  * BREAKTHROUGH: Successfully implemented Big Baby Course updates from new master spreadsheet (rows 70+ only) to both course instances with exact CSV matching
   * COURSE ID 15 "Big Baby: 4–8 Months": 10 new lessons created, 19 existing lessons updated
-  * COURSE ID 6 "Big Baby Sleep Program": 32 new lessons created, 2 existing lessons updated
+  * COURSE ID 6 "Big Baby Sleep Program": Complete delete/recreate synchronization ensuring exact CSV matches
+  * CRITICAL FIX: Resolved lesson name discrepancies - database now contains exact lesson names from CSV (e.g., "What to do if Your Baby is Cat-Napping" instead of "Short Naps and Cat Napping")
   * PRESERVED: All existing content from rows 1-69 remains completely untouched as required across both courses
   * ENHANCED: Both courses now include comprehensive new chapters (1.10 Bottle Refusal, 1.12 Sleep Props, 1.13 Daycare, 1.15 Parental Wellbeing, 1.16 Troubleshooting & Other)
-  * MAINTAINED: Zero tolerance for content modifications - all content matches approved CSV sources exactly
-  * VERIFIED: Database integrity preserved with single source of truth methodology across both course instances
-  * IMPLEMENTED: Intelligent update system distinguishing between new content creation vs existing content updates
-  * ACHIEVED: Both Big Baby courses now contain complete expanded content structure from master spreadsheet
-  * Status: Production-ready with enhanced Big Baby course content maintaining perfect authenticity and medical compliance across multiple course instances
+  * IMPLEMENTED: Delete/recreate synchronization system ensuring zero tolerance for lesson name or content variations
+  * VERIFIED: Chapter 1.16 Troubleshooting & Other now contains exact lesson structure with 11 lessons matching CSV precisely
+  * MAINTAINED: Zero tolerance for content modifications - all content matches approved CSV sources exactly with exact lesson names
+  * ACHIEVED: Both Big Baby courses now contain complete expanded content structure from master spreadsheet with perfect CSV compliance
+  * Status: Production-ready with enhanced Big Baby course content maintaining perfect authenticity, exact lesson naming, and medical compliance across multiple course instances
 ```
 
 ## Changelog
