@@ -262,19 +262,35 @@ export async function executeDatabaseUpdate(approved: boolean): Promise<{success
     for (let index = 0; index < updatePlan.chapters.length; index++) {
       const chapterPlan = updatePlan.chapters[index];
       
-      // Create or update chapter
-      const [chapter] = await db.insert(courseChapters).values({
-        courseId: updatePlan.courseId,
-        title: chapterPlan.chapterName,
-        chapterNumber: chapterPlan.chapterNumber,
-        orderIndex: index + 1
-      }).onConflictDoUpdate({
-        target: [courseChapters.courseId, courseChapters.chapterNumber],
-        set: {
+      // Check if chapter already exists
+      const existingChapter = await db.select().from(courseChapters)
+        .where(and(
+          eq(courseChapters.courseId, updatePlan.courseId),
+          eq(courseChapters.chapterNumber, chapterPlan.chapterNumber)
+        ))
+        .limit(1);
+
+      let chapter;
+      if (existingChapter.length > 0) {
+        // Update existing chapter
+        [chapter] = await db.update(courseChapters)
+          .set({
+            title: chapterPlan.chapterName,
+            orderIndex: index + 1,
+            status: 'published'
+          })
+          .where(eq(courseChapters.id, existingChapter[0].id))
+          .returning();
+      } else {
+        // Create new chapter
+        [chapter] = await db.insert(courseChapters).values({
+          courseId: updatePlan.courseId,
           title: chapterPlan.chapterName,
-          orderIndex: index + 1
-        }
-      }).returning();
+          chapterNumber: chapterPlan.chapterNumber,
+          orderIndex: index + 1,
+          status: 'published'
+        }).returning();
+      }
       
       chaptersCreated++;
       
@@ -282,35 +298,57 @@ export async function executeDatabaseUpdate(approved: boolean): Promise<{success
       for (let lessonIndex = 0; lessonIndex < chapterPlan.lessons.length; lessonIndex++) {
         const lessonPlan = chapterPlan.lessons[lessonIndex];
         
-        // Create the lesson with description and basic info
-        const [lesson] = await db.insert(courseLessons).values({
-          courseId: updatePlan.courseId,
-          chapterId: chapter.id,
-          title: lessonPlan.matchedLessonTitle,
-          description: `Lesson content for ${lessonPlan.matchedLessonTitle}`,
-          content: lessonPlan.matchedContent,
-          orderIndex: lessonIndex + 1,
-          contentType: 'text',
-          status: 'published'
-        }).onConflictDoUpdate({
-          target: [courseLessons.chapterId, courseLessons.orderIndex],
-          set: {
+        // Check if lesson already exists
+        const existingLesson = await db.select().from(courseLessons)
+          .where(and(
+            eq(courseLessons.chapterId, chapter.id),
+            eq(courseLessons.orderIndex, lessonIndex + 1)
+          ))
+          .limit(1);
+
+        let lesson;
+        if (existingLesson.length > 0) {
+          // Update existing lesson
+          [lesson] = await db.update(courseLessons)
+            .set({
+              title: lessonPlan.matchedLessonTitle,
+              description: `Lesson content for ${lessonPlan.matchedLessonTitle}`,
+              content: lessonPlan.matchedContent,
+              status: 'published'
+            })
+            .where(eq(courseLessons.id, existingLesson[0].id))
+            .returning();
+        } else {
+          // Create new lesson
+          [lesson] = await db.insert(courseLessons).values({
+            courseId: updatePlan.courseId,
+            chapterId: chapter.id,
             title: lessonPlan.matchedLessonTitle,
+            description: `Lesson content for ${lessonPlan.matchedLessonTitle}`,
             content: lessonPlan.matchedContent,
+            orderIndex: lessonIndex + 1,
+            contentType: 'text',
             status: 'published'
-          }
-        }).returning();
+          }).returning();
+        }
         
         // Create detailed lesson content if we have rich content
         if (lessonPlan.matchedContent && lessonPlan.matchedContent.length > 100) {
-          await db.insert(lessonContent).values({
-            lessonId: lesson.id,
-            title: `${lessonPlan.matchedLessonTitle} - Main Content`,
-            description: `Detailed content for ${lessonPlan.matchedLessonTitle}`,
-            content: lessonPlan.matchedContent,
-            orderIndex: 1
-          }).onConflictDoNothing();
-          lessonContentCreated++;
+          // Check if lesson content already exists
+          const existingContent = await db.select().from(lessonContent)
+            .where(eq(lessonContent.lessonId, lesson.id))
+            .limit(1);
+
+          if (existingContent.length === 0) {
+            await db.insert(lessonContent).values({
+              lessonId: lesson.id,
+              title: `${lessonPlan.matchedLessonTitle} - Main Content`,
+              description: `Detailed content for ${lessonPlan.matchedLessonTitle}`,
+              content: lessonPlan.matchedContent,
+              orderIndex: 1
+            });
+            lessonContentCreated++;
+          }
         }
         
         lessonsCreated++;
