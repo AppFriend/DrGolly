@@ -270,6 +270,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Big Baby database integrity verification
+  app.get('/api/big-baby/database-status', async (req, res) => {
+    try {
+      console.log('📊 Checking Big Baby database integrity status...');
+      const { verifyDatabaseIntegrity } = await import('./bigBabyDatabaseBuilder');
+      const integrity = await verifyDatabaseIntegrity();
+      
+      res.json({
+        status: 'INTEGRITY_CHECK_COMPLETE',
+        databaseIntegrity: integrity,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error checking database integrity:', error);
+      res.status(500).json({ error: 'Database integrity check failed' });
+    }
+  });
+
   // Big Baby database update execution (requires approval)
   app.post('/api/big-baby/execute-database-update', async (req, res) => {
     try {

@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle, AlertTriangle, XCircle, Database, Eye, Play, RefreshCw } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Database, Eye, Play, RefreshCw, Shield, Loader2 } from 'lucide-react';
 
 interface VerificationItem {
   chapterName: string;
@@ -23,9 +23,19 @@ interface VerificationData {
   verificationTable: VerificationItem[];
 }
 
+interface DatabaseIntegrity {
+  courseExists: boolean;
+  totalChapters: number;
+  totalLessons: number;
+  totalLessonContent: number;
+  publishedStatus: boolean;
+}
+
 export default function BigBabyDatabaseManager() {
   const [verificationData, setVerificationData] = useState<VerificationData | null>(null);
+  const [databaseIntegrity, setDatabaseIntegrity] = useState<DatabaseIntegrity | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +55,24 @@ export default function BigBabyDatabaseManager() {
       setError('Error fetching verification data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkDatabaseStatus = async () => {
+    setCheckingStatus(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/big-baby/database-status');
+      if (response.ok) {
+        const data = await response.json();
+        setDatabaseIntegrity(data.databaseIntegrity);
+      } else {
+        setError('Failed to check database status');
+      }
+    } catch (err) {
+      setError('Error checking database status');
+    } finally {
+      setCheckingStatus(false);
     }
   };
 
@@ -78,6 +106,7 @@ export default function BigBabyDatabaseManager() {
 
   useEffect(() => {
     fetchVerificationTable();
+    checkDatabaseStatus();
   }, []);
 
   const getStatusIcon = (status: string) => {
@@ -129,6 +158,62 @@ export default function BigBabyDatabaseManager() {
             Verify and update the Big Baby Sleep Course structure from the read-only preview
           </p>
         </div>
+
+        {/* Database Status Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-600" />
+                Database Integrity Status
+              </CardTitle>
+              <button
+                onClick={checkDatabaseStatus}
+                disabled={checkingStatus}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                {checkingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {checkingStatus ? 'Checking...' : 'Check Status'}
+              </button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {databaseIntegrity ? (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-gray-50 p-3 rounded border">
+                  <div className="text-sm text-gray-600 mb-1">Course Status</div>
+                  <div className={`text-lg font-semibold flex items-center gap-1 ${databaseIntegrity.courseExists ? 'text-green-600' : 'text-red-600'}`}>
+                    {databaseIntegrity.courseExists ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                    {databaseIntegrity.courseExists ? 'Exists' : 'Missing'}
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded border">
+                  <div className="text-sm text-gray-600 mb-1">Chapters</div>
+                  <div className="text-lg font-semibold text-blue-600">{databaseIntegrity.totalChapters}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded border">
+                  <div className="text-sm text-gray-600 mb-1">Lessons</div>
+                  <div className="text-lg font-semibold text-purple-600">{databaseIntegrity.totalLessons}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded border">
+                  <div className="text-sm text-gray-600 mb-1">Content Items</div>
+                  <div className="text-lg font-semibold text-orange-600">{databaseIntegrity.totalLessonContent}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded border">
+                  <div className="text-sm text-gray-600 mb-1">Published</div>
+                  <div className={`text-lg font-semibold flex items-center gap-1 ${databaseIntegrity.publishedStatus ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {databaseIntegrity.publishedStatus ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                    {databaseIntegrity.publishedStatus ? 'Yes' : 'No'}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                Click "Check Status" to verify database integrity
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Status Cards */}
         {verificationData && (
