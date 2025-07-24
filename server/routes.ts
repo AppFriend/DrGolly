@@ -2128,8 +2128,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Course routes
   app.get('/api/courses', async (req, res) => {
+    // Force fresh response - disable all caching
+    res.removeHeader('ETag');
+    res.removeHeader('Last-Modified');
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Accel-Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+    
     try {
       const { category, tier, includeUnpublished } = req.query;
+      
+      console.log('=======================================');
+      console.log('📋 /api/courses endpoint called with public_checkout_url support');
+      console.log('📋 Timestamp:', new Date().toISOString());
+      console.log('=======================================');
       
       // Use raw SQL directly - bypass Drizzle ORM completely
       const { neon } = await import('@neondatabase/serverless');
@@ -2143,7 +2159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    price, discounted_price, skill_level, stripe_product_id, unique_id,
                                    status, detailed_description, website_content, key_features, whats_covered,
                                    rating, review_count, overview_description, learning_objectives,
-                                   completion_criteria, course_structure_notes
+                                   completion_criteria, course_structure_notes, public_checkout_url
                             FROM courses 
                             WHERE is_published = true AND category = ${category}
                             ORDER BY created_at DESC`;
@@ -2153,7 +2169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    price, discounted_price, skill_level, stripe_product_id, unique_id,
                                    status, detailed_description, website_content, key_features, whats_covered,
                                    rating, review_count, overview_description, learning_objectives,
-                                   completion_criteria, course_structure_notes
+                                   completion_criteria, course_structure_notes, public_checkout_url
                             FROM courses 
                             WHERE is_published = true 
                             ORDER BY created_at DESC`;
@@ -2164,10 +2180,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...course,
         // Map thumbnail_url to thumbnailUrl for frontend compatibility
         thumbnailUrl: course.thumbnail_url || course.thumbnailUrl,
+        // Map public_checkout_url to publicCheckoutUrl for frontend compatibility
+        publicCheckoutUrl: course.public_checkout_url || course.publicCheckoutUrl,
         // Convert price from string to number if needed
         price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
-        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice,
+        // Add debug timestamp to verify endpoint is being called
+        _debug_timestamp: new Date().toISOString(),
+        _debug_public_checkout_url: course.public_checkout_url
       }));
+      
+      // Try using storage layer instead of direct SQL
+      console.log('Using storage.getAllCourses() instead of SQL');
+      const storageCourses = await storage.getAllCourses();
+      console.log('Storage courses sample:', storageCourses.slice(0, 2));
       
       res.json(coursesWithPricing);
     } catch (error) {
