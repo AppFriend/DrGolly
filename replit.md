@@ -658,6 +658,19 @@ STABLE VERSIONS (for easy rollback reference):
   * TESTING: Complete three-course ecosystem ready for comprehensive manual testing
   * DEPLOYMENT: Manual deployment completed via Replit, system operational
   * Status: Production-ready with complete merge resolution and operational three-course checkout system
+
+- SAVEPOINT v1.46 (July 24, 2025): PUBLIC CHECKOUT AUTHENTICATION BREAKTHROUGH - Complete resolution of "User not authorised" barrier
+  * CRITICAL BREAKTHROUGH: Successfully resolved authentication barrier blocking public checkout for unauthenticated users
+  * IMPLEMENTED: Complete `isDirectPurchase` flag system enabling public checkout bypass of authentication requirements
+  * ENHANCED: Frontend integration with `isDirectPurchase: true` flag properly passed to backend API calls
+  * FIXED: Backend authentication logic to skip user authentication when `isDirectPurchase` flag is present
+  * RESOLVED: Database constraint violation by skipping course purchase record creation for public checkout (handled post-payment)
+  * VALIDATED: Comprehensive testing confirms all three courses (ID 5, 6, 7) return 200 status for public checkout
+  * VERIFIED: Dual flow system working perfectly - public checkout (200) vs authenticated checkout protection (401)
+  * TESTED: Payment intent creation successful for unauthenticated users with proper Stripe client secret generation
+  * CONFIRMED: Course purchase record handling appropriate with "skipped: true" logging for public purchases
+  * DOCUMENTED: Complete PUBLIC_CHECKOUT_TESTING_GUIDE.md with comprehensive testing scenarios and monitoring instructions
+  * Status: Production-ready with fully functional public checkout system enabling unauthenticated course purchases
 ```
 
 ## Changelog

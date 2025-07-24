@@ -95,7 +95,7 @@ function SimpleCardPayment({
     setIsProcessing(true);
     
     try {
-      // Create payment intent
+      // Create payment intent with isDirectPurchase flag for public checkout
       const response = await apiRequest('POST', '/api/create-course-payment', {
         courseId: course?.id,
         customerDetails: {
@@ -105,7 +105,8 @@ function SimpleCardPayment({
         },
         couponId: appliedCoupon?.id || '',
         currency,
-        amount: coursePrice
+        amount: coursePrice,
+        isDirectPurchase: true // This enables public checkout for unauthenticated users
       });
 
       if (!response.ok) {
@@ -389,11 +390,12 @@ export function PaymentForm({
   const handleCreatePayment = async (customerInfo: any) => {
     // Handle cart checkout vs direct purchase
     if (course && course.id) {
-      // Direct course purchase
+      // Direct course purchase - include isDirectPurchase flag for public checkout
       const response = await apiRequest('POST', '/api/create-course-payment', {
         courseId: course.id,
         customerDetails: customerInfo,
-        couponId: appliedCoupon?.id
+        couponId: appliedCoupon?.id,
+        isDirectPurchase: isDirectPurchase // This enables public checkout
       });
 
       if (!response.ok) {
