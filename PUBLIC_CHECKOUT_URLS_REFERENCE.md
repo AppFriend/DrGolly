@@ -9,9 +9,18 @@ This document provides the comprehensive list of public checkout URLs for all Dr
 
 | Course ID | Course Name | Age Range | Price | Public Checkout URL | Full URL |
 |-----------|-------------|-----------|-------|-------------------|----------|
+| 3 | Baby's First Foods | Solid Foods Guide | TBD | `/checkout/3` | `http://localhost:5000/checkout/3` |
 | 5 | Little Baby Sleep Program | 4-16 Weeks | $120.00 AUD | `/checkout/5` | `http://localhost:5000/checkout/5` |
 | 6 | Big Baby Sleep Program | 4-8 Months | $120.00 AUD | `/checkout/6` | `http://localhost:5000/checkout/6` |
 | 7 | Pre-Toddler Sleep Program | 8-12 Months | $120.00 AUD | `/checkout/7` | `http://localhost:5000/checkout/7` |
+| 8 | Toddler Sleep Program | 1-2 Years | $120.00 AUD | `/checkout/8` | `http://localhost:5000/checkout/8` |
+| 9 | Pre-School Sleep Program | 2-5 Years | $120.00 AUD | `/checkout/9` | `http://localhost:5000/checkout/9` |
+| 10 | Preparation for Newborns | Newborn Preparation | $120.00 AUD | `/checkout/10` | `http://localhost:5000/checkout/10` |
+| 11 | New Sibling Supplement | Sibling Addition | $25.00 AUD | `/checkout/11` | `http://localhost:5000/checkout/11` |
+| 12 | Twins Supplement | Twin Care | $25.00 AUD | `/checkout/12` | `http://localhost:5000/checkout/12` |
+| 13 | Toddler Toolkit | Toddler Development | $120.00 AUD | `/checkout/13` | `http://localhost:5000/checkout/13` |
+| 14 | Testing Allergens | Allergen Introduction | Free | `/checkout/14` | `http://localhost:5000/checkout/14` |
+| 15 | Big Baby: 4–8 Months | Sleep Guidance | TBD | `/checkout/15` | `http://localhost:5000/checkout/15` |
 
 ## 📚 BOOK CHECKOUT URLS
 
@@ -38,10 +47,19 @@ https://your-domain.com/checkout/book/2    # Dr Golly's Guide to Family Illness
 
 ### Development Testing URLs
 ```
-# Course Checkouts
+# Course Checkouts - All 12 Courses
+http://localhost:5000/checkout/3    # Baby's First Foods
 http://localhost:5000/checkout/5    # Little Baby Sleep Program
 http://localhost:5000/checkout/6    # Big Baby Sleep Program
 http://localhost:5000/checkout/7    # Pre-Toddler Sleep Program
+http://localhost:5000/checkout/8    # Toddler Sleep Program
+http://localhost:5000/checkout/9    # Pre-School Sleep Program
+http://localhost:5000/checkout/10   # Preparation for Newborns
+http://localhost:5000/checkout/11   # New Sibling Supplement
+http://localhost:5000/checkout/12   # Twins Supplement
+http://localhost:5000/checkout/13   # Toddler Toolkit
+http://localhost:5000/checkout/14   # Testing Allergens (Free)
+http://localhost:5000/checkout/15   # Big Baby: 4–8 Months
 
 # Book Checkouts
 http://localhost:5000/checkout/book/1    # Your Baby Doesn't Come with a Book
