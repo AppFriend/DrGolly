@@ -131,10 +131,26 @@ function groupByChapter(data: LessonData[]): ChapterData {
     orderedChapters[introChapter] = chapters[introChapter];
   }
   
-  // Add remaining chapters in alphabetical order
+  // Add remaining chapters in numerical order (1.1, 1.2, 1.3... 1.10, 1.11, 1.12)
   chapterNames
     .filter(name => name !== "Big Baby: 4-8 Months")
-    .sort()
+    .sort((a, b) => {
+      // Extract chapter numbers for proper numerical sorting
+      const getChapterNumber = (name: string): number => {
+        const match = name.match(/^(\d+)\.(\d+)/);
+        if (match) {
+          const major = parseInt(match[1]);
+          const minor = parseInt(match[2]);
+          return major * 100 + minor; // Convert to number for proper sorting (1.10 = 110, 1.2 = 102)
+        }
+        return 9999; // Non-numbered chapters go to end
+      };
+      
+      const aNum = getChapterNumber(a);
+      const bNum = getChapterNumber(b);
+      
+      return aNum - bNum;
+    })
     .forEach(chapterName => {
       orderedChapters[chapterName] = chapters[chapterName];
     });
