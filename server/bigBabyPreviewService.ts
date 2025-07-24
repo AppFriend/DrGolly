@@ -99,7 +99,7 @@ function parseApprovedCSV(): LessonData[] {
 }
 
 /**
- * Group lessons by chapter
+ * Group lessons by chapter with custom ordering
  */
 function groupByChapter(data: LessonData[]): ChapterData {
   const chapters: ChapterData = {};
@@ -112,7 +112,25 @@ function groupByChapter(data: LessonData[]): ChapterData {
     chapters[chapterName].push(item);
   });
   
-  return chapters;
+  // Custom ordering: "Big Baby: 4-8 Months" first, then rest alphabetically
+  const orderedChapters: ChapterData = {};
+  const chapterNames = Object.keys(chapters);
+  
+  // Add "Big Baby: 4-8 Months" first if it exists
+  const introChapter = chapterNames.find(name => name === "Big Baby: 4-8 Months");
+  if (introChapter) {
+    orderedChapters[introChapter] = chapters[introChapter];
+  }
+  
+  // Add remaining chapters in alphabetical order
+  chapterNames
+    .filter(name => name !== "Big Baby: 4-8 Months")
+    .sort()
+    .forEach(chapterName => {
+      orderedChapters[chapterName] = chapters[chapterName];
+    });
+  
+  return orderedChapters;
 }
 
 /**
