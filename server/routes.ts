@@ -6381,11 +6381,29 @@ Please contact the customer to confirm the appointment.
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log('Payment succeeded:', paymentIntent.id);
+        console.log('Payment intent metadata:', paymentIntent.metadata);
         
-        // Handle course purchases
+        // Handle existing course purchases in database
         const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
         if (purchase) {
           await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+          
+          // Send payment notification for database course purchases
+          try {
+            const user = await storage.getUser(purchase.userId);
+            const course = await storage.getCourse(purchase.courseId);
+            if (user && course) {
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `Single Course Purchase (${course.title})`,
+                paymentAmount: `$${(purchase.amount / 100).toFixed(2)} ${purchase.currency.toUpperCase()}`
+              });
+              console.log('Payment notification sent for database course purchase');
+            }
+          } catch (error) {
+            console.error('Failed to send payment notification for course purchase:', error);
+          }
           
           // Sync course purchase to Klaviyo
           try {
@@ -6395,6 +6413,53 @@ Please contact the customer to confirm the appointment.
             }
           } catch (error) {
             console.error("Failed to sync course purchase to Klaviyo:", error);
+          }
+        } else {
+          // Handle public checkout payments (no pre-existing database record)
+          console.log('No existing course purchase found - checking for public checkout payment');
+          
+          // Check if this is a public checkout payment by examining metadata
+          if (paymentIntent.metadata && paymentIntent.metadata.courseName) {
+            console.log('Public checkout payment detected:', {
+              courseId: paymentIntent.metadata.courseId,
+              courseName: paymentIntent.metadata.courseName,
+              customerEmail: paymentIntent.metadata.customerEmail,
+              customerName: paymentIntent.metadata.customerName,
+              originalAmount: paymentIntent.metadata.originalAmount,
+              finalAmount: paymentIntent.metadata.finalAmount,
+              discountAmount: paymentIntent.metadata.discountAmount,
+              couponName: paymentIntent.metadata.couponName
+            });
+            
+            // Send payment notification for public checkout
+            try {
+              const originalAmount = parseInt(paymentIntent.metadata.originalAmount) || paymentIntent.amount;
+              const finalAmount = parseInt(paymentIntent.metadata.finalAmount) || paymentIntent.amount;
+              const discountAmount = originalAmount - finalAmount;
+              const couponName = paymentIntent.metadata.couponName;
+              const currency = paymentIntent.currency.toUpperCase();
+              
+              await slackNotificationService.sendPaymentNotification({
+                name: paymentIntent.metadata.customerName || 'Public Checkout Customer',
+                email: paymentIntent.metadata.customerEmail || 'unknown@email.com',
+                purchaseDetails: `Single Course Purchase (${paymentIntent.metadata.courseName})`,
+                paymentAmount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
+                promotionalCode: couponName && couponName !== 'none' ? couponName : undefined,
+                discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : undefined
+              });
+              
+              console.log('Payment notification sent for public checkout:', {
+                email: paymentIntent.metadata.customerEmail,
+                amount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
+                course: paymentIntent.metadata.courseName,
+                coupon: couponName,
+                discount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : 'None'
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for public checkout:', error);
+            }
+          } else {
+            console.log('Payment intent has no course metadata - likely not a course purchase');
           }
         }
         break;
