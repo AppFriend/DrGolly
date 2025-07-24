@@ -51,7 +51,7 @@ async function updateBigBabyCourseFromMaster() {
       console.log(`\n📁 Processing: ${chapterName} -> ${lessonName}`);
       
       try {
-        // Find or create chapter in Big Baby course (course ID = 15)
+        // Find or create chapter in Big Baby Sleep Program (course ID = 6)
         const chapterId = await findOrCreateChapter(chapterName);
         
         // Find or create lesson
@@ -88,11 +88,11 @@ async function updateBigBabyCourseFromMaster() {
 }
 
 async function findOrCreateChapter(chapterName: string): Promise<number> {
-  // Look for existing chapter in Big Baby course (courseId = 15)
+  // Look for existing chapter in Big Baby Sleep Program (courseId = 6)
   const existingChapter = await db.select()
     .from(courseChapters)
     .where(and(
-      eq(courseChapters.courseId, 15),
+      eq(courseChapters.courseId, 6),
       eq(courseChapters.title, chapterName)
     ));
   
@@ -103,7 +103,7 @@ async function findOrCreateChapter(chapterName: string): Promise<number> {
   // Create new chapter
   const [newChapter] = await db.insert(courseChapters)
     .values({
-      courseId: 15,
+      courseId: 6,
       title: chapterName,
       chapterNumber: Date.now().toString(), // Temporary, will be updated with proper numbering
       orderIndex: 999 // Temporary, will be updated with proper ordering
@@ -140,7 +140,7 @@ async function findOrCreateLesson(chapterId: number, lessonName: string, lessonC
   // Create new lesson
   await db.insert(courseLessons)
     .values({
-      courseId: 15,
+      courseId: 6,
       chapterId: chapterId,
       title: lessonName,
       content: lessonContent,

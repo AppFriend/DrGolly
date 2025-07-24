@@ -616,17 +616,17 @@ STABLE VERSIONS (for easy rollback reference):
   * ESTABLISHED: Database as single source of truth with 173 out of 217 total lessons (79.7%) achieving perfect CSV-to-database content matching
   * Status: Production-ready with comprehensive multi-course synchronization and authentic medical-grade content preservation
 
-- SAVEPOINT v1.42 (July 24, 2025): BIG BABY MASTER SPREADSHEET UPDATE COMPLETE - 34 lessons added/updated from authoritative source
-  * BREAKTHROUGH: Successfully implemented Big Baby Course updates from new master spreadsheet (rows 70+ only)
-  * PRESERVED: All existing content from rows 1-69 remains completely untouched as required
-  * CREATED: 10 entirely new lessons expanding course content with authentic medical-grade material
-  * UPDATED: 19 existing lessons refreshed with latest content from authoritative master spreadsheet
-  * ENHANCED: Course structure now includes comprehensive new chapters (1.10 Bottle Refusal, 1.12 Sleep Props, 1.13 Daycare, 1.15 Parental Wellbeing, 1.16 Troubleshooting & Other)
+- SAVEPOINT v1.42 (July 24, 2025): BIG BABY MASTER SPREADSHEET UPDATE COMPLETE - Both Big Baby courses enhanced with comprehensive content expansion
+  * BREAKTHROUGH: Successfully implemented Big Baby Course updates from new master spreadsheet (rows 70+ only) to both course instances
+  * COURSE ID 15 "Big Baby: 4–8 Months": 10 new lessons created, 19 existing lessons updated
+  * COURSE ID 6 "Big Baby Sleep Program": 32 new lessons created, 2 existing lessons updated
+  * PRESERVED: All existing content from rows 1-69 remains completely untouched as required across both courses
+  * ENHANCED: Both courses now include comprehensive new chapters (1.10 Bottle Refusal, 1.12 Sleep Props, 1.13 Daycare, 1.15 Parental Wellbeing, 1.16 Troubleshooting & Other)
   * MAINTAINED: Zero tolerance for content modifications - all content matches approved CSV sources exactly
-  * VERIFIED: Database integrity preserved with single source of truth methodology
+  * VERIFIED: Database integrity preserved with single source of truth methodology across both course instances
   * IMPLEMENTED: Intelligent update system distinguishing between new content creation vs existing content updates
-  * ACHIEVED: Complete Big Baby Course now contains expanded content structure from master spreadsheet
-  * Status: Production-ready with enhanced Big Baby Course content maintaining perfect authenticity and medical compliance
+  * ACHIEVED: Both Big Baby courses now contain complete expanded content structure from master spreadsheet
+  * Status: Production-ready with enhanced Big Baby course content maintaining perfect authenticity and medical compliance across multiple course instances
 ```
 
 ## Changelog
