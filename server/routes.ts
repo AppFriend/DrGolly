@@ -6417,49 +6417,118 @@ Please contact the customer to confirm the appointment.
         } else {
           // Handle public checkout payments (no pre-existing database record)
           console.log('No existing course purchase found - checking for public checkout payment');
+          console.log('Payment intent metadata:', paymentIntent.metadata);
           
-          // Check if this is a public checkout payment by examining metadata
-          if (paymentIntent.metadata && paymentIntent.metadata.courseName) {
-            console.log('Public checkout payment detected:', {
-              courseId: paymentIntent.metadata.courseId,
-              courseName: paymentIntent.metadata.courseName,
-              customerEmail: paymentIntent.metadata.customerEmail,
-              customerName: paymentIntent.metadata.customerName,
-              originalAmount: paymentIntent.metadata.originalAmount,
-              finalAmount: paymentIntent.metadata.finalAmount,
-              discountAmount: paymentIntent.metadata.discountAmount,
-              couponName: paymentIntent.metadata.couponName
-            });
+          // Check if this is a course or book purchase by examining metadata
+          const isPublicPurchase = paymentIntent.metadata && (
+            paymentIntent.metadata.courseName || // Big Baby specific format
+            (paymentIntent.metadata.productType === 'course') || // Main course endpoint format
+            (paymentIntent.metadata.productType === 'book') || // Book purchase format
+            paymentIntent.metadata.purchaseType === 'public_course' // Legacy public purchase format
+          );
+          
+          if (isPublicPurchase) {
+            console.log('Public checkout payment detected with metadata:', paymentIntent.metadata);
+            
+            // Extract customer and product information from metadata (handle multiple formats)
+            let customerName = '';
+            let customerEmail = '';
+            let productName = '';
+            let originalAmount = paymentIntent.amount;
+            let finalAmount = paymentIntent.amount;
+            let couponName = '';
+            
+            // Handle different metadata formats
+            if (paymentIntent.metadata.courseName) {
+              // Big Baby specific format
+              customerName = paymentIntent.metadata.customerName || '';
+              customerEmail = paymentIntent.metadata.customerEmail || '';
+              productName = paymentIntent.metadata.courseName;
+              originalAmount = parseInt(paymentIntent.metadata.originalAmount) || paymentIntent.amount;
+              finalAmount = parseInt(paymentIntent.metadata.finalAmount) || paymentIntent.amount;
+              couponName = paymentIntent.metadata.couponName || '';
+            } else if (paymentIntent.metadata.productType === 'course') {
+              // Main course endpoint format
+              customerName = paymentIntent.metadata.customerName || paymentIntent.metadata.userEmail || '';
+              customerEmail = paymentIntent.metadata.userEmail || paymentIntent.metadata.customerEmail || '';
+              productName = paymentIntent.description?.replace('Course Purchase: ', '') || `Course ${paymentIntent.metadata.courseId}`;
+              originalAmount = parseInt(paymentIntent.metadata.originalPrice) * 100 || paymentIntent.amount;
+              finalAmount = parseInt(paymentIntent.metadata.discountedPrice) * 100 || paymentIntent.amount;
+              couponName = paymentIntent.metadata.couponName || '';
+            } else if (paymentIntent.metadata.productType === 'book') {
+              // Book purchase format
+              customerName = paymentIntent.metadata.customerName || paymentIntent.metadata.userEmail || '';
+              customerEmail = paymentIntent.metadata.userEmail || paymentIntent.metadata.customerEmail || '';
+              productName = paymentIntent.description?.replace('Book Purchase: ', '') || `Book ${paymentIntent.metadata.bookId}`;
+              originalAmount = parseInt(paymentIntent.metadata.originalPrice) * 100 || paymentIntent.amount;
+              finalAmount = parseInt(paymentIntent.metadata.discountedPrice) * 100 || paymentIntent.amount;
+              couponName = paymentIntent.metadata.couponName || '';
+            }
+            
+            // Calculate discount amount
+            const discountAmount = originalAmount - finalAmount;
+            const currency = paymentIntent.currency.toUpperCase();
+            
+            // Determine product type for notification
+            let purchaseType = 'Single Course Purchase';
+            if (paymentIntent.metadata.productType === 'book') {
+              purchaseType = 'Single Book Purchase';
+            }
             
             // Send payment notification for public checkout
             try {
-              const originalAmount = parseInt(paymentIntent.metadata.originalAmount) || paymentIntent.amount;
-              const finalAmount = parseInt(paymentIntent.metadata.finalAmount) || paymentIntent.amount;
-              const discountAmount = originalAmount - finalAmount;
-              const couponName = paymentIntent.metadata.couponName;
-              const currency = paymentIntent.currency.toUpperCase();
-              
               await slackNotificationService.sendPaymentNotification({
-                name: paymentIntent.metadata.customerName || 'Public Checkout Customer',
-                email: paymentIntent.metadata.customerEmail || 'unknown@email.com',
-                purchaseDetails: `Single Course Purchase (${paymentIntent.metadata.courseName})`,
+                name: customerName || 'Public Checkout Customer',
+                email: customerEmail || 'unknown@email.com',
+                purchaseDetails: `${purchaseType} (${productName})`,
                 paymentAmount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
                 promotionalCode: couponName && couponName !== 'none' ? couponName : undefined,
                 discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : undefined
               });
               
               console.log('Payment notification sent for public checkout:', {
-                email: paymentIntent.metadata.customerEmail,
+                type: paymentIntent.metadata.productType || 'course',
+                email: customerEmail,
                 amount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
-                course: paymentIntent.metadata.courseName,
-                coupon: couponName,
+                product: productName,
+                coupon: couponName || 'None',
                 discount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : 'None'
               });
             } catch (error) {
               console.error('Failed to send payment notification for public checkout:', error);
             }
+            
+            // Sync public checkout purchase to Klaviyo
+            try {
+              if (customerEmail && paymentIntent.metadata.productType === 'course') {
+                const courseId = paymentIntent.metadata.courseId;
+                // Create a mock purchase object for Klaviyo sync
+                const mockPurchase = {
+                  id: paymentIntent.id,
+                  courseId: parseInt(courseId),
+                  amount: finalAmount,
+                  currency: currency.toLowerCase(),
+                  status: 'completed',
+                  createdAt: new Date(),
+                  paymentIntentId: paymentIntent.id
+                };
+                
+                // Create mock user object from payment metadata
+                const mockUser = {
+                  email: customerEmail,
+                  firstName: customerName.split(' ')[0] || 'Customer',
+                  lastName: customerName.split(' ').slice(1).join(' ') || '',
+                  signupSource: 'public checkout web>app'
+                };
+                
+                await klaviyoService.syncCoursePurchaseToKlaviyo(mockUser, mockPurchase);
+                console.log('Public checkout purchase synced to Klaviyo:', customerEmail);
+              }
+            } catch (error) {
+              console.error('Failed to sync public checkout purchase to Klaviyo:', error);
+            }
           } else {
-            console.log('Payment intent has no course metadata - likely not a course purchase');
+            console.log('Payment intent has no course/book metadata - likely not a product purchase');
           }
         }
         break;
