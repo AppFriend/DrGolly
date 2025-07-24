@@ -52,6 +52,7 @@ import AuthTestPage from "@/pages/auth-test";
 import TestCheckout from "@/pages/test-checkout";
 import ProfileCompletion from "@/pages/profile-completion";
 import BigBabyPreview from "@/pages/big-baby-preview";
+import BigBabyDatabaseManager from "@/pages/big-baby-database-manager";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -113,6 +114,7 @@ function AuthenticatedApp() {
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/big-baby-preview" component={BigBabyPreview} />
+        <Route path="/big-baby-database-manager" component={BigBabyDatabaseManager} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}

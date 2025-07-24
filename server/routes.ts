@@ -249,6 +249,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Big Baby database verification table
+  app.get('/api/big-baby/verification-table', async (req, res) => {
+    try {
+      console.log('📋 Generating verification table for Big Baby course structure...');
+      const { generateVerificationTable } = await import('./bigBabyDatabaseBuilder');
+      const verificationTable = await generateVerificationTable();
+      
+      res.json({
+        status: 'VERIFICATION_READY',
+        totalLessons: verificationTable.length,
+        matchedLessons: verificationTable.filter(item => item.status === 'MATCHED').length,
+        unmatchedLessons: verificationTable.filter(item => item.status === 'NO_MATCH').length,
+        duplicateLessons: verificationTable.filter(item => item.status === 'DUPLICATE').length,
+        verificationTable
+      });
+    } catch (error) {
+      console.error('❌ Error generating verification table:', error);
+      res.status(500).json({ error: 'Failed to generate verification table' });
+    }
+  });
+
+  // Big Baby database update execution (requires approval)
+  app.post('/api/big-baby/execute-database-update', async (req, res) => {
+    try {
+      const { approved } = req.body;
+      
+      if (!approved) {
+        return res.status(400).json({ 
+          error: 'Database update requires explicit approval',
+          message: 'Set approved: true to execute database update'
+        });
+      }
+      
+      console.log('🚀 Executing approved Big Baby database update...');
+      const { executeDatabaseUpdate } = await import('./bigBabyDatabaseBuilder');
+      const result = await executeDatabaseUpdate(approved);
+      
+      if (result.success) {
+        res.json({
+          status: 'UPDATE_COMPLETED',
+          message: result.message,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(500).json({
+          status: 'UPDATE_FAILED',
+          error: result.message
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error executing database update:', error);
+      res.status(500).json({ error: 'Database update execution failed' });
+    }
+  });
+
   // Test endpoint for Big Baby payment flow
   app.post('/api/test/big-baby-payment', async (req, res) => {
     try {
