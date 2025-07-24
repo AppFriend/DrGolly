@@ -6381,11 +6381,29 @@ Please contact the customer to confirm the appointment.
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log('Payment succeeded:', paymentIntent.id);
+        console.log('Payment intent metadata:', paymentIntent.metadata);
         
-        // Handle course purchases
+        // Handle existing course purchases in database
         const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
         if (purchase) {
           await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
+          
+          // Send payment notification for database course purchases
+          try {
+            const user = await storage.getUser(purchase.userId);
+            const course = await storage.getCourse(purchase.courseId);
+            if (user && course) {
+              await slackNotificationService.sendPaymentNotification({
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                purchaseDetails: `Single Course Purchase (${course.title})`,
+                paymentAmount: `$${(purchase.amount / 100).toFixed(2)} ${purchase.currency.toUpperCase()}`
+              });
+              console.log('Payment notification sent for database course purchase');
+            }
+          } catch (error) {
+            console.error('Failed to send payment notification for course purchase:', error);
+          }
           
           // Sync course purchase to Klaviyo
           try {
@@ -6395,6 +6413,122 @@ Please contact the customer to confirm the appointment.
             }
           } catch (error) {
             console.error("Failed to sync course purchase to Klaviyo:", error);
+          }
+        } else {
+          // Handle public checkout payments (no pre-existing database record)
+          console.log('No existing course purchase found - checking for public checkout payment');
+          console.log('Payment intent metadata:', paymentIntent.metadata);
+          
+          // Check if this is a course or book purchase by examining metadata
+          const isPublicPurchase = paymentIntent.metadata && (
+            paymentIntent.metadata.courseName || // Big Baby specific format
+            (paymentIntent.metadata.productType === 'course') || // Main course endpoint format
+            (paymentIntent.metadata.productType === 'book') || // Book purchase format
+            paymentIntent.metadata.purchaseType === 'public_course' // Legacy public purchase format
+          );
+          
+          if (isPublicPurchase) {
+            console.log('Public checkout payment detected with metadata:', paymentIntent.metadata);
+            
+            // Extract customer and product information from metadata (handle multiple formats)
+            let customerName = '';
+            let customerEmail = '';
+            let productName = '';
+            let originalAmount = paymentIntent.amount;
+            let finalAmount = paymentIntent.amount;
+            let couponName = '';
+            
+            // Handle different metadata formats
+            if (paymentIntent.metadata.courseName) {
+              // Big Baby specific format
+              customerName = paymentIntent.metadata.customerName || '';
+              customerEmail = paymentIntent.metadata.customerEmail || '';
+              productName = paymentIntent.metadata.courseName;
+              originalAmount = parseInt(paymentIntent.metadata.originalAmount) || paymentIntent.amount;
+              finalAmount = parseInt(paymentIntent.metadata.finalAmount) || paymentIntent.amount;
+              couponName = paymentIntent.metadata.couponName || '';
+            } else if (paymentIntent.metadata.productType === 'course') {
+              // Main course endpoint format
+              customerName = paymentIntent.metadata.customerName || paymentIntent.metadata.userEmail || '';
+              customerEmail = paymentIntent.metadata.userEmail || paymentIntent.metadata.customerEmail || '';
+              productName = paymentIntent.description?.replace('Course Purchase: ', '') || `Course ${paymentIntent.metadata.courseId}`;
+              originalAmount = parseInt(paymentIntent.metadata.originalPrice) * 100 || paymentIntent.amount;
+              finalAmount = parseInt(paymentIntent.metadata.discountedPrice) * 100 || paymentIntent.amount;
+              couponName = paymentIntent.metadata.couponName || '';
+            } else if (paymentIntent.metadata.productType === 'book') {
+              // Book purchase format
+              customerName = paymentIntent.metadata.customerName || paymentIntent.metadata.userEmail || '';
+              customerEmail = paymentIntent.metadata.userEmail || paymentIntent.metadata.customerEmail || '';
+              productName = paymentIntent.description?.replace('Book Purchase: ', '') || `Book ${paymentIntent.metadata.bookId}`;
+              originalAmount = parseInt(paymentIntent.metadata.originalPrice) * 100 || paymentIntent.amount;
+              finalAmount = parseInt(paymentIntent.metadata.discountedPrice) * 100 || paymentIntent.amount;
+              couponName = paymentIntent.metadata.couponName || '';
+            }
+            
+            // Calculate discount amount
+            const discountAmount = originalAmount - finalAmount;
+            const currency = paymentIntent.currency.toUpperCase();
+            
+            // Determine product type for notification
+            let purchaseType = 'Single Course Purchase';
+            if (paymentIntent.metadata.productType === 'book') {
+              purchaseType = 'Single Book Purchase';
+            }
+            
+            // Send payment notification for public checkout
+            try {
+              await slackNotificationService.sendPaymentNotification({
+                name: customerName || 'Public Checkout Customer',
+                email: customerEmail || 'unknown@email.com',
+                purchaseDetails: `${purchaseType} (${productName})`,
+                paymentAmount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
+                promotionalCode: couponName && couponName !== 'none' ? couponName : undefined,
+                discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : undefined
+              });
+              
+              console.log('Payment notification sent for public checkout:', {
+                type: paymentIntent.metadata.productType || 'course',
+                email: customerEmail,
+                amount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
+                product: productName,
+                coupon: couponName || 'None',
+                discount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : 'None'
+              });
+            } catch (error) {
+              console.error('Failed to send payment notification for public checkout:', error);
+            }
+            
+            // Sync public checkout purchase to Klaviyo
+            try {
+              if (customerEmail && paymentIntent.metadata.productType === 'course') {
+                const courseId = paymentIntent.metadata.courseId;
+                // Create a mock purchase object for Klaviyo sync
+                const mockPurchase = {
+                  id: paymentIntent.id,
+                  courseId: parseInt(courseId),
+                  amount: finalAmount,
+                  currency: currency.toLowerCase(),
+                  status: 'completed',
+                  createdAt: new Date(),
+                  paymentIntentId: paymentIntent.id
+                };
+                
+                // Create mock user object from payment metadata
+                const mockUser = {
+                  email: customerEmail,
+                  firstName: customerName.split(' ')[0] || 'Customer',
+                  lastName: customerName.split(' ').slice(1).join(' ') || '',
+                  signupSource: 'public checkout web>app'
+                };
+                
+                await klaviyoService.syncCoursePurchaseToKlaviyo(mockUser, mockPurchase);
+                console.log('Public checkout purchase synced to Klaviyo:', customerEmail);
+              }
+            } catch (error) {
+              console.error('Failed to sync public checkout purchase to Klaviyo:', error);
+            }
+          } else {
+            console.log('Payment intent has no course/book metadata - likely not a product purchase');
           }
         }
         break;

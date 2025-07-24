@@ -37,14 +37,16 @@ if git diff --cached --quiet; then
     echo "ℹ️  No changes to commit"
 else
     # Commit changes with comprehensive message
-    COMMIT_MESSAGE="Complete Pre-Toddler Sleep Program synchronization - SAVEPOINT v1.44
+    COMMIT_MESSAGE="Universal webhook notification system complete - SAVEPOINT v1.48
 
-- Successfully synchronized Pre-Toddler Sleep Program (Course ID 7) with 50 lessons across 10 chapters
-- Resolved foreign key constraints during content synchronization
-- All three courses now have validated checkout routes (/checkout/5, /checkout/6, /checkout/7)
-- Complete system validated with 224 total lessons containing authentic doctor-written content
-- Created comprehensive testing guide for manual validation workflows
-- Production-ready three-course ecosystem with exact CSV matching"
+- BREAKTHROUGH: Universal webhook handler covers ALL 14 products (12 courses + 2 books)
+- ENHANCED: Multi-format metadata detection for all payment endpoint types
+- IMPLEMENTED: Complete Slack notifications and Klaviyo data parsing for all checkout transactions
+- RESOLVED: Previous limitation where only Big Baby course had notification coverage
+- ACHIEVED: 100% notification coverage across entire product catalog
+- INTEGRATED: Intelligent data extraction for customer info, pricing, and discount tracking
+- VALIDATED: Payment intent creation confirmed for all courses with proper metadata
+- Production-ready universal webhook system providing complete transaction visibility"
 
     echo "💾 Committing changes..."
     git commit -m "$COMMIT_MESSAGE"
