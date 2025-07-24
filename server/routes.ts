@@ -48,6 +48,7 @@ import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
+import { getBigBabyPreviewData } from "./bigBabyPreviewService";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -231,6 +232,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to verify routing
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Test endpoint working' });
+  });
+
+  // Big Baby course preview data endpoint - READ-ONLY
+  app.get('/api/big-baby/preview-data', (req, res) => {
+    try {
+      console.log('🔍 Big Baby preview data requested');
+      const previewData = getBigBabyPreviewData();
+      res.json(previewData);
+    } catch (error) {
+      console.error('❌ Error generating Big Baby preview data:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate preview data',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   });
 
   // Test endpoint for Big Baby payment flow
