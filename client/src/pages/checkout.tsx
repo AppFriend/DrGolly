@@ -877,12 +877,12 @@ export default function Checkout() {
         </div>
       </div>
 
-      <div className="p-4 max-w-6xl mx-auto">
-        <div className="lg:grid lg:grid-cols-2 lg:gap-8">
+      <div className="p-4 max-w-6xl mx-auto checkout-desktop-container">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-8 checkout-desktop-wrapper">
           {/* Left Column - Your Details & Payment */}
-          <div className="space-y-4">
+          <div className="space-y-4 checkout-desktop-form">
             {/* Your Details Section */}
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white rounded-lg p-4 checkout-desktop-section">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">CONFIRM YOUR DETAILS</h2>
               
               <div className="space-y-3">
@@ -921,7 +921,7 @@ export default function Checkout() {
             </div>
 
             {/* Your Order Section */}
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white rounded-lg p-4 checkout-desktop-section">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-[#6B9CA3]">YOUR ORDER - {currencySymbol}{finalPrice.toFixed(2)}</h2>
                 <ChevronUp className="h-5 w-5" />
@@ -1054,7 +1054,7 @@ export default function Checkout() {
             </div>
 
             {/* Payment Section */}
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white rounded-lg p-4 checkout-desktop-section">
               <h2 className="text-lg font-semibold mb-4 text-[#6B9CA3]">PAYMENT</h2>
               {/* Show loading only for direct purchase when course is loading */}
               {isDirectPurchase && courseLoading ? (
@@ -1080,14 +1080,64 @@ export default function Checkout() {
 
           </div>
 
-          {/* Right Column - Empty on desktop or additional content */}
-          <div className="space-y-4 hidden lg:block">
-            {/* This column can be used for additional content or left empty */}
+          {/* Right Column - Order Summary & Trust Signals */}
+          <div className="space-y-4 hidden lg:block checkout-desktop-summary">
+            {/* Trust Signals */}
+            <div className="bg-white rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">SECURE CHECKOUT</h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <Shield className="h-5 w-5 text-green-500" />
+                  <span className="text-sm">SSL Encrypted Secure Payment</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Users className="h-5 w-5 text-blue-500" />
+                  <span className="text-sm">Trusted by 17,000+ parents</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Clock className="h-5 w-5 text-purple-500" />
+                  <span className="text-sm">Instant access after purchase</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Award className="h-5 w-5 text-yellow-500" />
+                  <span className="text-sm">30-day money-back guarantee</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Methods */}
+            <div className="bg-white rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">ACCEPTED PAYMENT METHODS</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center justify-center p-2 border rounded">
+                  <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" className="h-6" />
+                </div>
+                <div className="flex items-center justify-center p-2 border rounded">
+                  <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" className="h-6" />
+                </div>
+                <div className="flex items-center justify-center p-2 border rounded">
+                  <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a0aae7eba.svg" alt="Amex" className="h-6" />
+                </div>
+                <div className="flex items-center justify-center p-2 border rounded">
+                  <img src={appleLogo} alt="Apple Pay" className="h-6" />
+                </div>
+              </div>
+            </div>
+
+            {/* Support Contact */}
+            <div className="bg-white rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4 text-[#6B9CA3]">NEED HELP?</h3>
+              <div className="space-y-2 text-sm">
+                <p>Questions about your order?</p>
+                <p className="text-[#095D66] font-medium">support@drgolly.com</p>
+                <p className="text-gray-600">We respond within 24 hours</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Money Back Guarantee */}
-        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 mb-4 border border-teal-100">
+        {/* Money Back Guarantee - Mobile Only */}
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 mb-4 border border-teal-100 lg:hidden">
           <div className="flex items-center space-x-3">
             <img src={moneyBackGuarantee} alt="30 Days Money Back Guarantee" className="h-12 w-12" />
             <div>
@@ -1097,8 +1147,8 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Reviews Section */}
-        <div className="bg-white rounded-lg p-4 mb-4">
+        {/* Reviews Section - Mobile Only */}
+        <div className="bg-white rounded-lg p-4 mb-4 lg:hidden">
           <h3 className="text-xl font-semibold mb-4 text-center">Let customers speak for us</h3>
           
           <div className="flex items-center space-x-4 mb-4">
@@ -1151,8 +1201,8 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Footer Links */}
-        <div className="bg-white rounded-lg p-4 mb-4">
+        {/* Footer Links - Mobile Only */}
+        <div className="bg-white rounded-lg p-4 mb-4 lg:hidden">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="space-y-2">
               <a href="/contact" className="text-[#6B9CA3] hover:underline block">Contact & Support</a>

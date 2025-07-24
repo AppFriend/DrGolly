@@ -1,0 +1,76 @@
+Desktop Viewport Optimisation for Public Checkout Page (No Functional Changes)
+
+The checkout functionality is confirmed working as expected across public flows (unauthenticated and authenticated), and it performs correctly on mobile and small-to-medium screen sizes. This prompt is strictly to add screen responsiveness improvements for large desktop displays (e.g. 27" iMac), while protecting all existing functionality and mobile styles.
+
+Objective
+Enhance the layout of the public checkout page on large screens (width ≥ 1440px) for improved readability and spatial efficiency, without changing:
+
+Any backend or frontend functionality
+
+Stripe integration
+
+Checkout behaviour
+
+Mobile or tablet responsiveness
+
+Instructions
+Media Query Targeting Large Screens:
+
+Add a responsive media query for screens min-width: 1440px or larger.
+
+Target only desktop-specific containers and paddings.
+
+Avoid using fixed widths or heights that could break smaller layouts.
+
+Checkout Container Adjustments:
+
+Introduce a max-width (e.g. 1100px–1200px) to the main checkout wrapper.
+
+Centre the checkout container horizontally using margin: 0 auto.
+
+Add generous horizontal padding (e.g. 2rem–4rem) for visual comfort.
+
+Column Expansion (Optional):
+
+If the design is split into two panels (e.g. form left, order summary right), consider increasing the space between them (gap: 2rem–3rem) for improved balance.
+
+Ensure No Impact On:
+
+Functionality of the checkout process
+
+Mobile-first styles or logic
+
+Form submission, payment button behaviour, or redirect logic
+
+Example CSS (for guidance only, do not enforce blindly)
+css
+Copy
+Edit
+@media screen and (min-width: 1440px) {
+  .checkout-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 4rem;
+    display: flex;
+    gap: 3rem;
+    align-items: flex-start;
+  }
+
+  .checkout-form,
+  .checkout-summary {
+    flex: 1;
+  }
+}
+Notes
+Do not modify or wrap elements in new divs unless absolutely necessary.
+
+Test thoroughly on:
+
+Mobile (≤768px)
+
+Tablet (768–1024px)
+
+Standard desktop (1024–1440px)
+
+Large desktop (1440px+)
+
