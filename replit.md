@@ -671,6 +671,16 @@ STABLE VERSIONS (for easy rollback reference):
   * CONFIRMED: Course purchase record handling appropriate with "skipped: true" logging for public purchases
   * DOCUMENTED: Complete PUBLIC_CHECKOUT_TESTING_GUIDE.md with comprehensive testing scenarios and monitoring instructions
   * Status: Production-ready with fully functional public checkout system enabling unauthenticated course purchases
+
+- SAVEPOINT v1.47 (July 24, 2025): STABLE CHECKOUT - 24th JULY after Public Checkout Changes. Pre-Desktop Optimisation
+  * COMPREHENSIVE: Complete public checkout system with all 14 products (12 courses + 2 books) fully operational
+  * DATABASE INTEGRATION: All public_checkout_url values stored in database across courses and shopping_products tables
+  * COMPLETE PRODUCT COVERAGE: Extended checkout URLs to all course IDs (3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15) and books (1, 2)
+  * VALIDATED: All 14 checkout URLs tested and returning 200 status codes for unauthenticated access
+  * DOCUMENTED: Complete PUBLIC_CHECKOUT_URLS_REFERENCE.md with comprehensive product table and database storage confirmation
+  * VERIFIED: Database storage in courses.public_checkout_url (VARCHAR unlimited) and shopping_products.public_checkout_url (VARCHAR 255)
+  * READY: System prepared for desktop optimization work with stable mobile-first checkout experience as foundation
+  * Status: Production-ready complete public checkout ecosystem - Pre-desktop optimization stable checkpoint
 ```
 
 ## Changelog
