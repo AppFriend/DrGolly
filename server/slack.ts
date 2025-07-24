@@ -179,15 +179,17 @@ export class SlackNotificationService {
     discountAmount?: string;
   }): Promise<boolean> {
     try {
+      console.log('Slack payment notification called with:', JSON.stringify(paymentData, null, 2));
+      
       // Determine the header title based on purchase details
       let headerTitle = '💰 Payment Transaction';
-      if (paymentData.purchaseDetails.includes('Single Course Purchase')) {
+      if (paymentData.purchaseDetails && paymentData.purchaseDetails.includes('Single Course Purchase')) {
         headerTitle = '💰 Single Course Purchase';
-      } else if (paymentData.purchaseDetails.includes('→ Gold Plan Upgrade')) {
+      } else if (paymentData.purchaseDetails && paymentData.purchaseDetails.includes('→ Gold Plan Upgrade')) {
         headerTitle = '💰 Plan Upgrade (Free → Gold)';
-      } else if (paymentData.purchaseDetails.includes('→ Free Plan Downgrade')) {
+      } else if (paymentData.purchaseDetails && paymentData.purchaseDetails.includes('→ Free Plan Downgrade')) {
         headerTitle = '💰 Plan Downgrade (Gold → Free)';
-      } else if (paymentData.purchaseDetails.includes('Cart Checkout')) {
+      } else if (paymentData.purchaseDetails && paymentData.purchaseDetails.includes('Cart Checkout')) {
         headerTitle = '💰 Cart Checkout';
       }
 

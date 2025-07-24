@@ -91,9 +91,9 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
   };
 
   return (
-    <div className={`border rounded-lg flex flex-col h-full ${className}`}>
+    <div className={`border rounded-lg ${className}`}>
       {/* Toolbar */}
-      <div className="border-b p-2 flex flex-wrap gap-1 flex-shrink-0">
+      <div className="border-b p-2 flex flex-wrap gap-1">
         <Button
           variant="ghost"
           size="sm"
@@ -200,10 +200,10 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Ri
       </div>
 
       {/* Editor */}
-      <div className="flex-1 flex flex-col min-h-[200px] p-4 overflow-hidden">
+      <div className="min-h-[200px] p-4">
         <EditorContent 
           editor={editor}
-          className="flex-1 prose prose-lg max-w-none overflow-y-auto [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror]:max-h-none [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror_strong]:font-bold [&_.ProseMirror_em]:italic [&_.ProseMirror_u]:underline [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-gray-300 [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_code]:bg-gray-100 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded"
+          className="prose prose-lg max-w-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[150px] [&_.ProseMirror_strong]:font-bold [&_.ProseMirror_em]:italic [&_.ProseMirror_u]:underline [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-gray-300 [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_code]:bg-gray-100 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded"
         />
       </div>
     </div>

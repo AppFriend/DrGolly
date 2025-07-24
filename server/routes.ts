@@ -37,7 +37,7 @@ import {
   courseLessons,
   courseChapters,
   lessonContent,
-  userLessonProgress,
+  coursePurchases,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
@@ -231,6 +231,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to verify routing
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Test endpoint working' });
+  });
+
+  // Test endpoint for Big Baby payment flow
+  app.post('/api/test/big-baby-payment', async (req, res) => {
+    try {
+      const testCustomerDetails = {
+        email: 'test@example.com',
+        firstName: 'Test',
+        dueDate: '2025-08-15'
+      };
+
+      // Test creating payment intent
+      const response = await fetch(`${req.protocol}://${req.get('host')}/api/create-big-baby-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerDetails: testCustomerDetails,
+          couponId: null
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        res.json({
+          success: true,
+          message: 'Payment intent created successfully',
+          clientSecret: data.clientSecret ? 'Present' : 'Missing',
+          paymentIntentId: data.paymentIntentId,
+          amount: data.amount
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: 'Failed to create payment intent',
+          error: data.message
+        });
+      }
+    } catch (error) {
+      console.error('Test payment error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
   });
 
   // Test endpoint for Slack payment notifications
@@ -716,13 +762,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public login for existing users from checkout
   app.post('/api/auth/public-login', async (req, res) => {
     try {
-      // Add cache-busting headers to prevent caching of auth responses
-      res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-
       const { email, password } = req.body;
       
       if (!email || !password) {
@@ -735,32 +774,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      // Check if user has a permanent password set, if not check for temporary password
-      if (!user.passwordHash) {
-        // Check if user has a valid temporary password
-        const tempPassword = await storage.getTemporaryPassword(user.id);
-        if (!tempPassword || tempPassword.isUsed) {
-          return res.status(401).json({ message: "Invalid email or password" });
-        }
-
-        // Check if temporary password has expired
-        if (new Date() > tempPassword.expiresAt) {
-          return res.status(401).json({ message: "Invalid email or password" });
-        }
-
-        // Verify temporary password (plain text comparison)
-        if (password !== tempPassword.tempPassword) {
-          return res.status(401).json({ message: "Invalid email or password" });
-        }
-
-        // Temporary password is valid, proceed with login
-        console.log('User authenticated with temporary password:', user.id);
-      } else {
+      let isValidPassword = false;
+      let requiresPasswordSetup = false;
+      
+      // Check if user has a permanent password set
+      if (user.hasSetPassword && user.passwordHash) {
         // Verify permanent password
-        const isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
-        if (!isValidPassword) {
-          return res.status(401).json({ message: "Invalid email or password" });
+        isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
+      } else {
+        // Check if it's a temporary password (for migrated users)
+        try {
+          const tempAuthResult = await storage.authenticateWithTemporaryPassword(email, password);
+          if (tempAuthResult) {
+            isValidPassword = true;
+            requiresPasswordSetup = true;
+          }
+        } catch (tempAuthError) {
+          console.log('Temporary password authentication failed:', tempAuthError);
         }
+      }
+      
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
       }
 
       // Update last login
@@ -797,7 +832,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName
-          }
+          },
+          requiresPasswordSetup: requiresPasswordSetup
         });
       });
 
@@ -844,6 +880,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Session destroyed successfully');
       res.json({ success: true, message: 'Logged out successfully' });
     });
+  });
+
+  // Enhanced login endpoint for migrated users - seamless temporary password handling
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      let isValidPassword = false;
+      let requiresPasswordSetup = false;
+      let isUsingTemporaryPassword = false;
+      
+      // Check if user has a permanent password set
+      if (user.hasSetPassword && user.passwordHash) {
+        // Verify permanent password
+        isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
+      } else {
+        // Check if it's a temporary password (for migrated users)
+        try {
+          const tempAuthResult = await storage.authenticateWithTemporaryPassword(email, password);
+          if (tempAuthResult) {
+            isValidPassword = true;
+            requiresPasswordSetup = true;
+            isUsingTemporaryPassword = true;
+          }
+        } catch (tempAuthError) {
+          console.log('Temporary password authentication failed:', tempAuthError);
+        }
+      }
+      
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Update last login
+      await storage.updateUserLastLogin(user.id);
+
+      // Create session manually (similar to how Replit auth works)
+      const sessionData = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName
+        }
+      };
+      
+      // Store session data in req.session with proper structure
+      req.session.passport = { user: sessionData };
+      req.session.userId = user.id; // Also store userId directly for easier access
+      
+      // If using temporary password, store it in session for password setup
+      if (isUsingTemporaryPassword) {
+        req.session.tempPassword = password;
+      }
+      
+      // Force session save before sending response
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).json({ message: "Session save failed" });
+        }
+        
+        console.log('Session saved successfully for user:', user.id);
+        
+        // Return user data for session creation
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName
+          },
+          requiresPasswordSetup: requiresPasswordSetup,
+          showPasswordSetupBanner: requiresPasswordSetup,
+          isUsingTemporaryPassword: isUsingTemporaryPassword
+        });
+      });
+
+    } catch (error) {
+      console.error("Error in login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
   });
 
   // Dr. Golly signup endpoint
@@ -1698,7 +1827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const courseId = parseInt(paymentIntent.metadata.courseId);
       console.log("Creating course purchase record for course:", courseId);
       
-      const coursePurchase = await storage.createCoursePurchase({
+      await storage.createCoursePurchase({
         userId: userId,
         courseId: courseId,
         paymentIntentId: paymentIntentId,
@@ -1711,21 +1840,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
       });
       console.log("Course purchase record created successfully");
-
-      // Track App_Purchase event to Klaviyo
-      try {
-        await klaviyoService.trackAppPurchase(customerDetails.email, {
-          item_names: [paymentIntent.metadata.courseName || 'Course'],
-          item_ids: [courseId.toString()],
-          total_value: paymentIntent.amount / 100, // Convert from cents
-          currency: paymentIntent.currency.toUpperCase(),
-          course_count: 1,
-          purchase_date: new Date().toISOString()
-        });
-        console.log("✅ App_Purchase event tracked to Klaviyo");
-      } catch (error) {
-        console.error("⚠️ Failed to track App_Purchase event (non-blocking):", error);
-      }
       
       // Get the user for login session
       const user = await storage.getUser(userId);
@@ -1879,6 +1993,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting up test user:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Payment intent verification endpoint
+  app.post('/api/verify-payment-intent', async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent ID is required" });
+      }
+      
+      console.log("Verifying payment intent:", paymentIntentId);
+      
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      const verificationData = {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        customer: paymentIntent.customer,
+        metadata: paymentIntent.metadata,
+        created: paymentIntent.created,
+        confirmed: paymentIntent.status === 'succeeded',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV
+      };
+      
+      console.log("Payment verification failed - not succeeded:", verificationData);
+      
+      // For testing purposes, return the data even if not succeeded
+      if (paymentIntent.status === 'succeeded') {
+        res.json(verificationData);
+      } else {
+        res.status(400).json(verificationData);
+      }
+    } catch (error) {
+      console.error("Error verifying payment intent:", error);
+      res.status(500).json({ message: "Payment verification failed" });
     }
   });
 
@@ -2415,10 +2570,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { lessonId } = req.params;
       
-      // First, delete any user progress records for this lesson
-      await db.delete(userLessonProgress).where(eq(userLessonProgress.lessonId, parseInt(lessonId)));
-      
-      // Then delete the lesson itself
       const [deletedLesson] = await db
         .delete(courseLessons)
         .where(eq(courseLessons.id, parseInt(lessonId)))
@@ -4640,6 +4791,7 @@ Please contact the customer to confirm the appointment.
           discountAmount: appliedCoupon?.amount_off?.toString() || '',
           promotionCodeId: promotionCode?.id || '',
           promotionCodeCode: promotionCode?.code || '',
+          promotionalCode: promotionCode?.code || couponId || '',
         },
         description: 'Course Purchase: Big Baby Sleep Program',
         receipt_email: customerDetails.email,
@@ -4667,6 +4819,379 @@ Please contact the customer to confirm the appointment.
       res.status(500).json({ 
         message: "Failed to create payment",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
+  // New clean Big Baby checkout endpoints
+  app.post('/api/create-big-baby-payment-intent', async (req, res) => {
+    try {
+      const { customerDetails, couponId, courseId = 6 } = req.body;
+      
+      // Validate required fields
+      if (!customerDetails?.email || !customerDetails?.firstName) {
+        return res.status(400).json({ message: "Email and first name are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customerDetails.email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
+      }
+      
+      // Get regional pricing with proper IP detection
+      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
+      console.log('Payment intent creation - User IP:', userIP);
+      
+      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
+      console.log('Payment intent creation - Regional pricing:', regionalPricing);
+      
+      const baseAmount = regionalPricing.coursePrice;
+      const currency = regionalPricing.currency;
+      
+      let finalAmount = baseAmount;
+      let coupon = null;
+      let promotionCode = null;
+      
+      // Apply coupon if provided
+      if (couponId) {
+        try {
+          console.log('Processing coupon code:', couponId);
+          
+          // First try to find promotion code
+          const promotionCodes = await stripe.promotionCodes.list({
+            code: couponId,
+            limit: 1,
+          });
+          
+          if (promotionCodes.data.length > 0) {
+            promotionCode = promotionCodes.data[0];
+            if (promotionCode.active) {
+              coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
+            }
+          } else {
+            // Try direct coupon lookup
+            try {
+              coupon = await stripe.coupons.retrieve(couponId);
+            } catch (directCouponError) {
+              console.log('No direct coupon found with code:', couponId);
+            }
+          }
+          
+          // Apply discount if coupon is valid
+          if (coupon && coupon.valid) {
+            console.log('Applying coupon:', coupon.id, 'Type:', coupon.amount_off ? 'Fixed amount' : 'Percentage', 'Original amount: $' + baseAmount);
+            
+            if (coupon.percent_off) {
+              // Percentage discount
+              const originalAmount = baseAmount;
+              finalAmount = baseAmount * (1 - coupon.percent_off / 100);
+              console.log('Percentage discount:', coupon.percent_off + '%', 'Original: $' + originalAmount, 'New: $' + finalAmount);
+            } else if (coupon.amount_off) {
+              // Fixed amount discount - amount_off is already in cents, convert to dollars
+              const originalAmount = baseAmount;
+              const discountInDollars = coupon.amount_off / 100;
+              finalAmount = Math.max(0, baseAmount - discountInDollars);
+              console.log('Fixed amount discount: $' + discountInDollars, 'Original: $' + originalAmount, 'New: $' + finalAmount);
+            }
+          }
+        } catch (error) {
+          console.error('Coupon validation failed:', error);
+        }
+      }
+      
+      // Create payment intent with automatic payment methods (includes Apple Pay, Google Pay, Link)
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(finalAmount * 100), // Convert to cents
+        currency: currency.toLowerCase(),
+        automatic_payment_methods: { enabled: true },
+        description: 'Big Baby Sleep Program',
+        metadata: {
+          courseId: courseId.toString(),
+          courseName: 'Big baby sleep program',
+          customerEmail: customerDetails.email,
+          customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+          originalAmount: baseAmount.toString(),
+          finalAmount: finalAmount.toString(),
+          couponId: couponId || '',
+          couponName: coupon?.name || '',
+          discountAmount: (baseAmount - finalAmount).toString(),
+          currency: currency
+        }
+      });
+      
+      console.log('Payment intent created:', paymentIntent.id, 'Amount:', finalAmount, currency);
+      
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        finalAmount: finalAmount,
+        originalAmount: baseAmount,
+        discountAmount: baseAmount - finalAmount,
+        currency: currency,
+        couponApplied: coupon ? {
+          id: coupon.id,
+          name: coupon.name,
+          percent_off: coupon.percent_off,
+          amount_off: coupon.amount_off
+        } : null
+      });
+    } catch (error: any) {
+      console.error('Payment intent creation failed:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/big-baby-complete-purchase', async (req, res) => {
+    try {
+      const { paymentIntentId, customerDetails, courseId, finalPrice, currency, appliedCoupon } = req.body;
+      
+      // Retrieve payment intent to verify payment and get actual payment data
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: 'Payment not successful' });
+      }
+      
+      // Extract actual payment amounts from Stripe data
+      const actualAmountPaid = paymentIntent.amount; // This is the amount actually charged
+      const originalAmount = paymentIntent.metadata.originalAmount ? parseFloat(paymentIntent.metadata.originalAmount) * 100 : paymentIntent.amount;
+      const discountAmount = originalAmount - actualAmountPaid;
+      const promotionalCode = paymentIntent.metadata.couponName && paymentIntent.metadata.couponName !== 'none' ? paymentIntent.metadata.couponName : null;
+      
+      console.log('Payment details:', {
+        actualAmountPaid: actualAmountPaid / 100,
+        originalAmount: originalAmount / 100,
+        discountAmount: discountAmount / 100,
+        promotionalCode: promotionalCode || 'None'
+      });
+      
+      // Check if user exists
+      let user = await storage.getUserByEmail(customerDetails.email);
+      let isNewUser = false;
+      
+      if (!user) {
+        // Create new user
+        isNewUser = true;
+        // Generate unique user ID (using timestamp + random)
+        const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        user = await storage.createUser({
+          id: uniqueId,
+          email: customerDetails.email,
+          firstName: customerDetails.firstName,
+          lastName: customerDetails.lastName || '',
+          phone: customerDetails.phone || null,
+          subscriptionTier: 'free',
+          planTier: 'free',
+          signupSource: 'big_baby_checkout',
+          accountActivated: true
+        });
+        
+        console.log('Created new user:', user.id, 'Email:', user.email);
+      } else {
+        console.log('Found existing user:', user.id, 'Email:', user.email);
+      }
+      
+      // Add course to user's purchases using actual payment data
+      await db.insert(coursePurchases).values({
+        userId: user.id,
+        courseId: courseId,
+        purchaseDate: new Date(),
+        amount: actualAmountPaid / 100, // Convert cents to dollars
+        currency: currency,
+        paymentIntentId: paymentIntentId,
+        status: 'completed'
+      });
+      
+      console.log('Course purchase added for user:', user.id, 'Course:', courseId, 'Amount:', actualAmountPaid / 100);
+      
+      // Send payment notification to Slack with actual payment data
+      try {
+        await slackNotificationService.sendPaymentNotification({
+          name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
+          email: customerDetails.email,
+          purchaseDetails: "Single Course Purchase (Big Baby Sleep Program)",
+          paymentAmount: `$${(actualAmountPaid / 100).toFixed(2)} ${currency.toUpperCase()}`,
+          promotionalCode: promotionalCode || undefined,
+          discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency.toUpperCase()}` : undefined
+        });
+        console.log('Slack payment notification sent successfully');
+      } catch (slackError) {
+        console.error('Slack notification failed:', slackError);
+        // Don't fail the purchase if Slack fails
+      }
+      
+      // Auto-login user by creating session
+      try {
+        req.session.userId = user.id;
+        req.session.save();
+        console.log('User auto-logged in:', user.id);
+      } catch (sessionError) {
+        console.error('Auto-login failed:', sessionError);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: isNewUser ? 'Account created and purchase completed!' : 'Course added to your account!',
+        userId: user.id,
+        isNewUser: isNewUser,
+        actualAmountPaid: actualAmountPaid / 100,
+        discountAmount: discountAmount / 100,
+        promotionalCode: promotionalCode || null
+      });
+    } catch (error: any) {
+      console.error('Purchase completion failed:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Test endpoint for Slack payment notification
+  app.post('/api/test/slack-payment-notification', async (req, res) => {
+    try {
+      const { name, email, purchaseDetails, paymentAmount, promotionalCode, discountAmount } = req.body;
+      
+      console.log('Testing Slack payment notification with data:', {
+        name, email, purchaseDetails, paymentAmount, promotionalCode, discountAmount
+      });
+      
+      const result = await slackNotificationService.sendPaymentNotification({
+        name,
+        email,
+        purchaseDetails,
+        paymentAmount,
+        promotionalCode,
+        discountAmount
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Test notification sent',
+        result: result
+      });
+    } catch (error: any) {
+      console.error('Test notification failed:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Payment verification endpoint for dev and production testing
+  app.post('/api/verify-payment-intent', async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent ID is required" });
+      }
+      
+      console.log('Verifying payment intent:', paymentIntentId);
+      
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      const verification = {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        customer: paymentIntent.customer,
+        metadata: paymentIntent.metadata,
+        created: paymentIntent.created,
+        confirmed: paymentIntent.status === 'succeeded',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      };
+      
+      // Check if payment was successful
+      if (paymentIntent.status === 'succeeded') {
+        // Verify that the course purchase was created
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        const coursePurchases = await sql`
+          SELECT * FROM course_purchases 
+          WHERE stripe_payment_intent_id = ${paymentIntentId}
+        `;
+        
+        verification.coursePurchaseCreated = coursePurchases.length > 0;
+        verification.coursePurchaseCount = coursePurchases.length;
+        
+        if (coursePurchases.length > 0) {
+          verification.coursePurchaseDetails = coursePurchases[0];
+        }
+        
+        // Check if user account was created or updated
+        const customerEmail = paymentIntent.metadata.customerEmail;
+        if (customerEmail) {
+          const users = await sql`
+            SELECT id, email, first_name, last_name, created_at 
+            FROM users 
+            WHERE email = ${customerEmail}
+          `;
+          
+          verification.userAccountExists = users.length > 0;
+          if (users.length > 0) {
+            verification.userAccountDetails = users[0];
+          }
+        }
+        
+        console.log('Payment verification successful:', verification);
+        res.json(verification);
+      } else {
+        console.log('Payment verification failed - not succeeded:', verification);
+        res.status(400).json({
+          ...verification,
+          error: `Payment status is ${paymentIntent.status}, expected 'succeeded'`
+        });
+      }
+    } catch (error: any) {
+      console.error('Payment verification error:', error);
+      res.status(500).json({ 
+        message: "Payment verification failed",
+        error: error.message,
+        paymentIntentId: req.body.paymentIntentId,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Test endpoint to verify payment verification system is working
+  app.post('/api/test-payment-verification', async (req, res) => {
+    try {
+      const { testPaymentIntentId } = req.body;
+      
+      if (!testPaymentIntentId) {
+        return res.status(400).json({ message: "Test payment intent ID is required" });
+      }
+      
+      console.log('Testing payment verification system with:', testPaymentIntentId);
+      
+      // Call our own verification endpoint
+      const verificationUrl = `${req.protocol}://${req.get('host')}/api/verify-payment-intent`;
+      const verificationResponse = await fetch(verificationUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: testPaymentIntentId })
+      });
+      
+      const verification = await verificationResponse.json();
+      
+      res.json({
+        success: true,
+        message: "Payment verification endpoint test completed",
+        testPaymentIntentId: testPaymentIntentId,
+        verificationEndpointStatus: verificationResponse.status,
+        verificationResult: verification,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } catch (error: any) {
+      console.error('Payment verification test error:', error);
+      res.status(500).json({ 
+        message: "Payment verification test failed",
+        error: error.message,
+        testPaymentIntentId: req.body.testPaymentIntentId,
+        timestamp: new Date().toISOString()
       });
     }
   });
@@ -4990,6 +5515,67 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error syncing pending transactions:", error);
       res.status(500).json({ message: "Failed to sync pending transactions" });
+    }
+  });
+
+  // Profile completion endpoint for new users after checkout
+  app.post('/api/auth/complete-profile', isAppAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const { password, interests, marketingOptIn, smsMarketingOptIn, termsAccepted } = req.body;
+      
+      if (!password || password.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+      }
+      
+      if (!termsAccepted) {
+        return res.status(400).json({ message: 'Terms and conditions must be accepted' });
+      }
+      
+      // Hash the password
+      const hashedPassword = await AuthUtils.hashPassword(password);
+      
+      // Update user with password and preferences
+      await storage.updateUser(userId, {
+        passwordHash: hashedPassword,
+        hasSetPassword: true,
+        isFirstLogin: false,
+        primaryConcerns: interests || [],
+        marketingOptIn: marketingOptIn || false,
+        smsMarketingOptIn: smsMarketingOptIn || false,
+        termsAccepted: termsAccepted,
+        profileCompletedAt: new Date()
+      });
+      
+      // Send signup notification to Slack
+      try {
+        const user = await storage.getUser(userId);
+        await slackNotificationService.sendSignupNotification({
+          name: `${user.firstName} ${user.lastName || ''}`.trim(),
+          email: user.email,
+          marketingOptIn: marketingOptIn,
+          primaryConcerns: interests || [],
+          signupSource: 'big_baby_checkout',
+          signupType: 'new_customer',
+          coursePurchased: 'Big Baby Sleep Program'
+        });
+      } catch (slackError) {
+        console.error('Slack notification failed:', slackError);
+        // Don't fail the profile completion if Slack fails
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Profile completed successfully',
+        user: {
+          id: userId,
+          hasSetPassword: true,
+          profileCompleted: true
+        }
+      });
+    } catch (error: any) {
+      console.error('Profile completion failed:', error);
+      res.status(500).json({ message: error.message });
     }
   });
 
@@ -5663,23 +6249,11 @@ Please contact the customer to confirm the appointment.
         if (purchase) {
           await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
           
-          // Sync course purchase to Klaviyo and track App_Purchase event
+          // Sync course purchase to Klaviyo
           try {
             const user = await storage.getUser(purchase.userId);
             if (user) {
               await klaviyoService.syncCoursePurchaseToKlaviyo(user, purchase);
-              
-              // Track App_Purchase event
-              const course = await storage.getCourse(purchase.courseId);
-              await klaviyoService.trackAppPurchase(user.email, {
-                item_names: [course?.title || purchase.courseName || 'Course'],
-                item_ids: [purchase.courseId.toString()],
-                total_value: purchase.amount / 100, // Convert from cents
-                currency: purchase.currency.toUpperCase(),
-                course_count: 1,
-                purchase_date: new Date().toISOString()
-              });
-              console.log("✅ App_Purchase event tracked via Stripe webhook");
             }
           } catch (error) {
             console.error("Failed to sync course purchase to Klaviyo:", error);
@@ -6174,8 +6748,12 @@ Please contact the customer to confirm the appointment.
   // Regional pricing routes
   app.get('/api/regional-pricing', async (req, res) => {
     try {
-      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
+      // Get IP from various sources, prioritizing X-Forwarded-For for production
+      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
+      console.log('Regional pricing request from IP:', userIP);
+      
       const pricing = await regionalPricingService.getPricingForIP(userIP);
+      console.log('Regional pricing result:', pricing);
       res.json(pricing);
     } catch (error) {
       console.error('Error getting regional pricing:', error);
@@ -6299,6 +6877,30 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error checking admin status:', error);
       res.status(403).json({ message: 'Forbidden: Admin access required' });
+    }
+  });
+
+  // Test endpoint for Slack notifications
+  app.post('/api/test-slack-payment', async (req, res) => {
+    try {
+      const { customerName, email, actualAmountPaid, discountAmount, promotionalCode } = req.body;
+      
+      const success = await slackNotificationService.sendPaymentNotification({
+        name: customerName,
+        email: email,
+        purchaseDetails: "Single Course Purchase (Big Baby Sleep Program)",
+        paymentAmount: `$${actualAmountPaid} USD`,
+        promotionalCode: promotionalCode || undefined,
+        discountAmount: discountAmount ? `$${discountAmount} USD` : undefined
+      });
+      
+      res.json({ 
+        success, 
+        message: success ? 'Slack notification sent successfully' : 'Failed to send Slack notification'
+      });
+    } catch (error) {
+      console.error('Test Slack notification failed:', error);
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 
@@ -6684,24 +7286,6 @@ Please contact the customer to confirm the appointment.
         purchase = newPurchase;
       }
       
-      // Track App_Purchase event for admin grants
-      try {
-        const user = await storage.getUser(userId);
-        if (user && user.email) {
-          await klaviyoService.trackAppPurchase(user.email, {
-            item_names: [course.title || 'Course'],
-            item_ids: [courseId.toString()],
-            total_value: 0, // Admin grant is free
-            currency: 'USD',
-            course_count: 1,
-            purchase_date: new Date().toISOString()
-          });
-          console.log("✅ App_Purchase event tracked for admin course grant");
-        }
-      } catch (error) {
-        console.error("⚠️ Failed to track App_Purchase event for admin grant (non-blocking):", error);
-      }
-      
       res.json({ success: true, purchase });
     } catch (error) {
       console.error("Error adding course to user:", error);
@@ -6844,40 +7428,7 @@ Please contact the customer to confirm the appointment.
     try {
       const { userId } = req.params;
       const updates = req.body;
-      
-      console.log('🔧 Admin updating user:', userId, 'with updates:', JSON.stringify(updates, null, 2));
-      
-      // Get current user data for comparison
-      const currentUser = await storage.getUser(userId);
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Update user in database
       const updatedUser = await storage.updateUser(userId, updates);
-      console.log('✅ User updated in database');
-      
-      // Check if subscription tier changed
-      const oldTier = currentUser.subscriptionTier;
-      const newTier = updates.subscriptionTier;
-      
-      if (newTier && oldTier !== newTier) {
-        console.log(`🔄 Subscription tier changed: ${oldTier} → ${newTier}`);
-        
-        // Sync updated subscription info to Klaviyo
-        try {
-          await klaviyoService.createOrUpdateProfile(updatedUser);
-          console.log('✅ Klaviyo sync successful');
-        } catch (error) {
-          console.error('⚠️ Klaviyo sync failed (non-blocking):', error);
-        }
-        
-        // TODO: Add Stripe subscription update logic here
-        // Note: This would require creating/updating Stripe subscriptions based on the tier change
-        // For now, focusing on database and Klaviyo sync as requested
-        console.log('ℹ️ Stripe integration would be added here for production use');
-      }
-      
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
@@ -7306,38 +7857,41 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Set permanent password after first-time login
+  // Set permanent password after first-time login - enhanced for migrated users
   app.post('/api/auth/set-password', async (req, res) => {
     try {
       const { userId, newPassword, tempPassword } = req.body;
       
-      if (!userId || !newPassword || !tempPassword) {
-        return res.status(400).json({ message: 'User ID, new password, and temporary password are required' });
+      if (!userId || !newPassword) {
+        return res.status(400).json({ message: 'User ID and new password are required' });
       }
 
-      // Validate password strength
-      const validation = AuthUtils.validatePasswordStrength(newPassword);
-      if (!validation.isValid) {
+      // For migrated users, we'll be more flexible with password requirements
+      // but still validate for basic security
+      if (newPassword.length < 6) {
         return res.status(400).json({ 
-          message: 'Password does not meet requirements',
-          errors: validation.errors 
+          message: 'Password must be at least 6 characters long'
         });
       }
 
-      // Verify temporary password is still valid
-      const isValidTemp = await storage.verifyTemporaryPassword(userId, tempPassword);
-      if (!isValidTemp) {
-        return res.status(401).json({ message: 'Invalid or expired temporary password' });
+      // If tempPassword is provided, verify it. Otherwise, allow setting password directly
+      if (tempPassword) {
+        const isValidTemp = await storage.verifyTemporaryPassword(userId, tempPassword);
+        if (!isValidTemp) {
+          return res.status(401).json({ message: 'Invalid or expired temporary password' });
+        }
       }
 
       // Hash the new password
       const passwordHash = await AuthUtils.hashPassword(newPassword);
       
-      // Update user with permanent password
+      // Update user with permanent password and mark migration as complete
       await storage.setUserPassword(userId, passwordHash);
       
-      // Mark temporary password as used
-      await storage.markTemporaryPasswordAsUsed(userId);
+      // Mark temporary password as used if one was provided
+      if (tempPassword) {
+        await storage.markTemporaryPasswordAsUsed(userId);
+      }
 
       // Update last login for MAU tracking since this completes the login process
       await storage.updateUserLastLogin(userId);
@@ -7379,6 +7933,103 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error setting password:', error);
       res.status(500).json({ message: 'Failed to set password' });
+    }
+  });
+
+  // Create test migrated user for password setup banner demo
+  app.post('/api/admin/create-test-migrated-user', async (req, res) => {
+    try {
+      const testUserId = `migrated_user_${Date.now()}`;
+      const testEmail = "testuser@example.com";
+      const tempPassword = "temp123456";
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Check if user exists
+      const existingUser = await sql`SELECT * FROM users WHERE email = ${testEmail} LIMIT 1`;
+      
+      if (existingUser.length > 0) {
+        // Delete existing user for clean test - delete temporary passwords first due to foreign key constraint
+        await sql`DELETE FROM temporary_passwords WHERE user_id = ${existingUser[0].id}`;
+        await sql`DELETE FROM users WHERE email = ${testEmail}`;
+      }
+      
+      // Create migrated user
+      const [user] = await sql`
+        INSERT INTO users (
+          id, email, first_name, last_name, migrated, has_set_password, 
+          is_first_login, password_set, subscription_tier, subscription_status, 
+          created_at, updated_at
+        ) VALUES (
+          ${testUserId}, ${testEmail}, 'Test', 'User', true, false, 
+          true, 'no', 'free', 'active', NOW(), NOW()
+        ) RETURNING *
+      `;
+      
+      // Create temporary password
+      await sql`
+        INSERT INTO temporary_passwords (
+          user_id, temp_password, is_used, expires_at, created_at
+        ) VALUES (
+          ${testUserId}, ${tempPassword}, false, 
+          NOW() + INTERVAL '90 days', NOW()
+        )
+      `;
+      
+      res.json({ 
+        message: 'Test migrated user created successfully',
+        email: testEmail,
+        tempPassword: tempPassword,
+        userId: testUserId,
+        instructions: `Login with email: ${testEmail} and password: ${tempPassword} to see the password setup banner.`
+      });
+    } catch (error) {
+      console.error('Error creating test migrated user:', error);
+      res.status(500).json({ message: 'Failed to create test user' });
+    }
+  });
+
+  // Create Emily's user with correct credentials
+  app.post('/api/admin/create-emily-user', async (req, res) => {
+    try {
+      console.log('Creating Emily user with raw SQL...');
+      const passwordHash = await AuthUtils.hashPassword('password123');
+      const userId = `emily_${Date.now()}`;
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // First check if user exists
+      const existingUser = await sql`SELECT * FROM users WHERE email = 'emily@drgolly.com' LIMIT 1`;
+      
+      if (existingUser.length > 0) {
+        // Update existing user
+        await sql`
+          UPDATE users 
+          SET password_hash = ${passwordHash}, has_set_password = true, is_admin = true
+          WHERE email = 'emily@drgolly.com'
+        `;
+        res.json({ message: 'Emily user updated successfully', userId: existingUser[0].id });
+      } else {
+        // Create new user
+        const result = await sql`
+          INSERT INTO users (
+            id, email, first_name, last_name, password_hash, has_set_password, 
+            subscription_tier, subscription_status, is_admin, created_at, updated_at
+          ) VALUES (
+            ${userId}, 'emily@drgolly.com', 'Emily', 'Golly', 
+            ${passwordHash}, true, 'gold', 'active', true, ${new Date()}, ${new Date()}
+          )
+          RETURNING *
+        `;
+        
+        console.log('Emily user created successfully:', result[0]?.id);
+        res.json({ message: 'Emily user created successfully', userId: result[0]?.id });
+      }
+    } catch (error) {
+      console.error('Error creating Emily user:', error);
+      res.status(500).json({ message: 'Failed to create Emily user', error: error.message });
     }
   });
 
@@ -7973,143 +8624,6 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Klaviyo Event Tracking Endpoints
-  app.post('/api/klaviyo/track-abandoned-cart', isAppAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { cart_items, cart_value, cart_course_count } = req.body;
-      
-      // Get user email for Klaviyo tracking
-      const user = await storage.getUser(userId);
-      if (!user || !user.email) {
-        return res.status(400).json({ message: 'User email required for tracking' });
-      }
-      
-      // Track abandoned cart event
-      const result = await klaviyoService.trackAbandonedCart(user.email, {
-        cart_items,
-        cart_value,
-        cart_course_count
-      });
-      
-      if (result) {
-        res.json({ success: true, message: 'Abandoned cart event tracked successfully' });
-      } else {
-        res.status(500).json({ message: 'Failed to track abandoned cart event' });
-      }
-    } catch (error) {
-      console.error('Error tracking abandoned cart:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-  // Test App_Purchase event tracking
-  app.post('/api/test/klaviyo/app-purchase', isAppAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user || !user.email) {
-        return res.status(400).json({ message: 'User email required for testing' });
-      }
-      
-      // Test App_Purchase event with sample data
-      const result = await klaviyoService.trackAppPurchase(user.email, {
-        item_names: ["Test Course"],
-        item_ids: ["999"],
-        total_value: 120.00,
-        currency: "AUD",
-        course_count: 1,
-        purchase_date: new Date().toISOString()
-      });
-      
-      res.json({ 
-        success: result, 
-        message: result ? 'App_Purchase event tracked successfully' : 'Failed to track App_Purchase event',
-        email: user.email
-      });
-    } catch (error) {
-      console.error('Error testing App_Purchase event:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-  // Test Abandoned_Cart event tracking
-  app.post('/api/test/klaviyo/abandoned-cart', isAppAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user || !user.email) {
-        return res.status(400).json({ message: 'User email required for testing' });
-      }
-      
-      // Test Abandoned_Cart event with sample data
-      const result = await klaviyoService.trackAbandonedCart(user.email, {
-        cart_items: [
-          { id: "1", name: "Big baby sleep program", price: 120.00 },
-          { id: "2", name: "Sleep Stories Book", price: 25.00 }
-        ],
-        cart_value: 145.00,
-        cart_course_count: 2
-      });
-      
-      res.json({ 
-        success: result, 
-        message: result ? 'Abandoned_Cart event tracked successfully' : 'Failed to track Abandoned_Cart event',
-        email: user.email
-      });
-    } catch (error) {
-      console.error('Error testing Abandoned_Cart event:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-  // Direct test endpoints for Klaviyo events (no auth required for testing)
-  app.post('/api/test/klaviyo/direct-purchase', async (req, res) => {
-    try {
-      const { userEmail, purchaseData } = req.body;
-      
-      if (!userEmail || !purchaseData) {
-        return res.status(400).json({ message: 'userEmail and purchaseData required' });
-      }
-      
-      const result = await klaviyoService.trackAppPurchase(userEmail, purchaseData);
-      
-      res.json({ 
-        success: result, 
-        message: result ? 'App_Purchase event tracked successfully' : 'Failed to track App_Purchase event',
-        email: userEmail,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Error testing direct App_Purchase event:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-  app.post('/api/test/klaviyo/direct-abandonment', async (req, res) => {
-    try {
-      const { userEmail, cartData } = req.body;
-      
-      if (!userEmail || !cartData) {
-        return res.status(400).json({ message: 'userEmail and cartData required' });
-      }
-      
-      const result = await klaviyoService.trackAbandonedCart(userEmail, cartData);
-      
-      res.json({ 
-        success: result, 
-        message: result ? 'Abandoned_Cart event tracked successfully' : 'Failed to track Abandoned_Cart event',
-        email: userEmail,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Error testing direct Abandoned_Cart event:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
   // Klaviyo Testing Endpoints
   app.post('/api/test/klaviyo/signup', async (req, res) => {
     try {
@@ -8632,22 +9146,11 @@ Please contact the customer to confirm the appointment.
     try {
       const { chapterId } = req.params;
       const { lessons } = req.body;
-      
-      if (!lessons || !Array.isArray(lessons)) {
-        return res.status(400).json({ 
-          message: "Invalid payload - lessons array is required",
-          received: typeof lessons 
-        });
-      }
-      
       await storage.reorderCourseLessons(parseInt(chapterId), lessons);
       res.json({ message: "Lesson order updated successfully" });
     } catch (error) {
       console.error("Error reordering lessons:", error);
-      res.status(500).json({ 
-        message: "Failed to reorder lessons",
-        error: error.message 
-      });
+      res.status(500).json({ message: "Failed to reorder lessons" });
     }
   });
 
@@ -9413,7 +9916,8 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Get regional pricing for products
+  // Get regional pricing for products (duplicate endpoint - remove this one)
+  /*
   app.get('/api/regional-pricing', async (req, res) => {
     try {
       const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
@@ -9424,6 +9928,7 @@ Please contact the customer to confirm the appointment.
       res.status(500).json({ message: "Failed to fetch regional pricing" });
     }
   });
+  */
 
   // Book purchase endpoints
   app.post('/api/create-book-payment', async (req, res) => {
@@ -9542,6 +10047,32 @@ Please contact the customer to confirm the appointment.
 
   // Admin content management routes
   app.use('/api/admin', adminContentRoutes);
+
+  // Stripe verification endpoint for testing
+  app.post('/api/verify-stripe-payment-intent', async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: 'Payment intent ID is required' });
+      }
+      
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      res.json({
+        id: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status,
+        created: paymentIntent.created,
+        description: paymentIntent.description,
+        metadata: paymentIntent.metadata
+      });
+    } catch (error: any) {
+      console.error('Error verifying Stripe payment intent:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

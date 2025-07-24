@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { cartTrackingService } from "@/services/cartTracking";
 import { useStripe, useElements, PaymentRequestButtonElement, CardElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
@@ -53,7 +52,7 @@ function SimpleCardPayment({
     lastName: customerDetails.lastName || '',
     phone: customerDetails.phone || '',
     address: customerDetails.address || '',
-    country: 'Australia',
+    country: 'AU',
     city: customerDetails.city || '',
     postcode: customerDetails.zipCode || ''
   });
@@ -133,7 +132,7 @@ function SimpleCardPayment({
               line1: billingDetails.address,
               city: billingDetails.city,
               postal_code: billingDetails.postcode,
-              country: billingDetails.country === 'Australia' ? 'AU' : 'US'
+              country: billingDetails.country || 'AU'
             }
           }
         }
@@ -299,7 +298,7 @@ export function PaymentForm({
     lastName: customerDetails.lastName || '',
     phone: customerDetails.phone || '',
     address: customerDetails.address || '',
-    country: 'Australia',
+    country: 'AU',
     city: customerDetails.city || '',
     postcode: customerDetails.zipCode || ''
   });
@@ -482,7 +481,7 @@ export function PaymentForm({
               line1: billingDetails.address,
               city: billingDetails.city,
               postal_code: billingDetails.postcode,
-              country: billingDetails.country === 'Australia' ? 'AU' : 'US'
+              country: billingDetails.country || 'AU'
             }
           }
         }
@@ -830,9 +829,6 @@ export default function Checkout() {
   };
 
   const handlePaymentSuccess = () => {
-    // Mark purchase as completed to prevent abandoned cart tracking
-    cartTrackingService.markPurchaseCompleted();
-    
     toast({
       title: "Payment Successful!",
       description: "Your course has been added to your account.",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, CreditCard } from "lucide-react";
@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { cartTrackingService } from "@/services/cartTracking";
 import type { CartItem, ShoppingProduct, Course } from "@shared/schema";
 import book1Image from "@assets/IMG_5430_1752370946458.jpeg";
 import book2Image from "@assets/IMG_5431_1752370946459.jpeg";
@@ -189,61 +188,9 @@ export default function Cart() {
   };
 
   const handleCheckout = () => {
-    // Mark that user is proceeding to checkout (not abandoning)
-    cartTrackingService.cleanupTracking();
     // Redirect to checkout page
     setLocation('/checkout');
   };
-
-  // Set up cart tracking when component mounts and cart has items
-  useEffect(() => {
-    if (user && cartItems.length > 0) {
-      // Start tracking session when cart has items
-      cartTrackingService.startTrackingSession();
-      
-      // Update cart data for tracking
-      const cartData = cartItems.map(item => {
-        const product = shoppingProducts.find(p => p.id === item.itemId);
-        const course = courses.find(c => c.id === item.itemId);
-        
-        return {
-          itemId: item.itemId,
-          name: item.itemType === 'shopping_product' ? product?.name : course?.title,
-          price: item.itemType === 'shopping_product' 
-            ? (item.itemId === 1 ? regionalPricing?.book1Price : regionalPricing?.book2Price) || 0
-            : regionalPricing?.amount || 0,
-          quantity: item.quantity
-        };
-      });
-      
-      cartTrackingService.updateCartData(cartData);
-    } else if (cartItems.length === 0) {
-      // Clean up tracking if cart becomes empty
-      cartTrackingService.cleanupTracking();
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      if (cartItems.length > 0) {
-        // Only trigger abandonment if cart has items and user didn't checkout
-        const cartData = cartItems.map(item => {
-          const product = shoppingProducts.find(p => p.id === item.itemId);
-          const course = courses.find(c => c.id === item.itemId);
-          
-          return {
-            itemId: item.itemId,
-            name: item.itemType === 'shopping_product' ? product?.name : course?.title,
-            price: item.itemType === 'shopping_product' 
-              ? (item.itemId === 1 ? regionalPricing?.book1Price : regionalPricing?.book2Price) || 0
-              : regionalPricing?.amount || 0,
-            quantity: item.quantity
-          };
-        });
-        
-        cartTrackingService.markCartAbandoned(cartData);
-      }
-    };
-  }, [cartItems, shoppingProducts, courses, regionalPricing, user]);
 
   if (!user) {
     return (

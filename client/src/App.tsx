@@ -8,6 +8,7 @@ import { DesktopLayout } from "@/components/DesktopLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import PasswordSetupBanner from "@/components/auth/PasswordSetupBanner";
 import { useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
@@ -21,6 +22,7 @@ import CourseOverview from "@/pages/course-overview";
 import LessonPage from "@/pages/lesson";
 import Checkout from "@/pages/checkout";
 import BigBabyPublic from "@/pages/big-baby-public";
+import BigBabyCheckout from "@/pages/big-baby-checkout";
 import PaymentSuccess from "@/pages/payment-success";
 import BlogPost from "@/pages/blog-post";
 import Discounts from "@/pages/discounts";
@@ -47,10 +49,13 @@ import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
+import TestCheckout from "@/pages/test-checkout";
+import ProfileCompletion from "@/pages/profile-completion";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
   const { isOpen, closeUpgradeModal } = useUpgradeModal();
+  const { user, showPasswordSetupBanner, dismissPasswordSetupBanner, completePasswordSetup } = useAuth();
   
   // Determine active tab based on current location
   const getActiveTab = () => {
@@ -69,6 +74,21 @@ function AuthenticatedApp() {
   const handleUpgrade = (billingPeriod: "monthly" | "yearly") => {
     window.location.href = `/checkout-subscription?period=${billingPeriod}&tier=gold`;
   };
+
+  // Get login response data for password setup
+  const getLoginResponseData = () => {
+    const loginResponse = sessionStorage.getItem('loginResponse');
+    if (loginResponse) {
+      try {
+        return JSON.parse(loginResponse);
+      } catch (e) {
+        console.log('Error parsing login response:', e);
+      }
+    }
+    return null;
+  };
+
+  const loginData = getLoginResponseData();
 
   return (
     <div className="min-h-screen bg-white">
@@ -193,7 +213,11 @@ function AuthenticatedApp() {
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
+        <Route path="/profile-completion" component={ProfileCompletion} />
+        <Route path="/complete" component={ProfileCompletion} />
+        <Route path="/complete/preferences" component={ProfileCompletion} />
         <Route path="/auth-test" component={AuthTestPage} />
+        <Route path="/test-checkout" component={TestCheckout} />
         <Route component={NotFound} />
       </Switch>
       <UpgradeModal
@@ -201,6 +225,15 @@ function AuthenticatedApp() {
         onClose={closeUpgradeModal}
         onUpgrade={handleUpgrade}
       />
+      {showPasswordSetupBanner && user && loginData && (
+        <PasswordSetupBanner
+          userId={user.id}
+          userName={user.firstName || user.email}
+          tempPassword={loginData.tempPassword || ""}
+          onComplete={completePasswordSetup}
+          onDismiss={dismissPasswordSetupBanner}
+        />
+      )}
       <Toaster />
     </div>
   );
@@ -229,6 +262,7 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
+          <Route path="/big-baby-checkout" component={BigBabyCheckout} />
           <Route path="/share/:slug" component={Share} />
           <Route component={Landing} />
         </Switch>
