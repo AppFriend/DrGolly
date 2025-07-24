@@ -1,5 +1,5 @@
 import { db } from './db';
-import { courses, courseChapters, courseLessons } from '@shared/schema';
+import { courses, courseChapters, courseLessons, lessonContent } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { getBigBabyPreviewData } from './bigBabyPreviewService';
 
@@ -179,6 +179,57 @@ export async function generateVerificationTable(): Promise<VerificationTable[]> 
 }
 
 /**
+ * Verify database integrity and return current status
+ */
+export async function verifyDatabaseIntegrity(): Promise<{
+  courseExists: boolean;
+  totalChapters: number;
+  totalLessons: number;
+  totalLessonContent: number;
+  publishedStatus: boolean;
+}> {
+  console.log('🔍 Verifying Big Baby course database integrity...');
+  
+  // Check if course exists
+  const course = await db.select().from(courses)
+    .where(eq(courses.title, 'Big Baby: 4–8 Months'))
+    .limit(1);
+  
+  if (course.length === 0) {
+    return {
+      courseExists: false,
+      totalChapters: 0,
+      totalLessons: 0,
+      totalLessonContent: 0,
+      publishedStatus: false
+    };
+  }
+  
+  const courseId = course[0].id;
+  
+  // Count chapters
+  const chapters = await db.select().from(courseChapters)
+    .where(eq(courseChapters.courseId, courseId));
+  
+  // Count lessons
+  const lessons = await db.select().from(courseLessons)
+    .where(eq(courseLessons.courseId, courseId));
+  
+  // Count lesson content
+  const content = await db.select().from(lessonContent)
+    .innerJoin(courseLessons, eq(lessonContent.lessonId, courseLessons.id))
+    .where(eq(courseLessons.courseId, courseId));
+  
+  return {
+    courseExists: true,
+    totalChapters: chapters.length,
+    totalLessons: lessons.length,
+    totalLessonContent: content.length,
+    publishedStatus: course[0].status === 'published'
+  };
+}
+
+/**
  * Execute database updates (ONLY after manual approval)
  */
 export async function executeDatabaseUpdate(approved: boolean): Promise<{success: boolean, message: string}> {
@@ -192,6 +243,21 @@ export async function executeDatabaseUpdate(approved: boolean): Promise<{success
     const updatePlan = await buildDatabaseUpdatePlan();
     let chaptersCreated = 0;
     let lessonsCreated = 0;
+    let lessonContentCreated = 0;
+    
+    // First, ensure the course is properly configured as the single source of truth
+    await db.update(courses)
+      .set({
+        title: 'Big Baby: 4–8 Months',
+        description: 'Comprehensive sleep guidance for babies 4-8 months old',
+        detailedDescription: 'Professional medical-grade content for baby sleep guidance from 4-8 months',
+        category: 'sleep',
+        ageRange: '4-8 Months',
+        status: 'published',
+        isPublished: true,
+        updatedAt: new Date()
+      })
+      .where(eq(courses.id, updatePlan.courseId));
     
     for (let index = 0; index < updatePlan.chapters.length; index++) {
       const chapterPlan = updatePlan.chapters[index];
@@ -216,28 +282,47 @@ export async function executeDatabaseUpdate(approved: boolean): Promise<{success
       for (let lessonIndex = 0; lessonIndex < chapterPlan.lessons.length; lessonIndex++) {
         const lessonPlan = chapterPlan.lessons[lessonIndex];
         
-        await db.insert(courseLessons).values({
+        // Create the lesson with description and basic info
+        const [lesson] = await db.insert(courseLessons).values({
           courseId: updatePlan.courseId,
           chapterId: chapter.id,
           title: lessonPlan.matchedLessonTitle,
+          description: `Lesson content for ${lessonPlan.matchedLessonTitle}`,
           content: lessonPlan.matchedContent,
-          orderIndex: lessonIndex + 1
+          orderIndex: lessonIndex + 1,
+          contentType: 'text',
+          status: 'published'
         }).onConflictDoUpdate({
           target: [courseLessons.chapterId, courseLessons.orderIndex],
           set: {
             title: lessonPlan.matchedLessonTitle,
-            content: lessonPlan.matchedContent
+            content: lessonPlan.matchedContent,
+            status: 'published'
           }
-        });
+        }).returning();
+        
+        // Create detailed lesson content if we have rich content
+        if (lessonPlan.matchedContent && lessonPlan.matchedContent.length > 100) {
+          await db.insert(lessonContent).values({
+            lessonId: lesson.id,
+            title: `${lessonPlan.matchedLessonTitle} - Main Content`,
+            description: `Detailed content for ${lessonPlan.matchedLessonTitle}`,
+            content: lessonPlan.matchedContent,
+            orderIndex: 1
+          }).onConflictDoNothing();
+          lessonContentCreated++;
+        }
         
         lessonsCreated++;
       }
     }
     
-    console.log(`✅ Database update completed: ${chaptersCreated} chapters, ${lessonsCreated} lessons`);
+    console.log(`✅ Database update completed: ${chaptersCreated} chapters, ${lessonsCreated} lessons, ${lessonContentCreated} lesson content items`);
+    console.log(`📊 Big Baby course is now the single source of truth in the database`);
+    
     return { 
       success: true, 
-      message: `Successfully updated ${chaptersCreated} chapters and ${lessonsCreated} lessons` 
+      message: `Successfully updated ${chaptersCreated} chapters, ${lessonsCreated} lessons, and ${lessonContentCreated} detailed content items. Big Baby course is now stored as the single source of truth in the database.` 
     };
     
   } catch (error) {
