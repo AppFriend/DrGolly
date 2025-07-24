@@ -64,7 +64,7 @@ function parseCSVLine(line: string): string[] {
  */
 function parseApprovedCSV(): LessonData[] {
   try {
-    const csvFilePath = path.join(process.cwd(), 'attached_assets', 'Final_Chapter_Lesson_Matches_Refined_1753315755094.csv');
+    const csvFilePath = path.join(process.cwd(), 'attached_assets', 'Final_Chapter_Lesson_Matches_Updated_Corrected_1753318221406.csv');
     
     if (!fs.existsSync(csvFilePath)) {
       console.error('❌ CSV file not found:', csvFilePath);
@@ -76,6 +76,8 @@ function parseApprovedCSV(): LessonData[] {
     
     // Skip header line
     const data: LessonData[] = [];
+    let skippedLines = 0;
+    
     for (let i = 1; i < lines.length; i++) {
       if (lines[i].trim()) {
         const row = parseCSVLine(lines[i]);
@@ -86,11 +88,18 @@ function parseApprovedCSV(): LessonData[] {
             matchedLessonName: row[2],
             matchedContent: row[3]
           });
+        } else {
+          skippedLines++;
+          console.log(`⚠️ Skipped line ${i + 1}: insufficient columns (${row.length})`);
         }
       }
     }
     
+    console.log(`⚠️ Total skipped lines: ${skippedLines}`);
+    
     console.log(`📋 Parsed ${data.length} lessons from approved CSV`);
+    console.log(`📊 Total lines in file: ${lines.length}`);
+    console.log(`📊 Lines with content: ${lines.filter(line => line.trim()).length}`);
     return data;
   } catch (error) {
     console.error('❌ Error parsing CSV file:', error);
