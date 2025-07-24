@@ -13,10 +13,10 @@ app.use('/attached_assets', express.static('attached_assets'));
 app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy', 
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://replit.com https://js.stripe.com; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://replit.com https://js.stripe.com https://maps.googleapis.com https://www.gstatic.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "img-src 'self' data: https:; " +
-    "connect-src 'self' https:; " +
+    "img-src 'self' data: https: https://maps.googleapis.com https://maps.gstatic.com; " +
+    "connect-src 'self' https: https://maps.googleapis.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "frame-src 'self' https:; " +
     "media-src 'self' https:; " +
@@ -57,13 +57,13 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Temporarily disable initialization to fix connection issues
   // Initialize regional pricing service
-  // try {
-  //   await regionalPricingService.initializeRegionalPricing();
-  // } catch (error) {
-  //   console.error('Failed to initialize regional pricing service:', error);
-  // }
+  try {
+    await regionalPricingService.initializeRegionalPricing();
+    console.log('Regional pricing service initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize regional pricing service:', error);
+  }
   
   // Initialize services
   // try {

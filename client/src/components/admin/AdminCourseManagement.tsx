@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -204,17 +204,13 @@ function SortableLesson({
       {isExpanded && (
         <div className="p-3 border-t">
           {isEditing ? (
-            <div className="flex flex-col h-[500px]">
-              <div className="flex-1 overflow-hidden border rounded-md">
-                <div className="h-full overflow-y-auto">
-                  <RichTextEditor
-                    content={editContent}
-                    onChange={onContentChange}
-                    placeholder="Enter lesson content..."
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 mt-3 pt-2 border-t bg-white">
+            <div className="space-y-3">
+              <RichTextEditor
+                content={editContent}
+                onChange={onContentChange}
+                placeholder="Enter lesson content..."
+              />
+              <div className="flex gap-2">
                 <Button onClick={onSave} size="sm">
                   <Save className="h-4 w-4 mr-2" />
                   Save
@@ -225,7 +221,7 @@ function SortableLesson({
               </div>
             </div>
           ) : (
-            <div className="prose-lesson text-sm text-gray-700 bg-gray-50 p-3 rounded-lg max-h-[300px] overflow-y-auto">
+            <div className="prose-lesson text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
               <div dangerouslySetInnerHTML={{ __html: lesson.content || "No content available" }} />
             </div>
           )}
@@ -1074,7 +1070,8 @@ interface CourseAccordionViewProps {
 function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: CourseAccordionViewProps) {
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
   const [expandedLessons, setExpandedLessons] = useState<Record<number, boolean>>({});
-  const [editingLessonModal, setEditingLessonModal] = useState<{ lessonId: number; title: string; content: string } | null>(null);
+  const [editingLesson, setEditingLesson] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
   const [showAddChapterDialog, setShowAddChapterDialog] = useState(false);
   const [showAddLessonDialog, setShowAddLessonDialog] = useState(false);
   const [addChapterTitle, setAddChapterTitle] = useState('');
@@ -1115,7 +1112,8 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
         title: "Success",
         description: "Lesson content updated successfully",
       });
-      setEditingLessonModal(null);
+      setEditingLesson(null);
+      setEditContent('');
     },
     onError: (error) => {
       toast({
@@ -1256,7 +1254,7 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     onError: (error) => {
       toast({
         title: "Error",
-        description: `Failed to reorder lessons: ${error.message}`,
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -1313,22 +1311,18 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
     }));
   };
 
-  const handleEditLesson = (lesson: any) => {
-    setEditingLessonModal({
-      lessonId: lesson.id,
-      title: lesson.title,
-      content: lesson.content || ''
-    });
+  const handleEditLesson = (lessonId: number, currentContent: string) => {
+    setEditingLesson(lessonId);
+    setEditContent(currentContent || '');
   };
 
-  const handleSaveLessonModal = (content: string) => {
-    if (editingLessonModal) {
-      updateLessonMutation.mutate({ lessonId: editingLessonModal.lessonId, content });
-    }
+  const handleSaveLesson = (lessonId: number) => {
+    updateLessonMutation.mutate({ lessonId, content: editContent });
   };
 
-  const handleCancelEditModal = () => {
-    setEditingLessonModal(null);
+  const handleCancelEdit = () => {
+    setEditingLesson(null);
+    setEditContent('');
   };
 
   const handleCreateChapter = () => {
@@ -1552,12 +1546,12 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
                           onToggle={() => toggleLesson(lesson.id)}
                           onUpdateTitle={(newTitle) => handleUpdateLessonTitle(lesson.id, newTitle)}
                           onDeleteLesson={handleDeleteLesson}
-                          onEditContent={() => handleEditLesson(lesson)}
-                          isEditing={false}
-                          editContent=""
-                          onContentChange={() => {}}
-                          onSave={() => {}}
-                          onCancel={() => {}}
+                          onEditContent={() => handleEditLesson(lesson.id, lesson.content || '')}
+                          isEditing={editingLesson === lesson.id}
+                          editContent={editContent}
+                          onContentChange={setEditContent}
+                          onSave={() => handleSaveLesson(lesson.id)}
+                          onCancel={handleCancelEdit}
                         />
                       ))}
                     </SortableContext>
@@ -1615,51 +1609,6 @@ function CourseAccordionView({ course, onUpdateCourse, onPreviewCourse }: Course
         setAddingToChapterId={setAddingToChapterId}
       />
     )}
-
-    {/* Lesson Edit Modal */}
-    <Dialog open={!!editingLessonModal} onOpenChange={(open) => !open && handleCancelEditModal()}>
-      <DialogContent className="sm:max-w-[900px] flex flex-col p-0 max-h-[85vh]">
-        {/* Modal Header - Fixed */}
-        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
-          <DialogTitle>Edit Lesson: {editingLessonModal?.title}</DialogTitle>
-          <DialogDescription>
-            Edit the lesson content using the rich text editor below.
-          </DialogDescription>
-        </DialogHeader>
-        
-        {/* Modal Body - Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: '70vh' }}>
-          <RichTextEditor
-            content={editingLessonModal?.content || ''}
-            onChange={(content) => {
-              if (editingLessonModal) {
-                setEditingLessonModal({
-                  ...editingLessonModal,
-                  content
-                });
-              }
-            }}
-            className="min-h-[400px]"
-          />
-        </div>
-        
-        {/* Modal Footer - Fixed at Bottom */}
-        <div className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0 mt-auto">
-          <Button variant="outline" onClick={handleCancelEditModal}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={() => handleSaveLessonModal(editingLessonModal?.content || '')}
-            disabled={updateLessonMutation.isPending}
-          >
-            {updateLessonMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Save
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   </>
   );
 }
@@ -1746,17 +1695,11 @@ function AddLessonDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] flex flex-col p-0 max-h-[85vh]">
-        {/* Modal Header - Fixed */}
-        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
           <DialogTitle>Add New Lesson</DialogTitle>
-          <DialogDescription>
-            Create a new lesson with title and rich content. The lesson will be added to the selected chapter.
-          </DialogDescription>
         </DialogHeader>
-        
-        {/* Modal Body - Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ maxHeight: '70vh' }}>
+        <div className="space-y-4">
           <div>
             <Label htmlFor="lesson-title">Lesson Title</Label>
             <Input
@@ -1773,35 +1716,33 @@ function AddLessonDialog({
               content={addLessonContent}
               onChange={setAddLessonContent}
               placeholder="Enter lesson content..."
-              className="mt-1 min-h-[400px]"
+              className="mt-1 min-h-[200px]"
             />
           </div>
-        </div>
-        
-        {/* Modal Footer - Fixed at Bottom */}
-        <div className="flex justify-end gap-2 p-6 pt-4 border-t bg-white flex-shrink-0 mt-auto">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              onOpenChange(false);
-              setAddLessonTitle('');
-              setAddLessonContent('');
-              setAddingToChapterId(null);
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleCreateLesson}
-            disabled={!addLessonTitle.trim() || createLessonMutation.isPending}
-          >
-            {createLessonMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Plus className="h-4 w-4 mr-2" />
-            )}
-            Create Lesson
-          </Button>
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                onOpenChange(false);
+                setAddLessonTitle('');
+                setAddLessonContent('');
+                setAddingToChapterId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateLesson}
+              disabled={!addLessonTitle.trim() || createLessonMutation.isPending}
+            >
+              {createLessonMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Lesson
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

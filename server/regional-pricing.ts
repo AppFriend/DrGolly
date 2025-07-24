@@ -106,36 +106,46 @@ export class RegionalPricingService {
   }
 
   detectRegionFromIP(ipAddress: string): string {
+    console.log('Detecting region for IP:', ipAddress);
+    
     // Handle localhost and private IPs - default to AU for development
     if (!ipAddress || ipAddress === '127.0.0.1' || ipAddress === '::1' || ipAddress.startsWith('192.168.') || ipAddress.startsWith('10.') || ipAddress.startsWith('172.')) {
+      console.log('Local IP detected, defaulting to AU');
       return 'AU'; // Default to AU for development
     }
 
     const geo = geoip.lookup(ipAddress);
+    console.log('GeoIP lookup result:', geo);
+    
     if (!geo) {
+      console.log('No geo data found, defaulting to US');
       return 'US'; // Default fallback
     }
 
     const country = geo.country;
+    console.log('Country detected:', country);
     
-    // Check each region's country list
-    for (const [region, pricing] of this.pricingCache) {
-      const regionData = this.pricingCache.get(region);
-      if (regionData) {
-        // We need to get the country list from database since it's not in the cache
-        // For now, use hardcoded logic
-        if (region === 'AU' && ['AU', 'NZ', 'FJ', 'PG', 'SB', 'VU', 'NC', 'PF'].includes(country)) {
-          return 'AU';
-        }
-        if (region === 'US' && ['US', 'CA', 'MX'].includes(country)) {
-          return 'US';
-        }
-        if (region === 'EU' && ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'FI', 'SE', 'NO', 'DK', 'IE', 'LU', 'MT', 'CY', 'EE', 'LV', 'LT', 'SK', 'SI', 'BG', 'RO', 'HR', 'CZ', 'HU', 'PL', 'GR'].includes(country)) {
-          return 'EU';
-        }
-      }
+    // Check each region's country list with detailed logging
+    const auCountries = ['AU', 'NZ', 'FJ', 'PG', 'SB', 'VU', 'NC', 'PF'];
+    const usCountries = ['US', 'CA', 'MX'];
+    const euCountries = ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'FI', 'SE', 'NO', 'DK', 'IE', 'LU', 'MT', 'CY', 'EE', 'LV', 'LT', 'SK', 'SI', 'BG', 'RO', 'HR', 'CZ', 'HU', 'PL', 'GR'];
+    
+    if (auCountries.includes(country)) {
+      console.log('Country matches AU region');
+      return 'AU';
+    }
+    
+    if (usCountries.includes(country)) {
+      console.log('Country matches US region');
+      return 'US';
+    }
+    
+    if (euCountries.includes(country)) {
+      console.log('Country matches EU region');
+      return 'EU';
     }
 
+    console.log('Country not found in any region, defaulting to US');
     return 'US'; // Default fallback
   }
 

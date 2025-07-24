@@ -1,0 +1,77 @@
+Replit Prompt: Match Chapters and Lessons for “Big Baby Sleep Program”
+With Read-Only Output for Manual Review Prior to Sync
+
+Objective:
+Accurately match all lessons and lesson content to their correct chapters for the Big Baby Sleep Program course. All matches must use real, verified content — no AI-generated or fallback content. The output must be a read-only table for manual human review and approval before applying to any database or app structure.
+
+Input Files:
+Chapters.csv
+– Contains chapter numbers and names for the Big Baby Sleep Program.
+– Includes chapter order and identifiers.
+
+Lessons.csv
+– Contains all available lesson titles and their full, doctor-authored content.
+– This is the only source of valid lesson content.
+
+Final_Chapter_Lesson_Matches_Refined.csv
+– Contains verified mappings between lesson names and lesson content.
+– Use this as the authoritative reference to match lessons to chapters.
+
+(Optional but recommended)
+Screenshots of each chapter structure — used to verify correct lesson names per chapter and avoid over-matching.
+
+Matching Logic:
+For each chapter listed in Chapters.csv under the Big Baby Sleep Program:
+
+Extract the expected lesson names (from screenshots or chapter structure).
+
+Look up each lesson in Final_Chapter_Lesson_Matches_Refined.csv.
+
+Retrieve the corresponding lesson content from Lessons.csv.
+
+Ensure exact match of lesson title and use the real, full content.
+
+Matching must be strict and traceable:
+
+Lesson names must be verified from screenshots or the reference CSV — not loosely interpreted.
+
+Lesson content must come exclusively from Lessons.csv.
+
+Chapter and lesson names should follow the format in the app (e.g. 1.3 Routine, Routine 6–8 Months).
+
+Guardrails:
+Do not generate or insert any new, AI-generated, fallback or inferred lesson content.
+
+Do not use lesson name similarity or fuzzy matching unless explicitly verified.
+
+Only include lessons that have a direct and approved match in the reference CSV or screenshots.
+
+Do not duplicate any lesson inside a chapter.
+
+Flag unmatched or questionable lessons with UNMATCHED in the output for manual check.
+
+Output Requirements (Read-Only Table for QA):
+Before any database update is made, return a preview table with the following structure for human approval:
+
+Chapter Name	Lesson Name (in course)	Matched Lesson Title (from CSV)	Matched Lesson Content (from CSV)
+
+The table must contain all lessons in order for each chapter of the Big Baby Sleep Program.
+
+Leave unmatched entries blank or flag with UNMATCHED.
+
+Do not proceed to sync content until the human reviewer manually confirms accuracy.
+
+QA Checks (Required Before Approval):
+Lesson names exactly match those shown in screenshots or chapter references.
+
+Content is pulled verbatim from Lessons.csv, not edited or summarised.
+
+No duplicated or extraneous lessons in any chapter.
+
+No unmatched or placeholder content is present.
+
+Optional Enhancements:
+If screenshots are provided, use OCR or image parsing to cross-check lesson names against chapter structure before matching.
+
+Allow user to upload a new version of the final CSV as reference for future sync cycles.
+

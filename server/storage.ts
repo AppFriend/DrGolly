@@ -123,7 +123,6 @@ export interface IStorage {
   updateUserPersonalization(userId: string, personalizationData: any): Promise<User>;
   updateUserProfile(userId: string, profileData: Partial<User>): Promise<User>;
   updateUserLastLogin(userId: string): Promise<User>;
-  getTemporaryPassword(userId: string): Promise<TemporaryPassword | undefined>;
   
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
@@ -454,11 +453,11 @@ export class DatabaseStorage implements IStorage {
         const result = await sql`
           INSERT INTO users (
             id, email, first_name, last_name, password_hash, has_set_password, 
-            subscription_tier, plan_tier, last_login_at, created_at, updated_at
+            subscription_tier, subscription_status, is_admin, last_login_at, created_at, updated_at
           ) VALUES (
             ${userData.id}, ${userData.email}, ${userData.firstName}, ${userData.lastName}, 
             ${userData.passwordHash}, ${userData.hasSetPassword}, ${userData.subscriptionTier}, 
-            ${userData.planTier}, ${userData.lastLoginAt}, ${new Date()}, ${new Date()}
+            ${userData.subscriptionStatus}, ${userData.isAdmin}, ${new Date()}, ${new Date()}, ${new Date()}
           )
           RETURNING *
         `;
@@ -2902,15 +2901,6 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getTemporaryPassword(userId: string): Promise<TemporaryPassword | undefined> {
-    const [result] = await db
-      .select()
-      .from(temporaryPasswords)
-      .where(eq(temporaryPasswords.userId, userId))
-      .orderBy(desc(temporaryPasswords.createdAt));
-    return result;
-  }
-
   async verifyTemporaryPassword(userId: string, tempPassword: string): Promise<boolean> {
     const [result] = await db
       .select()
@@ -3026,6 +3016,7 @@ export class DatabaseStorage implements IStorage {
         hasSetPassword: true,
         isFirstLogin: false,
         lastPasswordChange: new Date(),
+        passwordSet: "yes", // Track migration completion
       })
       .where(eq(users.id, userId));
   }
