@@ -806,7 +806,7 @@ export class DatabaseStorage implements IStorage {
                                       price, discounted_price, skill_level, stripe_product_id, unique_id,
                                       status, detailed_description, website_content, key_features, whats_covered,
                                       rating, review_count, overview_description, learning_objectives,
-                                      completion_criteria, course_structure_notes
+                                      completion_criteria, course_structure_notes, public_checkout_url
                                FROM courses 
                                ORDER BY created_at`;
       

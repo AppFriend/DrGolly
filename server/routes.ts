@@ -48,6 +48,7 @@ import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
+import { getBigBabyPreviewData } from "./bigBabyPreviewService";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -231,6 +232,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to verify routing
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Test endpoint working' });
+  });
+
+  // Big Baby course preview data endpoint - READ-ONLY
+  app.get('/api/big-baby/preview-data', (req, res) => {
+    try {
+      console.log('🔍 Big Baby preview data requested');
+      const previewData = getBigBabyPreviewData();
+      res.json(previewData);
+    } catch (error) {
+      console.error('❌ Error generating Big Baby preview data:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate preview data',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Big Baby database verification table
+  app.get('/api/big-baby/verification-table', async (req, res) => {
+    try {
+      console.log('📋 Generating verification table for Big Baby course structure...');
+      const { generateVerificationTable } = await import('./bigBabyDatabaseBuilder');
+      const verificationTable = await generateVerificationTable();
+      
+      res.json({
+        status: 'VERIFICATION_READY',
+        totalLessons: verificationTable.length,
+        matchedLessons: verificationTable.filter(item => item.status === 'MATCHED').length,
+        unmatchedLessons: verificationTable.filter(item => item.status === 'NO_MATCH').length,
+        duplicateLessons: verificationTable.filter(item => item.status === 'DUPLICATE').length,
+        verificationTable
+      });
+    } catch (error) {
+      console.error('❌ Error generating verification table:', error);
+      res.status(500).json({ error: 'Failed to generate verification table' });
+    }
+  });
+
+  // Big Baby database integrity verification
+  app.get('/api/big-baby/database-status', async (req, res) => {
+    try {
+      console.log('📊 Checking Big Baby database integrity status...');
+      const { verifyDatabaseIntegrity } = await import('./bigBabyDatabaseBuilder');
+      const integrity = await verifyDatabaseIntegrity();
+      
+      res.json({
+        status: 'INTEGRITY_CHECK_COMPLETE',
+        databaseIntegrity: integrity,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error checking database integrity:', error);
+      res.status(500).json({ error: 'Database integrity check failed' });
+    }
+  });
+
+  // Big Baby database update execution (requires approval)
+  app.post('/api/big-baby/execute-database-update', async (req, res) => {
+    try {
+      const { approved } = req.body;
+      
+      if (!approved) {
+        return res.status(400).json({ 
+          error: 'Database update requires explicit approval',
+          message: 'Set approved: true to execute database update'
+        });
+      }
+      
+      console.log('🚀 Executing approved Big Baby database update...');
+      const { executeDatabaseUpdate } = await import('./bigBabyDatabaseBuilder');
+      const result = await executeDatabaseUpdate(approved);
+      
+      if (result.success) {
+        res.json({
+          status: 'UPDATE_COMPLETED',
+          message: result.message,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(500).json({
+          status: 'UPDATE_FAILED',
+          error: result.message
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error executing database update:', error);
+      res.status(500).json({ error: 'Database update execution failed' });
+    }
   });
 
   // Test endpoint for Big Baby payment flow
@@ -2039,8 +2128,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Course routes
   app.get('/api/courses', async (req, res) => {
+    // Force fresh response - disable all caching
+    res.removeHeader('ETag');
+    res.removeHeader('Last-Modified');
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Accel-Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+    
     try {
       const { category, tier, includeUnpublished } = req.query;
+      
+      console.log('=======================================');
+      console.log('📋 /api/courses endpoint called with public_checkout_url support');
+      console.log('📋 Timestamp:', new Date().toISOString());
+      console.log('=======================================');
       
       // Use raw SQL directly - bypass Drizzle ORM completely
       const { neon } = await import('@neondatabase/serverless');
@@ -2054,7 +2159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    price, discounted_price, skill_level, stripe_product_id, unique_id,
                                    status, detailed_description, website_content, key_features, whats_covered,
                                    rating, review_count, overview_description, learning_objectives,
-                                   completion_criteria, course_structure_notes
+                                   completion_criteria, course_structure_notes, public_checkout_url
                             FROM courses 
                             WHERE is_published = true AND category = ${category}
                             ORDER BY created_at DESC`;
@@ -2064,7 +2169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    price, discounted_price, skill_level, stripe_product_id, unique_id,
                                    status, detailed_description, website_content, key_features, whats_covered,
                                    rating, review_count, overview_description, learning_objectives,
-                                   completion_criteria, course_structure_notes
+                                   completion_criteria, course_structure_notes, public_checkout_url
                             FROM courses 
                             WHERE is_published = true 
                             ORDER BY created_at DESC`;
@@ -2075,10 +2180,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...course,
         // Map thumbnail_url to thumbnailUrl for frontend compatibility
         thumbnailUrl: course.thumbnail_url || course.thumbnailUrl,
+        // Map public_checkout_url to publicCheckoutUrl for frontend compatibility
+        publicCheckoutUrl: course.public_checkout_url || course.publicCheckoutUrl,
         // Convert price from string to number if needed
         price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
-        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice,
+        // Add debug timestamp to verify endpoint is being called
+        _debug_timestamp: new Date().toISOString(),
+        _debug_public_checkout_url: course.public_checkout_url
       }));
+      
+      // Try using storage layer instead of direct SQL
+      console.log('Using storage.getAllCourses() instead of SQL');
+      const storageCourses = await storage.getAllCourses();
+      console.log('Storage courses sample:', storageCourses.slice(0, 2));
       
       res.json(coursesWithPricing);
     } catch (error) {

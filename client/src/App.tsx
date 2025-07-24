@@ -51,6 +51,8 @@ import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
 import TestCheckout from "@/pages/test-checkout";
 import ProfileCompletion from "@/pages/profile-completion";
+import BigBabyPreview from "@/pages/big-baby-preview";
+import BigBabyDatabaseManager from "@/pages/big-baby-database-manager";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -111,6 +113,8 @@ function AuthenticatedApp() {
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
+        <Route path="/big-baby-preview" component={BigBabyPreview} />
+        <Route path="/big-baby-database-manager" component={BigBabyDatabaseManager} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
@@ -260,9 +264,18 @@ function Router() {
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />
           <Route path="/terms" component={Terms} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/refunds" component={Refunds} />
+          <Route path="/contact" component={Contact} />
+          <Route path="/shipping" component={Shipping} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route path="/big-baby-checkout" component={BigBabyCheckout} />
+          <Route path="/checkout/:productId" component={Checkout} />
+          <Route path="/checkout" component={Checkout} />
+          <Route path="/complete" component={ProfileCompletion} />
+          <Route path="/complete/preferences" component={ProfileCompletion} />
+          <Route path="/payment-success" component={PaymentSuccess} />
           <Route path="/share/:slug" component={Share} />
           <Route component={Landing} />
         </Switch>

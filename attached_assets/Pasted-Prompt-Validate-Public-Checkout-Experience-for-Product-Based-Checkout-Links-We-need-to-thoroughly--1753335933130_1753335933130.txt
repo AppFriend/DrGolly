@@ -1,0 +1,108 @@
+Prompt: Validate Public Checkout Experience for Product-Based Checkout Links
+
+We need to thoroughly test and confirm that the following user flows, access permissions, and database fields are correctly implemented for the /checkout/:productId pages and associated post-checkout paths.
+
+1. Public Checkout Page Accessibility
+Objective: Ensure that any user on the web can access public checkout pages without authentication.
+
+Validate that public URLs such as:
+
+https://dr-golly.replit.app/checkout/6 (Big Baby Sleep Program)
+
+https://dr-golly.replit.app/checkout/5 (Little Baby Sleep Program)
+
+and any other path following the format /checkout/:productId
+are publicly accessible without requiring login or authentication.
+
+Test these links in a logged-out session (e.g. incognito mode).
+
+Ensure each page loads with accurate product/course details and a working Stripe payment button.
+
+Note: These pages must not redirect to /login.
+
+2. Flow for New Users (No Existing Profile)
+Steps to test:
+
+Access a /checkout/:productId page as a non-authenticated user.
+
+Complete payment successfully.
+
+Confirm automatic redirection to /complete.
+
+Ensure /complete is publicly accessible and prompts the user to:
+
+Enter full name
+
+Set a password
+
+Provide any required preferences and profile information (e.g. children data)
+
+After completing the profile:
+
+User is logged in automatically.
+
+Redirected to /home.
+
+The purchased course appears under Purchased_courses and is visible in their dashboard.
+
+3. Flow for Existing Users (Recognised Email)
+Steps to test:
+
+Access a /checkout/:productId page.
+
+Complete checkout using an email that already exists in the database.
+
+Confirm:
+
+Payment is processed.
+
+User is automatically authenticated after checkout (no manual login required).
+
+Redirect to /home.
+
+No /complete step is shown.
+
+New course is added to their existing Purchased_courses record and reflected on the front end.
+
+4. Database Validation
+Confirm that each course in the database has a Public_checkout_URL field that maps correctly to its corresponding product ID.
+
+Example:
+
+json
+Copy
+Edit
+{
+  "course_name": "Big Baby Sleep Program",
+  "Public_checkout_URL": "/checkout/6"
+}
+Validate that this field is:
+
+Present for all live courses
+
+Used to generate the correct public checkout link on marketing pages or referral traffic
+
+Confirm that after checkout:
+
+The correct course ID is saved in the Purchased_courses array for the user
+
+The course ID maps correctly to the actual course in the UI
+
+5. Frontend + Redirect Logic
+/home should only be accessible to logged-in users.
+
+/checkout/:productId and /complete must be accessible publicly, with logic determining whether a user is routed to:
+
+/complete for new users
+
+/home for existing users
+
+Ensure the frontend correctly reflects any updates to purchased courses immediately after login or redirection.
+
+Final QA
+All edge cases (e.g. duplicate email, payment failure, session expiry) should be tested and logged.
+
+Verify all redirects, authentication checks, and profile creation logic work independently of login status at the time of checkout.
+
+Ensure there is no risk of account duplication if the same email is used by a new user during a public checkout.
+

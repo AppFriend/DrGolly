@@ -174,6 +174,7 @@ export const courses = pgTable("courses", {
   skillLevel: varchar("skill_level"), // beginner, intermediate, advanced
   stripeProductId: varchar("stripe_product_id"),
   uniqueId: varchar("unique_id"),
+  publicCheckoutUrl: varchar("public_checkout_url"), // Public checkout URL e.g., "/checkout/6"
   isPublished: boolean("is_published").default(false), // Default to draft
   status: varchar("status").default("draft").notNull(), // draft, published, archived
   likes: integer("likes").default(0),
