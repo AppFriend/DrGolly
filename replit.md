@@ -648,6 +648,29 @@ STABLE VERSIONS (for easy rollback reference):
   * ZERO TOLERANCE: All content matches exactly the authoritative CSV files with no modifications or fallback content
   * SYSTEM VALIDATION: Complete public checkout experience validated and ready for comprehensive manual testing
   * Status: Production-ready with complete three-course ecosystem and validated checkout system for all Dr. Golly sleep programs
+
+- SAVEPOINT v1.45 (July 24, 2025): MERGE CONFLICT RESOLUTION COMPLETE - Application fully operational with Git sync ready
+  * CRITICAL FIX: Resolved all merge conflicts in replit.md, client/src/App.tsx, server/routes.ts, and MANUAL_TESTING_GUIDE.md
+  * RESTORED: Application successfully running on port 5000 with all merge conflicts eliminated
+  * VALIDATED: All three checkout routes operational - confirmed with 200 status responses
+  * PREPARED: Git workflow script (sync_to_main_and_github.sh) ready for manual execution
+  * INTEGRATION: BigBabyPreview and BigBabyDatabaseManager components properly imported
+  * TESTING: Complete three-course ecosystem ready for comprehensive manual testing
+  * DEPLOYMENT: Manual deployment completed via Replit, system operational
+  * Status: Production-ready with complete merge resolution and operational three-course checkout system
+
+- SAVEPOINT v1.46 (July 24, 2025): PUBLIC CHECKOUT AUTHENTICATION BREAKTHROUGH - Complete resolution of "User not authorised" barrier
+  * CRITICAL BREAKTHROUGH: Successfully resolved authentication barrier blocking public checkout for unauthenticated users
+  * IMPLEMENTED: Complete `isDirectPurchase` flag system enabling public checkout bypass of authentication requirements
+  * ENHANCED: Frontend integration with `isDirectPurchase: true` flag properly passed to backend API calls
+  * FIXED: Backend authentication logic to skip user authentication when `isDirectPurchase` flag is present
+  * RESOLVED: Database constraint violation by skipping course purchase record creation for public checkout (handled post-payment)
+  * VALIDATED: Comprehensive testing confirms all three courses (ID 5, 6, 7) return 200 status for public checkout
+  * VERIFIED: Dual flow system working perfectly - public checkout (200) vs authenticated checkout protection (401)
+  * TESTED: Payment intent creation successful for unauthenticated users with proper Stripe client secret generation
+  * CONFIRMED: Course purchase record handling appropriate with "skipped: true" logging for public purchases
+  * DOCUMENTED: Complete PUBLIC_CHECKOUT_TESTING_GUIDE.md with comprehensive testing scenarios and monitoring instructions
+  * Status: Production-ready with fully functional public checkout system enabling unauthenticated course purchases
 ```
 
 ## Changelog
