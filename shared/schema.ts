@@ -456,7 +456,7 @@ export const stripeProducts = pgTable("stripe_products", {
 // Course purchases table
 export const coursePurchases = pgTable("course_purchases", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id").references(() => users.id), // Allow null for public checkout
   courseId: integer("course_id").notNull().references(() => courses.id),
   stripeProductId: varchar("stripe_product_id").references(() => stripeProducts.stripeProductId),
   stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(),
