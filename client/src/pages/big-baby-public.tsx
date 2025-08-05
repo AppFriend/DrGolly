@@ -639,11 +639,6 @@ export default function BigBabyPublic() {
                     style={{ 
                       colorScheme: 'light'
                     }}
-                    onClick={(e) => {
-                      e.target.showPicker?.();
-                      const overlay = e.target.parentElement?.querySelector('.date-overlay');
-                      if (overlay) overlay.style.display = 'none';
-                    }}
                     onFocus={(e) => {
                       const overlay = e.target.parentElement?.querySelector('.date-overlay');
                       if (overlay) overlay.style.display = 'none';
@@ -660,8 +655,10 @@ export default function BigBabyPublic() {
                       className="date-overlay absolute inset-0 flex items-center px-3 text-gray-500 cursor-pointer"
                       onClick={() => {
                         const input = document.getElementById('dueDate');
-                        input?.focus();
-                        input?.showPicker?.();
+                        if (input) {
+                          input.focus();
+                          input.click();
+                        }
                       }}
                     >
                       Date of Birth / Due Date
