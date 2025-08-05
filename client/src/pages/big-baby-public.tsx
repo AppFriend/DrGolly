@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartp
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/DatePicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -629,42 +630,12 @@ export default function BigBabyPublic() {
                   />
                 </div>
                 
-                <div className="relative">
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    value={customerDetails.dueDate}
-                    onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    className="h-12 cursor-pointer"
-                    style={{ 
-                      colorScheme: 'light'
-                    }}
-                    onFocus={(e) => {
-                      const overlay = e.target.parentElement?.querySelector('.date-overlay');
-                      if (overlay) overlay.style.display = 'none';
-                    }}
-                    onBlur={(e) => {
-                      const overlay = e.target.parentElement?.querySelector('.date-overlay');
-                      if (overlay && !e.target.value) {
-                        overlay.style.display = 'flex';
-                      }
-                    }}
-                  />
-                  {!customerDetails.dueDate && (
-                    <div 
-                      className="date-overlay absolute inset-0 flex items-center px-3 text-gray-500 cursor-pointer"
-                      onClick={() => {
-                        const input = document.getElementById('dueDate');
-                        if (input) {
-                          input.focus();
-                          input.click();
-                        }
-                      }}
-                    >
-                      Date of Birth / Due Date
-                    </div>
-                  )}
-                </div>
+                <DatePicker
+                  value={customerDetails.dueDate}
+                  onChange={(date) => handleDetailsChange("dueDate", date)}
+                  placeholder="Due Date/Baby Birthday"
+                  className="h-12"
+                />
               </div>
             </div>
 
