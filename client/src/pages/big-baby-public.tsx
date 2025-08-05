@@ -629,15 +629,19 @@ export default function BigBabyPublic() {
                   />
                 </div>
                 
-                <div>
+                <div className="relative">
                   <Input
                     id="dueDate"
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    placeholder="Date of Birth / Due Date"
                     className="h-12"
                   />
+                  {!customerDetails.dueDate && (
+                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none text-gray-500">
+                      Date of Birth / Due Date
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

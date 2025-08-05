@@ -196,13 +196,19 @@ export default function CartCheckout() {
                     onChange={(e) => setCustomerDetails({...customerDetails, firstName: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
                   />
-                  <input
-                    type="date"
-                    placeholder="Date of Birth / Due Date"
-                    value={customerDetails.dueDate}
-                    onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={customerDetails.dueDate}
+                      onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
+                    />
+                    {!customerDetails.dueDate && (
+                      <div className="absolute inset-0 flex items-center px-4 pointer-events-none text-gray-500">
+                        Date of Birth / Due Date
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
