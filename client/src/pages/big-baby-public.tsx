@@ -635,6 +635,7 @@ export default function BigBabyPublic() {
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
+                    placeholder="Select your due date"
                     className="h-12"
                   />
                 </div>

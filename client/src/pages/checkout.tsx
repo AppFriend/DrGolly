@@ -666,12 +666,15 @@ export default function Checkout() {
   const courseIdFromQuery = new URLSearchParams(window.location.search).get('courseId');
   const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
   
-  console.log('SIMPLIFIED Checkout Debug:', {
-    windowLocationSearch: window.location.search,
-    courseIdFromQuery,
-    courseId,
-    isDirectPurchase: !!courseId
-  });
+  // Debug logging - hidden in production
+  if (process.env.NODE_ENV === 'development') {
+    console.log('SIMPLIFIED Checkout Debug:', {
+      windowLocationSearch: window.location.search,
+      courseIdFromQuery,
+      courseId,
+      isDirectPurchase: !!courseId
+    });
+  }
   
   const [customerDetails, setCustomerDetails] = useState({
     firstName: user?.firstName || "",
@@ -912,6 +915,7 @@ export default function Checkout() {
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
+                    placeholder="Select your due date"
                     className="h-12"
                   />
                 </div>
@@ -926,10 +930,12 @@ export default function Checkout() {
               </div>
               
               <div className="space-y-4">
-                {/* Debug information */}
-                <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
-                  Debug: {isDirectPurchase ? 'Direct Purchase' : 'Cart Checkout'} - Cart items: {displayCartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
-                </div>
+                {/* Debug information - hidden from production */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
+                    Debug: {isDirectPurchase ? 'Direct Purchase' : 'Cart Checkout'} - Cart items: {displayCartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
+                  </div>
+                )}
                 
                 {/* Direct Purchase Flow */}
                 {isDirectPurchase && (
