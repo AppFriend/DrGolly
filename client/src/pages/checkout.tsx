@@ -907,23 +907,23 @@ export default function Checkout() {
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    className="h-12 text-transparent"
+                    className="h-12"
                     style={{ 
-                      colorScheme: 'light',
-                      WebkitAppearance: 'none',
-                      MozAppearance: 'textfield'
+                      colorScheme: 'light'
                     }}
                     onFocus={(e) => {
-                      e.target.style.color = 'rgb(17, 24, 39)';
+                      const overlay = e.target.parentElement?.querySelector('.date-overlay');
+                      if (overlay) overlay.style.display = 'none';
                     }}
                     onBlur={(e) => {
-                      if (!e.target.value) {
-                        e.target.style.color = 'transparent';
+                      const overlay = e.target.parentElement?.querySelector('.date-overlay');
+                      if (overlay && !e.target.value) {
+                        overlay.style.display = 'flex';
                       }
                     }}
                   />
                   {!customerDetails.dueDate && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none text-gray-500 bg-white">
+                    <div className="date-overlay absolute inset-0 flex items-center px-3 pointer-events-none text-gray-500">
                       Date of Birth / Due Date
                     </div>
                   )}
