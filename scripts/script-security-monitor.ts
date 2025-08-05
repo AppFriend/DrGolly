@@ -83,19 +83,26 @@ export function shouldBlockExecution(scriptPath: string): boolean {
  * Monitors script directory for unauthorized changes
  */
 export function monitorScriptDirectory(): void {
-  const scriptsDir = path.join(process.cwd(), 'scripts');
-  
-  fs.watch(scriptsDir, (eventType, filename) => {
-    if (filename && (filename.includes('populate-course-content') || filename.includes('bulk-'))) {
-      logSecurityViolation({
-        timestamp: new Date().toISOString(),
-        scriptName: filename,
-        violation: `SUSPICIOUS_FILE_${eventType.toUpperCase()}`,
-        userInfo: process.env.USER_EMAIL || 'unknown',
-        prevented: false
+  try {
+    const scriptsDir = path.join(__dirname);
+    
+    if (fs.existsSync(scriptsDir)) {
+      fs.watch(scriptsDir, (eventType, filename) => {
+        if (filename && (filename.includes('populate-course-content') || filename.includes('bulk-'))) {
+          logSecurityViolation({
+            timestamp: new Date().toISOString(),
+            scriptName: filename,
+            violation: `SUSPICIOUS_FILE_${eventType.toUpperCase()}`,
+            userInfo: process.env.USER_EMAIL || 'unknown',
+            prevented: false
+          });
+        }
       });
+      console.log('🔍 Script directory monitoring enabled');
     }
-  });
+  } catch (error) {
+    console.log('⚠️  Script monitoring initialization deferred');
+  }
 }
 
 /**

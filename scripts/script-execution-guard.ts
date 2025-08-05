@@ -83,37 +83,73 @@ function removeExecutionLock(lockFile: string): void {
 }
 
 /**
- * Prompts user for confirmation with detailed warnings
+ * Multi-step authorization process with escalating security
  */
-async function getUserConfirmation(config: ScriptGuardConfig): Promise<boolean> {
+async function getDetailedAuthorization(config: ScriptGuardConfig): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
-  return new Promise((resolve) => {
-    console.log('\n🚨 DESTRUCTIVE SCRIPT EXECUTION WARNING 🚨');
-    console.log('═'.repeat(60));
-    console.log(`Script: ${config.scriptName}`);
-    console.log(`Description: ${config.description}`);
-    console.log(`Destructive: ${config.destructive ? 'YES - WILL MODIFY/DELETE DATA' : 'No'}`);
-    console.log(`Backup Required: ${config.requiresBackup ? 'YES' : 'No'}`);
-    console.log('═'.repeat(60));
-    
-    if (config.destructive) {
-      console.log('⚠️  WARNING: This script will make IRREVERSIBLE changes to your data');
-      console.log('⚠️  WARNING: Always ensure you have recent backups before proceeding');
-      console.log('⚠️  WARNING: This action was the cause of the August 5th data loss incident');
-    }
-    
-    console.log('\nRef: DATA_LOSS_INCIDENT_REPORT.md for full incident details');
-    console.log('\nTo proceed, you must type: EXECUTE_DESTRUCTIVE_SCRIPT');
-    
-    rl.question('\nYour response: ', (answer) => {
-      rl.close();
-      resolve(answer.trim() === 'EXECUTE_DESTRUCTIVE_SCRIPT');
-    });
+  console.log('\n🔐 SECURE SCRIPT EXECUTION AUTHORIZATION 🔐');
+  console.log('═'.repeat(60));
+  console.log(`Script: ${config.scriptName}`);
+  console.log(`Description: ${config.description}`);
+  console.log(`Risk Level: ${config.destructive ? 'HIGH - DATA MODIFICATION' : 'LOW'}`);
+  console.log(`Backup Required: ${config.requiresBackup ? 'YES' : 'No'}`);
+  console.log('═'.repeat(60));
+  
+  if (config.destructive) {
+    console.log('⚠️  CRITICAL WARNING: This script makes IRREVERSIBLE changes');
+    console.log('⚠️  INCIDENT REFERENCE: Similar to August 5th data corruption');
+    console.log('⚠️  SAFETY REQUIREMENT: Backup will be created automatically');
+  }
+
+  // Step 1: Purpose confirmation
+  const purpose = await new Promise<string>((resolve) => {
+    rl.question('\n1. What is the business purpose for running this script? ', resolve);
   });
+
+  if (!purpose.trim()) {
+    console.log('❌ Authorization denied: Purpose is required');
+    rl.close();
+    return false;
+  }
+
+  // Step 2: Backup confirmation
+  if (config.requiresBackup) {
+    const backupConfirm = await new Promise<string>((resolve) => {
+      rl.question('2. Confirm automatic backup creation? (type "BACKUP_CONFIRMED"): ', resolve);
+    });
+
+    if (backupConfirm.trim() !== 'BACKUP_CONFIRMED') {
+      console.log('❌ Authorization denied: Backup confirmation required');
+      rl.close();
+      return false;
+    }
+  }
+
+  // Step 3: Final authorization phrase
+  console.log('\n3. Final Authorization Required:');
+  console.log('   Type exactly: AUTHORIZED_EXECUTION_WITH_FULL_RESPONSIBILITY');
+  
+  const finalAuth = await new Promise<string>((resolve) => {
+    rl.question('\nFinal authorization: ', resolve);
+  });
+
+  rl.close();
+
+  const authorized = finalAuth.trim() === 'AUTHORIZED_EXECUTION_WITH_FULL_RESPONSIBILITY';
+  
+  if (authorized) {
+    console.log('✅ Authorization granted');
+    console.log(`📝 Purpose logged: ${purpose}`);
+    console.log(`👤 Authorized by: ${process.env.USER_EMAIL || 'unknown'}`);
+  } else {
+    console.log('❌ Authorization denied: Incorrect authorization phrase');
+  }
+
+  return authorized;
 }
 
 /**
@@ -156,11 +192,11 @@ export async function executeWithGuard(
       process.exit(1);
     }
     
-    // 2. Require explicit confirmation
+    // 2. Require detailed authorization
     if (config.requiresConfirmation) {
-      const confirmed = await getUserConfirmation(config);
-      if (!confirmed) {
-        console.log('❌ Script execution cancelled by user');
+      const authorized = await getDetailedAuthorization(config);
+      if (!authorized) {
+        console.log('❌ Script execution cancelled - authorization failed');
         process.exit(0);
       }
     }

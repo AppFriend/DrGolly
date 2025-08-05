@@ -33,6 +33,7 @@ Brand Color Guidelines:
 - **Session Management**: Express sessions stored in PostgreSQL
 - **Key Features**:
     - **Authentication System**: Replit Auth via OpenID, PostgreSQL-backed sessions, role-based access control.
+    - **Script Security System**: Comprehensive protection against unauthorized script execution, implemented after August 5th data corruption incident. Multi-layer authorization, automatic backups, audit logging, and emergency controls.
     - **Course Management**: Categorized content (sleep, nutrition, health), Free/Gold/Platinum access tiers, individual user progress tracking, Vimeo video delivery. Features include comprehensive content migration, dynamic chapter/lesson structuring, rich text editing, and full CRUD operations for admin content management with inline editing, adding, and deleting functionality.
     - **Subscription System**: Free, Gold, Platinum tiers with monthly/yearly billing, content gating, and transaction tracking. Integrated with Stripe for payment processing and Klaviyo for lifecycle management.
     - **Partner Discounts**: Tier-based access to brand partnerships.

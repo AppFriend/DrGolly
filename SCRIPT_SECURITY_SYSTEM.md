@@ -75,15 +75,31 @@ For any destructive operation:
 
 ## HOW TO SAFELY EXECUTE CONTENT OPERATIONS
 
-### For Authorized Users Only:
-1. **Contact admin@drgolly.com** for script execution requests
-2. **Use secured script versions** with full guard protection
-3. **Verify backup creation** before any operations
-4. **Monitor audit logs** for all changes
+### For Authorized Users - Secure Execution Process:
+
+#### Option 1: Authorized Script Runner (RECOMMENDED)
+```bash
+# View available authorized scripts
+tsx scripts/authorized-script-runner.ts
+
+# Execute specific script with full protection
+tsx scripts/authorized-script-runner.ts content-recovery
+```
+
+#### Option 2: Direct Secured Script Execution
+```bash
+# Execute with built-in security guard
+tsx scripts/authentic-content-recovery.ts
+```
+
+### Multi-Step Authorization Process:
+1. **Business Purpose**: Explain why the script needs to run
+2. **Backup Confirmation**: Confirm automatic backup creation
+3. **Final Authorization**: Type `AUTHORIZED_EXECUTION_WITH_FULL_RESPONSIBILITY`
 
 ### Security Checkpoints:
 - User must be authenticated and authorized
-- Explicit typed confirmation required
+- Multi-step confirmation required
 - Automatic backup created and verified
 - All actions logged with full audit trail
 - Emergency shutdown capability available
