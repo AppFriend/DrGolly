@@ -4273,19 +4273,15 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Course purchase routes
+  // Course purchase routes - allows public checkout
   app.post('/api/create-course-payment', async (req: any, res) => {
     try {
       const { courseId, customerDetails, couponId } = req.body;
       
-      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
-      const userId = req.session?.userId || req.user?.claims?.sub;
+      // Get the user ID from the session (works with both auth systems) - allows null for public checkout
+      const userId = req.session?.userId || req.user?.claims?.sub || null;
       
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-      
-      console.log('Payment request for user ID:', userId);
+      console.log('Payment request for user ID:', userId || 'public checkout');
       
       // Get course details with raw SQL fallback
       let course;
@@ -4308,32 +4304,45 @@ Please contact the customer to confirm the appointment.
         return res.status(404).json({ message: "Course not found" });
       }
 
-      // Get user details with raw SQL fallback
-      let user;
-      try {
-        user = await storage.getUser(userId);
-      } catch (error) {
-        console.log('Drizzle ORM failed for user payment, using raw SQL fallback');
-        // Use raw SQL to avoid Drizzle ORM parsing issues
-        const { neon } = await import('@neondatabase/serverless');
-        const sql = neon(process.env.DATABASE_URL!);
-        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
-        
-        if (!result || result.length === 0) {
-          return res.status(404).json({ message: "User not found" });
+      // Get user details with raw SQL fallback - handle public checkout
+      let user = null;
+      if (userId) {
+        try {
+          user = await storage.getUser(userId);
+        } catch (error) {
+          console.log('Drizzle ORM failed for user payment, using raw SQL fallback');
+          // Use raw SQL to avoid Drizzle ORM parsing issues
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+          
+          if (result && result.length > 0) {
+            user = {
+              id: result[0].id,
+              email: result[0].email,
+              firstName: result[0].first_name,
+              lastName: result[0].last_name,
+              stripeCustomerId: result[0].stripe_customer_id,
+              signupSource: result[0].signup_source
+            };
+          }
         }
-        
+      }
+      
+      // For public checkout, use customer details from request
+      if (!user && customerDetails) {
         user = {
-          id: result[0].id,
-          email: result[0].email,
-          firstName: result[0].first_name,
-          lastName: result[0].last_name,
-          stripeCustomerId: result[0].stripe_customer_id,
-          signupSource: result[0].signup_source
+          id: null,
+          email: customerDetails.email,
+          firstName: customerDetails.firstName,
+          lastName: customerDetails.lastName || '',
+          stripeCustomerId: null,
+          signupSource: 'public_checkout'
         };
       }
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      
+      if (!user || !user.email) {
+        return res.status(400).json({ message: "Customer details required for checkout" });
       }
 
       // Check for existing Stripe customer by email first
@@ -4355,22 +4364,24 @@ Please contact the customer to confirm the appointment.
             email: user.email,
             name: `${user.firstName} ${user.lastName}`.trim(),
             metadata: {
-              userId: userId,
-              signupSource: user.signupSource || 'direct',
+              userId: userId || 'public_checkout',
+              signupSource: user.signupSource || 'public_checkout',
             },
           });
           stripeCustomerId = customer.id;
         }
         
-        // Update user with stripe customer ID (with raw SQL fallback)
-        try {
-          await storage.updateUserStripeCustomerId(userId, stripeCustomerId);
-        } catch (error) {
-          console.log('Drizzle ORM failed for stripe customer ID update, using raw SQL fallback');
-          // Use raw SQL to avoid Drizzle ORM parsing issues
-          const { neon } = await import('@neondatabase/serverless');
-          const sql = neon(process.env.DATABASE_URL!);
-          await sql`UPDATE users SET stripe_customer_id = ${stripeCustomerId} WHERE id = ${userId}`;
+        // Update user with stripe customer ID (only if user exists)
+        if (userId) {
+          try {
+            await storage.updateUserStripeCustomerId(userId, stripeCustomerId);
+          } catch (error) {
+            console.log('Drizzle ORM failed for stripe customer ID update, using raw SQL fallback');
+            // Use raw SQL to avoid Drizzle ORM parsing issues
+            const { neon } = await import('@neondatabase/serverless');
+            const sql = neon(process.env.DATABASE_URL!);
+            await sql`UPDATE users SET stripe_customer_id = ${stripeCustomerId} WHERE id = ${userId}`;
+          }
         }
       }
 
@@ -4444,7 +4455,7 @@ Please contact the customer to confirm the appointment.
         metadata: {
           courseId: courseId.toString(),
           courseName: course.title,
-          userId: userId,
+          userId: userId || 'public_checkout',
           userEmail: user.email,
           customerName: `${user.firstName} ${user.lastName}`.trim(),
           productType: 'course',
@@ -4463,7 +4474,7 @@ Please contact the customer to confirm the appointment.
       // Create course purchase record with regional pricing (with raw SQL fallback)
       try {
         await storage.createCoursePurchase({
-          userId: userId,
+          userId: userId || null,
           courseId: courseId,
           stripePaymentIntentId: paymentIntent.id,
           stripeCustomerId: stripeCustomerId,
@@ -4477,7 +4488,7 @@ Please contact the customer to confirm the appointment.
         const { neon } = await import('@neondatabase/serverless');
         const sql = neon(process.env.DATABASE_URL!);
         await sql`INSERT INTO course_purchases (user_id, course_id, stripe_payment_intent_id, stripe_customer_id, amount, currency, status, created_at) 
-                  VALUES (${userId}, ${courseId}, ${paymentIntent.id}, ${stripeCustomerId}, ${Math.round(coursePrice * 100)}, ${regionalPricing.currency.toLowerCase()}, 'pending', NOW())`;
+                  VALUES (${userId || null}, ${courseId}, ${paymentIntent.id}, ${stripeCustomerId}, ${Math.round(coursePrice * 100)}, ${regionalPricing.currency.toLowerCase()}, 'pending', NOW())`;
       }
 
       res.json({ 

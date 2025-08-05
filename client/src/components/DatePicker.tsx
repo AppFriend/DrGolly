@@ -161,7 +161,7 @@ export function DatePicker({ value, onChange, placeholder = "Due Date/Baby Birth
             <div className="grid grid-cols-7 gap-1">
               {getDaysInMonth().map((day, index) => (
                 <button
-                  key={index}
+                  key={day ? `day-${day}` : `empty-${index}`}
                   onClick={() => day && handleDateSelect(day)}
                   disabled={!day}
                   className={`
