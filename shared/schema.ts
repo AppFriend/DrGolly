@@ -224,7 +224,32 @@ export const lessonContent = pgTable("lesson_content", {
   duration: integer("duration"), // in minutes
   orderIndex: integer("order_index").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Audit log for all content changes - CRITICAL for data recovery
+export const contentAuditLog = pgTable("content_audit_log", {
+  id: serial("id").primaryKey(),
+  tableId: varchar("table_id").notNull(), // Record ID in the target table
+  tableName: varchar("table_name").notNull(), // courses, course_lessons, lesson_content
+  action: varchar("action").notNull(), // create, update, delete
+  oldValues: jsonb("old_values"), // Previous values before change
+  newValues: jsonb("new_values"), // New values after change
+  userId: varchar("user_id").references(() => users.id), // Admin who made the change
+  userEmail: varchar("user_email"), // Admin email for tracking
+  changeSource: varchar("change_source").notNull(), // admin_panel, csv_sync, api, migration
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertContentAuditLogSchema = createInsertSchema(contentAuditLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+
 
 // User progress on chapters
 export const userChapterProgress = pgTable("user_chapter_progress", {
@@ -707,6 +732,7 @@ export const insertCourseLessonSchema = createInsertSchema(courseLessons).omit({
 export const insertLessonContentSchema = createInsertSchema(lessonContent).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertCourseChapterSchema = createInsertSchema(courseChapters).omit({
@@ -825,6 +851,10 @@ export type InsertDevelopmentMilestone = z.infer<typeof insertDevelopmentMilesto
 export type InsertDevelopmentTracking = z.infer<typeof insertDevelopmentTrackingSchema>;
 export type InsertFeedEntry = z.infer<typeof insertFeedEntrySchema>;
 export type InsertSleepEntry = z.infer<typeof insertSleepEntrySchema>;
+
+// Audit log types - CRITICAL for data recovery
+export type ContentAuditLog = typeof contentAuditLog.$inferSelect;
+export type InsertContentAuditLog = typeof contentAuditLog.$inferInsert;
 export type InsertConsultationBooking = z.infer<typeof insertConsultationBookingSchema>;
 
 export type BlogPost = typeof blogPosts.$inferSelect;
