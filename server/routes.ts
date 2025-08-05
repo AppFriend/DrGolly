@@ -3846,16 +3846,82 @@ Please contact the customer to confirm the appointment.
         return res.status(400).json({ message: "Password must be at least 6 characters long" });
       }
 
-      // Find any pending purchase or session data to complete account setup
-      // For now, we'll handle this as a simple account creation
-      // In a full implementation, you'd check for pending purchase data
+      // Validate purchase data
+      if (!purchaseData?.email || !purchaseData?.firstName) {
+        return res.status(400).json({ message: "Email and first name are required" });
+      }
 
-      // Since this is a post-purchase signup, the user should already exist
-      // We'll just update their password and mark them as verified
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(purchaseData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists with this email" });
+      }
+
+      // Hash password
+      const passwordHash = await AuthUtils.hashPassword(password);
+
+      // Create new user
+      const newUser = await storage.createUser({
+        email: purchaseData.email,
+        firstName: purchaseData.firstName,
+        lastName: purchaseData.lastName || '',
+        passwordHash,
+        hasSetPassword: true,
+        subscriptionTier: 'free',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      // Find the pending purchase and link it to the new user
+      if (purchaseData.courseId) {
+        try {
+          const sqlConnection = neon(process.env.DATABASE_URL!);
+          await sqlConnection.query(`
+            UPDATE course_purchases 
+            SET user_id = $1 
+            WHERE user_id IS NULL 
+            AND course_id = $2 
+            AND created_at > NOW() - INTERVAL '1 hour'
+            ORDER BY created_at DESC 
+            LIMIT 1
+          `, [newUser.id, parseInt(purchaseData.courseId)]);
+          console.log(`Linked purchase for course ${purchaseData.courseId} to new user ${newUser.id}`);
+        } catch (error) {
+          console.error('Error linking purchase to user:', error);
+        }
+      }
+
+      // Create session for the new user
+      const sessionData = {
+        claims: {
+          sub: newUser.id,
+          email: newUser.email,
+          first_name: newUser.firstName,
+          last_name: newUser.lastName
+        }
+      };
       
-      res.json({ 
-        message: "Account setup completed successfully",
-        courseId: purchaseData?.courseId || null
+      req.session.passport = { user: sessionData };
+      req.session.userId = newUser.id;
+      
+      // Force session save
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).json({ message: "Session save failed" });
+        }
+        
+        console.log(`Account created and session established for user: ${newUser.email}`);
+        
+        res.json({ 
+          message: "Account setup completed successfully",
+          courseId: purchaseData?.courseId || null,
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            firstName: newUser.firstName
+          }
+        });
       });
     } catch (error) {
       console.error("Error completing purchase signup:", error);

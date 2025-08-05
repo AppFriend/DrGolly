@@ -825,11 +825,27 @@ export default function Checkout() {
   };
 
   const handlePaymentSuccess = () => {
-    toast({
-      title: "Payment Successful!",
-      description: "Your course has been added to your account.",
-    });
-    setLocation("/courses");
+    if (user) {
+      // Authenticated user - redirect to courses
+      toast({
+        title: "Payment Successful!",
+        description: "Your course has been added to your account.",
+      });
+      setLocation("/courses");
+    } else {
+      // Public checkout user - redirect to complete page to create account
+      toast({
+        title: "Payment Successful!",
+        description: "Please set up your password to access your course.",
+      });
+      const urlParams = new URLSearchParams();
+      if (courseId) {
+        urlParams.set('courseId', courseId.toString());
+      }
+      urlParams.set('email', customerDetails.email);
+      urlParams.set('firstName', customerDetails.firstName);
+      setLocation(`/complete?${urlParams.toString()}`);
+    }
   };
 
   // Handle case where no items to checkout (cart is empty and no direct course purchase)

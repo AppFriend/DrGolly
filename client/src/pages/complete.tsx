@@ -26,9 +26,16 @@ export default function CompletePage() {
     const urlParams = new URLSearchParams(window.location.search);
     const courseId = urlParams.get('courseId');
     const purchaseId = urlParams.get('purchaseId');
+    const email = urlParams.get('email');
+    const firstName = urlParams.get('firstName');
     
-    if (courseId || purchaseId) {
-      setPendingPurchase({ courseId, purchaseId });
+    if (courseId || purchaseId || email) {
+      setPendingPurchase({ 
+        courseId, 
+        purchaseId, 
+        email, 
+        firstName 
+      });
     }
   }, []);
 
