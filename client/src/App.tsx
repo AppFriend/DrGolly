@@ -65,7 +65,7 @@ function AuthenticatedApp() {
   
   const [activeTab, setActiveTab] = useState(getActiveTab());
 
-  const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success";
+  const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success" && location !== "/cart-checkout";
 
   const handleUpgrade = (billingPeriod: "monthly" | "yearly") => {
     window.location.href = `/checkout-subscription?period=${billingPeriod}&tier=gold`;
@@ -229,10 +229,19 @@ function Router() {
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />
           <Route path="/terms" component={Terms} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/refunds" component={Refunds} />
+          <Route path="/contact" component={Contact} />
+          <Route path="/shipping" component={Shipping} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route path="/complete" component={CompletePage} />
           <Route path="/share/:slug" component={Share} />
+          {/* Public checkout routes - accessible without authentication */}
+          <Route path="/checkout/:courseId" component={Checkout} />
+          <Route path="/checkout" component={Checkout} />
+          <Route path="/cart-checkout" component={CartCheckout} />
+          <Route path="/payment-success" component={PaymentSuccess} />
           <Route component={Landing} />
         </Switch>
         <Toaster />
