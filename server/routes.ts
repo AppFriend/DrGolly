@@ -4345,7 +4345,7 @@ Please contact the customer to confirm the appointment.
       const { courseId, customerDetails, couponId } = req.body;
       
       // Get the user ID from the session (works with both auth systems) - allows null for public checkout
-      const userId = req.session?.userId || req.user?.claims?.sub || null;
+      let userId = req.session?.userId || req.user?.claims?.sub || null;
       
       console.log('Payment request for user ID:', userId || 'public checkout');
       
@@ -4395,16 +4395,55 @@ Please contact the customer to confirm the appointment.
         }
       }
       
-      // For public checkout, use customer details from request
+      // For public checkout, check if user exists by email first
       if (!user && customerDetails) {
-        user = {
-          id: null,
-          email: customerDetails.email,
-          firstName: customerDetails.firstName,
-          lastName: customerDetails.lastName || '',
-          stripeCustomerId: null,
-          signupSource: 'public_checkout'
-        };
+        // Check if user exists in database by email
+        try {
+          const existingUser = await storage.getUserByEmail(customerDetails.email);
+          if (existingUser) {
+            // EXISTING USER: Auto-login them for the purchase
+            user = existingUser;
+            
+            // Create session for existing user to auto-login them
+            const sessionData = {
+              claims: {
+                sub: existingUser.id,
+                email: existingUser.email,
+                first_name: existingUser.firstName,
+                last_name: existingUser.lastName
+              }
+            };
+            
+            req.session.passport = { user: sessionData };
+            req.session.userId = existingUser.id;
+            userId = existingUser.id; // Update userId variable for response
+            
+            console.log(`✅ EXISTING USER: Auto-logged in for purchase: ${existingUser.email}`);
+            console.log(`🔄 Updated userId variable to: ${userId}`);
+          } else {
+            // NEW USER: Continue with public checkout
+            user = {
+              id: null,
+              email: customerDetails.email,
+              firstName: customerDetails.firstName,
+              lastName: customerDetails.lastName || '',
+              stripeCustomerId: null,
+              signupSource: 'public_checkout'
+            };
+            console.log(`🔄 NEW USER: Public checkout for ${customerDetails.email}`);
+          }
+        } catch (error) {
+          console.error('Error checking existing user:', error);
+          // Fallback to public checkout
+          user = {
+            id: null,
+            email: customerDetails.email,
+            firstName: customerDetails.firstName,
+            lastName: customerDetails.lastName || '',
+            stripeCustomerId: null,
+            signupSource: 'public_checkout'
+          };
+        }
       }
       
       if (!user || !user.email) {
@@ -4557,11 +4596,18 @@ Please contact the customer to confirm the appointment.
                   VALUES (${userId || null}, ${courseId}, ${paymentIntent.id}, ${stripeCustomerId}, ${Math.round(coursePrice * 100)}, ${regionalPricing.currency.toLowerCase()}, 'pending', NOW())`;
       }
 
-      res.json({ 
+      const responseData = { 
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
-        finalAmount: Math.round(coursePrice * 100) // Send final amount in cents
-      });
+        finalAmount: Math.round(coursePrice * 100), // Send final amount in cents
+        userStatus: userId ? 'existing_user_logged_in' : 'new_user_public_checkout',
+        userId: userId || null
+      };
+      
+      console.log(`🔍 Final userId before response: ${userId}`);
+      
+      console.log(`📤 PAYMENT RESPONSE:`, JSON.stringify(responseData, null, 2));
+      res.json(responseData);
     } catch (error) {
       console.error("Error creating course payment:", error);
       res.status(500).json({ message: "Failed to create payment" });

@@ -113,7 +113,7 @@ function SimpleCardPayment({
         throw new Error('Failed to create payment intent');
       }
 
-      const { clientSecret } = await response.json();
+      const { clientSecret, userStatus, userId } = await response.json();
 
       // Get card element
       const cardElement = elements.getElement(CardElement);
@@ -148,7 +148,7 @@ function SimpleCardPayment({
           title: "Payment Successful!",
           description: "Your course has been purchased successfully.",
         });
-        onSuccess();
+        onSuccess(userStatus, userId);
       }
     } catch (error: any) {
       console.error('Payment error:', error);
@@ -824,16 +824,16 @@ export default function Checkout() {
     }));
   };
 
-  const handlePaymentSuccess = () => {
-    if (user) {
-      // Authenticated user - redirect to courses
+  const handlePaymentSuccess = (userStatus?: string, userId?: string) => {
+    if (userStatus === 'existing_user_logged_in' || user) {
+      // Existing user was auto-logged in - redirect to courses
       toast({
-        title: "Payment Successful!",
+        title: "Welcome back!",
         description: "Your course has been added to your account.",
       });
       setLocation("/courses");
     } else {
-      // Public checkout user - redirect to complete page to create account
+      // New user - redirect to complete page to create account
       toast({
         title: "Payment Successful!",
         description: "Please set up your password to access your course.",
