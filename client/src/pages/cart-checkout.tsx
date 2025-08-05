@@ -198,12 +198,18 @@ export default function CartCheckout() {
                   />
                   <div className="relative">
                     <input
+                      id="cartDueDate"
                       type="date"
                       value={customerDetails.dueDate}
                       onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3] cursor-pointer"
                       style={{ 
                         colorScheme: 'light'
+                      }}
+                      onClick={(e) => {
+                        e.target.showPicker?.();
+                        const overlay = e.target.parentElement?.querySelector('.date-overlay');
+                        if (overlay) overlay.style.display = 'none';
                       }}
                       onFocus={(e) => {
                         const overlay = e.target.parentElement?.querySelector('.date-overlay');
@@ -217,7 +223,14 @@ export default function CartCheckout() {
                       }}
                     />
                     {!customerDetails.dueDate && (
-                      <div className="date-overlay absolute inset-0 flex items-center px-4 pointer-events-none text-gray-500">
+                      <div 
+                        className="date-overlay absolute inset-0 flex items-center px-4 text-gray-500 cursor-pointer"
+                        onClick={() => {
+                          const input = document.getElementById('cartDueDate');
+                          input?.focus();
+                          input?.showPicker?.();
+                        }}
+                      >
                         Date of Birth / Due Date
                       </div>
                     )}

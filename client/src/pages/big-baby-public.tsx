@@ -635,9 +635,14 @@ export default function BigBabyPublic() {
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    className="h-12"
+                    className="h-12 cursor-pointer"
                     style={{ 
                       colorScheme: 'light'
+                    }}
+                    onClick={(e) => {
+                      e.target.showPicker?.();
+                      const overlay = e.target.parentElement?.querySelector('.date-overlay');
+                      if (overlay) overlay.style.display = 'none';
                     }}
                     onFocus={(e) => {
                       const overlay = e.target.parentElement?.querySelector('.date-overlay');
@@ -651,7 +656,14 @@ export default function BigBabyPublic() {
                     }}
                   />
                   {!customerDetails.dueDate && (
-                    <div className="date-overlay absolute inset-0 flex items-center px-3 pointer-events-none text-gray-500">
+                    <div 
+                      className="date-overlay absolute inset-0 flex items-center px-3 text-gray-500 cursor-pointer"
+                      onClick={() => {
+                        const input = document.getElementById('dueDate');
+                        input?.focus();
+                        input?.showPicker?.();
+                      }}
+                    >
                       Date of Birth / Due Date
                     </div>
                   )}
