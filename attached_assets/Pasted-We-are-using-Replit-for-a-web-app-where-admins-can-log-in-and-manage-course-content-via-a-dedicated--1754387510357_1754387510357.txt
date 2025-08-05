@@ -1,0 +1,88 @@
+We are using Replit for a web app where admins can log in and manage course content via a dedicated admin panel. Course data is stored in a structured format across three fields in the database:
+
+Chapter
+
+Lesson
+
+LessonContent
+
+Each admin update is meant to automatically update the database (our single source of truth) in real-time upon save.
+
+📌 INCIDENT SUMMARY
+
+On Thursday 31st August at 10:30AM AEST, a registered admin user (alex@drgolly.com) successfully logged in and made numerous updates to the course content.
+
+These changes were confirmed as saved at the time.
+
+However, today (Monday 5th August), upon logging in again, Alex found all course content reverted, missing her updates from the 31st August session.
+
+No other admin users have made changes since, and no app deployments or schema updates were made.
+
+✅ OBJECTIVES
+🕵️‍♂️ Investigate & Recover
+
+Review project/database backups, logs, or version control to restore all course content (Chapters, Lessons, LessonContent) as it existed at or just after 10:30AM AEST on Thursday 31st August.
+
+If timestamped change logs or audit trails exist, trace the last known good state for alex@drgolly.com and restore it.
+
+🐛 Debug Why Changes Were Lost
+
+Identify why Alex’s changes did not persist. Possible areas to investigate:
+
+Was the DB write operation triggered correctly after admin panel save?
+
+Was the correct DB write method used (e.g., atomic update or transactional)?
+
+Any overwrite, rollback, or deployment that could have reverted content?
+
+Any error handling suppressing save failures without alert?
+
+🛠 Implement Robust Saving Logic
+
+Ensure all future admin updates to Chapters, Lessons, and LessonContent:
+
+Trigger a reliable write to the database
+
+Return confirmation to the UI that changes are saved
+
+Include error handling and retry logic if save fails
+
+Optionally store a versioned change history (audit trail) per content item for rollback/debugging
+
+🧪 Add Confirmation & Safeguards
+
+On each save:
+
+Confirm DB update succeeded and notify admin user
+
+Log changes with timestamp and user
+
+Provide user feedback if save fails (e.g., toast message or modal)
+
+🧾 REQUESTED REPORTING
+Please include a comprehensive report that documents:
+
+What content was found and restored (with timestamps)
+
+What likely caused the data loss
+
+What code/config changes were made to:
+
+Fix the issue
+
+Prevent future recurrence
+
+Confirmation of successful testing for:
+
+Admin updates being saved
+
+DB changes being retained across sessions
+
+Recovery logic where applicable
+
+🔐 CRITICAL: DO NOT
+Modify or delete any user data without backup
+
+Rollback the entire database unless scoped to course content only
+
+Overwrite live data without first presenting a version diff or backup
