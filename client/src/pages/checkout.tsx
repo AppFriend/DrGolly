@@ -907,10 +907,23 @@ export default function Checkout() {
                     type="date"
                     value={customerDetails.dueDate}
                     onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    className="h-12"
+                    className="h-12 text-transparent"
+                    style={{ 
+                      colorScheme: 'light',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'textfield'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.color = 'rgb(17, 24, 39)';
+                    }}
+                    onBlur={(e) => {
+                      if (!e.target.value) {
+                        e.target.style.color = 'transparent';
+                      }
+                    }}
                   />
                   {!customerDetails.dueDate && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none text-gray-500">
+                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none text-gray-500 bg-white">
                       Date of Birth / Due Date
                     </div>
                   )}

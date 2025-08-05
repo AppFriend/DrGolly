@@ -201,10 +201,23 @@ export default function CartCheckout() {
                       type="date"
                       value={customerDetails.dueDate}
                       onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3] text-transparent"
+                      style={{ 
+                        colorScheme: 'light',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'textfield'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.color = 'rgb(17, 24, 39)';
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value) {
+                          e.target.style.color = 'transparent';
+                        }
+                      }}
                     />
                     {!customerDetails.dueDate && (
-                      <div className="absolute inset-0 flex items-center px-4 pointer-events-none text-gray-500">
+                      <div className="absolute inset-0 flex items-center px-4 pointer-events-none text-gray-500 bg-white">
                         Date of Birth / Due Date
                       </div>
                     )}
