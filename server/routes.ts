@@ -4090,7 +4090,7 @@ Please contact the customer to confirm the appointment.
 
       // Get lesson details with content
       const lessonResult = await sql`
-        SELECT cl.id, cl.title, cl.video_url, lc.content, lc.content_type
+        SELECT cl.id, cl.title, cl.video_url, lc.content
         FROM course_lessons cl
         LEFT JOIN lesson_content lc ON cl.id = lc.lesson_id
         WHERE cl.id = ${lessonId}
@@ -4109,8 +4109,7 @@ Please contact the customer to confirm the appointment.
         id: lesson.id,
         title: lesson.title,
         videoUrl: lesson.video_url,
-        content: lesson.content,
-        contentType: lesson.content_type
+        content: lesson.content
       });
     } catch (error) {
       console.error('Error fetching lesson content for Change Log preview:', error);
