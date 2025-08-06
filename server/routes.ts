@@ -4079,6 +4079,45 @@ Please contact the customer to confirm the appointment.
 
 
   // Individual lesson routes with URL structure
+  // Get lesson content only - for Change Log content preview (admin only)
+  app.get('/api/lessons/:id/content', isAdmin, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.id);
+      console.log(`Fetching lesson content for Change Log preview: ${lessonId}`);
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+
+      // Get lesson details with content
+      const lessonResult = await sql`
+        SELECT cl.id, cl.title, cl.video_url, lc.content, lc.content_type
+        FROM course_lessons cl
+        LEFT JOIN lesson_content lc ON cl.id = lc.lesson_id
+        WHERE cl.id = ${lessonId}
+        LIMIT 1
+      `;
+
+      if (!lessonResult || lessonResult.length === 0) {
+        console.log(`Lesson ${lessonId} not found for content preview`);
+        return res.status(404).json({ message: 'Lesson not found' });
+      }
+
+      const lesson = lessonResult[0];
+      console.log(`Found lesson content for preview: ${lesson.title}`);
+      
+      res.json({
+        id: lesson.id,
+        title: lesson.title,
+        videoUrl: lesson.video_url,
+        content: lesson.content,
+        contentType: lesson.content_type
+      });
+    } catch (error) {
+      console.error('Error fetching lesson content for Change Log preview:', error);
+      res.status(500).json({ error: 'Failed to fetch lesson content' });
+    }
+  });
+
   app.get('/api/lessons/:id', async (req: any, res) => {
     try {
       const lessonId = parseInt(req.params.id);

@@ -54,6 +54,8 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
   const [showContentDialog, setShowContentDialog] = useState(false);
   const [showRevertDialog, setShowRevertDialog] = useState(false);
   const [revertingEntry, setRevertingEntry] = useState<ChangeLogEntry | null>(null);
+  const [lessonContent, setLessonContent] = useState<any>(null);
+  const [loadingContent, setLoadingContent] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -176,9 +178,29 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
     }
   };
 
-  const handleViewContent = (entry: ChangeLogEntry) => {
+  const handleViewContent = async (entry: ChangeLogEntry) => {
     setSelectedEntry(entry);
     setShowContentDialog(true);
+    
+    // If this is a lesson modification, fetch the current lesson content
+    if (entry.change_type === 'lesson_modified' && entry.course_snapshot?.lesson_id) {
+      setLoadingContent(true);
+      try {
+        const lessonData = await apiRequest("GET", `/api/lessons/${entry.course_snapshot.lesson_id}/content`);
+        setLessonContent(lessonData);
+      } catch (error) {
+        console.error('Error fetching lesson content:', error);
+        toast({
+          title: "Error",
+          description: "Could not load lesson content for preview.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingContent(false);
+      }
+    } else {
+      setLessonContent(null);
+    }
   };
 
   const handleRevertClick = (entry: ChangeLogEntry) => {
@@ -348,15 +370,81 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
                   </CardContent>
                 </Card>
 
-                {/* Course Snapshot */}
+                {/* Content Details */}
+                {selectedEntry.affected_chapter_title && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Affected Content</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="font-medium">Chapter:</span> {selectedEntry.affected_chapter_title}
+                        </div>
+                        {selectedEntry.affected_lesson_title && (
+                          <div>
+                            <span className="font-medium">Lesson:</span> {selectedEntry.affected_lesson_title}
+                          </div>
+                        )}
+                        {selectedEntry.course_snapshot?.content_length && (
+                          <div>
+                            <span className="font-medium">Content Length:</span> {selectedEntry.course_snapshot.content_length} characters
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Current Lesson Content (if lesson modification) */}
+                {selectedEntry.change_type === 'lesson_modified' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Current Lesson Content</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingContent ? (
+                        <div className="flex items-center justify-center p-8">
+                          <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
+                          <span className="ml-3">Loading lesson content...</span>
+                        </div>
+                      ) : lessonContent ? (
+                        <div className="space-y-4">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h4 className="font-medium text-blue-900 mb-2">Video Content</h4>
+                            {lessonContent.videoUrl && (
+                              <div className="text-sm text-blue-800">
+                                <span className="font-medium">Video URL:</span> {lessonContent.videoUrl}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {lessonContent.content && (
+                            <div className="bg-gray-50 border rounded-lg p-4">
+                              <h4 className="font-medium text-gray-900 mb-2">Text Content</h4>
+                              <div className="prose prose-sm max-w-none text-gray-700 max-h-64 overflow-y-auto" 
+                                   dangerouslySetInnerHTML={{ __html: lessonContent.content }} />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-gray-500 p-4">
+                          No current lesson content available for preview.
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Technical Snapshot (for debugging) */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Content Snapshot</CardTitle>
+                    <CardTitle className="text-lg">Change Metadata</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="bg-gray-50 p-4 rounded-lg">
-                      <pre className="text-sm overflow-auto max-h-96 whitespace-pre-wrap">
-                        {JSON.stringify(selectedEntry.courseSnapshot, null, 2)}
+                      <pre className="text-xs overflow-auto max-h-32 whitespace-pre-wrap text-gray-600">
+                        {JSON.stringify(selectedEntry.course_snapshot, null, 2)}
                       </pre>
                     </div>
                   </CardContent>
