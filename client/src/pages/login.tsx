@@ -8,11 +8,13 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useTracking } from "@/hooks/useTracking";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
+  useTracking(); // Initialize tracking on login page
   
   const [formData, setFormData] = useState({
     email: '',

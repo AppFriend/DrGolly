@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersonalization } from "@/hooks/usePersonalization";
 import { useToast } from "@/hooks/use-toast";
+import { useTracking } from "@/hooks/useTracking";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { cn } from "@/lib/utils";
 import { WelcomePopup } from "@/components/WelcomePopup";
@@ -32,6 +33,7 @@ const categories = [
 export default function Home() {
   const { user } = useAuth();
   const { toast } = useToast();
+  useTracking(); // Initialize tracking on home page
   
   // Debug user data (remove in production)
   // console.log('Home - User data:', user);
