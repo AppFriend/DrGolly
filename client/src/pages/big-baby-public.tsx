@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useEventTracking } from "@/hooks/useTracking";
 import { useStripe, useElements, PaymentElement, PaymentRequestButtonElement, CardElement, LinkAuthenticationElement } from "@stripe/react-stripe-js";
 import { CouponInput } from "@/components/CouponInput";
 import { WelcomeBackPopup } from "@/components/WelcomeBackPopup";
@@ -645,6 +646,7 @@ export default function BigBabyPublic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { trackPurchase } = useEventTracking();
   const [customerDetails, setCustomerDetails] = useState({
     email: "",
     firstName: "",
@@ -780,15 +782,15 @@ export default function BigBabyPublic() {
         throw new Error(completion.message || 'Purchase completion failed');
       }
       
-      // Track Facebook Pixel purchase event
-      if (typeof window !== 'undefined' && window.fbq) {
-        window.fbq('track', 'Purchase', {
-          value: finalPrice,
-          currency: currency,
-          content_ids: [BIG_BABY_COURSE.id],
-          content_type: 'product',
-        });
-      }
+      // Track comprehensive purchase events across all platforms
+      trackPurchase({
+        value: finalPrice,
+        currency: currency,
+        transactionId: paymentIntentId,
+        content_ids: [BIG_BABY_COURSE.id],
+        content_type: 'product',
+        product_name: BIG_BABY_COURSE.title
+      });
 
       toast({
         title: "Payment Successful!",

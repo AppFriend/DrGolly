@@ -4,11 +4,13 @@ import { useLocation, useRoute } from "wouter";
 import { Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useEventTracking } from "@/hooks/useTracking";
 
 export default function PaymentSuccess() {
   const [, params] = useRoute("/payment-success");
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { trackPurchase } = useEventTracking();
   
   const courseId = new URLSearchParams(window.location.search).get('courseId');
 

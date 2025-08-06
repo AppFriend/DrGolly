@@ -11,6 +11,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import PasswordSetupBanner from "@/components/auth/PasswordSetupBanner";
 import { useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useTracking } from "@/hooks/useTracking";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
@@ -53,6 +54,7 @@ import CompletePage from "@/pages/complete";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
+  useTracking(); // Initialize tracking pixels and handle page view tracking
   const { isOpen, closeUpgradeModal } = useUpgradeModal();
   const { user, showPasswordSetupBanner, dismissPasswordSetupBanner, completePasswordSetup } = useAuth();
   

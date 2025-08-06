@@ -8,11 +8,13 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useEventTracking } from "@/hooks/useTracking";
 
 export default function SignupPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
+  const { trackSignUp } = useEventTracking();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -68,6 +70,13 @@ export default function SignupPage() {
           signupSource: 'Web App Signup',
           marketingOptIn: false
         }
+      });
+
+      // Track signup event across all platforms
+      trackSignUp({
+        email: formData.email,
+        firstName: formData.firstName,
+        signupSource: 'Web App Signup'
       });
 
       // Invalidate auth cache to refresh user data
