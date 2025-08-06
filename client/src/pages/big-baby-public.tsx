@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartphone, Trash2, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartphone, Trash2, ChevronDown, ChevronUp, Info, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -452,7 +452,6 @@ function PaymentForm({
                     },
                     terms: {
                       card: 'never',
-                      auBankAccount: 'never',
                       bancontact: 'never',
                       blik: 'never',
                       boleto: 'never',
@@ -1078,7 +1077,6 @@ export default function BigBabyPublic() {
                     <GoogleMapsAddressAutocomplete
                       onAddressSelect={handleAddressChange}
                       initialValue={customerDetails.address}
-                      placeholder="Start typing your address"
                       className="w-full"
                     />
                   </div>
@@ -1181,7 +1179,14 @@ export default function BigBabyPublic() {
       </div>
 
       {showWelcomePopup && (
-        <WelcomeBackPopup onClose={() => setShowWelcomePopup(false)} />
+        <WelcomeBackPopup 
+          isOpen={showWelcomePopup}
+          userEmail={customerDetails.email}
+          firstName={customerDetails.firstName}
+          onClose={() => setShowWelcomePopup(false)}
+          onLoginSuccess={() => setShowWelcomePopup(false)}
+          onPasswordReset={() => setShowWelcomePopup(false)}
+        />
       )}
     </div>
   );
