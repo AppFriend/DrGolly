@@ -9607,10 +9607,30 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Course Change Log API endpoints - TEMPORARILY DISABLED AUTH FOR TESTING
+  // Course Change Log API endpoints
   app.get('/api/admin/course-change-log', async (req, res) => {
     try {
-      console.log('Course Change Log: Request received - auth temporarily disabled for testing');
+      // Get user ID from session - same pattern as /api/admin/check endpoint
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Check if user is admin using same pattern as /api/admin/check
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const adminSql = neon(process.env.DATABASE_URL!);
+        const adminResult = await adminSql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+        const isAdmin = adminResult[0]?.is_admin || false;
+        
+        if (!isAdmin) {
+          return res.status(403).json({ message: 'Admin access required' });
+        }
+      } catch (dbError) {
+        console.error('Database error checking admin status:', dbError);
+        return res.status(500).json({ message: 'Database error' });
+      }
       
       console.log('Course Change Log: Processing request...');
       
