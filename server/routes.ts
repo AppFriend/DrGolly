@@ -2350,21 +2350,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/chapters/:chapterId', isAdmin, async (req, res) => {
     try {
       const { chapterId } = req.params;
+      const sql = neon(process.env.DATABASE_URL!);
       
-      // First delete all lessons in this chapter
-      await db.delete(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
+      // Use transaction to safely delete all related data
+      await sql.begin(async (sql) => {
+        // First get all lesson IDs in this chapter
+        const lessons = await sql`
+          SELECT id FROM course_lessons WHERE chapter_id = ${parseInt(chapterId)}
+        `;
+        
+        const lessonIds = lessons.map(lesson => lesson.id);
+        
+        if (lessonIds.length > 0) {
+          // Delete user progress for lessons in this chapter
+          await sql`
+            DELETE FROM user_lesson_progress 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+          
+          // Delete user progress for lesson content
+          await sql`
+            DELETE FROM user_lesson_content_progress 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+          
+          // Delete lesson content
+          await sql`
+            DELETE FROM lesson_content 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+        }
+        
+        // Delete user chapter progress
+        await sql`
+          DELETE FROM user_chapter_progress 
+          WHERE chapter_id = ${parseInt(chapterId)}
+        `;
+        
+        // Delete all lessons in this chapter
+        await sql`
+          DELETE FROM course_lessons 
+          WHERE chapter_id = ${parseInt(chapterId)}
+        `;
+        
+        // Finally delete the chapter
+        await sql`
+          DELETE FROM course_chapters 
+          WHERE id = ${parseInt(chapterId)}
+        `;
+      });
       
-      // Then delete the chapter
-      const [deletedChapter] = await db
-        .delete(courseChapters)
-        .where(eq(courseChapters.id, parseInt(chapterId)))
-        .returning();
-      
-      if (!deletedChapter) {
-        return res.status(404).json({ error: 'Chapter not found' });
-      }
-      
-      res.json({ message: 'Chapter deleted successfully', deletedChapter });
+      res.json({ message: 'Chapter and all related data deleted successfully' });
     } catch (error) {
       console.error('Error deleting chapter:', error);
       res.status(500).json({ error: 'Failed to delete chapter' });
@@ -2375,20 +2411,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/lessons/:lessonId', isAdmin, async (req, res) => {
     try {
       const { lessonId } = req.params;
+      const sql = neon(process.env.DATABASE_URL!);
       
-      const [deletedLesson] = await db
-        .delete(courseLessons)
-        .where(eq(courseLessons.id, parseInt(lessonId)))
-        .returning();
+      // Use transaction to safely delete all related data
+      await sql.begin(async (sql) => {
+        // Delete user progress for this lesson
+        await sql`
+          DELETE FROM user_lesson_progress 
+          WHERE lesson_id = ${parseInt(lessonId)}
+        `;
+        
+        // Delete user progress for lesson content
+        await sql`
+          DELETE FROM user_lesson_content_progress 
+          WHERE lesson_id = ${parseInt(lessonId)}
+        `;
+        
+        // Delete lesson content
+        await sql`
+          DELETE FROM lesson_content 
+          WHERE lesson_id = ${parseInt(lessonId)}
+        `;
+        
+        // Finally delete the lesson
+        await sql`
+          DELETE FROM course_lessons 
+          WHERE id = ${parseInt(lessonId)}
+        `;
+      });
       
-      if (!deletedLesson) {
-        return res.status(404).json({ error: 'Lesson not found' });
-      }
-      
-      res.json({ message: 'Lesson deleted successfully', deletedLesson });
+      res.json({ message: 'Lesson and all related data deleted successfully' });
     } catch (error) {
       console.error('Error deleting lesson:', error);
       res.status(500).json({ error: 'Failed to delete lesson' });
+    }
+  });
+
+  // Delete course endpoint
+  app.delete('/api/courses/:courseId', isAdmin, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Use transaction to safely delete all related data
+      await sql.begin(async (sql) => {
+        // Get all chapters and lessons for this course
+        const chapters = await sql`
+          SELECT id FROM course_chapters WHERE course_id = ${parseInt(courseId)}
+        `;
+        const chapterIds = chapters.map(ch => ch.id);
+        
+        const lessons = await sql`
+          SELECT id FROM course_lessons WHERE course_id = ${parseInt(courseId)}
+        `;
+        const lessonIds = lessons.map(lesson => lesson.id);
+        
+        if (lessonIds.length > 0) {
+          // Delete user progress for all lessons
+          await sql`
+            DELETE FROM user_lesson_progress 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+          
+          // Delete user progress for lesson content
+          await sql`
+            DELETE FROM user_lesson_content_progress 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+          
+          // Delete lesson content
+          await sql`
+            DELETE FROM lesson_content 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+        }
+        
+        if (chapterIds.length > 0) {
+          // Delete user chapter progress
+          await sql`
+            DELETE FROM user_chapter_progress 
+            WHERE chapter_id = ANY(${chapterIds})
+          `;
+        }
+        
+        // Delete user course progress
+        await sql`
+          DELETE FROM user_course_progress 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete course purchases
+        await sql`
+          DELETE FROM course_purchases 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete course change log entries
+        await sql`
+          DELETE FROM course_change_log 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete all lessons
+        await sql`
+          DELETE FROM course_lessons 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete all chapters
+        await sql`
+          DELETE FROM course_chapters 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Finally delete the course
+        await sql`
+          DELETE FROM courses 
+          WHERE id = ${parseInt(courseId)}
+        `;
+      });
+      
+      res.json({ message: 'Course and all related data deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      res.status(500).json({ error: 'Failed to delete course' });
     }
   });
 
