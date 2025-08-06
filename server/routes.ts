@@ -9607,22 +9607,35 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Course Change Log API endpoints - Simplified admin auth
+  // Course Change Log API endpoints - Same auth pattern as working admin endpoints
   app.get('/api/admin/course-change-log', async (req, res) => {
     try {
-      // Simple admin check - get user ID from session
-      const userId = req.session?.userId || req.user?.claims?.sub;
+      let userId = null;
+      
+      // Try multiple ways to get user from session - same as working endpoints
+      if (req.session?.userId) {
+        userId = req.session.userId;
+        console.log('Course Change Log - Found user ID from Dr. Golly session:', userId);
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+        console.log('Course Change Log - Found user ID from Passport session:', userId);
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+        console.log('Course Change Log - Found user ID from req.user:', userId);
+      }
       
       if (!userId) {
-        return res.status(401).json({ message: 'Please log in to access admin features' });
+        return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      // Check if user is admin - simple database lookup
+      // Use raw SQL fallback for admin check - exact same pattern as /api/admin/check
       const { neon } = await import('@neondatabase/serverless');
       const sql = neon(process.env.DATABASE_URL!);
-      const userResult = await sql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+      const result = await sql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+      const userRecord = result[0] as any;
       
-      if (!userResult[0]?.is_admin) {
+      const isAdmin = userRecord?.is_admin || false;
+      if (!isAdmin) {
         return res.status(403).json({ message: 'Admin access required' });
       }
       
