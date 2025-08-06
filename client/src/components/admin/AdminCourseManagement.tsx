@@ -619,6 +619,12 @@ export function AdminCourseManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Course Change Log Dialog */}
+      <CourseChangeLog 
+        open={showChangeLog} 
+        onOpenChange={setShowChangeLog} 
+      />
     </div>
   );
 }
@@ -1857,11 +1863,6 @@ function CoursePreview({ course }: { course: Course }) {
         </Button>
       </div>
 
-      {/* Course Change Log Dialog */}
-      <CourseChangeLog 
-        open={showChangeLog} 
-        onOpenChange={setShowChangeLog} 
-      />
     </div>
   );
 }
