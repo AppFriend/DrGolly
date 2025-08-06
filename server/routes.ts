@@ -9320,7 +9320,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Course Change Log API endpoints
-  app.get('/api/admin/course-change-log', isAuthenticated, async (req, res) => {
+  app.get('/api/admin/course-change-log', isAppAuthenticated, async (req, res) => {
     try {
       const { 
         courseId, 
@@ -9420,7 +9420,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Create course change log entry
-  app.post('/api/admin/course-change-log', isAuthenticated, async (req, res) => {
+  app.post('/api/admin/course-change-log', isAppAuthenticated, async (req, res) => {
     try {
       const {
         courseId,
@@ -9433,12 +9433,19 @@ Please contact the customer to confirm the appointment.
         courseSnapshot
       } = req.body;
 
-      const userClaims = (req.user as any)?.claims;
-      if (!userClaims) {
+      const userId = req.userId || req.session?.userId;
+      if (!userId) {
         return res.status(401).json({ message: 'User not authenticated' });
       }
 
       const sql = neon(process.env.DATABASE_URL!);
+      
+      // Get user info from database
+      const userQuery = await sql`SELECT id, first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+      const user = userQuery[0];
+      if (!user) {
+        return res.status(401).json({ message: 'User not found' });
+      }
       
       const insertQuery = `
         INSERT INTO course_change_log (
@@ -9453,9 +9460,9 @@ Please contact the customer to confirm the appointment.
 
       const logEntry = await sql(insertQuery, [
         courseId,
-        userClaims.sub,
-        userClaims.first_name || 'Unknown',
-        userClaims.email || 'no-email',
+        user.id,
+        user.first_name || 'Unknown',
+        user.email || 'no-email',
         changeType,
         changeDescription,
         affectedChapterId || null,
@@ -9476,7 +9483,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Get course change log summary/stats
-  app.get('/api/admin/course-change-log/stats', isAuthenticated, async (req, res) => {
+  app.get('/api/admin/course-change-log/stats', isAppAuthenticated, async (req, res) => {
     try {
       const sql = neon(process.env.DATABASE_URL!);
       
@@ -9525,6 +9532,78 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error fetching course change log stats:', error);
       res.status(500).json({ message: 'Failed to fetch course change log statistics' });
+    }
+  });
+
+  // Revert course content to a specific timestamp/savepoint
+  app.post('/api/admin/course-change-log/:logId/revert', isAppAuthenticated, async (req, res) => {
+    try {
+      const { logId } = req.params;
+      const userId = req.userId || req.session?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Get the log entry and its course snapshot
+      const logQuery = await sql`
+        SELECT ccl.*, c.title as course_title 
+        FROM course_change_log ccl
+        JOIN courses c ON ccl.course_id = c.id
+        WHERE ccl.id = ${parseInt(logId)}
+        LIMIT 1
+      `;
+      
+      if (!logQuery || logQuery.length === 0) {
+        return res.status(404).json({ message: 'Change log entry not found' });
+      }
+      
+      const logEntry = logQuery[0];
+      const courseSnapshot = JSON.parse(logEntry.course_snapshot);
+      
+      // Get user info
+      const userQuery = await sql`SELECT id, first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+      const user = userQuery[0];
+      
+      // Begin transaction to revert course content
+      await sql.begin(async (sql) => {
+        // Update course basic details
+        if (courseSnapshot.title) {
+          await sql`UPDATE courses SET title = ${courseSnapshot.title} WHERE id = ${logEntry.course_id}`;
+        }
+        if (courseSnapshot.description) {
+          await sql`UPDATE courses SET description = ${courseSnapshot.description} WHERE id = ${logEntry.course_id}`;
+        }
+        if (courseSnapshot.price !== undefined) {
+          await sql`UPDATE courses SET price = ${courseSnapshot.price} WHERE id = ${logEntry.course_id}`;
+        }
+        
+        // Create a new log entry for the revert action
+        await sql`
+          INSERT INTO course_change_log (
+            course_id, admin_user_id, admin_user_name, admin_user_email,
+            change_type, change_description, course_snapshot, 
+            is_revert, reverted_from_log_id, ip_address, user_agent, session_id
+          ) VALUES (
+            ${logEntry.course_id}, ${user.id}, ${user.first_name || 'Unknown'}, ${user.email || 'no-email'},
+            'revert', ${`Reverted course to state from ${logEntry.created_at}`}, 
+            ${JSON.stringify(courseSnapshot)}, true, ${parseInt(logId)},
+            ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+          )
+        `;
+      });
+      
+      res.json({ 
+        message: 'Course content successfully reverted',
+        courseId: logEntry.course_id,
+        revertedTo: logEntry.created_at,
+        logId: parseInt(logId)
+      });
+    } catch (error) {
+      console.error('Error reverting course content:', error);
+      res.status(500).json({ message: 'Failed to revert course content' });
     }
   });
 

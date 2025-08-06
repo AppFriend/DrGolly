@@ -53,10 +53,12 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
   const queryClient = useQueryClient();
 
   // Fetch change log entries
-  const { data: changeLogEntries = [], isLoading } = useQuery({
+  const { data: changeLogData, isLoading } = useQuery({
     queryKey: ["/api/admin/course-change-log"],
     enabled: open,
   });
+
+  const changeLogEntries = changeLogData?.logs || [];
 
   // Revert mutation
   const revertMutation = useMutation({
