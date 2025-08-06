@@ -2329,6 +2329,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Title is required and must be a string' });
       }
       
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
       // Get all existing chapters for this course to determine the next chapter number
       const existingChapters = await db.select().from(courseChapters).where(eq(courseChapters.courseId, parseInt(courseId)));
       
@@ -2370,6 +2380,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           chapterNumber: nextChapterNumber
         })
         .returning();
+      
+      // Log the chapter creation
+      if (userId && newChapter) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          // Get course and admin user info
+          const courseInfo = await sql`SELECT title FROM courses WHERE id = ${parseInt(courseId)} LIMIT 1`;
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          const courseTitle = courseInfo[0] ? courseInfo[0].title : 'Unknown Course';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${parseInt(courseId)},
+              ${adminName},
+              ${adminEmail},
+              'chapter_created',
+              ${`Created new chapter: "${title}" (${nextChapterNumber})`},
+              ${title},
+              NULL,
+              ${JSON.stringify({ 
+                chapter_id: newChapter.id, 
+                chapter_number: nextChapterNumber,
+                order_index: maxOrderIndex + 1,
+                course_title: courseTitle 
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Chapter creation logged for chapter:', newChapter.id);
+        } catch (logError) {
+          console.error('Error logging chapter creation:', logError);
+        }
+      }
       
       res.json(newChapter);
     } catch (error) {
@@ -2415,6 +2467,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Title is required and must be a string' });
       }
       
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
       // Get the highest order_index for this chapter
       const existingLessons = await db.select().from(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
       const maxOrderIndex = existingLessons.reduce((max, lesson) => 
@@ -2439,6 +2501,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orderIndex: maxOrderIndex + 1
         })
         .returning();
+      
+      // Log the lesson creation
+      if (userId && newLesson) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          // Get course and admin user info
+          const courseInfo = await sql`SELECT title FROM courses WHERE id = ${chapter.courseId} LIMIT 1`;
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          const courseTitle = courseInfo[0] ? courseInfo[0].title : 'Unknown Course';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${chapter.courseId},
+              ${adminName},
+              ${adminEmail},
+              'lesson_created',
+              ${`Created new lesson: "${title}"`},
+              ${chapter.title},
+              ${title},
+              ${JSON.stringify({ 
+                lesson_id: newLesson.id,
+                chapter_id: parseInt(chapterId),
+                order_index: maxOrderIndex + 1,
+                course_title: courseTitle,
+                has_content: !!content
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Lesson creation logged for lesson:', newLesson.id);
+        } catch (logError) {
+          console.error('Error logging lesson creation:', logError);
+        }
+      }
       
       res.json(newLesson);
     } catch (error) {
@@ -6682,7 +6787,89 @@ Please contact the customer to confirm the appointment.
     try {
       const chapterId = parseInt(req.params.id);
       const updates = req.body;
+      
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
+      // Get original chapter data before update
+      let originalChapter = null;
+      if (userId) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          const chapterInfo = await sql`
+            SELECT cc.title, cc.content, c.id as course_id, c.title as course_title
+            FROM course_chapters cc
+            JOIN courses c ON cc.course_id = c.id
+            WHERE cc.id = ${chapterId}
+          `;
+          originalChapter = chapterInfo[0];
+        } catch (logError) {
+          console.error('Error fetching original chapter data:', logError);
+        }
+      }
+      
       const chapter = await storage.updateChapter(chapterId, updates);
+      
+      // Log the chapter update
+      if (userId && originalChapter) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          
+          // Determine what was updated
+          const changes = [];
+          if (updates.title && updates.title !== originalChapter.title) {
+            changes.push(`title: "${originalChapter.title}" → "${updates.title}"`);
+          }
+          if (updates.content !== undefined && updates.content !== originalChapter.content) {
+            changes.push(`content updated (${updates.content?.length || 0} characters)`);
+          }
+          
+          const changeDescription = changes.length > 0 
+            ? `Updated chapter: ${changes.join(', ')}` 
+            : 'Updated chapter (unspecified changes)';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${originalChapter.course_id},
+              ${adminName},
+              ${adminEmail},
+              'chapter_modified',
+              ${changeDescription},
+              ${updates.title || originalChapter.title},
+              NULL,
+              ${JSON.stringify({ 
+                chapter_id: chapterId,
+                updates: updates,
+                original_title: originalChapter.title,
+                course_title: originalChapter.course_title 
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Chapter update logged for chapter:', chapterId);
+        } catch (logError) {
+          console.error('Error logging chapter update:', logError);
+        }
+      }
+      
       res.json(chapter);
     } catch (error) {
       console.error('Error updating chapter:', error);
@@ -6706,7 +6893,90 @@ Please contact the customer to confirm the appointment.
     try {
       const lessonId = parseInt(req.params.id);
       const updates = req.body;
+      
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
+      // Get original lesson data before update
+      let originalLesson = null;
+      if (userId) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          const lessonInfo = await sql`
+            SELECT cl.title, cl.content, cc.title as chapter_title, c.id as course_id, c.title as course_title
+            FROM course_lessons cl
+            JOIN course_chapters cc ON cl.chapter_id = cc.id
+            JOIN courses c ON cc.course_id = c.id
+            WHERE cl.id = ${lessonId}
+          `;
+          originalLesson = lessonInfo[0];
+        } catch (logError) {
+          console.error('Error fetching original lesson data:', logError);
+        }
+      }
+      
       const lesson = await storage.updateLesson(lessonId, updates);
+      
+      // Log the lesson update
+      if (userId && originalLesson) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          
+          // Determine what was updated
+          const changes = [];
+          if (updates.title && updates.title !== originalLesson.title) {
+            changes.push(`title: "${originalLesson.title}" → "${updates.title}"`);
+          }
+          if (updates.content !== undefined && updates.content !== originalLesson.content) {
+            changes.push(`content updated (${updates.content?.length || 0} characters)`);
+          }
+          
+          const changeDescription = changes.length > 0 
+            ? `Updated lesson: ${changes.join(', ')}` 
+            : 'Updated lesson (unspecified changes)';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${originalLesson.course_id},
+              ${adminName},
+              ${adminEmail},
+              'lesson_modified',
+              ${changeDescription},
+              ${originalLesson.chapter_title},
+              ${updates.title || originalLesson.title},
+              ${JSON.stringify({ 
+                lesson_id: lessonId,
+                updates: updates,
+                original_title: originalLesson.title,
+                course_title: originalLesson.course_title 
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Lesson update logged for lesson:', lessonId);
+        } catch (logError) {
+          console.error('Error logging lesson update:', logError);
+        }
+      }
+      
       res.json(lesson);
     } catch (error) {
       console.error('Error updating lesson:', error);
