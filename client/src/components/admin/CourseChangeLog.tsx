@@ -118,8 +118,13 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
       case 'course_update':
         return <GraduationCap className="h-4 w-4" />;
       case 'chapter_update':
+      case 'chapter_created':
+      case 'chapter_modified':
         return <Book className="h-4 w-4" />;
       case 'lesson_update':
+      case 'lesson_updated':
+      case 'lesson_modified':
+      case 'lesson_created':
         return <FileText className="h-4 w-4" />;
       case 'revert':
         return <RotateCcw className="h-4 w-4" />;
@@ -140,8 +145,12 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
         return <Badge variant="outline" className="text-green-600 border-green-200">Chapter</Badge>;
       case 'lesson_update':
       case 'lesson_updated':
+      case 'lesson_modified':
+      case 'lesson_created':
         return <Badge variant="outline" className="text-purple-600 border-purple-200">Lesson</Badge>;
       case 'chapter_added':
+      case 'chapter_created':
+      case 'chapter_modified':
         return <Badge variant="outline" className="text-green-600 border-green-200">Chapter</Badge>;
       case 'content_update':
         return <Badge variant="outline" className="text-blue-600 border-blue-200">Content</Badge>;
@@ -149,8 +158,10 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
         return <Badge variant="outline" className="text-yellow-600 border-yellow-200">Pricing</Badge>;
       case 'deletion_test':
         return <Badge variant="outline" className="text-red-600 border-red-200">Test</Badge>;
+      case 'test_entry':
+        return <Badge variant="outline" className="text-gray-600 border-gray-200">Test</Badge>;
       default:
-        return <Badge variant="outline">Update</Badge>;
+        return <Badge variant="outline" className="text-gray-600 border-gray-200">Update</Badge>;
     }
   };
 
