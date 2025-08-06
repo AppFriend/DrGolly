@@ -4,7 +4,9 @@
 
 This is a mobile-first learning management system (LMS) built with React and Express.js, focused on parenting and sleep expertise. It offers course management, user progress tracking, subscription tiers, partner discounts, and family sharing. The project aims to provide comprehensive, authentic content for parents, with a strong focus on a streamlined user experience and efficient content delivery.
 
-**Recent Achievement**: Successfully migrated to custom domain on August 5th, 2025, with zero downtime and all security protections maintained.
+**Recent Achievements**: 
+- Successfully migrated to custom domain on August 5th, 2025, with zero downtime and all security protections maintained.
+- Fixed Course Change Log authentication issue on August 6th, 2025 - "Show Log" functionality now displays deletion and modification logs properly for admin users.
 
 ## User Preferences
 

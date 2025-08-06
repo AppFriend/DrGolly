@@ -1,0 +1,92 @@
+Objective:
+Implement a robust admin content logging system in the Course Management admin panel that:
+
+Automatically uses existing last_updated and updated_by fields on Chapter, Lesson, and Lesson Content.
+
+Adds a new "Show Log" button to toggle a full change history feed.
+
+Captures a snapshot of course content every time "Save" is clicked, with the ability to revert to any savepoint.
+
+Ensures no performance or stability impact to existing save functionality.
+
+🧩 Part 1: Use Existing Audit Fields (Do Not Duplicate)
+Please ensure that the existing fields below are used and updated automatically on every save:
+
+Chapter Table:
+
+last_updated → update with current AEST/AEDT timestamp
+
+updated_by → populate with authenticated admin name
+
+Lesson Table:
+
+last_updated and updated_by as above
+
+Lesson Content Table (if separated):
+
+Use existing fields (if named differently, confirm field mappings)
+
+Update both timestamp and user info on save
+
+⚠️ Do not create new audit fields if these already exist – reuse and update them.
+
+🧠 Part 2: Create "Show Log" Snapshot Feed (Popup)
+Placement:
+Add a new "Show Log" button in the top-right of the /admin/courses interface, next to the “Cards” toggle.
+
+This button should toggle a collapsible popup or drawer feed UI.
+
+Functionality:
+On every admin "Save", create a log entry capturing:
+
+ts
+Copy
+Edit
+course_id: string
+chapter_id: string (optional)
+lesson_id: string (optional)
+snapshot: full JSON of course content at time of save
+updated_by: string (admin user)
+timestamp: AEST/AEDT timestamp
+action: "create" | "update" | "revert"
+note: string (optional)
+Each log entry in the feed should appear like:
+
+css
+Copy
+Edit
+[Admin Name] updated [Chapter Title], [Lesson Title] at [6 August 2025, 7:42 PM AEST].
+[View Content] [Revert to This Savepoint]
+🔁 Revert Function
+Clicking “Revert to This Savepoint” should:
+
+Confirm the action with the admin
+
+Restore the full course content structure from that snapshot
+
+Trigger a new save to database and update the audit fields
+
+Create a new log entry indicating the revert action (with action: "revert" and original reference timestamp)
+
+📦 Storage Considerations
+Store all snapshots in a dedicated course_change_log table or collection
+
+Optionally compress snapshots if size becomes an issue
+
+Indexed by course_id and timestamp for fast access
+
+🛡️ Extra Recommendations
+Add a filter in the log to view changes by admin user or date range
+
+Implement soft-delete for Lessons/Chapters (avoid hard deletes)
+
+Add optional flag to exclude drafts or auto-saves (if needed)
+
+✅ Final Requirements
+Existing audit fields (last_updated, updated_by) must be correctly updated on every save
+
+Snapshot log must only capture admin-made content changes
+
+Performance and save flow must not be impacted
+
+Revert must fully restore course content, with attribution and version integrity

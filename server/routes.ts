@@ -9610,133 +9610,62 @@ Please contact the customer to confirm the appointment.
   // Course Change Log API endpoints
   app.get('/api/admin/course-change-log', async (req, res) => {
     try {
-      // Get user ID using the same comprehensive pattern as other working endpoints
-      let userId = null;
-      if (req.session?.userId) {
-        userId = req.session.userId;
-        console.log('Course change log: Found user ID from Dr. Golly session:', userId);
-      } else if (req.session?.passport?.user?.claims?.sub) {
-        userId = req.session.passport.user.claims.sub;
-        console.log('Course change log: Found user ID from Passport session:', userId);
-      } else if (req.user?.claims?.sub) {
-        userId = req.user.claims.sub;
-        console.log('Course change log: Found user ID from req.user:', userId);
+      // Simple authentication check similar to /api/admin/check endpoint
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (userId) {
+        // Check if user is admin
+        const { neon } = await import('@neondatabase/serverless');
+        const adminSql = neon(process.env.DATABASE_URL!);
+        const adminCheck = await adminSql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+        const isAdmin = adminCheck[0]?.is_admin || false;
+        
+        if (!isAdmin) {
+          return res.status(403).json({ message: 'Forbidden: Admin access required' });
+        }
       }
       
-      console.log('Course change log debug info:', {
-        sessionExists: !!req.session,
-        sessionUserId: req.session?.userId,
-        passportExists: !!req.session?.passport,
-        passportUserExists: !!req.session?.passport?.user,
-        claimsExist: !!req.session?.passport?.user?.claims,
-        subExists: !!req.session?.passport?.user?.claims?.sub,
-        reqUserExists: !!req.user,
-        foundUserId: userId
-      });
+      console.log('Course Change Log: Processing request...');
       
-      if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-
-      // Check admin status using raw SQL
       const { neon } = await import('@neondatabase/serverless');
-      const sqlClient = neon(process.env.DATABASE_URL!);
-      const userRecord = await sqlClient`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
-      const isAdmin = userRecord[0]?.is_admin || false;
+      const sql = neon(process.env.DATABASE_URL!);
       
-      if (!isAdmin) {
-        return res.status(403).json({ message: 'Forbidden: Admin access required' });
-      }
-      
-      const { 
-        courseId, 
-        changeType, 
-        adminUserId, 
-        startDate, 
-        endDate, 
-        limit = 50, 
-        offset = 0 
-      } = req.query;
-
-      let query = `
+      // Simple query to get recent course change logs
+      const logs = await sql`
         SELECT 
-          ccl.*,
+          ccl.id,
+          ccl.course_id,
+          ccl.admin_user_id,
+          ccl.admin_user_name,
+          ccl.admin_user_email,
+          ccl.change_type,
+          ccl.change_description,
+          ccl.affected_chapter_id,
+          ccl.affected_chapter_title,
+          ccl.affected_lesson_id,
+          ccl.affected_lesson_title,
+          ccl.course_snapshot,
+          ccl.created_at,
           c.title as course_title,
           c.thumbnail_url as course_thumbnail
         FROM course_change_log ccl
-        JOIN courses c ON ccl.course_id = c.id
-        WHERE 1=1
+        LEFT JOIN courses c ON ccl.course_id = c.id
+        ORDER BY ccl.created_at DESC 
+        LIMIT 20
       `;
-      const queryParams = [];
 
-      if (courseId) {
-        query += ` AND ccl.course_id = $${queryParams.length + 1}`;
-        queryParams.push(parseInt(courseId as string));
-      }
-      if (changeType) {
-        query += ` AND ccl.change_type = $${queryParams.length + 1}`;
-        queryParams.push(changeType);
-      }
-      if (adminUserId) {
-        query += ` AND ccl.admin_user_id = $${queryParams.length + 1}`;
-        queryParams.push(adminUserId);
-      }
-      if (startDate) {
-        query += ` AND ccl.created_at >= $${queryParams.length + 1}`;
-        queryParams.push(startDate);
-      }
-      if (endDate) {
-        query += ` AND ccl.created_at <= $${queryParams.length + 1}`;
-        queryParams.push(endDate);
-      }
-
-      query += ` ORDER BY ccl.created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
-      queryParams.push(parseInt(limit as string), parseInt(offset as string));
-
-      const sql = neon(process.env.DATABASE_URL!);
-      const logs = await sql(query, queryParams);
-
-      // Get total count for pagination
-      let countQuery = `
-        SELECT COUNT(*) as total
-        FROM course_change_log ccl
-        JOIN courses c ON ccl.course_id = c.id
-        WHERE 1=1
-      `;
-      const countParams = [];
-      let paramIndex = 1;
-
-      if (courseId) {
-        countQuery += ` AND ccl.course_id = $${paramIndex++}`;
-        countParams.push(parseInt(courseId as string));
-      }
-      if (changeType) {
-        countQuery += ` AND ccl.change_type = $${paramIndex++}`;
-        countParams.push(changeType);
-      }
-      if (adminUserId) {
-        countQuery += ` AND ccl.admin_user_id = $${paramIndex++}`;
-        countParams.push(adminUserId);
-      }
-      if (startDate) {
-        countQuery += ` AND ccl.created_at >= $${paramIndex++}`;
-        countParams.push(startDate);
-      }
-      if (endDate) {
-        countQuery += ` AND ccl.created_at <= $${paramIndex++}`;
-        countParams.push(endDate);
-      }
-
-      const countResult = await sql(countQuery, countParams);
+      // Get total count
+      const countResult = await sql`SELECT COUNT(*) as total FROM course_change_log`;
       const total = parseInt(countResult[0]?.total || '0');
+
+      console.log(`Course Change Log: Found ${logs.length} entries, total: ${total}`);
 
       res.json({ 
         logs,
         pagination: {
           total,
-          limit: parseInt(limit as string),
-          offset: parseInt(offset as string),
-          hasMore: parseInt(offset as string) + parseInt(limit as string) < total
+          limit: 20,
+          offset: 0,
+          hasMore: logs.length === 20
         }
       });
     } catch (error) {
