@@ -2364,15 +2364,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const lessonIds = lessons.map(lesson => lesson.id);
         
         if (lessonIds.length > 0) {
+          // Get all lesson content IDs for this lesson
+          const lessonContentIds = await sql`
+            SELECT id FROM lesson_content WHERE lesson_id = ANY(${lessonIds})
+          `;
+          const contentIds = lessonContentIds.map(content => content.id);
+          
+          // Delete user progress for lesson content first
+          if (contentIds.length > 0) {
+            await sql`
+              DELETE FROM user_lesson_content_progress 
+              WHERE lesson_content_id = ANY(${contentIds})
+            `;
+          }
+          
           // Delete user progress for lessons in this chapter
           await sql`
             DELETE FROM user_lesson_progress 
-            WHERE lesson_id = ANY(${lessonIds})
-          `;
-          
-          // Delete user progress for lesson content
-          await sql`
-            DELETE FROM user_lesson_content_progress 
             WHERE lesson_id = ANY(${lessonIds})
           `;
           
@@ -2426,15 +2434,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await sql`BEGIN`;
       
       try {
+        // Get all lesson content IDs for this lesson
+        const lessonContentIds = await sql`
+          SELECT id FROM lesson_content WHERE lesson_id = ${parseInt(lessonId)}
+        `;
+        const contentIds = lessonContentIds.map(content => content.id);
+        
+        // Delete user progress for lesson content first
+        if (contentIds.length > 0) {
+          await sql`
+            DELETE FROM user_lesson_content_progress 
+            WHERE lesson_content_id = ANY(${contentIds})
+          `;
+        }
+        
         // Delete user progress for this lesson
         await sql`
           DELETE FROM user_lesson_progress 
-          WHERE lesson_id = ${parseInt(lessonId)}
-        `;
-        
-        // Delete user progress for lesson content
-        await sql`
-          DELETE FROM user_lesson_content_progress 
           WHERE lesson_id = ${parseInt(lessonId)}
         `;
         
@@ -2487,15 +2503,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const lessonIds = lessons.map(lesson => lesson.id);
         
         if (lessonIds.length > 0) {
+          // Get all lesson content IDs for these lessons
+          const lessonContentIds = await sql`
+            SELECT id FROM lesson_content WHERE lesson_id = ANY(${lessonIds})
+          `;
+          const contentIds = lessonContentIds.map(content => content.id);
+          
+          // Delete user progress for lesson content first
+          if (contentIds.length > 0) {
+            await sql`
+              DELETE FROM user_lesson_content_progress 
+              WHERE lesson_content_id = ANY(${contentIds})
+            `;
+          }
+          
           // Delete user progress for all lessons
           await sql`
             DELETE FROM user_lesson_progress 
-            WHERE lesson_id = ANY(${lessonIds})
-          `;
-          
-          // Delete user progress for lesson content
-          await sql`
-            DELETE FROM user_lesson_content_progress 
             WHERE lesson_id = ANY(${lessonIds})
           `;
           
