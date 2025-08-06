@@ -570,14 +570,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Updating lesson for lesson:', lessonId);
       
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
       let updatedLesson;
       
       if (title) {
         // Update lesson title
         updatedLesson = await storage.updateLessonTitle(parseInt(lessonId), title);
+        
+        // Log the lesson title change
+        if (userId) {
+          try {
+            const { neon } = await import('@neondatabase/serverless');
+            const sql = neon(process.env.DATABASE_URL!);
+            
+            // Get lesson details for logging
+            const lessonInfo = await sql`
+              SELECT cl.title as lesson_title, cc.title as chapter_title, c.id as course_id, c.title as course_title
+              FROM course_lessons cl
+              JOIN course_chapters cc ON cl.chapter_id = cc.id
+              JOIN courses c ON cc.course_id = c.id
+              WHERE cl.id = ${parseInt(lessonId)}
+            `;
+            
+            if (lessonInfo[0]) {
+              const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+              const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+              const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+              
+              await sql`
+                INSERT INTO course_change_logs (
+                  course_id, admin_user_name, admin_user_email, change_type, 
+                  change_description, affected_chapter_title, affected_lesson_title,
+                  course_snapshot, created_at
+                ) VALUES (
+                  ${lessonInfo[0].course_id},
+                  ${adminName},
+                  ${adminEmail},
+                  'lesson_modified',
+                  ${`Updated lesson title: "${title}"`},
+                  ${lessonInfo[0].chapter_title},
+                  ${lessonInfo[0].lesson_title},
+                  ${JSON.stringify({ lesson_id: parseInt(lessonId), new_title: title })},
+                  NOW()
+                )
+              `;
+              
+              console.log('Lesson title change logged for lesson:', lessonId);
+            }
+          } catch (logError) {
+            console.error('Error logging lesson title change:', logError);
+          }
+        }
       } else {
         // Update lesson content
         updatedLesson = await storage.updateLessonContent(parseInt(lessonId), content);
+        
+        // Log the lesson content change
+        if (userId) {
+          try {
+            const { neon } = await import('@neondatabase/serverless');
+            const sql = neon(process.env.DATABASE_URL!);
+            
+            // Get lesson details for logging
+            const lessonInfo = await sql`
+              SELECT cl.title as lesson_title, cc.title as chapter_title, c.id as course_id, c.title as course_title
+              FROM course_lessons cl
+              JOIN course_chapters cc ON cl.chapter_id = cc.id
+              JOIN courses c ON cc.course_id = c.id
+              WHERE cl.id = ${parseInt(lessonId)}
+            `;
+            
+            if (lessonInfo[0]) {
+              const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+              const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+              const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+              
+              await sql`
+                INSERT INTO course_change_logs (
+                  course_id, admin_user_name, admin_user_email, change_type, 
+                  change_description, affected_chapter_title, affected_lesson_title,
+                  course_snapshot, created_at
+                ) VALUES (
+                  ${lessonInfo[0].course_id},
+                  ${adminName},
+                  ${adminEmail},
+                  'lesson_modified',
+                  ${`Updated lesson content (${content.length} characters)`},
+                  ${lessonInfo[0].chapter_title},
+                  ${lessonInfo[0].lesson_title},
+                  ${JSON.stringify({ lesson_id: parseInt(lessonId), content_length: content.length })},
+                  NOW()
+                )
+              `;
+              
+              console.log('Lesson content change logged for lesson:', lessonId);
+            }
+          } catch (logError) {
+            console.error('Error logging lesson content change:', logError);
+          }
+        }
       }
       
       res.json(updatedLesson);
