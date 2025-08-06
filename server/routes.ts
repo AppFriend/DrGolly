@@ -2403,11 +2403,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           WHERE chapter_id = ${parseInt(chapterId)}
         `;
         
+        // Get chapter details before deletion for logging
+        const chapterDetails = await sql`
+          SELECT cc.title as chapter_title, c.title as course_title, cc.course_id
+          FROM course_chapters cc
+          JOIN courses c ON cc.course_id = c.id
+          WHERE cc.id = ${parseInt(chapterId)}
+        `;
+        
         // Finally delete the chapter
         await sql`
           DELETE FROM course_chapters 
           WHERE id = ${parseInt(chapterId)}
         `;
+        
+        // Log the deletion
+        if (chapterDetails.length > 0) {
+          const chapter = chapterDetails[0];
+          const userId = req.user?.drGollyUserId || req.user?.id || 'unknown';
+          const userQuery = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
+          
+          await sql`
+            INSERT INTO course_change_log (
+              course_id, admin_user_id, admin_user_name, admin_user_email,
+              change_type, change_description, course_snapshot,
+              ip_address, user_agent, session_id
+            ) VALUES (
+              ${chapter.course_id}, ${userId}, ${user.first_name}, ${user.email},
+              'delete_chapter', ${`Deleted chapter "${chapter.chapter_title}" from course "${chapter.course_title}"`},
+              ${JSON.stringify({ deletedChapter: chapter.chapter_title, lessonCount: lessonIds.length })},
+              ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+            )
+          `;
+        }
         
         // Commit transaction
         await sql`COMMIT`;
@@ -2460,11 +2489,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           WHERE lesson_id = ${parseInt(lessonId)}
         `;
         
+        // Get lesson details before deletion for logging
+        const lessonDetails = await sql`
+          SELECT cl.title as lesson_title, cc.title as chapter_title, c.title as course_title, c.id as course_id
+          FROM course_lessons cl
+          JOIN course_chapters cc ON cl.chapter_id = cc.id
+          JOIN courses c ON cc.course_id = c.id
+          WHERE cl.id = ${parseInt(lessonId)}
+        `;
+        
         // Finally delete the lesson
         await sql`
           DELETE FROM course_lessons 
           WHERE id = ${parseInt(lessonId)}
         `;
+        
+        // Log the deletion
+        if (lessonDetails.length > 0) {
+          const lesson = lessonDetails[0];
+          const userId = req.user?.drGollyUserId || req.user?.id || 'unknown';
+          const userQuery = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
+          
+          await sql`
+            INSERT INTO course_change_log (
+              course_id, admin_user_id, admin_user_name, admin_user_email,
+              change_type, change_description, course_snapshot,
+              ip_address, user_agent, session_id
+            ) VALUES (
+              ${lesson.course_id}, ${userId}, ${user.first_name}, ${user.email},
+              'delete_lesson', ${`Deleted lesson "${lesson.lesson_title}" from chapter "${lesson.chapter_title}" in course "${lesson.course_title}"`},
+              ${JSON.stringify({ deletedLesson: lesson.lesson_title, chapter: lesson.chapter_title, contentCount: contentIds.length })},
+              ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+            )
+          `;
+        }
         
         // Commit transaction
         await sql`COMMIT`;
@@ -2568,11 +2627,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           WHERE course_id = ${parseInt(courseId)}
         `;
         
+        // Get course details before deletion for logging
+        const courseDetails = await sql`
+          SELECT title, description, price FROM courses WHERE id = ${parseInt(courseId)}
+        `;
+        
         // Finally delete the course
         await sql`
           DELETE FROM courses 
           WHERE id = ${parseInt(courseId)}
         `;
+        
+        // Log the deletion
+        if (courseDetails.length > 0) {
+          const course = courseDetails[0];
+          const userId = req.user?.drGollyUserId || req.user?.id || 'unknown';
+          const userQuery = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
+          
+          await sql`
+            INSERT INTO course_change_log (
+              course_id, admin_user_id, admin_user_name, admin_user_email,
+              change_type, change_description, course_snapshot,
+              ip_address, user_agent, session_id
+            ) VALUES (
+              ${parseInt(courseId)}, ${userId}, ${user.first_name}, ${user.email},
+              'delete_course', ${`Deleted entire course "${course.title}"`},
+              ${JSON.stringify({ 
+                deletedCourse: course.title, 
+                chapterCount: chapterIds.length, 
+                lessonCount: lessonIds.length,
+                price: course.price 
+              })},
+              ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+            )
+          `;
+        }
         
         // Commit transaction
         await sql`COMMIT`;
