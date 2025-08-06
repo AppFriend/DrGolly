@@ -2352,8 +2352,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { chapterId } = req.params;
       const sql = neon(process.env.DATABASE_URL!);
       
-      // Use transaction to safely delete all related data
-      await sql.begin(async (sql) => {
+      // Start transaction
+      await sql`BEGIN`;
+      
+      try {
         // First get all lesson IDs in this chapter
         const lessons = await sql`
           SELECT id FROM course_lessons WHERE chapter_id = ${parseInt(chapterId)}
@@ -2398,9 +2400,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           DELETE FROM course_chapters 
           WHERE id = ${parseInt(chapterId)}
         `;
-      });
-      
-      res.json({ message: 'Chapter and all related data deleted successfully' });
+        
+        // Commit transaction
+        await sql`COMMIT`;
+        
+        res.json({ message: 'Chapter and all related data deleted successfully' });
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
+      }
     } catch (error) {
       console.error('Error deleting chapter:', error);
       res.status(500).json({ error: 'Failed to delete chapter' });
@@ -2413,8 +2422,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { lessonId } = req.params;
       const sql = neon(process.env.DATABASE_URL!);
       
-      // Use transaction to safely delete all related data
-      await sql.begin(async (sql) => {
+      // Start transaction
+      await sql`BEGIN`;
+      
+      try {
         // Delete user progress for this lesson
         await sql`
           DELETE FROM user_lesson_progress 
@@ -2438,9 +2449,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           DELETE FROM course_lessons 
           WHERE id = ${parseInt(lessonId)}
         `;
-      });
-      
-      res.json({ message: 'Lesson and all related data deleted successfully' });
+        
+        // Commit transaction
+        await sql`COMMIT`;
+        
+        res.json({ message: 'Lesson and all related data deleted successfully' });
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
+      }
     } catch (error) {
       console.error('Error deleting lesson:', error);
       res.status(500).json({ error: 'Failed to delete lesson' });
@@ -2453,8 +2471,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { courseId } = req.params;
       const sql = neon(process.env.DATABASE_URL!);
       
-      // Use transaction to safely delete all related data
-      await sql.begin(async (sql) => {
+      // Start transaction
+      await sql`BEGIN`;
+      
+      try {
         // Get all chapters and lessons for this course
         const chapters = await sql`
           SELECT id FROM course_chapters WHERE course_id = ${parseInt(courseId)}
@@ -2529,9 +2549,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           DELETE FROM courses 
           WHERE id = ${parseInt(courseId)}
         `;
-      });
-      
-      res.json({ message: 'Course and all related data deleted successfully' });
+        
+        // Commit transaction
+        await sql`COMMIT`;
+        
+        res.json({ message: 'Course and all related data deleted successfully' });
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
+      }
     } catch (error) {
       console.error('Error deleting course:', error);
       res.status(500).json({ error: 'Failed to delete course' });
@@ -9714,7 +9741,9 @@ Please contact the customer to confirm the appointment.
       const user = userQuery[0];
       
       // Begin transaction to revert course content
-      await sql.begin(async (sql) => {
+      await sql`BEGIN`;
+      
+      try {
         // Update course basic details
         if (courseSnapshot.title) {
           await sql`UPDATE courses SET title = ${courseSnapshot.title} WHERE id = ${logEntry.course_id}`;
@@ -9739,7 +9768,14 @@ Please contact the customer to confirm the appointment.
             ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
           )
         `;
-      });
+        
+        // Commit transaction
+        await sql`COMMIT`;
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
+      }
       
       res.json({ 
         message: 'Course content successfully reverted',
