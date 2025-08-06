@@ -113,8 +113,9 @@ const isAppAuthenticated: RequestHandler = async (req, res, next) => {
 // Admin middleware for Dr. Golly app admins
 const isAdmin: RequestHandler = async (req, res, next) => {
   try {
-    // Get user ID from session (works with both auth systems)
-    const userId = req.session?.userId || req.user?.claims?.sub;
+    // Get user ID from session (Dr. Golly uses drGollyUserId)
+    const userId = req.user?.drGollyUserId || req.session?.userId || req.user?.claims?.sub;
+    
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -9607,8 +9608,46 @@ Please contact the customer to confirm the appointment.
   });
 
   // Course Change Log API endpoints
-  app.get('/api/admin/course-change-log', isAppAuthenticated, async (req, res) => {
+  app.get('/api/admin/course-change-log', async (req, res) => {
     try {
+      // Get user ID using the same comprehensive pattern as other working endpoints
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+        console.log('Course change log: Found user ID from Dr. Golly session:', userId);
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+        console.log('Course change log: Found user ID from Passport session:', userId);
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+        console.log('Course change log: Found user ID from req.user:', userId);
+      }
+      
+      console.log('Course change log debug info:', {
+        sessionExists: !!req.session,
+        sessionUserId: req.session?.userId,
+        passportExists: !!req.session?.passport,
+        passportUserExists: !!req.session?.passport?.user,
+        claimsExist: !!req.session?.passport?.user?.claims,
+        subExists: !!req.session?.passport?.user?.claims?.sub,
+        reqUserExists: !!req.user,
+        foundUserId: userId
+      });
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Check admin status using raw SQL
+      const { neon } = await import('@neondatabase/serverless');
+      const sqlClient = neon(process.env.DATABASE_URL!);
+      const userRecord = await sqlClient`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+      const isAdmin = userRecord[0]?.is_admin || false;
+      
+      if (!isAdmin) {
+        return res.status(403).json({ message: 'Forbidden: Admin access required' });
+      }
+      
       const { 
         courseId, 
         changeType, 
@@ -9707,7 +9746,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Create course change log entry
-  app.post('/api/admin/course-change-log', isAppAuthenticated, async (req, res) => {
+  app.post('/api/admin/course-change-log', isAdmin, async (req, res) => {
     try {
       const {
         courseId,
@@ -9720,7 +9759,7 @@ Please contact the customer to confirm the appointment.
         courseSnapshot
       } = req.body;
 
-      const userId = req.userId || req.session?.userId;
+      const userId = req.user?.drGollyUserId || req.userId || req.session?.userId;
       if (!userId) {
         return res.status(401).json({ message: 'User not authenticated' });
       }
@@ -9770,7 +9809,7 @@ Please contact the customer to confirm the appointment.
   });
 
   // Get course change log summary/stats
-  app.get('/api/admin/course-change-log/stats', isAppAuthenticated, async (req, res) => {
+  app.get('/api/admin/course-change-log/stats', isAdmin, async (req, res) => {
     try {
       const sql = neon(process.env.DATABASE_URL!);
       
@@ -9823,10 +9862,10 @@ Please contact the customer to confirm the appointment.
   });
 
   // Revert course content to a specific timestamp/savepoint
-  app.post('/api/admin/course-change-log/:logId/revert', isAppAuthenticated, async (req, res) => {
+  app.post('/api/admin/course-change-log/:logId/revert', isAdmin, async (req, res) => {
     try {
       const { logId } = req.params;
-      const userId = req.userId || req.session?.userId;
+      const userId = req.user?.drGollyUserId || req.userId || req.session?.userId;
       
       if (!userId) {
         return res.status(401).json({ message: 'User not authenticated' });
