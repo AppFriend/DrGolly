@@ -9607,15 +9607,26 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Course Change Log API endpoints - TESTING FRONTEND WITHOUT AUTH
+  // Course Change Log API endpoints - Simplified admin auth
   app.get('/api/admin/course-change-log', async (req, res) => {
     try {
-      console.log('Course Change Log: Frontend test - auth temporarily disabled');
+      // Simple admin check - get user ID from session
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
-      console.log('Course Change Log: Processing request...');
-      
+      if (!userId) {
+        return res.status(401).json({ message: 'Please log in to access admin features' });
+      }
+
+      // Check if user is admin - simple database lookup
       const { neon } = await import('@neondatabase/serverless');
       const sql = neon(process.env.DATABASE_URL!);
+      const userResult = await sql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+      
+      if (!userResult[0]?.is_admin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      console.log('Course Change Log: Processing request...');
       
       // Simple query to get recent course change logs
       const logs = await sql`

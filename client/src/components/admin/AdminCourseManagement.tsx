@@ -420,7 +420,10 @@ export function AdminCourseManagement() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowChangeLog(true)}
+              onClick={() => {
+                console.log('Show Log button clicked');
+                setShowChangeLog(true);
+              }}
               className="flex items-center gap-2 text-brand-teal hover:text-brand-teal hover:bg-brand-teal/10"
             >
               <History className="h-4 w-4" />

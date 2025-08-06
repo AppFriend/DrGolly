@@ -54,11 +54,15 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  console.log('CourseChangeLog component rendered, open:', open);
+
   // Fetch change log entries
-  const { data: changeLogData, isLoading } = useQuery({
+  const { data: changeLogData, isLoading, error } = useQuery({
     queryKey: ["/api/admin/course-change-log"],
     enabled: open,
   });
+
+  console.log('CourseChangeLog query state:', { isLoading, error, hasData: !!changeLogData });
 
   const changeLogEntries = changeLogData?.logs || [];
 
