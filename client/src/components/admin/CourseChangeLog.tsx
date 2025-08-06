@@ -31,17 +31,19 @@ interface CourseChangeLogProps {
 
 interface ChangeLogEntry {
   id: number;
-  courseId: number;
-  adminUserName: string;
-  adminUserEmail: string;
-  changeType: string;
-  changeDescription: string;
-  affectedChapterTitle?: string;
-  affectedLessonTitle?: string;
-  courseSnapshot: any;
-  isRevert: boolean;
+  course_id: number;
+  admin_user_name: string;
+  admin_user_email: string;
+  change_type: string;
+  change_description: string;
+  affected_chapter_title?: string;
+  affected_lesson_title?: string;
+  course_snapshot: any;
+  course_title: string;
+  created_at: string;
+  // For backwards compatibility with revert functionality
+  isRevert?: boolean;
   revertedFromLogId?: number;
-  createdAt: string;
 }
 
 export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
@@ -114,13 +116,22 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
       return <Badge variant="outline" className="text-orange-600 border-orange-200">Revert</Badge>;
     }
     
-    switch (entry.changeType) {
+    switch (entry.change_type) {
       case 'course_update':
         return <Badge variant="outline" className="text-blue-600 border-blue-200">Course</Badge>;
       case 'chapter_update':
         return <Badge variant="outline" className="text-green-600 border-green-200">Chapter</Badge>;
       case 'lesson_update':
+      case 'lesson_updated':
         return <Badge variant="outline" className="text-purple-600 border-purple-200">Lesson</Badge>;
+      case 'chapter_added':
+        return <Badge variant="outline" className="text-green-600 border-green-200">Chapter</Badge>;
+      case 'content_update':
+        return <Badge variant="outline" className="text-blue-600 border-blue-200">Content</Badge>;
+      case 'pricing_change':
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-200">Pricing</Badge>;
+      case 'deletion_test':
+        return <Badge variant="outline" className="text-red-600 border-red-200">Test</Badge>;
       default:
         return <Badge variant="outline">Update</Badge>;
     }
@@ -173,24 +184,30 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              {getChangeTypeIcon(entry.changeType)}
+                              {getChangeTypeIcon(entry.change_type)}
                               {getChangeTypeBadge(entry)}
                               <span className="text-sm font-medium text-gray-900">
-                                {entry.adminUserName}
+                                {entry.admin_user_name}
                               </span>
                               <span className="text-sm text-gray-500">
-                                {entry.changeDescription}
+                                {entry.change_description}
                               </span>
                             </div>
 
-                            {(entry.affectedChapterTitle || entry.affectedLessonTitle) && (
+                            {entry.course_title && (
                               <div className="text-sm text-gray-600 mb-2">
-                                {entry.affectedChapterTitle && (
-                                  <span>Chapter: <span className="font-medium">{entry.affectedChapterTitle}</span></span>
+                                <span>Course: <span className="font-medium">{entry.course_title}</span></span>
+                              </div>
+                            )}
+
+                            {(entry.affected_chapter_title || entry.affected_lesson_title) && (
+                              <div className="text-sm text-gray-600 mb-2">
+                                {entry.affected_chapter_title && (
+                                  <span>Chapter: <span className="font-medium">{entry.affected_chapter_title}</span></span>
                                 )}
-                                {entry.affectedChapterTitle && entry.affectedLessonTitle && <span className="mx-2">•</span>}
-                                {entry.affectedLessonTitle && (
-                                  <span>Lesson: <span className="font-medium">{entry.affectedLessonTitle}</span></span>
+                                {entry.affected_chapter_title && entry.affected_lesson_title && <span className="mx-2">•</span>}
+                                {entry.affected_lesson_title && (
+                                  <span>Lesson: <span className="font-medium">{entry.affected_lesson_title}</span></span>
                                 )}
                               </div>
                             )}
@@ -198,11 +215,11 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4" />
-                                {formatAustralianTime(entry.createdAt)}
+                                {formatAustralianTime(entry.created_at)}
                               </div>
                               <div className="flex items-center gap-1">
                                 <User className="h-4 w-4" />
-                                {entry.adminUserEmail}
+                                {entry.admin_user_email}
                               </div>
                             </div>
                           </div>
@@ -256,7 +273,7 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
-              Content Preview - {selectedEntry ? formatAustralianTime(selectedEntry.createdAt) : ''}
+              Content Preview - {selectedEntry ? formatAustralianTime(selectedEntry.created_at) : ''}
             </DialogTitle>
           </DialogHeader>
 
@@ -271,20 +288,23 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-medium">Admin:</span> {selectedEntry.adminUserName}
+                        <span className="font-medium">Admin:</span> {selectedEntry.admin_user_name}
                       </div>
                       <div>
-                        <span className="font-medium">Email:</span> {selectedEntry.adminUserEmail}
+                        <span className="font-medium">Email:</span> {selectedEntry.admin_user_email}
                       </div>
                       <div>
-                        <span className="font-medium">Change Type:</span> {selectedEntry.changeType}
+                        <span className="font-medium">Change Type:</span> {selectedEntry.change_type}
                       </div>
                       <div>
-                        <span className="font-medium">Time:</span> {formatAustralianTime(selectedEntry.createdAt)}
+                        <span className="font-medium">Time:</span> {formatAustralianTime(selectedEntry.created_at)}
                       </div>
                     </div>
                     <div className="mt-4">
-                      <span className="font-medium">Description:</span> {selectedEntry.changeDescription}
+                      <span className="font-medium">Description:</span> {selectedEntry.change_description}
+                    </div>
+                    <div className="mt-4">
+                      <span className="font-medium">Course:</span> {selectedEntry.course_title}
                     </div>
                   </CardContent>
                 </Card>
@@ -321,9 +341,9 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
               {revertingEntry && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm">
                   <div className="font-medium">Savepoint Details:</div>
-                  <div>Time: {formatAustralianTime(revertingEntry.createdAt)}</div>
-                  <div>Admin: {revertingEntry.adminUserName}</div>
-                  <div>Change: {revertingEntry.changeDescription}</div>
+                  <div>Time: {formatAustralianTime(revertingEntry.created_at)}</div>
+                  <div>Admin: {revertingEntry.admin_user_name}</div>
+                  <div>Change: {revertingEntry.change_description}</div>
                 </div>
               )}
               <div className="mt-3 text-orange-600">
