@@ -38,7 +38,8 @@ import {
   GripVertical,
   Trash2,
   Minimize2,
-  Maximize2
+  Maximize2,
+  History
 } from "lucide-react";
 import {
   DndContext,
@@ -60,6 +61,7 @@ import { CSS } from '@dnd-kit/utilities';
 import AdminCoursesAccordion from './AdminCoursesAccordionNew';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { InlineEditTitle } from "./InlineEditTitle";
+import { CourseChangeLog } from "./CourseChangeLog";
 
 interface SortableChapterProps {
   chapter: any;
@@ -299,6 +301,7 @@ export function AdminCourseManagement() {
   const [previewCourse, setPreviewCourse] = useState<Course | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [viewMode, setViewMode] = useState<"accordion" | "cards">("accordion");
+  const [showChangeLog, setShowChangeLog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -413,6 +416,15 @@ export function AdminCourseManagement() {
             >
               <List className="h-4 w-4" />
               Cards
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowChangeLog(true)}
+              className="flex items-center gap-2 text-brand-teal hover:text-brand-teal hover:bg-brand-teal/10"
+            >
+              <History className="h-4 w-4" />
+              Show Log
             </Button>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -1839,6 +1851,12 @@ function CoursePreview({ course }: { course: Course }) {
           Add to Wishlist
         </Button>
       </div>
+
+      {/* Course Change Log Dialog */}
+      <CourseChangeLog 
+        open={showChangeLog} 
+        onOpenChange={setShowChangeLog} 
+      />
     </div>
   );
 }

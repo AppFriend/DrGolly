@@ -249,6 +249,38 @@ export const insertContentAuditLogSchema = createInsertSchema(contentAuditLog).o
   createdAt: true,
 });
 
+// Course Change Log - specialized logging for course content changes with snapshot functionality
+export const courseChangeLog = pgTable("course_change_log", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  adminUserId: varchar("admin_user_id").references(() => users.id).notNull(),
+  adminUserName: varchar("admin_user_name").notNull(),
+  adminUserEmail: varchar("admin_user_email").notNull(),
+  changeType: varchar("change_type").notNull(), // course_update, chapter_update, lesson_update, revert
+  changeDescription: text("change_description").notNull(),
+  affectedChapterId: integer("affected_chapter_id").references(() => courseChapters.id),
+  affectedChapterTitle: varchar("affected_chapter_title"),
+  affectedLessonId: integer("affected_lesson_id").references(() => courseLessons.id),
+  affectedLessonTitle: varchar("affected_lesson_title"),
+  // Full snapshot of course structure at time of change
+  courseSnapshot: jsonb("course_snapshot").notNull(), // Complete course, chapters, and lessons data
+  // Change metadata
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  isRevert: boolean("is_revert").default(false), // True if this change is a revert to previous state
+  revertedFromLogId: integer("reverted_from_log_id").references(() => courseChangeLog.id), // Reference to the log entry we reverted from
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCourseChangeLogSchema = createInsertSchema(courseChangeLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CourseChangeLog = typeof courseChangeLog.$inferSelect;
+export type InsertCourseChangeLog = typeof courseChangeLog.$inferInsert;
+
 
 
 // User progress on chapters

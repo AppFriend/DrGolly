@@ -9319,6 +9319,215 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Course Change Log API endpoints
+  app.get('/api/admin/course-change-log', isAuthenticated, async (req, res) => {
+    try {
+      const { 
+        courseId, 
+        changeType, 
+        adminUserId, 
+        startDate, 
+        endDate, 
+        limit = 50, 
+        offset = 0 
+      } = req.query;
+
+      let query = `
+        SELECT 
+          ccl.*,
+          c.title as course_title,
+          c.thumbnail_url as course_thumbnail
+        FROM course_change_log ccl
+        JOIN courses c ON ccl.course_id = c.id
+        WHERE 1=1
+      `;
+      const queryParams = [];
+
+      if (courseId) {
+        query += ` AND ccl.course_id = $${queryParams.length + 1}`;
+        queryParams.push(parseInt(courseId as string));
+      }
+      if (changeType) {
+        query += ` AND ccl.change_type = $${queryParams.length + 1}`;
+        queryParams.push(changeType);
+      }
+      if (adminUserId) {
+        query += ` AND ccl.admin_user_id = $${queryParams.length + 1}`;
+        queryParams.push(adminUserId);
+      }
+      if (startDate) {
+        query += ` AND ccl.created_at >= $${queryParams.length + 1}`;
+        queryParams.push(startDate);
+      }
+      if (endDate) {
+        query += ` AND ccl.created_at <= $${queryParams.length + 1}`;
+        queryParams.push(endDate);
+      }
+
+      query += ` ORDER BY ccl.created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+      queryParams.push(parseInt(limit as string), parseInt(offset as string));
+
+      const sql = neon(process.env.DATABASE_URL!);
+      const logs = await sql(query, queryParams);
+
+      // Get total count for pagination
+      let countQuery = `
+        SELECT COUNT(*) as total
+        FROM course_change_log ccl
+        JOIN courses c ON ccl.course_id = c.id
+        WHERE 1=1
+      `;
+      const countParams = [];
+      let paramIndex = 1;
+
+      if (courseId) {
+        countQuery += ` AND ccl.course_id = $${paramIndex++}`;
+        countParams.push(parseInt(courseId as string));
+      }
+      if (changeType) {
+        countQuery += ` AND ccl.change_type = $${paramIndex++}`;
+        countParams.push(changeType);
+      }
+      if (adminUserId) {
+        countQuery += ` AND ccl.admin_user_id = $${paramIndex++}`;
+        countParams.push(adminUserId);
+      }
+      if (startDate) {
+        countQuery += ` AND ccl.created_at >= $${paramIndex++}`;
+        countParams.push(startDate);
+      }
+      if (endDate) {
+        countQuery += ` AND ccl.created_at <= $${paramIndex++}`;
+        countParams.push(endDate);
+      }
+
+      const countResult = await sql(countQuery, countParams);
+      const total = parseInt(countResult[0]?.total || '0');
+
+      res.json({ 
+        logs,
+        pagination: {
+          total,
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string),
+          hasMore: parseInt(offset as string) + parseInt(limit as string) < total
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching course change log:', error);
+      res.status(500).json({ message: 'Failed to fetch course change log' });
+    }
+  });
+
+  // Create course change log entry
+  app.post('/api/admin/course-change-log', isAuthenticated, async (req, res) => {
+    try {
+      const {
+        courseId,
+        changeType,
+        changeDescription,
+        affectedChapterId,
+        affectedChapterTitle,
+        affectedLessonId,
+        affectedLessonTitle,
+        courseSnapshot
+      } = req.body;
+
+      const userClaims = (req.user as any)?.claims;
+      if (!userClaims) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const insertQuery = `
+        INSERT INTO course_change_log (
+          course_id, admin_user_id, admin_user_name, admin_user_email,
+          change_type, change_description, affected_chapter_id, 
+          affected_chapter_title, affected_lesson_id, affected_lesson_title,
+          course_snapshot, ip_address, user_agent, session_id
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+        ) RETURNING *
+      `;
+
+      const logEntry = await sql(insertQuery, [
+        courseId,
+        userClaims.sub,
+        userClaims.first_name || 'Unknown',
+        userClaims.email || 'no-email',
+        changeType,
+        changeDescription,
+        affectedChapterId || null,
+        affectedChapterTitle || null,
+        affectedLessonId || null,
+        affectedLessonTitle || null,
+        JSON.stringify(courseSnapshot),
+        req.ip || req.connection?.remoteAddress || 'unknown',
+        req.get('User-Agent') || 'unknown',
+        req.sessionID || 'no-session'
+      ]);
+
+      res.json(logEntry[0]);
+    } catch (error) {
+      console.error('Error creating course change log:', error);
+      res.status(500).json({ message: 'Failed to create course change log entry' });
+    }
+  });
+
+  // Get course change log summary/stats
+  app.get('/api/admin/course-change-log/stats', isAuthenticated, async (req, res) => {
+    try {
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const statsQuery = `
+        SELECT 
+          COUNT(*) as total_changes,
+          COUNT(DISTINCT course_id) as affected_courses,
+          COUNT(DISTINCT admin_user_id) as active_admins,
+          change_type,
+          COUNT(*) as type_count
+        FROM course_change_log 
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY change_type
+        ORDER BY type_count DESC
+      `;
+      
+      const recentActivityQuery = `
+        SELECT 
+          DATE_TRUNC('day', created_at) as date,
+          COUNT(*) as changes_count
+        FROM course_change_log 
+        WHERE created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY DATE_TRUNC('day', created_at)
+        ORDER BY date DESC
+      `;
+
+      const [stats, recentActivity] = await Promise.all([
+        sql(statsQuery),
+        sql(recentActivityQuery)
+      ]);
+
+      // Calculate totals from stats
+      const totalChanges = stats.reduce((sum, stat) => sum + parseInt(stat.type_count), 0);
+      const affectedCourses = new Set(stats.map(s => s.course_id)).size;
+      const activeAdmins = new Set(stats.map(s => s.admin_user_id)).size;
+
+      res.json({
+        summary: {
+          totalChanges,
+          affectedCourses,
+          activeAdmins
+        },
+        changeTypes: stats,
+        recentActivity
+      });
+    } catch (error) {
+      console.error('Error fetching course change log stats:', error);
+      res.status(500).json({ message: 'Failed to fetch course change log statistics' });
+    }
+  });
+
   // Admin content management routes
   app.use('/api/admin', adminContentRoutes);
 
