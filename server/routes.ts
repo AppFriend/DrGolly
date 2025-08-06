@@ -2631,15 +2631,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
           
           await sql`
-            INSERT INTO course_change_log (
-              course_id, admin_user_id, admin_user_name, admin_user_email,
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email,
               change_type, change_description, course_snapshot,
-              ip_address, user_agent, session_id
+              created_at
             ) VALUES (
-              ${chapter.course_id}, ${userId}, ${user.first_name}, ${user.email},
-              'delete_chapter', ${`Deleted chapter "${chapter.chapter_title}" from course "${chapter.course_title}"`},
+              ${chapter.course_id}, ${user.first_name}, ${user.email},
+              'chapter_deleted', ${`Deleted chapter "${chapter.chapter_title}" from course "${chapter.course_title}"`},
               ${JSON.stringify({ deletedChapter: chapter.chapter_title, lessonCount: lessonIds.length })},
-              ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+              NOW()
             )
           `;
         }
@@ -2718,15 +2718,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
           
           await sql`
-            INSERT INTO course_change_log (
-              course_id, admin_user_id, admin_user_name, admin_user_email,
-              change_type, change_description, course_snapshot,
-              ip_address, user_agent, session_id
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email,
+              change_type, change_description, affected_chapter_title, affected_lesson_title, course_snapshot,
+              created_at
             ) VALUES (
-              ${lesson.course_id}, ${userId}, ${user.first_name}, ${user.email},
-              'delete_lesson', ${`Deleted lesson "${lesson.lesson_title}" from chapter "${lesson.chapter_title}" in course "${lesson.course_title}"`},
+              ${lesson.course_id}, ${user.first_name}, ${user.email},
+              'lesson_deleted', ${`Deleted lesson "${lesson.lesson_title}" from chapter "${lesson.chapter_title}" in course "${lesson.course_title}"`},
+              ${lesson.chapter_title}, ${lesson.lesson_title}, 
               ${JSON.stringify({ deletedLesson: lesson.lesson_title, chapter: lesson.chapter_title, contentCount: contentIds.length })},
-              ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+              NOW()
             )
           `;
         }
@@ -2817,7 +2818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Delete course change log entries
         await sql`
-          DELETE FROM course_change_log 
+          DELETE FROM course_change_logs 
           WHERE course_id = ${parseInt(courseId)}
         `;
         
@@ -2852,20 +2853,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
           
           await sql`
-            INSERT INTO course_change_log (
-              course_id, admin_user_id, admin_user_name, admin_user_email,
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email,
               change_type, change_description, course_snapshot,
-              ip_address, user_agent, session_id
+              created_at
             ) VALUES (
-              ${parseInt(courseId)}, ${userId}, ${user.first_name}, ${user.email},
-              'delete_course', ${`Deleted entire course "${course.title}"`},
+              ${parseInt(courseId)}, ${user.first_name}, ${user.email},
+              'course_deleted', ${`Deleted entire course "${course.title}"`},
               ${JSON.stringify({ 
                 deletedCourse: course.title, 
                 chapterCount: chapterIds.length, 
                 lessonCount: lessonIds.length,
                 price: course.price 
               })},
-              ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+              NOW()
             )
           `;
         }
@@ -10029,14 +10030,14 @@ Please contact the customer to confirm the appointment.
           ccl.created_at,
           c.title as course_title,
           c.thumbnail_url as course_thumbnail
-        FROM course_change_log ccl
+        FROM course_change_logs ccl
         LEFT JOIN courses c ON ccl.course_id = c.id
         ORDER BY ccl.created_at DESC 
         LIMIT 20
       `;
 
       // Get total count
-      const countResult = await sql`SELECT COUNT(*) as total FROM course_change_log`;
+      const countResult = await sql`SELECT COUNT(*) as total FROM course_change_logs`;
       const total = parseInt(countResult[0]?.total || '0');
 
       console.log(`Course Change Log: Found ${logs.length} entries, total: ${total}`);
@@ -10085,31 +10086,24 @@ Please contact the customer to confirm the appointment.
       }
       
       const insertQuery = `
-        INSERT INTO course_change_log (
-          course_id, admin_user_id, admin_user_name, admin_user_email,
-          change_type, change_description, affected_chapter_id, 
-          affected_chapter_title, affected_lesson_id, affected_lesson_title,
-          course_snapshot, ip_address, user_agent, session_id
+        INSERT INTO course_change_logs (
+          course_id, admin_user_name, admin_user_email,
+          change_type, change_description, affected_chapter_title, 
+          affected_lesson_title, course_snapshot, created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+          $1, $2, $3, $4, $5, $6, $7, $8, NOW()
         ) RETURNING *
       `;
 
       const logEntry = await sql(insertQuery, [
         courseId,
-        user.id,
         user.first_name || 'Unknown',
         user.email || 'no-email',
         changeType,
         changeDescription,
-        affectedChapterId || null,
         affectedChapterTitle || null,
-        affectedLessonId || null,
         affectedLessonTitle || null,
-        JSON.stringify(courseSnapshot),
-        req.ip || req.connection?.remoteAddress || 'unknown',
-        req.get('User-Agent') || 'unknown',
-        req.sessionID || 'no-session'
+        JSON.stringify(courseSnapshot)
       ]);
 
       res.json(logEntry[0]);
@@ -10131,7 +10125,7 @@ Please contact the customer to confirm the appointment.
           COUNT(DISTINCT admin_user_id) as active_admins,
           change_type,
           COUNT(*) as type_count
-        FROM course_change_log 
+        FROM course_change_logs 
         WHERE created_at >= NOW() - INTERVAL '30 days'
         GROUP BY change_type
         ORDER BY type_count DESC
@@ -10141,7 +10135,7 @@ Please contact the customer to confirm the appointment.
         SELECT 
           DATE_TRUNC('day', created_at) as date,
           COUNT(*) as changes_count
-        FROM course_change_log 
+        FROM course_change_logs 
         WHERE created_at >= NOW() - INTERVAL '7 days'
         GROUP BY DATE_TRUNC('day', created_at)
         ORDER BY date DESC
@@ -10187,7 +10181,7 @@ Please contact the customer to confirm the appointment.
       // Get the log entry and its course snapshot
       const logQuery = await sql`
         SELECT ccl.*, c.title as course_title 
-        FROM course_change_log ccl
+        FROM course_change_logs ccl
         JOIN courses c ON ccl.course_id = c.id
         WHERE ccl.id = ${parseInt(logId)}
         LIMIT 1
@@ -10221,15 +10215,14 @@ Please contact the customer to confirm the appointment.
         
         // Create a new log entry for the revert action
         await sql`
-          INSERT INTO course_change_log (
-            course_id, admin_user_id, admin_user_name, admin_user_email,
+          INSERT INTO course_change_logs (
+            course_id, admin_user_name, admin_user_email,
             change_type, change_description, course_snapshot, 
-            is_revert, reverted_from_log_id, ip_address, user_agent, session_id
+            created_at
           ) VALUES (
-            ${logEntry.course_id}, ${user.id}, ${user.first_name || 'Unknown'}, ${user.email || 'no-email'},
+            ${logEntry.course_id}, ${user.first_name || 'Unknown'}, ${user.email || 'no-email'},
             'revert', ${`Reverted course to state from ${logEntry.created_at}`}, 
-            ${JSON.stringify(courseSnapshot)}, true, ${parseInt(logId)},
-            ${req.ip || 'unknown'}, ${req.get('User-Agent') || 'unknown'}, ${req.sessionID || 'no-session'}
+            ${JSON.stringify(courseSnapshot)}, NOW()
           )
         `;
         

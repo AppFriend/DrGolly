@@ -63,6 +63,9 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
   const { data: changeLogData, isLoading, error } = useQuery({
     queryKey: ["/api/admin/course-change-log"],
     enabled: open,
+    refetchOnMount: true,
+    staleTime: 0,  // Always refetch, don't use cache
+    cacheTime: 0,  // Don't cache the result
   });
 
   console.log('CourseChangeLog query state:', { 
@@ -78,6 +81,13 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
   }
 
   const changeLogEntries = changeLogData?.logs || [];
+
+  // Add debugging for the actual data received
+  console.log('CourseChangeLog data received:', { 
+    changeLogData, 
+    entriesCount: changeLogEntries.length,
+    entries: changeLogEntries 
+  });
 
   // Revert mutation
   const revertMutation = useMutation({
