@@ -9610,18 +9610,39 @@ Please contact the customer to confirm the appointment.
   // Course Change Log API endpoints
   app.get('/api/admin/course-change-log', async (req, res) => {
     try {
-      // Simple authentication check similar to /api/admin/check endpoint
+      // Get user ID from session (works with both auth systems) - same as /api/admin/check
       const userId = req.session?.userId || req.user?.claims?.sub;
-      if (userId) {
-        // Check if user is admin
+      
+      console.log('Course Change Log Auth Debug:', {
+        sessionExists: !!req.session,
+        sessionId: req.session?.id,
+        directUserId: req.session?.userId,
+        passportExists: !!req.user,
+        userExists: !!req.user,
+        claimsExist: !!req.user?.claims,
+        subExists: !!req.user?.claims?.sub,
+        reqUserExists: !!req.user,
+        foundUserId: userId
+      });
+      
+      if (!userId) {
+        console.log('Course Change Log: No user ID found, returning unauthorized');
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Use raw SQL fallback for admin check - same as /api/admin/check
+      try {
         const { neon } = await import('@neondatabase/serverless');
         const adminSql = neon(process.env.DATABASE_URL!);
-        const adminCheck = await adminSql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
-        const isAdmin = adminCheck[0]?.is_admin || false;
+        const adminResult = await adminSql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+        const isAdmin = adminResult[0]?.is_admin || false;
         
         if (!isAdmin) {
-          return res.status(403).json({ message: 'Forbidden: Admin access required' });
+          return res.status(403).json({ message: 'Admin access required' });
         }
+      } catch (dbError) {
+        console.error('Database error checking admin status:', dbError);
+        return res.status(500).json({ message: 'Database error' });
       }
       
       console.log('Course Change Log: Processing request...');
