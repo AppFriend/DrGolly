@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartp
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/DatePicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -888,14 +889,21 @@ export default function BigBabyPublic() {
                 
                 <div>
                   <Input
-                    id="dueDate"
-                    type="date"
-                    value={customerDetails.dueDate}
-                    onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    placeholder="Due Date/Baby Birthday"
+                    id="firstName"
+                    type="text"
+                    value={customerDetails.firstName}
+                    onChange={(e) => handleDetailsChange("firstName", e.target.value)}
+                    placeholder="Enter your first name"
                     className="h-12"
                   />
                 </div>
+                
+                <DatePicker
+                  value={customerDetails.dueDate}
+                  onChange={(date) => handleDetailsChange("dueDate", date)}
+                  placeholder="Due Date/Baby Birthday"
+                  className="h-12"
+                />
               </div>
             </div>
 

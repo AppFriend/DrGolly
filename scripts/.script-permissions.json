@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "created": "2025-08-05T10:00:00Z",
+  "purpose": "Prevent unauthorized script execution after August 5th data corruption incident",
+  "security_level": "MAXIMUM",
+  
+  "quarantined_scripts": [
+    {
+      "original_name": "populate-course-content.ts",
+      "quarantined_name": "populate-course-content.ts.DISABLED",
+      "reason": "Caused mass data corruption on August 5th, 2025",
+      "impact": "277 lessons completely overwritten",
+      "status": "PERMANENTLY_DISABLED"
+    }
+  ],
+  
+  "protected_operations": [
+    "bulk_content_update",
+    "csv_sync",
+    "database_migration",
+    "lesson_content_modification",
+    "course_structure_changes"
+  ],
+  
+  "authorization_required": {
+    "user_confirmation": true,
+    "typed_authorization_phrase": "EXECUTE_DESTRUCTIVE_SCRIPT_WITH_FULL_UNDERSTANDING",
+    "backup_creation": "MANDATORY",
+    "audit_logging": "MANDATORY",
+    "authorized_users_only": true
+  },
+  
+  "authorized_users": [
+    "admin@drgolly.com"
+  ],
+  
+  "emergency_contacts": [
+    "admin@drgolly.com"
+  ],
+  
+  "incident_reference": "DATA_LOSS_INCIDENT_REPORT.md"
+}

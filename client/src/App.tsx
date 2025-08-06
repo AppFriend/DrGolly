@@ -49,10 +49,7 @@ import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
-import TestCheckout from "@/pages/test-checkout";
-import ProfileCompletion from "@/pages/profile-completion";
-import BigBabyPreview from "@/pages/big-baby-preview";
-import BigBabyDatabaseManager from "@/pages/big-baby-database-manager";
+import CompletePage from "@/pages/complete";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -71,7 +68,7 @@ function AuthenticatedApp() {
   
   const [activeTab, setActiveTab] = useState(getActiveTab());
 
-  const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success";
+  const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success" && location !== "/cart-checkout";
 
   const handleUpgrade = (billingPeriod: "monthly" | "yearly") => {
     window.location.href = `/checkout-subscription?period=${billingPeriod}&tier=gold`;
@@ -113,8 +110,7 @@ function AuthenticatedApp() {
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
-        <Route path="/big-baby-preview" component={BigBabyPreview} />
-        <Route path="/big-baby-database-manager" component={BigBabyDatabaseManager} />
+        <Route path="/complete" component={CompletePage} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
@@ -271,12 +267,14 @@ function Router() {
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route path="/big-baby-checkout" component={BigBabyCheckout} />
-          <Route path="/checkout/:productId" component={Checkout} />
-          <Route path="/checkout" component={Checkout} />
-          <Route path="/complete" component={ProfileCompletion} />
-          <Route path="/complete/preferences" component={ProfileCompletion} />
+          <Route path="/complete" component={CompletePage} />
           <Route path="/payment-success" component={PaymentSuccess} />
           <Route path="/share/:slug" component={Share} />
+          {/* Public checkout routes - accessible without authentication */}
+          <Route path="/checkout/:courseId" component={Checkout} />
+          <Route path="/checkout" component={Checkout} />
+          <Route path="/cart-checkout" component={CartCheckout} />
+          <Route path="/payment-success" component={PaymentSuccess} />
           <Route component={Landing} />
         </Switch>
         <Toaster />

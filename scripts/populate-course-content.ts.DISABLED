@@ -3,6 +3,7 @@ import * as path from 'path';
 import { db } from '../server/db';
 import { courseModules } from '../shared/schema';
 import { eq } from 'drizzle-orm';
+import { executeWithGuard, isEmergencyDisabled } from "./script-execution-guard";
 
 // Content mapping for specific high-quality modules
 const QUALITY_CONTENT_MAPPING = {

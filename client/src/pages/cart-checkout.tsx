@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/DatePicker';
 import { ChevronUp, ChevronDown, Trash2, Star, Check, Info } from 'lucide-react';
 import { PaymentForm } from '@/pages/checkout';
 import { CouponInput } from '@/components/CouponInput';
@@ -196,12 +197,10 @@ export default function CartCheckout() {
                     onChange={(e) => setCustomerDetails({...customerDetails, firstName: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
                   />
-                  <input
-                    type="date"
-                    placeholder="Due Date (Optional)"
+                  <DatePicker
                     value={customerDetails.dueDate}
-                    onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
+                    onChange={(date) => setCustomerDetails({...customerDetails, dueDate: date})}
+                    placeholder="Due Date/Baby Birthday"
                   />
                 </div>
               </div>

@@ -1,0 +1,38 @@
+Thank you for the thorough investigation and implementation of the new audit, backup, and recovery infrastructure — the added protections are appreciated.
+
+Given your confirmation that the current content was overwritten by the populate-course-content.ts script on 5th August at 09:41 UTC, and that Alex's actual session was 22nd July, we’d like to request the following:
+
+🔁 REQUEST: FULL ROLLBACK TO LAST VALID STATE PRIOR TO CONTENT OVERWRITE
+Please perform a complete rollback of the application database (including lesson content, chapters, and related course structures) to the closest available backup or savepoint prior to or on 30th July, as we can confirm the content at that point was accurate and complete.
+
+Key Notes:
+
+We are comfortable with this rollback as no critical changes have been made to the application codebase or database since July 30th that would be lost or need to be re-integrated.
+
+If a timestamped backup snapshot exists from late July (e.g. 29th or 30th), that would be the ideal restore point.
+
+Please ensure that only app content and course-related data is rolled back — system changes such as your newly implemented audit logs and DB schema updates should remain intact.
+
+🧪 POST-ROLLBACK CHECKS
+After rollback, please:
+
+Confirm that the lesson content and chapters match the version as at July 30th
+
+Verify that new protections (audit log, updated_at, recovery tooling) remain active
+
+Validate that populate-course-content.ts is now sandboxed and cannot overwrite content without backups
+
+🧾 REQUESTED CONFIRMATION
+Once complete, please provide:
+
+Timestamp of the rollback state restored
+
+Backup snapshot or DB reference used for rollback
+
+Confirmation that audit systems and protections remain active post-restore
+
+Confirmation that Alex’s intended edits from July 22nd are present and intact
+
+We appreciate your speed and diligence on this. Once this is resolved, we can move forward with full confidence that the new system is robust and secure.
+
+Let us know if you need approval or clarification before proceeding.

@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartp
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/DatePicker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -113,7 +114,7 @@ function SimpleCardPayment({
         throw new Error('Failed to create payment intent');
       }
 
-      const { clientSecret } = await response.json();
+      const { clientSecret, userStatus, userId } = await response.json();
 
       // Get card element
       const cardElement = elements.getElement(CardElement);
@@ -148,7 +149,7 @@ function SimpleCardPayment({
           title: "Payment Successful!",
           description: "Your course has been purchased successfully.",
         });
-        onSuccess();
+        onSuccess(userStatus, userId);
       }
     } catch (error: any) {
       console.error('Payment error:', error);
@@ -668,12 +669,7 @@ export default function Checkout() {
   const courseIdFromQuery = new URLSearchParams(window.location.search).get('courseId');
   const courseId = params?.courseId ? parseInt(params.courseId) : courseIdFromQuery ? parseInt(courseIdFromQuery) : null;
   
-  console.log('SIMPLIFIED Checkout Debug:', {
-    windowLocationSearch: window.location.search,
-    courseIdFromQuery,
-    courseId,
-    isDirectPurchase: !!courseId
-  });
+
   
   const [customerDetails, setCustomerDetails] = useState({
     firstName: user?.firstName || "",
@@ -830,12 +826,28 @@ export default function Checkout() {
     }));
   };
 
-  const handlePaymentSuccess = () => {
-    toast({
-      title: "Payment Successful!",
-      description: "Your course has been added to your account.",
-    });
-    setLocation("/courses");
+  const handlePaymentSuccess = (userStatus?: string, userId?: string) => {
+    if (userStatus === 'existing_user_logged_in' || user) {
+      // Existing user was auto-logged in - redirect to courses
+      toast({
+        title: "Welcome back!",
+        description: "Your course has been added to your account.",
+      });
+      setLocation("/courses");
+    } else {
+      // New user - redirect to complete page to create account
+      toast({
+        title: "Payment Successful!",
+        description: "Please set up your password to access your course.",
+      });
+      const urlParams = new URLSearchParams();
+      if (courseId) {
+        urlParams.set('courseId', courseId.toString());
+      }
+      urlParams.set('email', customerDetails.email);
+      urlParams.set('firstName', customerDetails.firstName);
+      setLocation(`/complete?${urlParams.toString()}`);
+    }
   };
 
   // Handle case where no items to checkout (cart is empty and no direct course purchase)
@@ -908,15 +920,12 @@ export default function Checkout() {
                   />
                 </div>
                 
-                <div>
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    value={customerDetails.dueDate}
-                    onChange={(e) => handleDetailsChange("dueDate", e.target.value)}
-                    className="h-12"
-                  />
-                </div>
+                <DatePicker
+                  value={customerDetails.dueDate}
+                  onChange={(date) => handleDetailsChange("dueDate", date)}
+                  placeholder="Due Date/Baby Birthday"
+                  className="h-12"
+                />
               </div>
             </div>
 
@@ -928,10 +937,7 @@ export default function Checkout() {
               </div>
               
               <div className="space-y-4">
-                {/* Debug information */}
-                <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
-                  Debug: {isDirectPurchase ? 'Direct Purchase' : 'Cart Checkout'} - Cart items: {displayCartItems.length}, Course ID: {courseId}, Course: {course ? 'loaded' : 'not loaded'}, Course loading: {courseLoading ? 'true' : 'false'}
-                </div>
+
                 
                 {/* Direct Purchase Flow */}
                 {isDirectPurchase && (

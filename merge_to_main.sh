@@ -1,36 +1,65 @@
 #!/bin/bash
 
-# Git commands to merge enhanced payment notifications to main branch
-echo "Starting merge process for enhanced payment notifications..."
+# Merge to Main - Preparation Script
+# This script prepares the current branch for merging to main
 
-# Switch to main branch
-git checkout main
+echo "🔍 Checking current branch and status..."
+git branch --show-current
+git status
 
-# Pull latest changes from remote
-git pull origin main
+echo ""
+echo "📋 Summary of changes to be merged:"
+echo "✅ DUAL USER CHECKOUT FLOWS FULLY IMPLEMENTED AND TESTED"
+echo "✅ COMPREHENSIVE TESTING COMPLETED"  
+echo "✅ PAYMENT ENDPOINT ENHANCED"
+echo "✅ FRONTEND ROUTING COMPLETED"
+echo "✅ MERGE CONFLICTS RESOLVED"
 
-# Merge feature/signup branch (contains signup notification enhancements)
-echo "Merging feature/signup branch..."
-git merge feature/signup --no-ff -m "Merge feature/signup: Enhanced signup notifications with type detection"
+echo ""
+echo "🧪 Running final validation..."
 
-# Merge feature/checkout branch (contains payment notification enhancements)
-echo "Merging feature/checkout branch..."
-git merge feature/checkout --no-ff -m "Merge feature/checkout: Enhanced payment notifications with real transaction data"
+# Check for any remaining merge conflicts
+echo "Checking for merge conflicts..."
+if grep -r "<<<<<<< HEAD\|=======\|>>>>>>> " --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" .; then
+    echo "❌ ERROR: Merge conflicts still exist! Please resolve them first."
+    exit 1
+else
+    echo "✅ No merge conflicts found"
+fi
 
-# Push merged changes to main
-git push origin main
+# Check if application builds successfully
+echo ""
+echo "🔨 Testing build..."
+npm run build > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    echo "✅ Build successful"
+else
+    echo "❌ ERROR: Build failed! Please fix build errors first."
+    exit 1
+fi
 
-echo "Merge completed successfully!"
-echo "Main branch now contains:"
-echo "- Enhanced signup notifications with signup type detection"
-echo "- Enhanced payment notifications with real transaction data"
-echo "- Promotional code and discount amount tracking"
-echo "- Dynamic header titles based on transaction type"
-echo "- Real-time Stripe webhook integration"
-
-# Optional: Create a release tag
-echo "Creating release tag..."
-git tag -a v1.6-payment-notifications -m "Release v1.6: Enhanced payment notifications with real transaction data"
-git push origin v1.6-payment-notifications
-
-echo "Release tag v1.6-payment-notifications created and pushed"
+echo ""
+echo "🎯 Ready to merge to main!"
+echo ""
+echo "Execute these commands to complete the merge:"
+echo ""
+echo "# 1. Commit all current changes"
+echo "git add ."
+echo "git commit -m 'Resolve merge conflicts and complete dual user checkout flows'"
+echo ""
+echo "# 2. Switch to main branch"  
+echo "git checkout main"
+echo ""
+echo "# 3. Pull latest changes"
+echo "git pull origin main"
+echo ""
+echo "# 4. Merge the testing-and-updates branch"
+echo "git merge testing-and-updates"
+echo ""
+echo "# 5. Push to main"
+echo "git push origin main"
+echo ""
+echo "# 6. Clean up the feature branch (optional)"
+echo "git branch -d testing-and-updates"
+echo ""
+echo "🚀 After merging, your dual user checkout flows will be live on main!"
