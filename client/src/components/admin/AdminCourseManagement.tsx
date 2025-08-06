@@ -302,6 +302,8 @@ export function AdminCourseManagement() {
   const [activeTab, setActiveTab] = useState("overview");
   const [viewMode, setViewMode] = useState<"accordion" | "cards">("accordion");
   const [showChangeLog, setShowChangeLog] = useState(false);
+  
+  console.log('AdminCourseManagement showChangeLog state:', showChangeLog);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

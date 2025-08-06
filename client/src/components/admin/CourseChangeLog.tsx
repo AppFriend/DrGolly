@@ -62,7 +62,17 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
     enabled: open,
   });
 
-  console.log('CourseChangeLog query state:', { isLoading, error, hasData: !!changeLogData });
+  console.log('CourseChangeLog query state:', { 
+    isLoading, 
+    error: error?.message, 
+    hasData: !!changeLogData,
+    queryEnabled: open 
+  });
+
+  // Debug when open state changes
+  if (open) {
+    console.log('CourseChangeLog dialog should be open - making API request');
+  }
 
   const changeLogEntries = changeLogData?.logs || [];
 
