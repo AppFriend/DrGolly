@@ -86,7 +86,8 @@ export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
   console.log('CourseChangeLog data received:', { 
     changeLogData, 
     entriesCount: changeLogEntries.length,
-    entries: changeLogEntries 
+    entries: changeLogEntries,
+    error: error?.message 
   });
 
   // Revert mutation
