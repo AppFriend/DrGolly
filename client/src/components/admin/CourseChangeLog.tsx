@@ -47,6 +47,9 @@ interface ChangeLogEntry {
 }
 
 export function CourseChangeLog({ open, onOpenChange }: CourseChangeLogProps) {
+  // Debug at the very top to confirm component is mounting
+  console.log('CourseChangeLog component MOUNTED with props:', { open, onOpenChange: typeof onOpenChange });
+  
   const [selectedEntry, setSelectedEntry] = useState<ChangeLogEntry | null>(null);
   const [showContentDialog, setShowContentDialog] = useState(false);
   const [showRevertDialog, setShowRevertDialog] = useState(false);
