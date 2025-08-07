@@ -910,6 +910,7 @@ export default function Checkout() {
                 </div>
                 
                 <div>
+                  <div className="text-sm text-gray-500 mb-1">Due Date / Baby Birthday</div>
                   <Input
                     id="dueDate"
                     type="date"
