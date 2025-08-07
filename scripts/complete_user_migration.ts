@@ -1,7 +1,7 @@
 import { parse } from 'csv-parse';
 import { createReadStream } from 'fs';
 import { db } from '../server/db';
-import { users } from '@shared/schema';
+import { users } from '../shared/schema';
 import { eq, inArray } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import path from 'path';
@@ -40,7 +40,7 @@ class CompleteUserMigrationService {
       
       createReadStream(this.csvFilePath)
         .pipe(parse({ 
-          headers: true,
+          columns: true,
           delimiter: ',',
           quote: '"',
           escape: '"'
@@ -115,9 +115,14 @@ class CompleteUserMigrationService {
     let errorCount = 0;
 
     for (const csvRecord of this.csvData) {
-      const email = csvRecord['Customer Email'].toLowerCase().trim();
+      const email = csvRecord['Customer Email']?.toLowerCase().trim();
       const name = csvRecord['Customer Name'] || 'Unknown';
       const plan = csvRecord['Plan'] || 'Unknown';
+      
+      if (!email) {
+        console.log('⚠️ Skipping record with no email');
+        continue;
+      }
       
       try {
         if (existingEmailSet.has(email)) {
@@ -151,9 +156,13 @@ class CompleteUserMigrationService {
           const firstName = name.split(' ')[0] || name;
           const lastName = name.split(' ').slice(1).join(' ') || '';
           
+          // Generate unique ID for new user
+          const userId = `migrated_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
           await db
             .insert(users)
             .values({
+              id: userId,
               email,
               firstName,
               lastName: lastName || null,
