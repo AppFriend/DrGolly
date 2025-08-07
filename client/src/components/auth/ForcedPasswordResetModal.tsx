@@ -31,16 +31,17 @@ export function ForcedPasswordResetModal({
       errors.push("Password must be at least 8 characters long");
     }
     
-    if (!/[A-Z]/.test(password)) {
-      errors.push("Password must contain at least one uppercase letter");
+    // More flexible validation - at least one letter and one number OR special character
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    
+    if (!hasLetter) {
+      errors.push("Password must contain at least one letter");
     }
     
-    if (!/[a-z]/.test(password)) {
-      errors.push("Password must contain at least one lowercase letter");
-    }
-    
-    if (!/\d/.test(password)) {
-      errors.push("Password must contain at least one number");
+    if (!hasNumber && !hasSpecial) {
+      errors.push("Password must contain at least one number or special character");
     }
     
     return {
@@ -174,9 +175,8 @@ export function ForcedPasswordResetModal({
             <p className="font-medium">Password requirements:</p>
             <ul className="list-disc list-inside space-y-0.5 ml-2">
               <li>At least 8 characters long</li>
-              <li>At least one uppercase letter</li>
-              <li>At least one lowercase letter</li>
-              <li>At least one number</li>
+              <li>At least one letter</li>
+              <li>At least one number or special character</li>
             </ul>
           </div>
           

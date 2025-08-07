@@ -49,20 +49,17 @@ export class AuthUtils {
       errors.push("Password must be at least 8 characters long");
     }
     
-    if (!/[A-Z]/.test(password)) {
-      errors.push("Password must contain at least one uppercase letter");
+    // More flexible validation - at least one letter and one number OR special character
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    
+    if (!hasLetter) {
+      errors.push("Password must contain at least one letter");
     }
     
-    if (!/[a-z]/.test(password)) {
-      errors.push("Password must contain at least one lowercase letter");
-    }
-    
-    if (!/\d/.test(password)) {
-      errors.push("Password must contain at least one number");
-    }
-    
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-      errors.push("Password must contain at least one special character");
+    if (!hasNumber && !hasSpecial) {
+      errors.push("Password must contain at least one number or special character");
     }
     
     return {
