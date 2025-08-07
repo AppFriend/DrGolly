@@ -132,21 +132,8 @@ export default function Home() {
           />
           <button 
             onClick={() => window.location.href = '/manage'}
-            className="flex items-center space-x-2 hover:bg-white/10 rounded-lg px-2 py-1 transition-colors"
+            className="hover:bg-white/10 rounded-lg px-2 py-1 transition-colors"
           >
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center",
-              user?.subscriptionTier === "gold" ? "bg-gradient-to-r from-[#FFD700] to-[#FFA500]" :
-              user?.subscriptionTier === "platinum" ? "bg-gradient-to-r from-[#E5E4E2] to-[#C0C0C0]" :
-              "bg-white"
-            )}>
-              <span className={cn(
-                "text-xs font-bold",
-                user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum" ? "text-black" : "text-[#095D66]"
-              )}>
-                {user?.subscriptionTier === "free" ? "F" : user?.subscriptionTier === "gold" ? "G" : "P"}
-              </span>
-            </div>
             <span className="text-sm font-medium capitalize">
               {user?.subscriptionTier || "Free"} Plan
             </span>
