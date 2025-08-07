@@ -1,0 +1,116 @@
+Objective:
+Perform a deep scan of the updated feedback document (SUPERAPP Prompt (1).docx) including annotated screenshots, then:
+
+Return a structured list of proposed changes for approval
+
+Wait for confirmation
+
+Once approved, implement changes with precise frontend logic
+
+🧠 STEP 1 – Deep Scan & Structured Change Proposal
+✅ Instructions:
+Parse the Updated Document:
+
+Carefully read through all rows in SUPERAPP Prompt (1).docx
+
+Interpret all screenshots as definitive design references—these override any ambiguous text feedback
+
+Ensure that suggestions like layout, colours, or icon removals are clearly extracted
+
+Output a Structured Change Log with the Following Format:
+
+diff
+Copy
+Edit
+- Page / Component: (e.g. /profile, /courses, Header, Checkout)
+- Feedback Summary: (“Long emails are bunched on mobile”)
+- Screenshot Reference: (location or design block in doc)
+- Proposed Change:
+  • Visual Update (CSS/layout, icons, spacing)
+  • Functional Update (routing, button behaviour, modal etc.)
+- Dev Implementation Notes:
+  • Assumptions (e.g. which component structure is used)
+  • Affected breakpoints (mobile vs desktop)
+  • Any third-party libraries involved
+Do not implement yet.
+Submit the full list back for approval.
+
+🧰 STEP 2 – Implement Approved Changes
+Once approved, action each change with the following development instructions:
+
+🔄 COMPONENT-BY-COMPONENT INSTRUCTIONS
+/profile Page
+Issue	Instruction
+Upgrade button does nothing	Ensure button links to /manage route using valid Link or navigate() handler
+Long emails look bunched	Add word-break: break-all; or truncate with tooltip fallback
+"F" icon next to Free Plan	Remove the icon, leave “Free Plan” as text
+Gold ring around avatar	Conditionally style avatar wrapper if user.plan === "gold"
+
+Header Redesigns (Based on Screenshot Sections)
+Plan Type	Instruction
+Free Plan header	Update /profile header per design reference, spacing, font weight, and text align
+Gold Plan header	Apply distinct design shown in screenshot (e.g. full-width badge, plan highlights)
+
+Combined Account Tab (New Design)
+Reconstruct this section using flex layout with margin/padding specified in screenshot
+
+Validate it responds correctly to mobile resizing
+
+/courses Page
+Issue	Instruction
+Button for "Unlimited Access with Gold"	Change CTA button styling for free users to use gold variant shown in doc
+Visual distinction between buttons	Review all /courses buttons — apply consistent padding, hover states, and border-radius
+Ensure gold button shows only for non-gold users	Add conditional check: if user.plan !== "gold", show gold CTA
+
+/family Tab
+Redesign layout based on screenshot provided
+
+Maintain heading styles, spacing, and child sections as per design mock
+
+Blog Page
+Issue	Instruction
+Images not displaying	Validate all blog images have valid URLs, fallback alt handling, and responsive scaling
+Lazy loading / CDN errors	Add check to pre-load key images and error boundary for broken images
+
+Homepage → Freebies (Mobile)
+Issue	Instruction
+Zooms on mobile after tapping	Prevent pinch/zoom on tap by adjusting viewport meta and ensuring inputs/buttons have correct touch scaling
+meta name="viewport" fix	Use user-scalable=no, initial-scale=1, maximum-scale=1 if necessary; test impact across Android + iOS
+
+Add Payment Method
+Button displays UI but doesn’t function
+
+Fix click handler to open correct modal or route to /manage/payment
+
+Add validation for card input and visual feedback on error
+
+Global Design Consistency
+Component	Instruction
+Tabs	Style as rounded rectangles: e.g. border-radius: 8px; padding: 8px 12px
+CTA Buttons	Style as rounded pills: e.g. border-radius: 9999px; font-weight: 600;
+Button colours & states	Ensure primary, secondary, hover, disabled, and active styles are defined clearly in shared theme or scoped modules
+
+✅ STEP 3 – QA Testing
+Once all changes are implemented:
+
+Test Across Breakpoints
+
+iOS / Android
+
+Chrome / Safari (desktop)
+
+Responsive testing on /profile, /courses, /family, blog, and /manage
+
+Cross-Check Screenshots
+
+Confirm implementation visually matches provided screenshots
+
+Interactive Checks
+
+All CTAs and buttons open expected modals, pages, or forms
+
+“Upgrade Plan”, “Add Payment Method” and avatar-based plan indicators function correctly
+
+📤 Next Action
+Return the proposed list of changes using the structure provided in Step 1, referencing all feedback and screenshots.
+Once approved, proceed with development using the instructions above.
