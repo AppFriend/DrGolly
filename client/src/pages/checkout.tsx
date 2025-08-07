@@ -878,7 +878,7 @@ export default function Checkout() {
         </div>
       </div>
 
-      <div className="p-4 max-w-6xl mx-auto">
+      <div className="p-4 max-w-lg mx-auto lg:max-w-6xl">
         <div className="lg:grid lg:grid-cols-2 lg:gap-8">
           {/* Left Column - Your Details & Payment */}
           <div className="space-y-4">
@@ -910,6 +910,7 @@ export default function Checkout() {
                 </div>
                 
                 <div>
+                  <p className="text-sm text-gray-500 mb-2">Due Date / Baby Birthday</p>
                   <Input
                     id="dueDate"
                     type="date"
