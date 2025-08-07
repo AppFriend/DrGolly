@@ -46,8 +46,14 @@ touch .script-locks/EMERGENCY_SHUTDOWN.lock
 - Incident correlation with original August 5th event
 
 ### 4. AUTHORIZED USER SYSTEM
-Only these users can execute destructive scripts:
+Only these users can execute destructive or content-modifying scripts:
 - `admin@drgolly.com`
+- `alex@drgolly.com`
+
+**CRITICAL MEDICAL CONTENT PROTECTION:**
+- All scripts that modify course content, blog posts, or medical advice require EXPLICIT authorization
+- No automated execution of medical content changes allowed
+- Manual confirmation required for each execution
 
 ### 5. MANDATORY SAFEGUARDS
 For any destructive operation:
@@ -62,6 +68,14 @@ For any destructive operation:
 ### Quarantined Scripts (PERMANENTLY DISABLED)
 - `scripts/populate-course-content.ts.DISABLED`
 - `scripts/QUARANTINE-populate-course-content.ts`
+
+### Scripts Requiring Manual Authorization (MEDICAL CONTENT PROTECTION)
+**These scripts can modify medical/educational content and require explicit admin authorization:**
+- `scripts/seed-blog-posts.ts` - Seeds blog posts with medical advice
+- `scripts/manual-content-entry.ts` - Populates course content directly  
+- `scripts/map-rich-content.ts` - Maps CSV data to course modules
+- `scripts/rebuild-course-structure.ts` - Rebuilds entire course structure
+- `scripts/seed-feature-flags.ts` - Controls access to medical content features
 
 ### Security System Files
 - `scripts/script-execution-guard.ts` - Core security enforcement
