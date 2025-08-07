@@ -1,0 +1,100 @@
+Objective:
+Run a comprehensive backend and frontend audit to validate that all recent updates made by alex@drgolly.com (within the last 1 hour) to the Pre-Toddler Course and its associated course content have been:
+
+Properly logged in the database with accurate metadata
+
+Persistently saved for long-term storage (across logout, future sessions, days/months ahead)
+
+Successfully rendering on the frontend
+
+Ready to be used as the stable foundation for further course editing
+
+✅ Step 1: Database Audit – Change Log Verification
+Instructions:
+Identify all recent updates:
+
+Query all lesson, chapter, and course content records under the Pre-Toddler Course with:
+
+updated_by = alex@drgolly.com
+
+updated_at >= now() - 1 hour
+
+Confirm change logging:
+
+For each record updated, confirm the following fields are accurately stored:
+
+course_id
+
+chapter_id
+
+lesson_id
+
+field_changed (e.g. title, body, video link)
+
+old_value (if available)
+
+new_value
+
+updated_by = alex@drgolly.com
+
+updated_at timestamp
+
+Verify each change is recorded in the dedicated course change log or audit table (not just overwritten in content table)
+
+Output audit log:
+
+Return a full list of all changes (tabular format preferred)
+
+Include timestamp, field changed, old vs new value, and record ID
+
+🔒 Step 2: Persistence Validation
+Instructions:
+Simulate user session lifecycle:
+
+Simulate logout for alex@drgolly.com, then simulate login 24h later
+
+Validate content remains intact and unchanged in the database
+
+Confirm all update logs still exist with original timestamps and user attribution
+
+Validate long-term integrity:
+
+Ensure data is written to persistent storage (e.g. Postgres, Firestore, Supabase etc.)
+
+Confirm no cache-only or in-memory writes were used
+
+Confirm backups or database snapshots include these changes
+
+🖼 Step 3: Frontend Display Verification
+Instructions:
+Match backend to frontend:
+
+Programmatically fetch all content changes logged in Step 1
+
+Navigate to each affected lesson in the /courses or admin UI
+
+Confirm each content update is rendering as expected on the frontend
+
+Validate that content matches new_value field from log (1:1 match)
+
+Report visual confirmation:
+
+Return a visual diff or structured confirmation log that shows:
+
+Course title / chapter / lesson
+
+Displayed content vs database content
+
+Status: ✅ Match or ❌ Mismatch
+
+🧩 Step 4: Developer Confidence Summary
+Final Output:
+Provide a summary report with the following:
+
+✅ Number of changes successfully logged
+
+✅ Number of changes correctly rendering on frontend
+
+🔐 Confidence statement:
+
+"Based on this audit, we confirm that all updates made by alex@drgolly.com within the past hour are securely logged, saved in persistent storage, and displayed on the live frontend. These changes will persist across sessions, future logins, and infrastructure restarts. The content system is now stable for further edits."
