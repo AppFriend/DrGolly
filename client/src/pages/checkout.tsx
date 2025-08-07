@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
+import { getReferralForPurchase } from "@/lib/referralTracking";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { ArrowLeft, Check, Shield, Star, Users, Clock, Award, CreditCard, Smartphone, Trash2, ChevronDown, ChevronUp, Info } from "lucide-react";
@@ -393,7 +394,8 @@ export function PaymentForm({
       const response = await apiRequest('POST', '/api/create-course-payment', {
         courseId: course.id,
         customerDetails: customerInfo,
-        couponId: appliedCoupon?.id
+        couponId: appliedCoupon?.id,
+        ...getReferralForPurchase() // Include affiliate referral data
       });
 
       if (!response.ok) {
@@ -411,7 +413,8 @@ export function PaymentForm({
           cartItems: [] // Cart items will be fetched on backend
         }],
         customerDetails: customerInfo,
-        couponId: appliedCoupon?.id
+        couponId: appliedCoupon?.id,
+        ...getReferralForPurchase() // Include affiliate referral data
       });
 
       if (!response.ok) {

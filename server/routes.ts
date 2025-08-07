@@ -167,6 +167,42 @@ const isAuthenticatedOrAdmin: RequestHandler = async (req, res, next) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Function to record affiliate sales
+  async function recordAffiliateSale(paymentIntent: any) {
+    try {
+      const affiliateCode = paymentIntent.metadata.affiliateCode;
+      if (!affiliateCode) return;
+
+      // Find the affiliate by code
+      const affiliate = await storage.getAffiliateByCode(affiliateCode);
+      if (!affiliate) {
+        console.log(`Affiliate not found for code: ${affiliateCode}`);
+        return;
+      }
+
+      // Calculate commission (10% default)
+      const saleAmount = paymentIntent.amount; // Amount in cents
+      const commissionRate = 0.10; // 10%
+      const commissionAmount = Math.round(saleAmount * commissionRate);
+
+      // Record the sale
+      await storage.createAffiliateSale({
+        affiliateId: affiliate.id,
+        customerId: paymentIntent.customer || paymentIntent.metadata.customerEmail,
+        saleAmount: saleAmount,
+        commissionAmount: commissionAmount,
+        paymentIntentId: paymentIntent.id,
+        productType: paymentIntent.metadata.courseName || paymentIntent.metadata.type || 'purchase',
+        status: 'completed',
+        createdAt: new Date()
+      });
+
+      console.log(`Recorded affiliate sale for ${affiliate.name} (${affiliateCode}): $${(saleAmount/100).toFixed(2)} commission: $${(commissionAmount/100).toFixed(2)}`);
+    } catch (error) {
+      console.error('Error recording affiliate sale:', error);
+    }
+  }
   // Configure trust proxy for production deployment
   app.set('trust proxy', 1);
   
@@ -4723,7 +4759,7 @@ Please contact the customer to confirm the appointment.
   // Cart checkout payment intent endpoint
   app.post('/api/create-payment-intent', async (req: any, res) => {
     try {
-      const { amount, currency, items, customerDetails, couponId } = req.body;
+      const { amount, currency, items, customerDetails, couponId, affiliateCode } = req.body;
       
       // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
       const userId = req.session?.userId || req.user?.claims?.sub;
@@ -4770,6 +4806,7 @@ Please contact the customer to confirm the appointment.
           discountAmount: discountAmount.toString(),
           customerEmail: customerDetails?.email || '',
           customerName: `${customerDetails?.firstName || ''} ${customerDetails?.lastName || ''}`.trim(),
+          affiliateCode: affiliateCode || '', // Include affiliate code
         },
       });
       
@@ -4786,7 +4823,7 @@ Please contact the customer to confirm the appointment.
   // Course purchase routes
   app.post('/api/create-course-payment', async (req: any, res) => {
     try {
-      const { courseId, customerDetails, couponId } = req.body;
+      const { courseId, customerDetails, couponId, affiliateCode } = req.body;
       
       // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
       const userId = req.session?.userId || req.user?.claims?.sub;
@@ -4965,6 +5002,7 @@ Please contact the customer to confirm the appointment.
           couponName: couponData?.name || '',
           originalPrice: regionalPricing.coursePrice.toString(),
           discountedPrice: coursePrice.toString(),
+          affiliateCode: affiliateCode || '', // Include affiliate code
         },
         description: `Course Purchase: ${course.title}`,
         receipt_email: user.email,
@@ -5134,6 +5172,7 @@ Please contact the customer to confirm the appointment.
           discountAmount: appliedCoupon?.amount_off?.toString() || '',
           promotionCodeId: promotionCode?.id || '',
           promotionCodeCode: promotionCode?.code || '',
+          affiliateCode: affiliateCode || '', // Include affiliate code
         },
         description: 'Course Purchase: Big Baby Sleep Program',
         receipt_email: customerDetails.email,
@@ -5174,6 +5213,11 @@ Please contact the customer to confirm the appointment.
       switch (event.type) {
         case 'payment_intent.succeeded':
           const paymentIntent = event.data.object;
+          
+          // Record affiliate sale if affiliate code is present
+          if (paymentIntent.metadata.affiliateCode) {
+            await recordAffiliateSale(paymentIntent);
+          }
           
           // Check if this is a public checkout payment
           if (paymentIntent.metadata.checkoutType === 'public_checkout') {
@@ -6151,6 +6195,11 @@ Please contact the customer to confirm the appointment.
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log('Payment succeeded:', paymentIntent.id);
+        
+        // Record affiliate sale if affiliate code is present
+        if (paymentIntent.metadata.affiliateCode) {
+          await recordAffiliateSale(paymentIntent);
+        }
         
         // Handle course purchases
         const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
@@ -10336,8 +10385,8 @@ Please contact the customer to confirm the appointment.
       // Generate unique affiliate code
       const affiliateCode = `${instagramHandle.replace('@', '').toUpperCase()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       
-      // Generate referral URL
-      const referralUrl = `${req.protocol}://${req.get('host')}?ref=${affiliateCode}`;
+      // Generate referral URL pointing to homepage
+      const referralUrl = `${req.protocol}://${req.get('host')}/home?ref=${affiliateCode}`;
       
       // Create affiliate application
       const result = await sql`
