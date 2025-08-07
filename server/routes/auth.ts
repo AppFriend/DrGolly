@@ -32,7 +32,14 @@ router.post("/login", async (req, res) => {
 
     // Check if using temporary password
     if (user.temporaryPassword) {
-      passwordValid = await AuthUtils.verifyPassword(password, user.temporaryPassword);
+      // Check if temporary password is hashed (starts with $2b$) or plain text
+      if (user.temporaryPassword.startsWith('$2b$')) {
+        // Hashed temporary password
+        passwordValid = await AuthUtils.verifyPassword(password, user.temporaryPassword);
+      } else {
+        // Plain text temporary password (legacy)
+        passwordValid = password === user.temporaryPassword;
+      }
       isTemporaryPassword = passwordValid;
     }
 
@@ -50,6 +57,21 @@ router.post("/login", async (req, res) => {
 
     // Update last login
     await storage.updateUserLastLogin(user.id);
+
+    // Establish session in the format expected by /api/user endpoint
+    req.session.passport = {
+      user: {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName
+        }
+      }
+    };
+    req.session.userId = user.id;
+    req.session.userEmail = user.email;
+    req.session.isAuthenticated = true;
 
     // Prepare response
     const response: any = {
@@ -74,7 +96,19 @@ router.post("/login", async (req, res) => {
       response.tempPassword = password;
     }
 
-    res.json(response);
+    // Force session save before sending response
+    req.session.save((err: any) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Session save failed" 
+        });
+      }
+      
+      console.log('Session saved successfully for user:', user.id);
+      res.json(response);
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ 
