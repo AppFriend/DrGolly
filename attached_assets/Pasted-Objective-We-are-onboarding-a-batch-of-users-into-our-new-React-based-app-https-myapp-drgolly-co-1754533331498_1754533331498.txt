@@ -1,0 +1,59 @@
+Objective:
+We are onboarding a batch of users into our new React-based app (https://myapp.drgolly.com). These users are being provided with a temporary password via email. We need to ensure a seamless first login experience by programmatically updating the database and testing the flow.
+
+🗂️ Input Files
+subscriptions_MIgration_Cancellation (1).csv
+This CSV contains a list of existing users. Use the email column to match profiles in our current user database.
+
+Temporary Password (for all users):
+DRG-075-616!
+
+✅ TASKS TO PERFORM
+1. Match & Assign Temporary Password
+Load all email addresses from the uploaded CSV.
+
+Match each email against the user database.
+
+Assign the following temporary password to all matched users: DRG-075-616!
+
+Save this password in the correct hashed format (bcrypt or existing system format) in the password field of the user object.
+
+2. Implement & Test First Login Flow (for 5 users)
+Simulate login attempts for 5 randomly selected matched users from the CSV.
+
+Step 1: Attempt Login
+Use email + temporary password DRG-075-616! to log into https://myapp.drgolly.com
+
+Confirm authentication is successful (status 200 / correct session token or JWT returned)
+
+Step 2: Force Password Reset Popup
+On first successful login with a temporary password, display a modal popup that:
+
+Requires the user to set a new permanent password.
+
+Cannot be dismissed or bypassed.
+
+Validate the popup appears in test simulation.
+
+Ensure flag is persisted in the database (e.g., password_reset_required: true) so that:
+
+The modal re-appears next time the user logs in until a new password is set.
+
+The flag is set to false once a valid password has been saved.
+
+Step 3: Swap Password
+Simulate setting a new password via the modal.
+
+Replace the temporary password in the database with the newly submitted password.
+
+Remove the password_reset_required flag.
+
+Ensure the user can log in next time with the new password and no modal appears.
+
+🔁 Notes
+Do not impact users outside of the matched email list.
+
+Do not disrupt any Stripe or course subscription data.
+
+Ensure this flow is implemented on both production and staging environments for testing.
+

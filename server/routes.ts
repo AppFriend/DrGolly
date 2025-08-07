@@ -49,6 +49,7 @@ import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
 import { getBigBabyPreviewData } from "./bigBabyPreviewService";
+import { authRoutes } from "./routes/auth";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -581,6 +582,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Apply admin bypass middleware globally after auth setup
   app.use(adminBypass);
+
+  // Auth routes for migration system
+  app.use("/api/auth", authRoutes);
   
   // Test endpoint to verify admin bypass
   app.get('/api/test-admin', async (req, res) => {

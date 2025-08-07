@@ -50,9 +50,12 @@ import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
 import CompletePage from "@/pages/complete";
+import { ForcedPasswordResetModal } from "@/components/auth/ForcedPasswordResetModal";
+import { useForcedPasswordReset } from "@/hooks/useForcedPasswordReset";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
+  const { showModal, handlePasswordChanged, userEmail } = useForcedPasswordReset();
   const { isOpen, closeUpgradeModal } = useUpgradeModal();
   const { user, showPasswordSetupBanner, dismissPasswordSetupBanner, completePasswordSetup } = useAuth();
   
@@ -213,11 +216,8 @@ function AuthenticatedApp() {
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
-        <Route path="/profile-completion" component={ProfileCompletion} />
-        <Route path="/complete" component={ProfileCompletion} />
-        <Route path="/complete/preferences" component={ProfileCompletion} />
+        <Route path="/complete" component={CompletePage} />
         <Route path="/auth-test" component={AuthTestPage} />
-        <Route path="/test-checkout" component={TestCheckout} />
         <Route component={NotFound} />
       </Switch>
       <UpgradeModal
@@ -234,6 +234,11 @@ function AuthenticatedApp() {
           onDismiss={dismissPasswordSetupBanner}
         />
       )}
+      <ForcedPasswordResetModal
+        isOpen={showModal}
+        onPasswordChanged={handlePasswordChanged}
+        userEmail={userEmail}
+      />
       <Toaster />
     </div>
   );
