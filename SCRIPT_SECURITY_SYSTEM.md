@@ -49,6 +49,7 @@ touch .script-locks/EMERGENCY_SHUTDOWN.lock
 Only these users can execute destructive or content-modifying scripts:
 - `admin@drgolly.com`
 - `alex@drgolly.com`
+- `tech@drgolly.com`
 
 **CRITICAL MEDICAL CONTENT PROTECTION:**
 - All scripts that modify course content, blog posts, or medical advice require EXPLICIT authorization

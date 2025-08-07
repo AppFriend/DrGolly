@@ -52,7 +52,7 @@ This is a mobile-first learning management system (LMS) built with React and Exp
   - Identified and protected 5 critical scripts: seed-blog-posts, manual-content-entry, map-rich-content, rebuild-course-structure, seed-feature-flags
   - Implemented secure-script-wrapper.ts for safe execution with user authorization validation
   - Enhanced SCRIPT_SECURITY_SYSTEM.md documentation with medical content protection protocols
-  - Zero-risk guarantee: No automated execution of medical content changes without alex@drgolly.com authorization
+  - Zero-risk guarantee: No automated execution of medical content changes without authorized user approval (alex@drgolly.com, admin@drgolly.com, tech@drgolly.com)
 
 ## User Preferences
 

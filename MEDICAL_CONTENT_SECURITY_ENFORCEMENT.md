@@ -45,6 +45,7 @@ The following scripts can automatically modify medical content without authoriza
 #### MANDATORY AUTHORIZATION
 1. **alex@drgolly.com** - Primary medical content admin
 2. **admin@drgolly.com** - System admin with medical content access
+3. **tech@drgolly.com** - Technical admin with medical content editing rights
 
 #### EXECUTION REQUIREMENTS
 - No automated execution allowed
@@ -72,11 +73,13 @@ rm .script-locks/EMERGENCY_SHUTDOWN.lock
 
 To execute any medical content script safely:
 ```bash
-# Use secure wrapper (recommended)
+# Use secure wrapper (recommended) - any authorized user
 npm run secure-script seed-blog-posts.ts alex@drgolly.com
+npm run secure-script seed-blog-posts.ts tech@drgolly.com
 
 # Manual execution with protection
 ts-node scripts/secure-script-wrapper.ts seed-blog-posts.ts alex@drgolly.com
+ts-node scripts/secure-script-wrapper.ts seed-blog-posts.ts tech@drgolly.com
 ```
 
 **Status**: MEDICAL CONTENT FULLY PROTECTED ✅

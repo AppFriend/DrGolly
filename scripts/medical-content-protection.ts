@@ -34,7 +34,8 @@ const PROTECTED_SCRIPTS = [
 // Authorized users who can approve medical content changes
 const AUTHORIZED_USERS = [
   'alex@drgolly.com',
-  'admin@drgolly.com'
+  'admin@drgolly.com',
+  'tech@drgolly.com'
 ];
 
 interface SecurityCheck {
