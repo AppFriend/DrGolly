@@ -1137,6 +1137,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced 3-step signup endpoint
+  app.post('/api/auth/enhanced-signup', async (req, res) => {
+    try {
+      console.log('🚀 ENHANCED SIGNUP STARTED');
+      console.log('Request body:', req.body);
+
+      const {
+        firstName,
+        lastName,
+        email,
+        password,
+        phoneNumber,
+        userRole,
+        primaryConcerns = [],
+        acceptedTerms,
+        marketingOptIn = false,
+        smsMarketingOptIn = false,
+        signupSource = 'Enhanced Web Signup',
+        signupStep = 3,
+        signupCompleted = true
+      } = req.body;
+
+      // Validation
+      if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ message: "All required fields must be provided" });
+      }
+
+      if (!acceptedTerms) {
+        return res.status(400).json({ message: "Terms and conditions must be accepted" });
+      }
+
+      // Check for existing user
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(409).json({ message: "An account with this email already exists" });
+      }
+
+      // Generate unique user ID and hash password
+      const userId = AuthUtils.generateUserId();
+      const passwordHash = await AuthUtils.hashPassword(password);
+
+      // Format phone number for international compatibility
+      const formatPhoneNumber = (phone: string | undefined): string | undefined => {
+        if (!phone) return undefined;
+        
+        const cleaned = phone.replace(/\D/g, '');
+        
+        // If it's already in E.164 format (starts with +), return as-is
+        if (phone.startsWith('+')) {
+          return phone;
+        }
+        
+        // If it's an Australian number without country code, add +61
+        if (cleaned.length === 10 && cleaned.startsWith('0')) {
+          return `+61${cleaned.substring(1)}`;
+        }
+        
+        // If it's a US number, add +1
+        if (cleaned.length === 10) {
+          return `+1${cleaned}`;
+        }
+        
+        // If it's already formatted with country code but no +, add +
+        if (cleaned.length > 10) {
+          return `+${cleaned}`;
+        }
+        
+        return undefined; // Invalid format
+      };
+
+      // Create comprehensive user data
+      const userData = {
+        id: userId,
+        email,
+        firstName,
+        lastName,
+        passwordHash,
+        hasSetPassword: true,
+        isFirstLogin: false,
+        subscriptionTier: 'free',
+        subscriptionStatus: 'active',
+        signupSource,
+        // Enhanced signup fields
+        phoneNumber: formatPhoneNumber(phoneNumber),
+        userRole,
+        primaryConcerns: JSON.stringify(primaryConcerns),
+        acceptedTerms: true,
+        marketingOptIn,
+        smsMarketingOptIn: smsMarketingOptIn && phoneNumber ? true : false, // Only opt-in to SMS if phone provided
+        signupStep,
+        signupCompleted,
+        onboardingCompleted: true,
+        accountActivated: true,
+        lastLoginAt: new Date()
+      };
+
+      console.log('📝 Creating enhanced user with data:', {
+        ...userData,
+        passwordHash: '[REDACTED]'
+      });
+
+      // Create user in database
+      const user = await storage.createUser(userData);
+      console.log('✅ Enhanced user created successfully:', user.id);
+
+      // Create session for immediate login
+      try {
+        req.session.userId = user.id;
+        req.session.drGollyUserId = user.id;
+        req.session.userEmail = user.email;
+        req.session.isAuthenticated = true;
+        console.log('✅ Session created for enhanced signup');
+      } catch (sessionError) {
+        console.error('❌ Enhanced signup session creation error:', sessionError);
+        return res.status(500).json({ message: "Failed to create session" });
+      }
+
+      // Force session save
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Enhanced signup session save error:', err);
+        } else {
+          console.log('✅ Enhanced signup session saved successfully');
+        }
+      });
+
+      // Enhanced Klaviyo sync with comprehensive data
+      try {
+        console.log('📧 Syncing enhanced user to Klaviyo');
+        await klaviyoService.syncUserToKlaviyo(user);
+        
+        // Send specific enhanced signup event to Klaviyo
+        await klaviyoService.sendEnhancedSignupWelcome(user);
+        
+        console.log('✅ Enhanced Klaviyo sync successful');
+      } catch (error) {
+        console.error('⚠️ Enhanced Klaviyo sync failed (non-blocking):', error);
+      }
+
+      // Enhanced Slack notification
+      try {
+        await slackNotificationService.sendSignupNotification({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          userRole: user.userRole,
+          marketingOptIn: user.marketingOptIn,
+          smsMarketingOptIn: user.smsMarketingOptIn,
+          primaryConcerns: primaryConcerns,
+          signupSource: 'Enhanced 3-Step Signup',
+          signupType: 'enhanced_signup'
+        });
+        console.log('✅ Enhanced Slack notification sent');
+      } catch (slackError) {
+        console.error('⚠️ Enhanced Slack notification failed (non-blocking):', slackError);
+      }
+
+      console.log('🎉 ENHANCED SIGNUP SUCCESSFUL');
+      res.json({
+        success: true,
+        message: 'Enhanced signup completed successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          userRole: user.userRole,
+          onboardingCompleted: user.onboardingCompleted
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ ENHANCED SIGNUP ERROR:', error);
+      res.status(500).json({ 
+        message: "Enhanced signup failed",
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+  });
+
   // Test endpoint to verify Jared Looman signup fix
   app.post('/api/test/signup', async (req, res) => {
     try {

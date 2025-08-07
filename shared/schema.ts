@@ -58,7 +58,7 @@ export const users = pgTable("users", {
   hasSetPassword: boolean("has_set_password").default(false),
   passwordHash: varchar("password_hash"),
   lastPasswordChange: timestamp("last_password_change"),
-  // Personalization preferences for enhanced signup flow
+  // Enhanced signup flow fields
   primaryConcerns: text("primary_concerns"), // JSON array of selected concerns (baby-sleep, toddler-sleep, toddler-behaviour, partner-discounts)
   phoneNumber: varchar("phone_number"), // Phone number with country code
   profilePictureUrl: varchar("profile_picture_url"), // Profile picture URL
@@ -69,6 +69,8 @@ export const users = pgTable("users", {
   newMemberOfferShown: boolean("new_member_offer_shown").default(false), // Whether new member offer was shown
   newMemberOfferAccepted: boolean("new_member_offer_accepted").default(false), // Whether they accepted the offer
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  signupStep: integer("signup_step").default(1), // Track current step in multi-step signup (1-3)
+  signupCompleted: boolean("signup_completed").default(false), // Track if user completed all signup steps
   // New fields for CSV migration
   firstChildDob: timestamp("first_child_dob"), // Date of birth of first child
   accountActivated: boolean("account_activated").default(false), // Whether user has activated their account

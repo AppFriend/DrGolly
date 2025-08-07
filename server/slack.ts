@@ -81,10 +81,13 @@ export class SlackNotificationService {
   async sendSignupNotification(signupData: {
     name: string;
     email: string;
+    phoneNumber?: string;
+    userRole?: string;
     marketingOptIn: boolean;
+    smsMarketingOptIn?: boolean;
     primaryConcerns: string[];
     signupSource?: string;
-    signupType?: 'new_customer' | 'existing_customer_reactivation';
+    signupType?: 'new_customer' | 'existing_customer_reactivation' | 'enhanced_signup';
     previousCourses?: string[];
     coursePurchased?: string;
   }): Promise<boolean> {
@@ -96,9 +99,12 @@ export class SlackNotificationService {
       const marketingStatus = signupData.marketingOptIn ? '✅ Opted In' : '❌ Not Opted In';
       
       // Determine signup type display
-      const signupTypeText = signupData.signupType === 'existing_customer_reactivation' 
-        ? '🔄 Existing Customer (Profile reactivation)'
-        : '✨ New Customer';
+      let signupTypeText = '✨ New Customer';
+      if (signupData.signupType === 'existing_customer_reactivation') {
+        signupTypeText = '🔄 Existing Customer (Profile reactivation)';
+      } else if (signupData.signupType === 'enhanced_signup') {
+        signupTypeText = '⭐ Enhanced Signup (3-Step)';
+      }
 
       // Build fields array dynamically
       const fields = [
@@ -127,6 +133,29 @@ export class SlackNotificationService {
           text: `*Signup Type:*\n${signupTypeText}`
         }
       ];
+
+      // Add enhanced signup fields if available
+      if (signupData.phoneNumber) {
+        fields.push({
+          type: 'mrkdwn',
+          text: `*Phone Number:*\n${signupData.phoneNumber}`
+        });
+      }
+
+      if (signupData.userRole) {
+        fields.push({
+          type: 'mrkdwn',
+          text: `*Role:*\n${signupData.userRole}`
+        });
+      }
+
+      if (signupData.smsMarketingOptIn !== undefined) {
+        const smsStatus = signupData.smsMarketingOptIn ? '✅ Opted In' : '❌ Not Opted In';
+        fields.push({
+          type: 'mrkdwn',
+          text: `*SMS Marketing:*\n${smsStatus}`
+        });
+      }
 
       // Add previous courses field only for existing customer reactivations
       if (signupData.signupType === 'existing_customer_reactivation' && signupData.previousCourses && signupData.previousCourses.length > 0) {

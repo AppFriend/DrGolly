@@ -14,6 +14,8 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import EnhancedSignup from "@/pages/enhanced-signup";
+import { SignupOptions } from "@/components/SignupOptions";
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
 import CourseOverview from "@/pages/course-overview";
@@ -228,6 +230,16 @@ function Router() {
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
+          <Route path="/signup-options">
+            {() => (
+              <SignupOptions 
+                onSelectSignup={(type) => {
+                  window.location.href = type === 'enhanced' ? '/enhanced-signup' : '/signup';
+                }}
+              />
+            )}
+          </Route>
+          <Route path="/enhanced-signup" component={EnhancedSignup} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />
           <Route path="/terms" component={Terms} />

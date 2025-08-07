@@ -1,0 +1,108 @@
+Add:
+
+first_name
+
+last_name
+
+user_type
+
+phone_number (ensure parsed only if valid format)
+
+sms_opt_in = true (if phone is provided + marketing opt-in was checked in Step 1)
+
+🔹 STEP 3 — /preferences
+🎯 Goal: Capture user interest areas for future app personalisation
+Multi-select options:
+
+Baby Sleep
+
+Toddler Sleep
+
+Toddler Behaviour
+
+Partner Discounts
+
+Visual style as per Preferences.png
+
+Responsive layout
+
+💾 Database:
+Save preferences as array: preferences = []
+
+Set step_completed = 3
+
+If step 1 + 2 are complete: profile_complete = true
+
+📤 KLAYVIO:
+Extend Identify call with:
+
+preferences = ["Baby Sleep", "Toddler Behaviour"]
+
+🔁 STRIPE + KLAYVIO INTEGRATION (EXTENSION ONLY)
+1. ✅ NEXT BILLING DATE — ADDITION TO USER PROFILE
+Whenever a user purchases a subscription:
+
+Fetch from Stripe: next_billing_date via upcoming_invoice or subscription object
+
+Store in database:
+
+next_billing_date (nullable)
+
+If field already exists, update on plan change or billing cycle change
+
+📤 KLAYVIO:
+Extend Identify API to include:
+
+json
+Copy
+Edit
+{
+  "$email": "user@example.com",
+  "next_billing_date": "2025-09-08"
+}
+Best practice reference: https://developers.klaviyo.com/en/docs/identify
+
+This allows Klayvio flows for billing reminders, renewals, or payment updates.
+
+2. ✅ PURCHASE EVENT — TRIGGERED ON ANY TRANSACTION
+Whenever a purchase (subscription or one-time) is completed:
+
+Fire Klayvio Purchase event using existing event tracking infrastructure
+
+json
+Copy
+Edit
+{
+  "token": "<public_api_key>",
+  "event": "Purchase",
+  "customer_properties": {
+    "$email": "user@example.com"
+  },
+  "properties": {
+    "$value": 49.99,
+    "$event_id": "order_xyz",
+    "product_name": "Big Baby Sleep",
+    "product_id": "course_6",
+    "category": "Subscription",
+    "timestamp": "2025-08-08T12:00:00Z"
+  }
+}
+Best practice reference: https://developers.klaviyo.com/en/docs/track-purchases
+
+Ensure no duplication if similar purchase logic already exists — simply expand the schema to align with Klayvio’s standard structure.
+
+📋 DATABASE FIELDS TO EXTEND (ONLY IF NOT ALREADY PRESENT)
+Field	Type	Purpose
+step_completed	Integer	Tracks signup stage
+profile_complete	Boolean	Final stage flag
+preferences	Array	Selected onboarding categories
+user_type	String	Role type (Parent, Grandparent, Carer)
+phone_number	String	For SMS and verification
+next_billing_date	Date	From Stripe, nullable
+
+🔐 REMINDER
+Do NOT overwrite or duplicate existing Klayvio events or fields
+
+Use the same endpoint, same Identify payloads, and extend only if data isn’t already handled
+
+Reference internal documentation or codebase where Identify or Purchase logic is already used (e.g. during onboarding, post-checkout)

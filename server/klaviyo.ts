@@ -562,6 +562,75 @@ export class KlaviyoService {
     }
   }
 
+  async sendEnhancedSignupWelcome(user: User): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !user.email) {
+      console.error("Klaviyo API key not configured or user email missing");
+      return false;
+    }
+
+    try {
+      // Create profile first
+      const profileId = await this.createOrUpdateProfile(user);
+      if (!profileId) {
+        console.error("Failed to create or update Klaviyo profile for enhanced signup welcome");
+        return false;
+      }
+
+      // Parse primary concerns for event data
+      let primaryConcerns = [];
+      try {
+        primaryConcerns = user.primaryConcerns ? JSON.parse(user.primaryConcerns) : [];
+      } catch (e) {
+        primaryConcerns = [];
+      }
+
+      // Send enhanced signup welcome event via Klaviyo
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: user.email
+          },
+          metric: {
+            name: "Enhanced Signup Welcome"
+          },
+          properties: {
+            customer_name: user.firstName,
+            full_name: `${user.firstName} ${user.lastName}`,
+            user_role: user.userRole,
+            phone_number: user.phoneNumber,
+            primary_concerns: primaryConcerns,
+            marketing_opt_in: user.marketingOptIn,
+            sms_marketing_opt_in: user.smsMarketingOptIn,
+            signup_source: user.signupSource || "Enhanced Web Signup",
+            signup_completed: user.signupCompleted,
+            onboarding_completed: user.onboardingCompleted,
+            login_url: `${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}/`,
+            welcome_type: "enhanced_signup"
+          }
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to send enhanced signup welcome via Klaviyo:", response.status, errorText);
+        return false;
+      }
+
+      console.log("Enhanced signup welcome sent successfully via Klaviyo");
+      return true;
+    } catch (error) {
+      console.error("Error sending enhanced signup welcome via Klaviyo:", error);
+      return false;
+    }
+  }
+
   async sendServiceBookingEvent(email: string, bookingData: any): Promise<boolean> {
     if (!KLAVIYO_API_KEY || !email) {
       console.error("Klaviyo API key not configured or email missing");
