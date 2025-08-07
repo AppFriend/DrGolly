@@ -1,0 +1,151 @@
+🧩 OVERVIEW
+We are replacing the "Content" tab in the admin panel (screenshot attached – currently showing "Content Integrity Report" and "AI Generated Lessons") with a fully functional "Affiliates" management system. The current Content tab is no longer needed and should be sunset. The new tab will allow us to onboard, manage, and track influencer performance and automate payouts using Stripe Connect.
+
+🛠 NEW FEATURE: Affiliate Management (Replaces "Content" Tab)
+Tab Name: Affiliates
+Location: Replaces /admin/content in the admin sidebar nav
+
+💡 FUNCTIONALITY TO IMPLEMENT
+1. Public Onboarding Form
+URL: /affiliate/apply
+
+Fields:
+
+Full Name
+
+Profile Photo
+
+Instagram Handle
+
+Country
+
+Email
+
+Follower Count
+
+On submission:
+
+Create a DB entry with status: pending
+
+Create a Stripe Connect Express account via stripe.accounts.create()
+
+Generate onboarding link via stripe.accountLinks.create()
+
+Redirect influencer to complete onboarding
+
+Store connected_account_id in database once onboarding is complete
+
+2. Admin Panel – Affiliates Tab
+Tabs:
+
+Pending Applications: Review new applicants, click to approve
+
+Active Affiliates: Approved influencers, sortable list
+
+On approval:
+
+Generate unique referral URL: https://yourapp.com/ref/{code}
+
+Generate a short link for Instagram bios
+
+Store all metadata in DB
+
+Show columns:
+
+Name
+
+Instagram
+
+Followers
+
+Country
+
+Total Sales
+
+Total Revenue
+
+Copy Full URL
+
+Copy Short URL
+
+Stripe Payout Status
+
+3. Sales Attribution + Stripe Integration
+On checkout, check for affiliate referral (cookie or localStorage)
+
+Pass affiliate_id as metadata in Stripe Checkout session
+
+Extend webhook checkout.session.completed to:
+
+Log sale to affiliate_sales table
+
+Update total_sales and total_revenue for the affiliate
+
+Manual or automated payouts via:
+
+ts
+Copy
+Edit
+stripe.transfers.create({
+  amount,
+  currency: 'aud',
+  destination: connected_account_id,
+  transfer_group: order_id
+});
+⚙️ DATABASE MODELS
+Affiliate Table:
+
+ts
+Copy
+Edit
+Affiliate {
+  id: string;
+  full_name: string;
+  instagram_handle: string;
+  profile_photo_url: string;
+  country: string;
+  followers: number;
+  email: string;
+  affiliate_code: string;
+  referral_url: string;
+  short_url: string;
+  status: 'pending' | 'approved' | 'rejected';
+  connected_account_id: string;
+  total_sales: number;
+  total_revenue: number;
+  created_at: timestamp;
+  updated_at: timestamp;
+}
+AffiliateSales Table:
+
+ts
+Copy
+Edit
+AffiliateSale {
+  id: string;
+  affiliate_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  timestamp: timestamp;
+}
+🔐 STRIPE CONNECT CONFIGURATION
+No new API keys required
+
+Use current Stripe secret/public keys
+
+Enable Stripe Connect (Express) in the dashboard
+
+Use current webhook listener and extend to support affiliate attribution
+
+📌 ACTION ITEMS
+✅ Sunset/remove the existing /admin/content tab (see screenshot: “Content Integrity Report” currently failing)
+
+✅ Replace with new /admin/affiliates tab
+
+✅ Ensure no impact to existing subscription or checkout functionality
+
+✅ Ensure admin UI supports copyable URLs, revenue tracking, and sortable tables
+
+✅ Ensure influencer onboarding via public form is seamless and secure
+

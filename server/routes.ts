@@ -33,11 +33,14 @@ import {
   insertStripeProductSchema,
   insertServiceSchema,
   insertServiceBookingSchema,
+  insertAffiliateSchema,
+  insertAffiliateSaleSchema,
+  affiliates,
+  affiliateSales,
   courses,
   courseLessons,
   courseChapters,
   lessonContent,
-  coursePurchases,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
@@ -48,8 +51,7 @@ import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
-import { getBigBabyPreviewData } from "./bigBabyPreviewService";
-import { authRoutes } from "./routes/auth";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -116,8 +118,9 @@ const isAppAuthenticated: RequestHandler = async (req, res, next) => {
 // Admin middleware for Dr. Golly app admins
 const isAdmin: RequestHandler = async (req, res, next) => {
   try {
-    // Get user ID from session (works with both auth systems)
-    const userId = req.session?.userId || req.user?.claims?.sub;
+    // Get user ID from session (Dr. Golly uses drGollyUserId)
+    const userId = req.user?.drGollyUserId || req.session?.userId || req.user?.claims?.sub;
+    
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -164,6 +167,42 @@ const isAuthenticatedOrAdmin: RequestHandler = async (req, res, next) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Function to record affiliate sales
+  async function recordAffiliateSale(paymentIntent: any) {
+    try {
+      const affiliateCode = paymentIntent.metadata.affiliateCode;
+      if (!affiliateCode) return;
+
+      // Find the affiliate by code
+      const affiliate = await storage.getAffiliateByCode(affiliateCode);
+      if (!affiliate) {
+        console.log(`Affiliate not found for code: ${affiliateCode}`);
+        return;
+      }
+
+      // Calculate commission (10% default)
+      const saleAmount = paymentIntent.amount; // Amount in cents
+      const commissionRate = 0.10; // 10%
+      const commissionAmount = Math.round(saleAmount * commissionRate);
+
+      // Record the sale
+      await storage.createAffiliateSale({
+        affiliateId: affiliate.id,
+        customerId: paymentIntent.customer || paymentIntent.metadata.customerEmail,
+        saleAmount: saleAmount,
+        commissionAmount: commissionAmount,
+        paymentIntentId: paymentIntent.id,
+        productType: paymentIntent.metadata.courseName || paymentIntent.metadata.type || 'purchase',
+        status: 'completed',
+        createdAt: new Date()
+      });
+
+      console.log(`Recorded affiliate sale for ${affiliate.name} (${affiliateCode}): $${(saleAmount/100).toFixed(2)} commission: $${(commissionAmount/100).toFixed(2)}`);
+    } catch (error) {
+      console.error('Error recording affiliate sale:', error);
+    }
+  }
   // Configure trust proxy for production deployment
   app.set('trust proxy', 1);
   
@@ -233,140 +272,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to verify routing
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Test endpoint working' });
-  });
-
-  // Big Baby course preview data endpoint - READ-ONLY
-  app.get('/api/big-baby/preview-data', (req, res) => {
-    try {
-      console.log('🔍 Big Baby preview data requested');
-      const previewData = getBigBabyPreviewData();
-      res.json(previewData);
-    } catch (error) {
-      console.error('❌ Error generating Big Baby preview data:', error);
-      res.status(500).json({ 
-        error: 'Failed to generate preview data',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Big Baby database verification table
-  app.get('/api/big-baby/verification-table', async (req, res) => {
-    try {
-      console.log('📋 Generating verification table for Big Baby course structure...');
-      const { generateVerificationTable } = await import('./bigBabyDatabaseBuilder');
-      const verificationTable = await generateVerificationTable();
-      
-      res.json({
-        status: 'VERIFICATION_READY',
-        totalLessons: verificationTable.length,
-        matchedLessons: verificationTable.filter(item => item.status === 'MATCHED').length,
-        unmatchedLessons: verificationTable.filter(item => item.status === 'NO_MATCH').length,
-        duplicateLessons: verificationTable.filter(item => item.status === 'DUPLICATE').length,
-        verificationTable
-      });
-    } catch (error) {
-      console.error('❌ Error generating verification table:', error);
-      res.status(500).json({ error: 'Failed to generate verification table' });
-    }
-  });
-
-  // Big Baby database integrity verification
-  app.get('/api/big-baby/database-status', async (req, res) => {
-    try {
-      console.log('📊 Checking Big Baby database integrity status...');
-      const { verifyDatabaseIntegrity } = await import('./bigBabyDatabaseBuilder');
-      const integrity = await verifyDatabaseIntegrity();
-      
-      res.json({
-        status: 'INTEGRITY_CHECK_COMPLETE',
-        databaseIntegrity: integrity,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('❌ Error checking database integrity:', error);
-      res.status(500).json({ error: 'Database integrity check failed' });
-    }
-  });
-
-  // Big Baby database update execution (requires approval)
-  app.post('/api/big-baby/execute-database-update', async (req, res) => {
-    try {
-      const { approved } = req.body;
-      
-      if (!approved) {
-        return res.status(400).json({ 
-          error: 'Database update requires explicit approval',
-          message: 'Set approved: true to execute database update'
-        });
-      }
-      
-      console.log('🚀 Executing approved Big Baby database update...');
-      const { executeDatabaseUpdate } = await import('./bigBabyDatabaseBuilder');
-      const result = await executeDatabaseUpdate(approved);
-      
-      if (result.success) {
-        res.json({
-          status: 'UPDATE_COMPLETED',
-          message: result.message,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        res.status(500).json({
-          status: 'UPDATE_FAILED',
-          error: result.message
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error executing database update:', error);
-      res.status(500).json({ error: 'Database update execution failed' });
-    }
-  });
-
-  // Test endpoint for Big Baby payment flow
-  app.post('/api/test/big-baby-payment', async (req, res) => {
-    try {
-      const testCustomerDetails = {
-        email: 'test@example.com',
-        firstName: 'Test',
-        dueDate: '2025-08-15'
-      };
-
-      // Test creating payment intent
-      const response = await fetch(`${req.protocol}://${req.get('host')}/api/create-big-baby-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerDetails: testCustomerDetails,
-          couponId: null
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        res.json({
-          success: true,
-          message: 'Payment intent created successfully',
-          clientSecret: data.clientSecret ? 'Present' : 'Missing',
-          paymentIntentId: data.paymentIntentId,
-          amount: data.amount
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          message: 'Failed to create payment intent',
-          error: data.message
-        });
-      }
-    } catch (error) {
-      console.error('Test payment error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
-    }
   });
 
   // Test endpoint for Slack payment notifications
@@ -582,9 +487,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Apply admin bypass middleware globally after auth setup
   app.use(adminBypass);
-
-  // Auth routes for migration system
-  app.use("/api/auth", authRoutes);
   
   // Test endpoint to verify admin bypass
   app.get('/api/test-admin', async (req, res) => {
@@ -709,14 +611,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Updating lesson for lesson:', lessonId);
       
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
       let updatedLesson;
       
       if (title) {
         // Update lesson title
         updatedLesson = await storage.updateLessonTitle(parseInt(lessonId), title);
+        
+        // Log the lesson title change
+        if (userId) {
+          try {
+            const { neon } = await import('@neondatabase/serverless');
+            const sql = neon(process.env.DATABASE_URL!);
+            
+            // Get lesson details for logging
+            const lessonInfo = await sql`
+              SELECT cl.title as lesson_title, cc.title as chapter_title, c.id as course_id, c.title as course_title
+              FROM course_lessons cl
+              JOIN course_chapters cc ON cl.chapter_id = cc.id
+              JOIN courses c ON cc.course_id = c.id
+              WHERE cl.id = ${parseInt(lessonId)}
+            `;
+            
+            if (lessonInfo[0]) {
+              const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+              const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+              const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+              
+              await sql`
+                INSERT INTO course_change_logs (
+                  course_id, admin_user_name, admin_user_email, change_type, 
+                  change_description, affected_chapter_title, affected_lesson_title,
+                  course_snapshot, created_at
+                ) VALUES (
+                  ${lessonInfo[0].course_id},
+                  ${adminName},
+                  ${adminEmail},
+                  'lesson_modified',
+                  ${`Updated lesson title: "${title}"`},
+                  ${lessonInfo[0].chapter_title},
+                  ${lessonInfo[0].lesson_title},
+                  ${JSON.stringify({ lesson_id: parseInt(lessonId), new_title: title })},
+                  NOW()
+                )
+              `;
+              
+              console.log('Lesson title change logged for lesson:', lessonId);
+            }
+          } catch (logError) {
+            console.error('Error logging lesson title change:', logError);
+          }
+        }
       } else {
         // Update lesson content
         updatedLesson = await storage.updateLessonContent(parseInt(lessonId), content);
+        
+        // Log the lesson content change
+        if (userId) {
+          try {
+            const { neon } = await import('@neondatabase/serverless');
+            const sql = neon(process.env.DATABASE_URL!);
+            
+            // Get lesson details for logging
+            const lessonInfo = await sql`
+              SELECT cl.title as lesson_title, cc.title as chapter_title, c.id as course_id, c.title as course_title
+              FROM course_lessons cl
+              JOIN course_chapters cc ON cl.chapter_id = cc.id
+              JOIN courses c ON cc.course_id = c.id
+              WHERE cl.id = ${parseInt(lessonId)}
+            `;
+            
+            if (lessonInfo[0]) {
+              const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+              const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+              const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+              
+              await sql`
+                INSERT INTO course_change_logs (
+                  course_id, admin_user_name, admin_user_email, change_type, 
+                  change_description, affected_chapter_title, affected_lesson_title,
+                  course_snapshot, created_at
+                ) VALUES (
+                  ${lessonInfo[0].course_id},
+                  ${adminName},
+                  ${adminEmail},
+                  'lesson_modified',
+                  ${`Updated lesson content (${content.length} characters)`},
+                  ${lessonInfo[0].chapter_title},
+                  ${lessonInfo[0].lesson_title},
+                  ${JSON.stringify({ lesson_id: parseInt(lessonId), content_length: content.length })},
+                  NOW()
+                )
+              `;
+              
+              console.log('Lesson content change logged for lesson:', lessonId);
+            }
+          } catch (logError) {
+            console.error('Error logging lesson content change:', logError);
+          }
+        }
       }
       
       res.json(updatedLesson);
@@ -867,25 +869,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      let isValidPassword = false;
-      let requiresPasswordSetup = false;
-      
       // Check if user has a permanent password set
-      if (user.hasSetPassword && user.passwordHash) {
-        // Verify permanent password
-        isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
-      } else {
-        // Check if it's a temporary password (for migrated users)
-        try {
-          const tempAuthResult = await storage.authenticateWithTemporaryPassword(email, password);
-          if (tempAuthResult) {
-            isValidPassword = true;
-            requiresPasswordSetup = true;
-          }
-        } catch (tempAuthError) {
-          console.log('Temporary password authentication failed:', tempAuthError);
-        }
+      if (!user.hasSetPassword || !user.passwordHash) {
+        return res.status(400).json({ message: "Account not fully set up. Please use password reset." });
       }
+
+      // Verify password
+      const isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
       
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid email or password" });
@@ -925,8 +915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName
-          },
-          requiresPasswordSetup: requiresPasswordSetup
+          }
         });
       });
 
@@ -973,99 +962,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Session destroyed successfully');
       res.json({ success: true, message: 'Logged out successfully' });
     });
-  });
-
-  // Enhanced login endpoint for migrated users - seamless temporary password handling
-  app.post('/api/auth/login', async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
-
-      const user = await storage.getUserByEmail(email);
-      
-      if (!user) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
-
-      let isValidPassword = false;
-      let requiresPasswordSetup = false;
-      let isUsingTemporaryPassword = false;
-      
-      // Check if user has a permanent password set
-      if (user.hasSetPassword && user.passwordHash) {
-        // Verify permanent password
-        isValidPassword = await AuthUtils.verifyPassword(password, user.passwordHash);
-      } else {
-        // Check if it's a temporary password (for migrated users)
-        try {
-          const tempAuthResult = await storage.authenticateWithTemporaryPassword(email, password);
-          if (tempAuthResult) {
-            isValidPassword = true;
-            requiresPasswordSetup = true;
-            isUsingTemporaryPassword = true;
-          }
-        } catch (tempAuthError) {
-          console.log('Temporary password authentication failed:', tempAuthError);
-        }
-      }
-      
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
-
-      // Update last login
-      await storage.updateUserLastLogin(user.id);
-
-      // Create session manually (similar to how Replit auth works)
-      const sessionData = {
-        claims: {
-          sub: user.id,
-          email: user.email,
-          first_name: user.firstName,
-          last_name: user.lastName
-        }
-      };
-      
-      // Store session data in req.session with proper structure
-      req.session.passport = { user: sessionData };
-      req.session.userId = user.id; // Also store userId directly for easier access
-      
-      // If using temporary password, store it in session for password setup
-      if (isUsingTemporaryPassword) {
-        req.session.tempPassword = password;
-      }
-      
-      // Force session save before sending response
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          return res.status(500).json({ message: "Session save failed" });
-        }
-        
-        console.log('Session saved successfully for user:', user.id);
-        
-        // Return user data for session creation
-        res.json({
-          success: true,
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName
-          },
-          requiresPasswordSetup: requiresPasswordSetup,
-          showPasswordSetupBanner: requiresPasswordSetup,
-          isUsingTemporaryPassword: isUsingTemporaryPassword
-        });
-      });
-
-    } catch (error) {
-      console.error("Error in login:", error);
-      res.status(500).json({ message: "Login failed" });
-    }
   });
 
   // Dr. Golly signup endpoint
@@ -2089,67 +1985,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Payment intent verification endpoint
-  app.post('/api/verify-payment-intent', async (req, res) => {
-    try {
-      const { paymentIntentId } = req.body;
-      
-      if (!paymentIntentId) {
-        return res.status(400).json({ message: "Payment intent ID is required" });
-      }
-      
-      console.log("Verifying payment intent:", paymentIntentId);
-      
-      // Retrieve payment intent from Stripe
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      const verificationData = {
-        paymentIntentId: paymentIntent.id,
-        status: paymentIntent.status,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        customer: paymentIntent.customer,
-        metadata: paymentIntent.metadata,
-        created: paymentIntent.created,
-        confirmed: paymentIntent.status === 'succeeded',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV
-      };
-      
-      console.log("Payment verification failed - not succeeded:", verificationData);
-      
-      // For testing purposes, return the data even if not succeeded
-      if (paymentIntent.status === 'succeeded') {
-        res.json(verificationData);
-      } else {
-        res.status(400).json(verificationData);
-      }
-    } catch (error) {
-      console.error("Error verifying payment intent:", error);
-      res.status(500).json({ message: "Payment verification failed" });
-    }
-  });
-
   // Course routes
   app.get('/api/courses', async (req, res) => {
-    // Force fresh response - disable all caching
-    res.removeHeader('ETag');
-    res.removeHeader('Last-Modified');
-    res.set({
-      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'X-Accel-Expires': '0',
-      'Surrogate-Control': 'no-store'
-    });
-    
     try {
       const { category, tier, includeUnpublished } = req.query;
-      
-      console.log('=======================================');
-      console.log('📋 /api/courses endpoint called with public_checkout_url support');
-      console.log('📋 Timestamp:', new Date().toISOString());
-      console.log('=======================================');
       
       // Use raw SQL directly - bypass Drizzle ORM completely
       const { neon } = await import('@neondatabase/serverless');
@@ -2163,7 +2002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    price, discounted_price, skill_level, stripe_product_id, unique_id,
                                    status, detailed_description, website_content, key_features, whats_covered,
                                    rating, review_count, overview_description, learning_objectives,
-                                   completion_criteria, course_structure_notes, public_checkout_url
+                                   completion_criteria, course_structure_notes
                             FROM courses 
                             WHERE is_published = true AND category = ${category}
                             ORDER BY created_at DESC`;
@@ -2173,7 +2012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                    price, discounted_price, skill_level, stripe_product_id, unique_id,
                                    status, detailed_description, website_content, key_features, whats_covered,
                                    rating, review_count, overview_description, learning_objectives,
-                                   completion_criteria, course_structure_notes, public_checkout_url
+                                   completion_criteria, course_structure_notes
                             FROM courses 
                             WHERE is_published = true 
                             ORDER BY created_at DESC`;
@@ -2184,20 +2023,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...course,
         // Map thumbnail_url to thumbnailUrl for frontend compatibility
         thumbnailUrl: course.thumbnail_url || course.thumbnailUrl,
-        // Map public_checkout_url to publicCheckoutUrl for frontend compatibility
-        publicCheckoutUrl: course.public_checkout_url || course.publicCheckoutUrl,
         // Convert price from string to number if needed
         price: typeof course.price === 'string' ? parseFloat(course.price) : course.price,
-        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice,
-        // Add debug timestamp to verify endpoint is being called
-        _debug_timestamp: new Date().toISOString(),
-        _debug_public_checkout_url: course.public_checkout_url
+        discountedPrice: typeof course.discounted_price === 'string' ? parseFloat(course.discounted_price) : course.discountedPrice
       }));
-      
-      // Try using storage layer instead of direct SQL
-      console.log('Using storage.getAllCourses() instead of SQL');
-      const storageCourses = await storage.getAllCourses();
-      console.log('Storage courses sample:', storageCourses.slice(0, 2));
       
       res.json(coursesWithPricing);
     } catch (error) {
@@ -2541,6 +2370,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Title is required and must be a string' });
       }
       
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
       // Get all existing chapters for this course to determine the next chapter number
       const existingChapters = await db.select().from(courseChapters).where(eq(courseChapters.courseId, parseInt(courseId)));
       
@@ -2582,6 +2421,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           chapterNumber: nextChapterNumber
         })
         .returning();
+      
+      // Log the chapter creation
+      if (userId && newChapter) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          // Get course and admin user info
+          const courseInfo = await sql`SELECT title FROM courses WHERE id = ${parseInt(courseId)} LIMIT 1`;
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          const courseTitle = courseInfo[0] ? courseInfo[0].title : 'Unknown Course';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${parseInt(courseId)},
+              ${adminName},
+              ${adminEmail},
+              'chapter_created',
+              ${`Created new chapter: "${title}" (${nextChapterNumber})`},
+              ${title},
+              NULL,
+              ${JSON.stringify({ 
+                chapter_id: newChapter.id, 
+                chapter_number: nextChapterNumber,
+                order_index: maxOrderIndex + 1,
+                course_title: courseTitle 
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Chapter creation logged for chapter:', newChapter.id);
+        } catch (logError) {
+          console.error('Error logging chapter creation:', logError);
+        }
+      }
       
       res.json(newChapter);
     } catch (error) {
@@ -2627,6 +2508,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Title is required and must be a string' });
       }
       
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
       // Get the highest order_index for this chapter
       const existingLessons = await db.select().from(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
       const maxOrderIndex = existingLessons.reduce((max, lesson) => 
@@ -2652,6 +2543,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .returning();
       
+      // Log the lesson creation
+      if (userId && newLesson) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          // Get course and admin user info
+          const courseInfo = await sql`SELECT title FROM courses WHERE id = ${chapter.courseId} LIMIT 1`;
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          const courseTitle = courseInfo[0] ? courseInfo[0].title : 'Unknown Course';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${chapter.courseId},
+              ${adminName},
+              ${adminEmail},
+              'lesson_created',
+              ${`Created new lesson: "${title}"`},
+              ${chapter.title},
+              ${title},
+              ${JSON.stringify({ 
+                lesson_id: newLesson.id,
+                chapter_id: parseInt(chapterId),
+                order_index: maxOrderIndex + 1,
+                course_title: courseTitle,
+                has_content: !!content
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Lesson creation logged for lesson:', newLesson.id);
+        } catch (logError) {
+          console.error('Error logging lesson creation:', logError);
+        }
+      }
+      
       res.json(newLesson);
     } catch (error) {
       console.error('Error creating lesson:', error);
@@ -2663,21 +2597,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/chapters/:chapterId', isAdmin, async (req, res) => {
     try {
       const { chapterId } = req.params;
+      const sql = neon(process.env.DATABASE_URL!);
       
-      // First delete all lessons in this chapter
-      await db.delete(courseLessons).where(eq(courseLessons.chapterId, parseInt(chapterId)));
+      // Start transaction
+      await sql`BEGIN`;
       
-      // Then delete the chapter
-      const [deletedChapter] = await db
-        .delete(courseChapters)
-        .where(eq(courseChapters.id, parseInt(chapterId)))
-        .returning();
-      
-      if (!deletedChapter) {
-        return res.status(404).json({ error: 'Chapter not found' });
+      try {
+        // First get all lesson IDs in this chapter
+        const lessons = await sql`
+          SELECT id FROM course_lessons WHERE chapter_id = ${parseInt(chapterId)}
+        `;
+        
+        const lessonIds = lessons.map(lesson => lesson.id);
+        
+        if (lessonIds.length > 0) {
+          // Get all lesson content IDs for this lesson
+          const lessonContentIds = await sql`
+            SELECT id FROM lesson_content WHERE lesson_id = ANY(${lessonIds})
+          `;
+          const contentIds = lessonContentIds.map(content => content.id);
+          
+          // Delete user progress for lesson content first
+          if (contentIds.length > 0) {
+            await sql`
+              DELETE FROM user_lesson_content_progress 
+              WHERE lesson_content_id = ANY(${contentIds})
+            `;
+          }
+          
+          // Delete user progress for lessons in this chapter
+          await sql`
+            DELETE FROM user_lesson_progress 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+          
+          // Delete lesson content
+          await sql`
+            DELETE FROM lesson_content 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+        }
+        
+        // Delete user chapter progress
+        await sql`
+          DELETE FROM user_chapter_progress 
+          WHERE chapter_id = ${parseInt(chapterId)}
+        `;
+        
+        // Delete all lessons in this chapter
+        await sql`
+          DELETE FROM course_lessons 
+          WHERE chapter_id = ${parseInt(chapterId)}
+        `;
+        
+        // Get chapter details before deletion for logging
+        const chapterDetails = await sql`
+          SELECT cc.title as chapter_title, c.title as course_title, cc.course_id
+          FROM course_chapters cc
+          JOIN courses c ON cc.course_id = c.id
+          WHERE cc.id = ${parseInt(chapterId)}
+        `;
+        
+        // Finally delete the chapter
+        await sql`
+          DELETE FROM course_chapters 
+          WHERE id = ${parseInt(chapterId)}
+        `;
+        
+        // Log the deletion
+        if (chapterDetails.length > 0) {
+          const chapter = chapterDetails[0];
+          const userId = req.user?.drGollyUserId || req.user?.id || 'unknown';
+          const userQuery = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email,
+              change_type, change_description, course_snapshot,
+              created_at
+            ) VALUES (
+              ${chapter.course_id}, ${user.first_name}, ${user.email},
+              'chapter_deleted', ${`Deleted chapter "${chapter.chapter_title}" from course "${chapter.course_title}"`},
+              ${JSON.stringify({ deletedChapter: chapter.chapter_title, lessonCount: lessonIds.length })},
+              NOW()
+            )
+          `;
+        }
+        
+        // Commit transaction
+        await sql`COMMIT`;
+        
+        res.json({ message: 'Chapter and all related data deleted successfully' });
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
       }
-      
-      res.json({ message: 'Chapter deleted successfully', deletedChapter });
     } catch (error) {
       console.error('Error deleting chapter:', error);
       res.status(500).json({ error: 'Failed to delete chapter' });
@@ -2688,20 +2704,226 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/lessons/:lessonId', isAdmin, async (req, res) => {
     try {
       const { lessonId } = req.params;
+      const sql = neon(process.env.DATABASE_URL!);
       
-      const [deletedLesson] = await db
-        .delete(courseLessons)
-        .where(eq(courseLessons.id, parseInt(lessonId)))
-        .returning();
+      // Start transaction
+      await sql`BEGIN`;
       
-      if (!deletedLesson) {
-        return res.status(404).json({ error: 'Lesson not found' });
+      try {
+        // Get all lesson content IDs for this lesson
+        const lessonContentIds = await sql`
+          SELECT id FROM lesson_content WHERE lesson_id = ${parseInt(lessonId)}
+        `;
+        const contentIds = lessonContentIds.map(content => content.id);
+        
+        // Delete user progress for lesson content first
+        if (contentIds.length > 0) {
+          await sql`
+            DELETE FROM user_lesson_content_progress 
+            WHERE lesson_content_id = ANY(${contentIds})
+          `;
+        }
+        
+        // Delete user progress for this lesson
+        await sql`
+          DELETE FROM user_lesson_progress 
+          WHERE lesson_id = ${parseInt(lessonId)}
+        `;
+        
+        // Delete lesson content
+        await sql`
+          DELETE FROM lesson_content 
+          WHERE lesson_id = ${parseInt(lessonId)}
+        `;
+        
+        // Get lesson details before deletion for logging
+        const lessonDetails = await sql`
+          SELECT cl.title as lesson_title, cc.title as chapter_title, c.title as course_title, c.id as course_id
+          FROM course_lessons cl
+          JOIN course_chapters cc ON cl.chapter_id = cc.id
+          JOIN courses c ON cc.course_id = c.id
+          WHERE cl.id = ${parseInt(lessonId)}
+        `;
+        
+        // Finally delete the lesson
+        await sql`
+          DELETE FROM course_lessons 
+          WHERE id = ${parseInt(lessonId)}
+        `;
+        
+        // Log the deletion
+        if (lessonDetails.length > 0) {
+          const lesson = lessonDetails[0];
+          const userId = req.user?.drGollyUserId || req.user?.id || 'unknown';
+          const userQuery = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email,
+              change_type, change_description, affected_chapter_title, affected_lesson_title, course_snapshot,
+              created_at
+            ) VALUES (
+              ${lesson.course_id}, ${user.first_name}, ${user.email},
+              'lesson_deleted', ${`Deleted lesson "${lesson.lesson_title}" from chapter "${lesson.chapter_title}" in course "${lesson.course_title}"`},
+              ${lesson.chapter_title}, ${lesson.lesson_title}, 
+              ${JSON.stringify({ deletedLesson: lesson.lesson_title, chapter: lesson.chapter_title, contentCount: contentIds.length })},
+              NOW()
+            )
+          `;
+        }
+        
+        // Commit transaction
+        await sql`COMMIT`;
+        
+        res.json({ message: 'Lesson and all related data deleted successfully' });
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
       }
-      
-      res.json({ message: 'Lesson deleted successfully', deletedLesson });
     } catch (error) {
       console.error('Error deleting lesson:', error);
       res.status(500).json({ error: 'Failed to delete lesson' });
+    }
+  });
+
+  // Delete course endpoint
+  app.delete('/api/courses/:courseId', isAdmin, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Start transaction
+      await sql`BEGIN`;
+      
+      try {
+        // Get all chapters and lessons for this course
+        const chapters = await sql`
+          SELECT id FROM course_chapters WHERE course_id = ${parseInt(courseId)}
+        `;
+        const chapterIds = chapters.map(ch => ch.id);
+        
+        const lessons = await sql`
+          SELECT id FROM course_lessons WHERE course_id = ${parseInt(courseId)}
+        `;
+        const lessonIds = lessons.map(lesson => lesson.id);
+        
+        if (lessonIds.length > 0) {
+          // Get all lesson content IDs for these lessons
+          const lessonContentIds = await sql`
+            SELECT id FROM lesson_content WHERE lesson_id = ANY(${lessonIds})
+          `;
+          const contentIds = lessonContentIds.map(content => content.id);
+          
+          // Delete user progress for lesson content first
+          if (contentIds.length > 0) {
+            await sql`
+              DELETE FROM user_lesson_content_progress 
+              WHERE lesson_content_id = ANY(${contentIds})
+            `;
+          }
+          
+          // Delete user progress for all lessons
+          await sql`
+            DELETE FROM user_lesson_progress 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+          
+          // Delete lesson content
+          await sql`
+            DELETE FROM lesson_content 
+            WHERE lesson_id = ANY(${lessonIds})
+          `;
+        }
+        
+        if (chapterIds.length > 0) {
+          // Delete user chapter progress
+          await sql`
+            DELETE FROM user_chapter_progress 
+            WHERE chapter_id = ANY(${chapterIds})
+          `;
+        }
+        
+        // Delete user course progress
+        await sql`
+          DELETE FROM user_course_progress 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete course purchases
+        await sql`
+          DELETE FROM course_purchases 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete course change log entries
+        await sql`
+          DELETE FROM course_change_logs 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete all lessons
+        await sql`
+          DELETE FROM course_lessons 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Delete all chapters
+        await sql`
+          DELETE FROM course_chapters 
+          WHERE course_id = ${parseInt(courseId)}
+        `;
+        
+        // Get course details before deletion for logging
+        const courseDetails = await sql`
+          SELECT title, description, price FROM courses WHERE id = ${parseInt(courseId)}
+        `;
+        
+        // Finally delete the course
+        await sql`
+          DELETE FROM courses 
+          WHERE id = ${parseInt(courseId)}
+        `;
+        
+        // Log the deletion
+        if (courseDetails.length > 0) {
+          const course = courseDetails[0];
+          const userId = req.user?.drGollyUserId || req.user?.id || 'unknown';
+          const userQuery = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const user = userQuery[0] || { first_name: 'Unknown', email: 'no-email' };
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email,
+              change_type, change_description, course_snapshot,
+              created_at
+            ) VALUES (
+              ${parseInt(courseId)}, ${user.first_name}, ${user.email},
+              'course_deleted', ${`Deleted entire course "${course.title}"`},
+              ${JSON.stringify({ 
+                deletedCourse: course.title, 
+                chapterCount: chapterIds.length, 
+                lessonCount: lessonIds.length,
+                price: course.price 
+              })},
+              NOW()
+            )
+          `;
+        }
+        
+        // Commit transaction
+        await sql`COMMIT`;
+        
+        res.json({ message: 'Course and all related data deleted successfully' });
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
+      }
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      res.status(500).json({ error: 'Failed to delete course' });
     }
   });
 
@@ -3898,6 +4120,44 @@ Please contact the customer to confirm the appointment.
 
 
   // Individual lesson routes with URL structure
+  // Get lesson content only - for Change Log content preview (admin only)
+  app.get('/api/lessons/:id/content', isAdmin, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.id);
+      console.log(`Fetching lesson content for Change Log preview: ${lessonId}`);
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+
+      // Get lesson details with content
+      const lessonResult = await sql`
+        SELECT cl.id, cl.title, cl.video_url, lc.content
+        FROM course_lessons cl
+        LEFT JOIN lesson_content lc ON cl.id = lc.lesson_id
+        WHERE cl.id = ${lessonId}
+        LIMIT 1
+      `;
+
+      if (!lessonResult || lessonResult.length === 0) {
+        console.log(`Lesson ${lessonId} not found for content preview`);
+        return res.status(404).json({ message: 'Lesson not found' });
+      }
+
+      const lesson = lessonResult[0];
+      console.log(`Found lesson content for preview: ${lesson.title}`);
+      
+      res.json({
+        id: lesson.id,
+        title: lesson.title,
+        videoUrl: lesson.video_url,
+        content: lesson.content
+      });
+    } catch (error) {
+      console.error('Error fetching lesson content for Change Log preview:', error);
+      res.status(500).json({ error: 'Failed to fetch lesson content' });
+    }
+  });
+
   app.get('/api/lessons/:id', async (req: any, res) => {
     try {
       const lessonId = parseInt(req.params.id);
@@ -4146,99 +4406,6 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error updating lesson content progress:", error);
       res.status(500).json({ message: "Failed to update progress" });
-    }
-  });
-
-  // Complete purchase signup for new users
-  app.post('/api/auth/complete-purchase-signup', async (req, res) => {
-    try {
-      const { password, purchaseData } = req.body;
-
-      // Validate password
-      if (!password || password.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters long" });
-      }
-
-      // Validate purchase data
-      if (!purchaseData?.email || !purchaseData?.firstName) {
-        return res.status(400).json({ message: "Email and first name are required" });
-      }
-
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(purchaseData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists with this email" });
-      }
-
-      // Hash password
-      const passwordHash = await AuthUtils.hashPassword(password);
-
-      // Create new user
-      const newUser = await storage.createUser({
-        email: purchaseData.email,
-        firstName: purchaseData.firstName,
-        lastName: purchaseData.lastName || '',
-        passwordHash,
-        hasSetPassword: true,
-        subscriptionTier: 'free',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-
-      // Find the pending purchase and link it to the new user
-      if (purchaseData.courseId) {
-        try {
-          const sqlConnection = neon(process.env.DATABASE_URL!);
-          await sqlConnection.query(`
-            UPDATE course_purchases 
-            SET user_id = $1 
-            WHERE user_id IS NULL 
-            AND course_id = $2 
-            AND created_at > NOW() - INTERVAL '1 hour'
-            ORDER BY created_at DESC 
-            LIMIT 1
-          `, [newUser.id, parseInt(purchaseData.courseId)]);
-          console.log(`Linked purchase for course ${purchaseData.courseId} to new user ${newUser.id}`);
-        } catch (error) {
-          console.error('Error linking purchase to user:', error);
-        }
-      }
-
-      // Create session for the new user
-      const sessionData = {
-        claims: {
-          sub: newUser.id,
-          email: newUser.email,
-          first_name: newUser.firstName,
-          last_name: newUser.lastName
-        }
-      };
-      
-      req.session.passport = { user: sessionData };
-      req.session.userId = newUser.id;
-      
-      // Force session save
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          return res.status(500).json({ message: "Session save failed" });
-        }
-        
-        console.log(`Account created and session established for user: ${newUser.email}`);
-        
-        res.json({ 
-          message: "Account setup completed successfully",
-          courseId: purchaseData?.courseId || null,
-          user: {
-            id: newUser.id,
-            email: newUser.email,
-            firstName: newUser.firstName
-          }
-        });
-      });
-    } catch (error) {
-      console.error("Error completing purchase signup:", error);
-      res.status(500).json({ message: "Failed to complete account setup" });
     }
   });
 
@@ -4592,7 +4759,7 @@ Please contact the customer to confirm the appointment.
   // Cart checkout payment intent endpoint
   app.post('/api/create-payment-intent', async (req: any, res) => {
     try {
-      const { amount, currency, items, customerDetails, couponId } = req.body;
+      const { amount, currency, items, customerDetails, couponId, affiliateCode } = req.body;
       
       // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
       const userId = req.session?.userId || req.user?.claims?.sub;
@@ -4639,6 +4806,7 @@ Please contact the customer to confirm the appointment.
           discountAmount: discountAmount.toString(),
           customerEmail: customerDetails?.email || '',
           customerName: `${customerDetails?.firstName || ''} ${customerDetails?.lastName || ''}`.trim(),
+          affiliateCode: affiliateCode || '', // Include affiliate code
         },
       });
       
@@ -4652,15 +4820,19 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Course purchase routes - allows public checkout
+  // Course purchase routes
   app.post('/api/create-course-payment', async (req: any, res) => {
     try {
-      const { courseId, customerDetails, couponId, isDirectPurchase } = req.body;
+      const { courseId, customerDetails, couponId, affiliateCode } = req.body;
       
-      // Get the user ID from the session (works with both auth systems) - allows null for public checkout
-      let userId = req.session?.userId || req.user?.claims?.sub || null;
+      // Get the user ID from the session (works with both auth systems) - no hardcoded fallback
+      const userId = req.session?.userId || req.user?.claims?.sub;
       
-      console.log('Payment request for user ID:', userId || 'public checkout');
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      console.log('Payment request for user ID:', userId);
       
       // Get course details with raw SQL fallback
       let course;
@@ -4683,84 +4855,32 @@ Please contact the customer to confirm the appointment.
         return res.status(404).json({ message: "Course not found" });
       }
 
-      // Get user details with raw SQL fallback - handle public checkout
-      let user = null;
-      if (userId) {
-        try {
-          user = await storage.getUser(userId);
-        } catch (error) {
-          console.log('Drizzle ORM failed for user payment, using raw SQL fallback');
-          // Use raw SQL to avoid Drizzle ORM parsing issues
-          const { neon } = await import('@neondatabase/serverless');
-          const sql = neon(process.env.DATABASE_URL!);
-          const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
-          
-          if (result && result.length > 0) {
-            user = {
-              id: result[0].id,
-              email: result[0].email,
-              firstName: result[0].first_name,
-              lastName: result[0].last_name,
-              stripeCustomerId: result[0].stripe_customer_id,
-              signupSource: result[0].signup_source
-            };
-          }
+      // Get user details with raw SQL fallback
+      let user;
+      try {
+        user = await storage.getUser(userId);
+      } catch (error) {
+        console.log('Drizzle ORM failed for user payment, using raw SQL fallback');
+        // Use raw SQL to avoid Drizzle ORM parsing issues
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        
+        if (!result || result.length === 0) {
+          return res.status(404).json({ message: "User not found" });
         }
+        
+        user = {
+          id: result[0].id,
+          email: result[0].email,
+          firstName: result[0].first_name,
+          lastName: result[0].last_name,
+          stripeCustomerId: result[0].stripe_customer_id,
+          signupSource: result[0].signup_source
+        };
       }
-      
-      // For public checkout, check if user exists by email first
-      if (!user && customerDetails) {
-        // Check if user exists in database by email
-        try {
-          const existingUser = await storage.getUserByEmail(customerDetails.email);
-          if (existingUser) {
-            // EXISTING USER: Auto-login them for the purchase
-            user = existingUser;
-            
-            // Create session for existing user to auto-login them
-            const sessionData = {
-              claims: {
-                sub: existingUser.id,
-                email: existingUser.email,
-                first_name: existingUser.firstName,
-                last_name: existingUser.lastName
-              }
-            };
-            
-            req.session.passport = { user: sessionData };
-            req.session.userId = existingUser.id;
-            userId = existingUser.id; // Update userId variable for response
-            
-            console.log(`✅ EXISTING USER: Auto-logged in for purchase: ${existingUser.email}`);
-            console.log(`🔄 Updated userId variable to: ${userId}`);
-          } else {
-            // NEW USER: Continue with public checkout
-            user = {
-              id: null,
-              email: customerDetails.email,
-              firstName: customerDetails.firstName,
-              lastName: customerDetails.lastName || '',
-              stripeCustomerId: null,
-              signupSource: 'public_checkout'
-            };
-            console.log(`🔄 NEW USER: Public checkout for ${customerDetails.email}`);
-          }
-        } catch (error) {
-          console.error('Error checking existing user:', error);
-          // Fallback to public checkout
-          user = {
-            id: null,
-            email: customerDetails.email,
-            firstName: customerDetails.firstName,
-            lastName: customerDetails.lastName || '',
-            stripeCustomerId: null,
-            signupSource: 'public_checkout'
-          };
-        }
-      }
-      
-      if (!user || !user.email) {
-        return res.status(400).json({ message: "Customer details required for checkout" });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       // Check for existing Stripe customer by email first
@@ -4782,23 +4902,22 @@ Please contact the customer to confirm the appointment.
             email: user.email,
             name: `${user.firstName} ${user.lastName}`.trim(),
             metadata: {
-              userId: userId || 'public_checkout',
-              signupSource: user.signupSource || 'public_checkout',
+              userId: userId,
+              signupSource: user.signupSource || 'direct',
             },
           });
           stripeCustomerId = customer.id;
         }
         
-        if (userId) {
-          try {
-            await storage.updateUserStripeCustomerId(userId, stripeCustomerId);
-          } catch (error) {
-            console.log('Drizzle ORM failed for stripe customer ID update, using raw SQL fallback');
-            // Use raw SQL to avoid Drizzle ORM parsing issues
-            const { neon } = await import('@neondatabase/serverless');
-            const sql = neon(process.env.DATABASE_URL!);
-            await sql`UPDATE users SET stripe_customer_id = ${stripeCustomerId} WHERE id = ${userId}`;
-          }
+        // Update user with stripe customer ID (with raw SQL fallback)
+        try {
+          await storage.updateUserStripeCustomerId(userId, stripeCustomerId);
+        } catch (error) {
+          console.log('Drizzle ORM failed for stripe customer ID update, using raw SQL fallback');
+          // Use raw SQL to avoid Drizzle ORM parsing issues
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          await sql`UPDATE users SET stripe_customer_id = ${stripeCustomerId} WHERE id = ${userId}`;
         }
       }
 
@@ -4872,6 +4991,7 @@ Please contact the customer to confirm the appointment.
         metadata: {
           courseId: courseId.toString(),
           courseName: course.title,
+          userId: userId,
           userEmail: user.email,
           customerName: `${user.firstName} ${user.lastName}`.trim(),
           productType: 'course',
@@ -4882,28 +5002,37 @@ Please contact the customer to confirm the appointment.
           couponName: couponData?.name || '',
           originalPrice: regionalPricing.coursePrice.toString(),
           discountedPrice: coursePrice.toString(),
-          isDirectPurchase: isDirectPurchase ? 'true' : 'false',
-          purchaseType: isDirectPurchase ? 'public_course' : 'authenticated_course',
+          affiliateCode: affiliateCode || '', // Include affiliate code
         },
         description: `Course Purchase: ${course.title}`,
         receipt_email: user.email,
       });
 
-      // For public checkout (isDirectPurchase), course purchase is handled after successful payment and account creation
-      console.log('Course purchase creation:', { userId, isDirectPurchase, skipped: !userId || isDirectPurchase });
+      // Create course purchase record with regional pricing (with raw SQL fallback)
+      try {
+        await storage.createCoursePurchase({
+          userId: userId,
+          courseId: courseId,
+          stripePaymentIntentId: paymentIntent.id,
+          stripeCustomerId: stripeCustomerId,
+          amount: Math.round(coursePrice * 100),
+          currency: regionalPricing.currency.toLowerCase(),
+          status: 'pending',
+        });
+      } catch (error) {
+        console.log('Drizzle ORM failed for course purchase creation, using raw SQL fallback');
+        // Use raw SQL to avoid Drizzle ORM parsing issues
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        await sql`INSERT INTO course_purchases (user_id, course_id, stripe_payment_intent_id, stripe_customer_id, amount, currency, status, created_at) 
+                  VALUES (${userId}, ${courseId}, ${paymentIntent.id}, ${stripeCustomerId}, ${Math.round(coursePrice * 100)}, ${regionalPricing.currency.toLowerCase()}, 'pending', NOW())`;
+      }
 
-      const responseData = { 
+      res.json({ 
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
-        finalAmount: Math.round(coursePrice * 100), // Send final amount in cents
-        userStatus: userId ? 'existing_user_logged_in' : 'new_user_public_checkout',
-        userId: userId || null
-      };
-      
-      console.log(`🔍 Final userId before response: ${userId}`);
-      
-      console.log(`📤 PAYMENT RESPONSE:`, JSON.stringify(responseData, null, 2));
-      res.json(responseData);
+        finalAmount: Math.round(coursePrice * 100) // Send final amount in cents
+      });
     } catch (error) {
       console.error("Error creating course payment:", error);
       res.status(500).json({ message: "Failed to create payment" });
@@ -5043,7 +5172,7 @@ Please contact the customer to confirm the appointment.
           discountAmount: appliedCoupon?.amount_off?.toString() || '',
           promotionCodeId: promotionCode?.id || '',
           promotionCodeCode: promotionCode?.code || '',
-          promotionalCode: promotionCode?.code || couponId || '',
+          affiliateCode: affiliateCode || '', // Include affiliate code
         },
         description: 'Course Purchase: Big Baby Sleep Program',
         receipt_email: customerDetails.email,
@@ -5075,379 +5204,6 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // New clean Big Baby checkout endpoints
-  app.post('/api/create-big-baby-payment-intent', async (req, res) => {
-    try {
-      const { customerDetails, couponId, courseId = 6 } = req.body;
-      
-      // Validate required fields
-      if (!customerDetails?.email || !customerDetails?.firstName) {
-        return res.status(400).json({ message: "Email and first name are required" });
-      }
-
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(customerDetails.email)) {
-        return res.status(400).json({ message: "Invalid email address format" });
-      }
-      
-      // Get regional pricing with proper IP detection
-      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
-      console.log('Payment intent creation - User IP:', userIP);
-      
-      const regionalPricing = await regionalPricingService.getPricingForIP(userIP);
-      console.log('Payment intent creation - Regional pricing:', regionalPricing);
-      
-      const baseAmount = regionalPricing.coursePrice;
-      const currency = regionalPricing.currency;
-      
-      let finalAmount = baseAmount;
-      let coupon = null;
-      let promotionCode = null;
-      
-      // Apply coupon if provided
-      if (couponId) {
-        try {
-          console.log('Processing coupon code:', couponId);
-          
-          // First try to find promotion code
-          const promotionCodes = await stripe.promotionCodes.list({
-            code: couponId,
-            limit: 1,
-          });
-          
-          if (promotionCodes.data.length > 0) {
-            promotionCode = promotionCodes.data[0];
-            if (promotionCode.active) {
-              coupon = await stripe.coupons.retrieve(promotionCode.coupon.id);
-            }
-          } else {
-            // Try direct coupon lookup
-            try {
-              coupon = await stripe.coupons.retrieve(couponId);
-            } catch (directCouponError) {
-              console.log('No direct coupon found with code:', couponId);
-            }
-          }
-          
-          // Apply discount if coupon is valid
-          if (coupon && coupon.valid) {
-            console.log('Applying coupon:', coupon.id, 'Type:', coupon.amount_off ? 'Fixed amount' : 'Percentage', 'Original amount: $' + baseAmount);
-            
-            if (coupon.percent_off) {
-              // Percentage discount
-              const originalAmount = baseAmount;
-              finalAmount = baseAmount * (1 - coupon.percent_off / 100);
-              console.log('Percentage discount:', coupon.percent_off + '%', 'Original: $' + originalAmount, 'New: $' + finalAmount);
-            } else if (coupon.amount_off) {
-              // Fixed amount discount - amount_off is already in cents, convert to dollars
-              const originalAmount = baseAmount;
-              const discountInDollars = coupon.amount_off / 100;
-              finalAmount = Math.max(0, baseAmount - discountInDollars);
-              console.log('Fixed amount discount: $' + discountInDollars, 'Original: $' + originalAmount, 'New: $' + finalAmount);
-            }
-          }
-        } catch (error) {
-          console.error('Coupon validation failed:', error);
-        }
-      }
-      
-      // Create payment intent with automatic payment methods (includes Apple Pay, Google Pay, Link)
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(finalAmount * 100), // Convert to cents
-        currency: currency.toLowerCase(),
-        automatic_payment_methods: { enabled: true },
-        description: 'Big Baby Sleep Program',
-        metadata: {
-          courseId: courseId.toString(),
-          courseName: 'Big baby sleep program',
-          customerEmail: customerDetails.email,
-          customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
-          originalAmount: baseAmount.toString(),
-          finalAmount: finalAmount.toString(),
-          couponId: couponId || '',
-          couponName: coupon?.name || '',
-          discountAmount: (baseAmount - finalAmount).toString(),
-          currency: currency
-        }
-      });
-      
-      console.log('Payment intent created:', paymentIntent.id, 'Amount:', finalAmount, currency);
-      
-      res.json({ 
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        finalAmount: finalAmount,
-        originalAmount: baseAmount,
-        discountAmount: baseAmount - finalAmount,
-        currency: currency,
-        couponApplied: coupon ? {
-          id: coupon.id,
-          name: coupon.name,
-          percent_off: coupon.percent_off,
-          amount_off: coupon.amount_off
-        } : null
-      });
-    } catch (error: any) {
-      console.error('Payment intent creation failed:', error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.post('/api/big-baby-complete-purchase', async (req, res) => {
-    try {
-      const { paymentIntentId, customerDetails, courseId, finalPrice, currency, appliedCoupon } = req.body;
-      
-      // Retrieve payment intent to verify payment and get actual payment data
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      if (paymentIntent.status !== 'succeeded') {
-        return res.status(400).json({ message: 'Payment not successful' });
-      }
-      
-      // Extract actual payment amounts from Stripe data
-      const actualAmountPaid = paymentIntent.amount; // This is the amount actually charged
-      const originalAmount = paymentIntent.metadata.originalAmount ? parseFloat(paymentIntent.metadata.originalAmount) * 100 : paymentIntent.amount;
-      const discountAmount = originalAmount - actualAmountPaid;
-      const promotionalCode = paymentIntent.metadata.couponName && paymentIntent.metadata.couponName !== 'none' ? paymentIntent.metadata.couponName : null;
-      
-      console.log('Payment details:', {
-        actualAmountPaid: actualAmountPaid / 100,
-        originalAmount: originalAmount / 100,
-        discountAmount: discountAmount / 100,
-        promotionalCode: promotionalCode || 'None'
-      });
-      
-      // Check if user exists
-      let user = await storage.getUserByEmail(customerDetails.email);
-      let isNewUser = false;
-      
-      if (!user) {
-        // Create new user
-        isNewUser = true;
-        // Generate unique user ID (using timestamp + random)
-        const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        user = await storage.createUser({
-          id: uniqueId,
-          email: customerDetails.email,
-          firstName: customerDetails.firstName,
-          lastName: customerDetails.lastName || '',
-          phone: customerDetails.phone || null,
-          subscriptionTier: 'free',
-          planTier: 'free',
-          signupSource: 'big_baby_checkout',
-          accountActivated: true
-        });
-        
-        console.log('Created new user:', user.id, 'Email:', user.email);
-      } else {
-        console.log('Found existing user:', user.id, 'Email:', user.email);
-      }
-      
-      // Add course to user's purchases using actual payment data
-      await db.insert(coursePurchases).values({
-        userId: user.id,
-        courseId: courseId,
-        purchaseDate: new Date(),
-        amount: actualAmountPaid / 100, // Convert cents to dollars
-        currency: currency,
-        paymentIntentId: paymentIntentId,
-        status: 'completed'
-      });
-      
-      console.log('Course purchase added for user:', user.id, 'Course:', courseId, 'Amount:', actualAmountPaid / 100);
-      
-      // Send payment notification to Slack with actual payment data
-      try {
-        await slackNotificationService.sendPaymentNotification({
-          name: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
-          email: customerDetails.email,
-          purchaseDetails: "Single Course Purchase (Big Baby Sleep Program)",
-          paymentAmount: `$${(actualAmountPaid / 100).toFixed(2)} ${currency.toUpperCase()}`,
-          promotionalCode: promotionalCode || undefined,
-          discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency.toUpperCase()}` : undefined
-        });
-        console.log('Slack payment notification sent successfully');
-      } catch (slackError) {
-        console.error('Slack notification failed:', slackError);
-        // Don't fail the purchase if Slack fails
-      }
-      
-      // Auto-login user by creating session
-      try {
-        req.session.userId = user.id;
-        req.session.save();
-        console.log('User auto-logged in:', user.id);
-      } catch (sessionError) {
-        console.error('Auto-login failed:', sessionError);
-      }
-      
-      res.json({ 
-        success: true, 
-        message: isNewUser ? 'Account created and purchase completed!' : 'Course added to your account!',
-        userId: user.id,
-        isNewUser: isNewUser,
-        actualAmountPaid: actualAmountPaid / 100,
-        discountAmount: discountAmount / 100,
-        promotionalCode: promotionalCode || null
-      });
-    } catch (error: any) {
-      console.error('Purchase completion failed:', error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Test endpoint for Slack payment notification
-  app.post('/api/test/slack-payment-notification', async (req, res) => {
-    try {
-      const { name, email, purchaseDetails, paymentAmount, promotionalCode, discountAmount } = req.body;
-      
-      console.log('Testing Slack payment notification with data:', {
-        name, email, purchaseDetails, paymentAmount, promotionalCode, discountAmount
-      });
-      
-      const result = await slackNotificationService.sendPaymentNotification({
-        name,
-        email,
-        purchaseDetails,
-        paymentAmount,
-        promotionalCode,
-        discountAmount
-      });
-      
-      res.json({ 
-        success: true, 
-        message: 'Test notification sent',
-        result: result
-      });
-    } catch (error: any) {
-      console.error('Test notification failed:', error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Payment verification endpoint for dev and production testing
-  app.post('/api/verify-payment-intent', async (req, res) => {
-    try {
-      const { paymentIntentId } = req.body;
-      
-      if (!paymentIntentId) {
-        return res.status(400).json({ message: "Payment intent ID is required" });
-      }
-      
-      console.log('Verifying payment intent:', paymentIntentId);
-      
-      // Retrieve payment intent from Stripe
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      const verification = {
-        paymentIntentId: paymentIntent.id,
-        status: paymentIntent.status,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        customer: paymentIntent.customer,
-        metadata: paymentIntent.metadata,
-        created: paymentIntent.created,
-        confirmed: paymentIntent.status === 'succeeded',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-      };
-      
-      // Check if payment was successful
-      if (paymentIntent.status === 'succeeded') {
-        // Verify that the course purchase was created
-        const { neon } = await import('@neondatabase/serverless');
-        const sql = neon(process.env.DATABASE_URL!);
-        
-        const coursePurchases = await sql`
-          SELECT * FROM course_purchases 
-          WHERE stripe_payment_intent_id = ${paymentIntentId}
-        `;
-        
-        verification.coursePurchaseCreated = coursePurchases.length > 0;
-        verification.coursePurchaseCount = coursePurchases.length;
-        
-        if (coursePurchases.length > 0) {
-          verification.coursePurchaseDetails = coursePurchases[0];
-        }
-        
-        // Check if user account was created or updated
-        const customerEmail = paymentIntent.metadata.customerEmail;
-        if (customerEmail) {
-          const users = await sql`
-            SELECT id, email, first_name, last_name, created_at 
-            FROM users 
-            WHERE email = ${customerEmail}
-          `;
-          
-          verification.userAccountExists = users.length > 0;
-          if (users.length > 0) {
-            verification.userAccountDetails = users[0];
-          }
-        }
-        
-        console.log('Payment verification successful:', verification);
-        res.json(verification);
-      } else {
-        console.log('Payment verification failed - not succeeded:', verification);
-        res.status(400).json({
-          ...verification,
-          error: `Payment status is ${paymentIntent.status}, expected 'succeeded'`
-        });
-      }
-    } catch (error: any) {
-      console.error('Payment verification error:', error);
-      res.status(500).json({ 
-        message: "Payment verification failed",
-        error: error.message,
-        paymentIntentId: req.body.paymentIntentId,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Test endpoint to verify payment verification system is working
-  app.post('/api/test-payment-verification', async (req, res) => {
-    try {
-      const { testPaymentIntentId } = req.body;
-      
-      if (!testPaymentIntentId) {
-        return res.status(400).json({ message: "Test payment intent ID is required" });
-      }
-      
-      console.log('Testing payment verification system with:', testPaymentIntentId);
-      
-      // Call our own verification endpoint
-      const verificationUrl = `${req.protocol}://${req.get('host')}/api/verify-payment-intent`;
-      const verificationResponse = await fetch(verificationUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentIntentId: testPaymentIntentId })
-      });
-      
-      const verification = await verificationResponse.json();
-      
-      res.json({
-        success: true,
-        message: "Payment verification endpoint test completed",
-        testPaymentIntentId: testPaymentIntentId,
-        verificationEndpointStatus: verificationResponse.status,
-        verificationResult: verification,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-      });
-    } catch (error: any) {
-      console.error('Payment verification test error:', error);
-      res.status(500).json({ 
-        message: "Payment verification test failed",
-        error: error.message,
-        testPaymentIntentId: req.body.testPaymentIntentId,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
   // Stripe webhook endpoint for payment completion
   app.post('/api/stripe-webhook', async (req, res) => {
     try {
@@ -5457,6 +5213,11 @@ Please contact the customer to confirm the appointment.
       switch (event.type) {
         case 'payment_intent.succeeded':
           const paymentIntent = event.data.object;
+          
+          // Record affiliate sale if affiliate code is present
+          if (paymentIntent.metadata.affiliateCode) {
+            await recordAffiliateSale(paymentIntent);
+          }
           
           // Check if this is a public checkout payment
           if (paymentIntent.metadata.checkoutType === 'public_checkout') {
@@ -5767,67 +5528,6 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error("Error syncing pending transactions:", error);
       res.status(500).json({ message: "Failed to sync pending transactions" });
-    }
-  });
-
-  // Profile completion endpoint for new users after checkout
-  app.post('/api/auth/complete-profile', isAppAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.userId;
-      const { password, interests, marketingOptIn, smsMarketingOptIn, termsAccepted } = req.body;
-      
-      if (!password || password.length < 8) {
-        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
-      }
-      
-      if (!termsAccepted) {
-        return res.status(400).json({ message: 'Terms and conditions must be accepted' });
-      }
-      
-      // Hash the password
-      const hashedPassword = await AuthUtils.hashPassword(password);
-      
-      // Update user with password and preferences
-      await storage.updateUser(userId, {
-        passwordHash: hashedPassword,
-        hasSetPassword: true,
-        isFirstLogin: false,
-        primaryConcerns: interests || [],
-        marketingOptIn: marketingOptIn || false,
-        smsMarketingOptIn: smsMarketingOptIn || false,
-        termsAccepted: termsAccepted,
-        profileCompletedAt: new Date()
-      });
-      
-      // Send signup notification to Slack
-      try {
-        const user = await storage.getUser(userId);
-        await slackNotificationService.sendSignupNotification({
-          name: `${user.firstName} ${user.lastName || ''}`.trim(),
-          email: user.email,
-          marketingOptIn: marketingOptIn,
-          primaryConcerns: interests || [],
-          signupSource: 'big_baby_checkout',
-          signupType: 'new_customer',
-          coursePurchased: 'Big Baby Sleep Program'
-        });
-      } catch (slackError) {
-        console.error('Slack notification failed:', slackError);
-        // Don't fail the profile completion if Slack fails
-      }
-      
-      res.json({ 
-        success: true, 
-        message: 'Profile completed successfully',
-        user: {
-          id: userId,
-          hasSetPassword: true,
-          profileCompleted: true
-        }
-      });
-    } catch (error: any) {
-      console.error('Profile completion failed:', error);
-      res.status(500).json({ message: error.message });
     }
   });
 
@@ -6495,29 +6195,16 @@ Please contact the customer to confirm the appointment.
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log('Payment succeeded:', paymentIntent.id);
-        console.log('Payment intent metadata:', paymentIntent.metadata);
         
-        // Handle existing course purchases in database
+        // Record affiliate sale if affiliate code is present
+        if (paymentIntent.metadata.affiliateCode) {
+          await recordAffiliateSale(paymentIntent);
+        }
+        
+        // Handle course purchases
         const purchase = await storage.getCoursePurchaseByPaymentIntent(paymentIntent.id);
         if (purchase) {
           await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
-          
-          // Send payment notification for database course purchases
-          try {
-            const user = await storage.getUser(purchase.userId);
-            const course = await storage.getCourse(purchase.courseId);
-            if (user && course) {
-              await slackNotificationService.sendPaymentNotification({
-                name: `${user.firstName} ${user.lastName}`.trim(),
-                email: user.email,
-                purchaseDetails: `Single Course Purchase (${course.title})`,
-                paymentAmount: `$${(purchase.amount / 100).toFixed(2)} ${purchase.currency.toUpperCase()}`
-              });
-              console.log('Payment notification sent for database course purchase');
-            }
-          } catch (error) {
-            console.error('Failed to send payment notification for course purchase:', error);
-          }
           
           // Sync course purchase to Klaviyo
           try {
@@ -6527,122 +6214,6 @@ Please contact the customer to confirm the appointment.
             }
           } catch (error) {
             console.error("Failed to sync course purchase to Klaviyo:", error);
-          }
-        } else {
-          // Handle public checkout payments (no pre-existing database record)
-          console.log('No existing course purchase found - checking for public checkout payment');
-          console.log('Payment intent metadata:', paymentIntent.metadata);
-          
-          // Check if this is a course or book purchase by examining metadata
-          const isPublicPurchase = paymentIntent.metadata && (
-            paymentIntent.metadata.courseName || // Big Baby specific format
-            (paymentIntent.metadata.productType === 'course') || // Main course endpoint format
-            (paymentIntent.metadata.productType === 'book') || // Book purchase format
-            paymentIntent.metadata.purchaseType === 'public_course' // Legacy public purchase format
-          );
-          
-          if (isPublicPurchase) {
-            console.log('Public checkout payment detected with metadata:', paymentIntent.metadata);
-            
-            // Extract customer and product information from metadata (handle multiple formats)
-            let customerName = '';
-            let customerEmail = '';
-            let productName = '';
-            let originalAmount = paymentIntent.amount;
-            let finalAmount = paymentIntent.amount;
-            let couponName = '';
-            
-            // Handle different metadata formats
-            if (paymentIntent.metadata.courseName) {
-              // Big Baby specific format
-              customerName = paymentIntent.metadata.customerName || '';
-              customerEmail = paymentIntent.metadata.customerEmail || '';
-              productName = paymentIntent.metadata.courseName;
-              originalAmount = parseInt(paymentIntent.metadata.originalAmount) || paymentIntent.amount;
-              finalAmount = parseInt(paymentIntent.metadata.finalAmount) || paymentIntent.amount;
-              couponName = paymentIntent.metadata.couponName || '';
-            } else if (paymentIntent.metadata.productType === 'course') {
-              // Main course endpoint format
-              customerName = paymentIntent.metadata.customerName || paymentIntent.metadata.userEmail || '';
-              customerEmail = paymentIntent.metadata.userEmail || paymentIntent.metadata.customerEmail || '';
-              productName = paymentIntent.description?.replace('Course Purchase: ', '') || `Course ${paymentIntent.metadata.courseId}`;
-              originalAmount = parseInt(paymentIntent.metadata.originalPrice) * 100 || paymentIntent.amount;
-              finalAmount = parseInt(paymentIntent.metadata.discountedPrice) * 100 || paymentIntent.amount;
-              couponName = paymentIntent.metadata.couponName || '';
-            } else if (paymentIntent.metadata.productType === 'book') {
-              // Book purchase format
-              customerName = paymentIntent.metadata.customerName || paymentIntent.metadata.userEmail || '';
-              customerEmail = paymentIntent.metadata.userEmail || paymentIntent.metadata.customerEmail || '';
-              productName = paymentIntent.description?.replace('Book Purchase: ', '') || `Book ${paymentIntent.metadata.bookId}`;
-              originalAmount = parseInt(paymentIntent.metadata.originalPrice) * 100 || paymentIntent.amount;
-              finalAmount = parseInt(paymentIntent.metadata.discountedPrice) * 100 || paymentIntent.amount;
-              couponName = paymentIntent.metadata.couponName || '';
-            }
-            
-            // Calculate discount amount
-            const discountAmount = originalAmount - finalAmount;
-            const currency = paymentIntent.currency.toUpperCase();
-            
-            // Determine product type for notification
-            let purchaseType = 'Single Course Purchase';
-            if (paymentIntent.metadata.productType === 'book') {
-              purchaseType = 'Single Book Purchase';
-            }
-            
-            // Send payment notification for public checkout
-            try {
-              await slackNotificationService.sendPaymentNotification({
-                name: customerName || 'Public Checkout Customer',
-                email: customerEmail || 'unknown@email.com',
-                purchaseDetails: `${purchaseType} (${productName})`,
-                paymentAmount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
-                promotionalCode: couponName && couponName !== 'none' ? couponName : undefined,
-                discountAmount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : undefined
-              });
-              
-              console.log('Payment notification sent for public checkout:', {
-                type: paymentIntent.metadata.productType || 'course',
-                email: customerEmail,
-                amount: `$${(finalAmount / 100).toFixed(2)} ${currency}`,
-                product: productName,
-                coupon: couponName || 'None',
-                discount: discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} ${currency}` : 'None'
-              });
-            } catch (error) {
-              console.error('Failed to send payment notification for public checkout:', error);
-            }
-            
-            // Sync public checkout purchase to Klaviyo
-            try {
-              if (customerEmail && paymentIntent.metadata.productType === 'course') {
-                const courseId = paymentIntent.metadata.courseId;
-                // Create a mock purchase object for Klaviyo sync
-                const mockPurchase = {
-                  id: paymentIntent.id,
-                  courseId: parseInt(courseId),
-                  amount: finalAmount,
-                  currency: currency.toLowerCase(),
-                  status: 'completed',
-                  createdAt: new Date(),
-                  paymentIntentId: paymentIntent.id
-                };
-                
-                // Create mock user object from payment metadata
-                const mockUser = {
-                  email: customerEmail,
-                  firstName: customerName.split(' ')[0] || 'Customer',
-                  lastName: customerName.split(' ').slice(1).join(' ') || '',
-                  signupSource: 'public checkout web>app'
-                };
-                
-                await klaviyoService.syncCoursePurchaseToKlaviyo(mockUser, mockPurchase);
-                console.log('Public checkout purchase synced to Klaviyo:', customerEmail);
-              }
-            } catch (error) {
-              console.error('Failed to sync public checkout purchase to Klaviyo:', error);
-            }
-          } else {
-            console.log('Payment intent has no course/book metadata - likely not a product purchase');
           }
         }
         break;
@@ -7134,12 +6705,8 @@ Please contact the customer to confirm the appointment.
   // Regional pricing routes
   app.get('/api/regional-pricing', async (req, res) => {
     try {
-      // Get IP from various sources, prioritizing X-Forwarded-For for production
-      const userIP = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.connection.remoteAddress || '127.0.0.1';
-      console.log('Regional pricing request from IP:', userIP);
-      
+      const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
       const pricing = await regionalPricingService.getPricingForIP(userIP);
-      console.log('Regional pricing result:', pricing);
       res.json(pricing);
     } catch (error) {
       console.error('Error getting regional pricing:', error);
@@ -7266,30 +6833,6 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Test endpoint for Slack notifications
-  app.post('/api/test-slack-payment', async (req, res) => {
-    try {
-      const { customerName, email, actualAmountPaid, discountAmount, promotionalCode } = req.body;
-      
-      const success = await slackNotificationService.sendPaymentNotification({
-        name: customerName,
-        email: email,
-        purchaseDetails: "Single Course Purchase (Big Baby Sleep Program)",
-        paymentAmount: `$${actualAmountPaid} USD`,
-        promotionalCode: promotionalCode || undefined,
-        discountAmount: discountAmount ? `$${discountAmount} USD` : undefined
-      });
-      
-      res.json({ 
-        success, 
-        message: success ? 'Slack notification sent successfully' : 'Failed to send Slack notification'
-      });
-    } catch (error) {
-      console.error('Test Slack notification failed:', error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
-
   // Admin course management API endpoints
   app.get('/api/chapters', isAdmin, async (req, res) => {
     try {
@@ -7337,7 +6880,89 @@ Please contact the customer to confirm the appointment.
     try {
       const chapterId = parseInt(req.params.id);
       const updates = req.body;
+      
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
+      // Get original chapter data before update
+      let originalChapter = null;
+      if (userId) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          const chapterInfo = await sql`
+            SELECT cc.title, cc.content, c.id as course_id, c.title as course_title
+            FROM course_chapters cc
+            JOIN courses c ON cc.course_id = c.id
+            WHERE cc.id = ${chapterId}
+          `;
+          originalChapter = chapterInfo[0];
+        } catch (logError) {
+          console.error('Error fetching original chapter data:', logError);
+        }
+      }
+      
       const chapter = await storage.updateChapter(chapterId, updates);
+      
+      // Log the chapter update
+      if (userId && originalChapter) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          
+          // Determine what was updated
+          const changes = [];
+          if (updates.title && updates.title !== originalChapter.title) {
+            changes.push(`title: "${originalChapter.title}" → "${updates.title}"`);
+          }
+          if (updates.content !== undefined && updates.content !== originalChapter.content) {
+            changes.push(`content updated (${updates.content?.length || 0} characters)`);
+          }
+          
+          const changeDescription = changes.length > 0 
+            ? `Updated chapter: ${changes.join(', ')}` 
+            : 'Updated chapter (unspecified changes)';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${originalChapter.course_id},
+              ${adminName},
+              ${adminEmail},
+              'chapter_modified',
+              ${changeDescription},
+              ${updates.title || originalChapter.title},
+              NULL,
+              ${JSON.stringify({ 
+                chapter_id: chapterId,
+                updates: updates,
+                original_title: originalChapter.title,
+                course_title: originalChapter.course_title 
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Chapter update logged for chapter:', chapterId);
+        } catch (logError) {
+          console.error('Error logging chapter update:', logError);
+        }
+      }
+      
       res.json(chapter);
     } catch (error) {
       console.error('Error updating chapter:', error);
@@ -7361,7 +6986,90 @@ Please contact the customer to confirm the appointment.
     try {
       const lessonId = parseInt(req.params.id);
       const updates = req.body;
+      
+      // Get admin user info for logging
+      let userId = null;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
+      // Get original lesson data before update
+      let originalLesson = null;
+      if (userId) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          const lessonInfo = await sql`
+            SELECT cl.title, cl.content, cc.title as chapter_title, c.id as course_id, c.title as course_title
+            FROM course_lessons cl
+            JOIN course_chapters cc ON cl.chapter_id = cc.id
+            JOIN courses c ON cc.course_id = c.id
+            WHERE cl.id = ${lessonId}
+          `;
+          originalLesson = lessonInfo[0];
+        } catch (logError) {
+          console.error('Error fetching original lesson data:', logError);
+        }
+      }
+      
       const lesson = await storage.updateLesson(lessonId, updates);
+      
+      // Log the lesson update
+      if (userId && originalLesson) {
+        try {
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          const adminUser = await sql`SELECT first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+          const adminName = adminUser[0] ? `${adminUser[0].first_name}` : 'Unknown Admin';
+          const adminEmail = adminUser[0] ? adminUser[0].email : 'unknown@email.com';
+          
+          // Determine what was updated
+          const changes = [];
+          if (updates.title && updates.title !== originalLesson.title) {
+            changes.push(`title: "${originalLesson.title}" → "${updates.title}"`);
+          }
+          if (updates.content !== undefined && updates.content !== originalLesson.content) {
+            changes.push(`content updated (${updates.content?.length || 0} characters)`);
+          }
+          
+          const changeDescription = changes.length > 0 
+            ? `Updated lesson: ${changes.join(', ')}` 
+            : 'Updated lesson (unspecified changes)';
+          
+          await sql`
+            INSERT INTO course_change_logs (
+              course_id, admin_user_name, admin_user_email, change_type, 
+              change_description, affected_chapter_title, affected_lesson_title,
+              course_snapshot, created_at
+            ) VALUES (
+              ${originalLesson.course_id},
+              ${adminName},
+              ${adminEmail},
+              'lesson_modified',
+              ${changeDescription},
+              ${originalLesson.chapter_title},
+              ${updates.title || originalLesson.title},
+              ${JSON.stringify({ 
+                lesson_id: lessonId,
+                updates: updates,
+                original_title: originalLesson.title,
+                course_title: originalLesson.course_title 
+              })},
+              NOW()
+            )
+          `;
+          
+          console.log('Lesson update logged for lesson:', lessonId);
+        } catch (logError) {
+          console.error('Error logging lesson update:', logError);
+        }
+      }
+      
       res.json(lesson);
     } catch (error) {
       console.error('Error updating lesson:', error);
@@ -7814,7 +7522,40 @@ Please contact the customer to confirm the appointment.
     try {
       const { userId } = req.params;
       const updates = req.body;
+      
+      console.log('🔧 Admin updating user:', userId, 'with updates:', JSON.stringify(updates, null, 2));
+      
+      // Get current user data for comparison
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update user in database
       const updatedUser = await storage.updateUser(userId, updates);
+      console.log('✅ User updated in database');
+      
+      // Check if subscription tier changed
+      const oldTier = currentUser.subscriptionTier;
+      const newTier = updates.subscriptionTier;
+      
+      if (newTier && oldTier !== newTier) {
+        console.log(`🔄 Subscription tier changed: ${oldTier} → ${newTier}`);
+        
+        // Sync updated subscription info to Klaviyo
+        try {
+          await klaviyoService.createOrUpdateProfile(updatedUser);
+          console.log('✅ Klaviyo sync successful');
+        } catch (error) {
+          console.error('⚠️ Klaviyo sync failed (non-blocking):', error);
+        }
+        
+        // TODO: Add Stripe subscription update logic here
+        // Note: This would require creating/updating Stripe subscriptions based on the tier change
+        // For now, focusing on database and Klaviyo sync as requested
+        console.log('ℹ️ Stripe integration would be added here for production use');
+      }
+      
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
@@ -8243,41 +7984,38 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Set permanent password after first-time login - enhanced for migrated users
+  // Set permanent password after first-time login
   app.post('/api/auth/set-password', async (req, res) => {
     try {
       const { userId, newPassword, tempPassword } = req.body;
       
-      if (!userId || !newPassword) {
-        return res.status(400).json({ message: 'User ID and new password are required' });
+      if (!userId || !newPassword || !tempPassword) {
+        return res.status(400).json({ message: 'User ID, new password, and temporary password are required' });
       }
 
-      // For migrated users, we'll be more flexible with password requirements
-      // but still validate for basic security
-      if (newPassword.length < 6) {
+      // Validate password strength
+      const validation = AuthUtils.validatePasswordStrength(newPassword);
+      if (!validation.isValid) {
         return res.status(400).json({ 
-          message: 'Password must be at least 6 characters long'
+          message: 'Password does not meet requirements',
+          errors: validation.errors 
         });
       }
 
-      // If tempPassword is provided, verify it. Otherwise, allow setting password directly
-      if (tempPassword) {
-        const isValidTemp = await storage.verifyTemporaryPassword(userId, tempPassword);
-        if (!isValidTemp) {
-          return res.status(401).json({ message: 'Invalid or expired temporary password' });
-        }
+      // Verify temporary password is still valid
+      const isValidTemp = await storage.verifyTemporaryPassword(userId, tempPassword);
+      if (!isValidTemp) {
+        return res.status(401).json({ message: 'Invalid or expired temporary password' });
       }
 
       // Hash the new password
       const passwordHash = await AuthUtils.hashPassword(newPassword);
       
-      // Update user with permanent password and mark migration as complete
+      // Update user with permanent password
       await storage.setUserPassword(userId, passwordHash);
       
-      // Mark temporary password as used if one was provided
-      if (tempPassword) {
-        await storage.markTemporaryPasswordAsUsed(userId);
-      }
+      // Mark temporary password as used
+      await storage.markTemporaryPasswordAsUsed(userId);
 
       // Update last login for MAU tracking since this completes the login process
       await storage.updateUserLastLogin(userId);
@@ -8319,103 +8057,6 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error setting password:', error);
       res.status(500).json({ message: 'Failed to set password' });
-    }
-  });
-
-  // Create test migrated user for password setup banner demo
-  app.post('/api/admin/create-test-migrated-user', async (req, res) => {
-    try {
-      const testUserId = `migrated_user_${Date.now()}`;
-      const testEmail = "testuser@example.com";
-      const tempPassword = "temp123456";
-      
-      const { neon } = await import('@neondatabase/serverless');
-      const sql = neon(process.env.DATABASE_URL!);
-      
-      // Check if user exists
-      const existingUser = await sql`SELECT * FROM users WHERE email = ${testEmail} LIMIT 1`;
-      
-      if (existingUser.length > 0) {
-        // Delete existing user for clean test - delete temporary passwords first due to foreign key constraint
-        await sql`DELETE FROM temporary_passwords WHERE user_id = ${existingUser[0].id}`;
-        await sql`DELETE FROM users WHERE email = ${testEmail}`;
-      }
-      
-      // Create migrated user
-      const [user] = await sql`
-        INSERT INTO users (
-          id, email, first_name, last_name, migrated, has_set_password, 
-          is_first_login, password_set, subscription_tier, subscription_status, 
-          created_at, updated_at
-        ) VALUES (
-          ${testUserId}, ${testEmail}, 'Test', 'User', true, false, 
-          true, 'no', 'free', 'active', NOW(), NOW()
-        ) RETURNING *
-      `;
-      
-      // Create temporary password
-      await sql`
-        INSERT INTO temporary_passwords (
-          user_id, temp_password, is_used, expires_at, created_at
-        ) VALUES (
-          ${testUserId}, ${tempPassword}, false, 
-          NOW() + INTERVAL '90 days', NOW()
-        )
-      `;
-      
-      res.json({ 
-        message: 'Test migrated user created successfully',
-        email: testEmail,
-        tempPassword: tempPassword,
-        userId: testUserId,
-        instructions: `Login with email: ${testEmail} and password: ${tempPassword} to see the password setup banner.`
-      });
-    } catch (error) {
-      console.error('Error creating test migrated user:', error);
-      res.status(500).json({ message: 'Failed to create test user' });
-    }
-  });
-
-  // Create Emily's user with correct credentials
-  app.post('/api/admin/create-emily-user', async (req, res) => {
-    try {
-      console.log('Creating Emily user with raw SQL...');
-      const passwordHash = await AuthUtils.hashPassword('password123');
-      const userId = `emily_${Date.now()}`;
-      
-      const { neon } = await import('@neondatabase/serverless');
-      const sql = neon(process.env.DATABASE_URL!);
-      
-      // First check if user exists
-      const existingUser = await sql`SELECT * FROM users WHERE email = 'emily@drgolly.com' LIMIT 1`;
-      
-      if (existingUser.length > 0) {
-        // Update existing user
-        await sql`
-          UPDATE users 
-          SET password_hash = ${passwordHash}, has_set_password = true, is_admin = true
-          WHERE email = 'emily@drgolly.com'
-        `;
-        res.json({ message: 'Emily user updated successfully', userId: existingUser[0].id });
-      } else {
-        // Create new user
-        const result = await sql`
-          INSERT INTO users (
-            id, email, first_name, last_name, password_hash, has_set_password, 
-            subscription_tier, subscription_status, is_admin, created_at, updated_at
-          ) VALUES (
-            ${userId}, 'emily@drgolly.com', 'Emily', 'Golly', 
-            ${passwordHash}, true, 'gold', 'active', true, ${new Date()}, ${new Date()}
-          )
-          RETURNING *
-        `;
-        
-        console.log('Emily user created successfully:', result[0]?.id);
-        res.json({ message: 'Emily user created successfully', userId: result[0]?.id });
-      }
-    } catch (error) {
-      console.error('Error creating Emily user:', error);
-      res.status(500).json({ message: 'Failed to create Emily user', error: error.message });
     }
   });
 
@@ -10302,8 +9943,7 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Get regional pricing for products (duplicate endpoint - remove this one)
-  /*
+  // Get regional pricing for products
   app.get('/api/regional-pricing', async (req, res) => {
     try {
       const userIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
@@ -10314,7 +9954,6 @@ Please contact the customer to confirm the appointment.
       res.status(500).json({ message: "Failed to fetch regional pricing" });
     }
   });
-  */
 
   // Book purchase endpoints
   app.post('/api/create-book-payment', async (req, res) => {
@@ -10431,32 +10070,686 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Course Change Log API endpoints - Same auth pattern as working admin endpoints
+  app.get('/api/admin/course-change-log', async (req, res) => {
+    try {
+      let userId = null;
+      
+      // Try multiple ways to get user from session - same as working endpoints
+      if (req.session?.userId) {
+        userId = req.session.userId;
+        console.log('Course Change Log - Found user ID from Dr. Golly session:', userId);
+      } else if (req.session?.passport?.user?.claims?.sub) {
+        userId = req.session.passport.user.claims.sub;
+        console.log('Course Change Log - Found user ID from Passport session:', userId);
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+        console.log('Course Change Log - Found user ID from req.user:', userId);
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Use raw SQL fallback for admin check - exact same pattern as /api/admin/check
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`SELECT is_admin FROM users WHERE id = ${userId} LIMIT 1`;
+      const userRecord = result[0] as any;
+      
+      const isAdmin = userRecord?.is_admin || false;
+      if (!isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      
+      console.log('Course Change Log: Processing request...');
+      
+      // Simple query to get recent course change logs
+      const logs = await sql`
+        SELECT 
+          ccl.id,
+          ccl.course_id,
+          ccl.admin_user_name,
+          ccl.admin_user_email,
+          ccl.change_type,
+          ccl.change_description,
+          ccl.affected_chapter_title,
+          ccl.affected_lesson_title,
+          ccl.course_snapshot,
+          ccl.created_at,
+          c.title as course_title,
+          c.thumbnail_url as course_thumbnail
+        FROM course_change_logs ccl
+        LEFT JOIN courses c ON ccl.course_id = c.id
+        ORDER BY ccl.created_at DESC 
+        LIMIT 20
+      `;
+
+      // Get total count
+      const countResult = await sql`SELECT COUNT(*) as total FROM course_change_logs`;
+      const total = parseInt(countResult[0]?.total || '0');
+
+      console.log(`Course Change Log: Found ${logs.length} entries, total: ${total}`);
+
+      res.json({ 
+        logs,
+        pagination: {
+          total,
+          limit: 20,
+          offset: 0,
+          hasMore: logs.length === 20
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching course change log:', error);
+      res.status(500).json({ message: 'Failed to fetch course change log' });
+    }
+  });
+
+  // Create course change log entry
+  app.post('/api/admin/course-change-log', isAdmin, async (req, res) => {
+    try {
+      const {
+        courseId,
+        changeType,
+        changeDescription,
+        affectedChapterId,
+        affectedChapterTitle,
+        affectedLessonId,
+        affectedLessonTitle,
+        courseSnapshot
+      } = req.body;
+
+      const userId = req.user?.drGollyUserId || req.userId || req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Get user info from database
+      const userQuery = await sql`SELECT id, first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+      const user = userQuery[0];
+      if (!user) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+      
+      const insertQuery = `
+        INSERT INTO course_change_logs (
+          course_id, admin_user_name, admin_user_email,
+          change_type, change_description, affected_chapter_title, 
+          affected_lesson_title, course_snapshot, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, NOW()
+        ) RETURNING *
+      `;
+
+      const logEntry = await sql(insertQuery, [
+        courseId,
+        user.first_name || 'Unknown',
+        user.email || 'no-email',
+        changeType,
+        changeDescription,
+        affectedChapterTitle || null,
+        affectedLessonTitle || null,
+        JSON.stringify(courseSnapshot)
+      ]);
+
+      res.json(logEntry[0]);
+    } catch (error) {
+      console.error('Error creating course change log:', error);
+      res.status(500).json({ message: 'Failed to create course change log entry' });
+    }
+  });
+
+  // Get course change log summary/stats
+  app.get('/api/admin/course-change-log/stats', isAdmin, async (req, res) => {
+    try {
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const statsQuery = `
+        SELECT 
+          COUNT(*) as total_changes,
+          COUNT(DISTINCT course_id) as affected_courses,
+          COUNT(DISTINCT admin_user_id) as active_admins,
+          change_type,
+          COUNT(*) as type_count
+        FROM course_change_logs 
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY change_type
+        ORDER BY type_count DESC
+      `;
+      
+      const recentActivityQuery = `
+        SELECT 
+          DATE_TRUNC('day', created_at) as date,
+          COUNT(*) as changes_count
+        FROM course_change_logs 
+        WHERE created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY DATE_TRUNC('day', created_at)
+        ORDER BY date DESC
+      `;
+
+      const [stats, recentActivity] = await Promise.all([
+        sql(statsQuery),
+        sql(recentActivityQuery)
+      ]);
+
+      // Calculate totals from stats
+      const totalChanges = stats.reduce((sum, stat) => sum + parseInt(stat.type_count), 0);
+      const affectedCourses = new Set(stats.map(s => s.course_id)).size;
+      const activeAdmins = new Set(stats.map(s => s.admin_user_id)).size;
+
+      res.json({
+        summary: {
+          totalChanges,
+          affectedCourses,
+          activeAdmins
+        },
+        changeTypes: stats,
+        recentActivity
+      });
+    } catch (error) {
+      console.error('Error fetching course change log stats:', error);
+      res.status(500).json({ message: 'Failed to fetch course change log statistics' });
+    }
+  });
+
+  // Revert course content to a specific timestamp/savepoint
+  app.post('/api/admin/course-change-log/:logId/revert', isAdmin, async (req, res) => {
+    try {
+      const { logId } = req.params;
+      const userId = req.user?.drGollyUserId || req.userId || req.session?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Get the log entry and its course snapshot
+      const logQuery = await sql`
+        SELECT ccl.*, c.title as course_title 
+        FROM course_change_logs ccl
+        JOIN courses c ON ccl.course_id = c.id
+        WHERE ccl.id = ${parseInt(logId)}
+        LIMIT 1
+      `;
+      
+      if (!logQuery || logQuery.length === 0) {
+        return res.status(404).json({ message: 'Change log entry not found' });
+      }
+      
+      const logEntry = logQuery[0];
+      const courseSnapshot = JSON.parse(logEntry.course_snapshot);
+      
+      // Get user info
+      const userQuery = await sql`SELECT id, first_name, email FROM users WHERE id = ${userId} LIMIT 1`;
+      const user = userQuery[0];
+      
+      // Begin transaction to revert course content
+      await sql`BEGIN`;
+      
+      try {
+        // Update course basic details
+        if (courseSnapshot.title) {
+          await sql`UPDATE courses SET title = ${courseSnapshot.title} WHERE id = ${logEntry.course_id}`;
+        }
+        if (courseSnapshot.description) {
+          await sql`UPDATE courses SET description = ${courseSnapshot.description} WHERE id = ${logEntry.course_id}`;
+        }
+        if (courseSnapshot.price !== undefined) {
+          await sql`UPDATE courses SET price = ${courseSnapshot.price} WHERE id = ${logEntry.course_id}`;
+        }
+        
+        // Create a new log entry for the revert action
+        await sql`
+          INSERT INTO course_change_logs (
+            course_id, admin_user_name, admin_user_email,
+            change_type, change_description, course_snapshot, 
+            created_at
+          ) VALUES (
+            ${logEntry.course_id}, ${user.first_name || 'Unknown'}, ${user.email || 'no-email'},
+            'revert', ${`Reverted course to state from ${logEntry.created_at}`}, 
+            ${JSON.stringify(courseSnapshot)}, NOW()
+          )
+        `;
+        
+        // Commit transaction
+        await sql`COMMIT`;
+      } catch (innerError) {
+        // Rollback on error
+        await sql`ROLLBACK`;
+        throw innerError;
+      }
+      
+      res.json({ 
+        message: 'Course content successfully reverted',
+        courseId: logEntry.course_id,
+        revertedTo: logEntry.created_at,
+        logId: parseInt(logId)
+      });
+    } catch (error) {
+      console.error('Error reverting course content:', error);
+      res.status(500).json({ message: 'Failed to revert course content' });
+    }
+  });
+
+  // ===== AFFILIATE MANAGEMENT API ROUTES =====
+  
+  // Public affiliate application endpoint
+  app.post('/api/affiliate/apply', async (req, res) => {
+    try {
+      const { 
+        fullName, 
+        instagramHandle, 
+        country, 
+        followers, 
+        email,
+        profilePhotoUrl,
+        bsb,
+        accountNumber,
+        swiftCode,
+        bankName,
+        accountHolderName
+      } = req.body;
+      
+      // Validate required fields
+      if (!fullName || !instagramHandle || !country || !email || !bsb || !accountNumber || !bankName || !accountHolderName) {
+        return res.status(400).json({ message: "All fields including bank details are required (except followers and SWIFT code)" });
+      }
+      
+      // Validate BSB format (6 digits)
+      if (bsb && !/^\d{6}$/.test(bsb)) {
+        return res.status(400).json({ message: "BSB must be exactly 6 digits" });
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
+      }
+      
+      // Check if email already exists
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const existingAffiliate = await sql`
+        SELECT id FROM affiliates WHERE email = ${email}
+      `;
+      
+      if (existingAffiliate.length > 0) {
+        return res.status(400).json({ message: "An affiliate application with this email already exists" });
+      }
+      
+      // Generate unique affiliate code
+      const affiliateCode = `${instagramHandle.replace('@', '').toUpperCase()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      
+      // Generate referral URL pointing to homepage
+      const referralUrl = `${req.protocol}://${req.get('host')}/home?ref=${affiliateCode}`;
+      
+      // Create affiliate application
+      const result = await sql`
+        INSERT INTO affiliates (
+          full_name, instagram_handle, country, followers, email,
+          affiliate_code, referral_url, status, profile_photo_url,
+          bsb, account_number, swift_code, bank_name, account_holder_name,
+          created_at, updated_at
+        ) VALUES (
+          ${fullName}, ${instagramHandle}, ${country}, ${followers || 0}, ${email},
+          ${affiliateCode}, ${referralUrl}, 'pending', ${profilePhotoUrl || null},
+          ${bsb}, ${accountNumber}, ${swiftCode || null}, ${bankName}, ${accountHolderName},
+          NOW(), NOW()
+        ) RETURNING *
+      `;
+      
+      const newAffiliate = result[0];
+      
+      // Send notification to Slack about new affiliate application
+      try {
+        if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
+          const { WebClient } = await import('@slack/web-api');
+          const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+          
+          await slack.chat.postMessage({
+            channel: process.env.SLACK_CHANNEL_ID,
+            text: 'New Affiliate Application Received',
+            blocks: [
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: '*New Affiliate Application* 🎯'
+                }
+              },
+              {
+                type: 'section',
+                fields: [
+                  { type: 'mrkdwn', text: `*Name:*\n${fullName}` },
+                  { type: 'mrkdwn', text: `*Instagram:*\n${instagramHandle}` },
+                  { type: 'mrkdwn', text: `*Email:*\n${email}` },
+                  { type: 'mrkdwn', text: `*Country:*\n${country}` },
+                  { type: 'mrkdwn', text: `*Followers:*\n${followers || 'Not specified'}` },
+                  { type: 'mrkdwn', text: `*Affiliate Code:*\n${affiliateCode}` }
+                ]
+              },
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `Review and approve this application in the admin panel.`
+                }
+              }
+            ]
+          });
+        }
+      } catch (slackError) {
+        console.error('Failed to send Slack notification for affiliate application:', slackError);
+      }
+      
+      res.json({
+        success: true,
+        message: "Affiliate application submitted successfully! We'll review your application and get back to you within 2-3 business days.",
+        affiliateCode: affiliateCode
+      });
+    } catch (error) {
+      console.error("Error creating affiliate application:", error);
+      res.status(500).json({ message: "Failed to submit affiliate application" });
+    }
+  });
+  
+  // Admin: Get all affiliates
+  app.get('/api/admin/affiliates', isAdmin, async (req, res) => {
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const affiliates = await sql`
+        SELECT 
+          id, full_name, instagram_handle, profile_photo_url, country, 
+          followers, email, affiliate_code, referral_url, short_url,
+          status, connected_account_id, total_sales, total_revenue,
+          created_at, updated_at
+        FROM affiliates 
+        ORDER BY created_at DESC
+      `;
+      
+      // Transform snake_case to camelCase for frontend compatibility
+      const transformedAffiliates = affiliates.map(affiliate => ({
+        id: affiliate.id,
+        fullName: affiliate.full_name,
+        instagramHandle: affiliate.instagram_handle,
+        profilePhotoUrl: affiliate.profile_photo_url,
+        country: affiliate.country,
+        followers: affiliate.followers,
+        email: affiliate.email,
+        affiliateCode: affiliate.affiliate_code,
+        referralUrl: affiliate.referral_url,
+        shortUrl: affiliate.short_url,
+        status: affiliate.status,
+        connectedAccountId: affiliate.connected_account_id,
+        totalSales: affiliate.total_sales,
+        totalRevenue: affiliate.total_revenue,
+        createdAt: affiliate.created_at,
+        updatedAt: affiliate.updated_at
+      }));
+      
+      res.json(transformedAffiliates);
+    } catch (error) {
+      console.error("Error fetching affiliates:", error);
+      res.status(500).json({ message: "Failed to fetch affiliates" });
+    }
+  });
+  
+  // Admin: Update affiliate status and details
+  app.patch('/api/admin/affiliates/:id', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Build dynamic update query
+      const updateFields = [];
+      const values = [];
+      let valueIndex = 1;
+      
+      for (const [key, value] of Object.entries(updates)) {
+        if (key !== 'id') {
+          updateFields.push(`${key} = $${valueIndex}`);
+          values.push(value);
+          valueIndex++;
+        }
+      }
+      
+      if (updateFields.length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      // Add updated_at
+      updateFields.push(`updated_at = NOW()`);
+      
+      const query = `
+        UPDATE affiliates 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${valueIndex}
+        RETURNING *
+      `;
+      values.push(id);
+      
+      const result = await sql.query(query, values);
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: "Affiliate not found" });
+      }
+      
+      // If status was changed to approved, generate short URL and send notification
+      if (updates.status === 'approved') {
+        try {
+          const affiliate = result[0];
+          
+          // Generate short URL if it doesn't exist
+          if (!affiliate.short_url) {
+            const shortCode = affiliate.affiliate_code.toLowerCase();
+            const shortUrl = `${process.env.FRONTEND_URL || 'https://myapp.drgolly.com'}/${shortCode}`;
+            
+            // Update with short URL
+            await sql`
+              UPDATE affiliates 
+              SET short_url = ${shortUrl}
+              WHERE id = ${id}
+            `;
+            
+            affiliate.short_url = shortUrl;
+          }
+          
+          console.log(`Affiliate ${affiliate.full_name} (${affiliate.email}) has been approved`);
+        } catch (notificationError) {
+          console.error('Failed to send approval notification:', notificationError);
+        }
+      }
+      
+      res.json(result[0]);
+    } catch (error) {
+      console.error("Error updating affiliate:", error);
+      res.status(500).json({ message: "Failed to update affiliate" });
+    }
+  });
+  
+  // Admin: Delete affiliate
+  app.delete('/api/admin/affiliates/:id', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // First check if affiliate exists
+      const affiliate = await sql`
+        SELECT id, full_name, email FROM affiliates WHERE id = ${id}
+      `;
+      
+      if (affiliate.length === 0) {
+        return res.status(404).json({ message: "Affiliate not found" });
+      }
+      
+      // Delete associated sales first
+      await sql`DELETE FROM affiliate_sales WHERE affiliate_id = ${id}`;
+      
+      // Delete affiliate
+      await sql`DELETE FROM affiliates WHERE id = ${id}`;
+      
+      res.json({ 
+        success: true, 
+        message: `Affiliate ${affiliate[0].full_name} and all associated sales data have been deleted` 
+      });
+    } catch (error) {
+      console.error("Error deleting affiliate:", error);
+      res.status(500).json({ message: "Failed to delete affiliate" });
+    }
+  });
+  
+  // Admin: Get affiliate sales data
+  app.get('/api/admin/affiliates/:id/sales', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const sales = await sql`
+        SELECT 
+          s.id, s.order_id, s.amount, s.currency, s.timestamp,
+          a.full_name as affiliate_name, a.affiliate_code
+        FROM affiliate_sales s
+        JOIN affiliates a ON s.affiliate_id = a.id
+        WHERE s.affiliate_id = ${id}
+        ORDER BY s.timestamp DESC
+      `;
+      
+      res.json(sales);
+    } catch (error) {
+      console.error("Error fetching affiliate sales:", error);
+      res.status(500).json({ message: "Failed to fetch affiliate sales" });
+    }
+  });
+  
+  // Admin: Record affiliate sale (manual entry)
+  app.post('/api/admin/affiliates/:id/sales', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { orderId, amount, currency = 'aud' } = req.body;
+      
+      if (!orderId || !amount) {
+        return res.status(400).json({ message: "Order ID and amount are required" });
+      }
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Check if affiliate exists
+      const affiliate = await sql`
+        SELECT id, total_sales, total_revenue FROM affiliates WHERE id = ${id}
+      `;
+      
+      if (affiliate.length === 0) {
+        return res.status(404).json({ message: "Affiliate not found" });
+      }
+      
+      // Record the sale
+      const sale = await sql`
+        INSERT INTO affiliate_sales (affiliate_id, order_id, amount, currency, timestamp)
+        VALUES (${id}, ${orderId}, ${amount}, ${currency}, NOW())
+        RETURNING *
+      `;
+      
+      // Update affiliate totals
+      const newTotalSales = affiliate[0].total_sales + 1;
+      const newTotalRevenue = parseFloat(affiliate[0].total_revenue) + parseFloat(amount);
+      
+      await sql`
+        UPDATE affiliates 
+        SET total_sales = ${newTotalSales}, total_revenue = ${newTotalRevenue}, updated_at = NOW()
+        WHERE id = ${id}
+      `;
+      
+      res.json({
+        sale: sale[0],
+        newTotals: {
+          totalSales: newTotalSales,
+          totalRevenue: newTotalRevenue
+        }
+      });
+    } catch (error) {
+      console.error("Error recording affiliate sale:", error);
+      res.status(500).json({ message: "Failed to record affiliate sale" });
+    }
+  });
+  
+  // Public: Track affiliate referral (for when customers use affiliate links)
+  app.post('/api/affiliate/track-visit', async (req, res) => {
+    try {
+      const { affiliateCode } = req.body;
+      
+      if (!affiliateCode) {
+        return res.status(400).json({ message: "Affiliate code is required" });
+      }
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Verify affiliate exists and is approved
+      const affiliate = await sql`
+        SELECT id, full_name, status FROM affiliates 
+        WHERE affiliate_code = ${affiliateCode} AND status = 'approved'
+      `;
+      
+      if (affiliate.length === 0) {
+        return res.status(404).json({ message: "Invalid or inactive affiliate code" });
+      }
+      
+      // Here you could track the visit in a separate table if needed
+      // For now, we'll just return success
+      
+      res.json({
+        success: true,
+        affiliateName: affiliate[0].full_name,
+        message: "Referral tracked successfully"
+      });
+    } catch (error) {
+      console.error("Error tracking affiliate visit:", error);
+      res.status(500).json({ message: "Failed to track affiliate visit" });
+    }
+  });
+
   // Admin content management routes
   app.use('/api/admin', adminContentRoutes);
 
-  // Stripe verification endpoint for testing
-  app.post('/api/verify-stripe-payment-intent', async (req, res) => {
+  // Object storage routes for affiliate photo uploads
+  app.post("/api/objects/upload", async (req, res) => {
     try {
-      const { paymentIntentId } = req.body;
-      
-      if (!paymentIntentId) {
-        return res.status(400).json({ error: 'Payment intent ID is required' });
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve uploaded objects
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
       }
-      
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      res.json({
-        id: paymentIntent.id,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        status: paymentIntent.status,
-        created: paymentIntent.created,
-        description: paymentIntent.description,
-        metadata: paymentIntent.metadata
-      });
-    } catch (error: any) {
-      console.error('Error verifying Stripe payment intent:', error);
-      res.status(500).json({ error: error.message });
+      return res.sendStatus(500);
     }
   });
 

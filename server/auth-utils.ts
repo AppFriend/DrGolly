@@ -1,9 +1,23 @@
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto-js';
+import { nanoid } from 'nanoid';
 
 export class AuthUtils {
   /**
-   * Hash a password using bcrypt
+   * Generate a secure temporary password for bulk user imports
+   */
+  static generateTemporaryPassword(): string {
+    // Generate 8-character password with uppercase, lowercase, numbers
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
+  /**
+   * Hash a password using bcrypt (for permanent passwords)
    */
   static async hashPassword(password: string): Promise<string> {
     const saltRounds = 12;
@@ -18,48 +32,35 @@ export class AuthUtils {
   }
 
   /**
-   * Generate a secure random password
+   * Generate a secure user ID for bulk imports
    */
-  static generateSecurePassword(length: number = 12): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    
-    // Ensure at least one of each required character type
-    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // uppercase
-    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // lowercase
-    password += '0123456789'[Math.floor(Math.random() * 10)]; // digit
-    password += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // special
-    
-    // Fill the rest randomly
-    for (let i = password.length; i < length; i++) {
-      password += chars[Math.floor(Math.random() * chars.length)];
-    }
-    
-    // Shuffle the password
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+  static generateUserId(): string {
+    return nanoid(12);
   }
 
   /**
-   * Validate password strength
+   * Validate password strength for new passwords
    */
-  static validatePasswordStrength(password: string): { isValid: boolean; errors: string[] } {
+  static validatePasswordStrength(password: string): { 
+    isValid: boolean; 
+    errors: string[] 
+  } {
     const errors: string[] = [];
     
-    if (!password || password.length < 8) {
-      errors.push("Password must be at least 8 characters long");
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
     }
     
-    // More flexible validation - at least one letter and one number OR special character
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-    
-    if (!hasLetter) {
-      errors.push("Password must contain at least one letter");
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
     }
     
-    if (!hasNumber && !hasSpecial) {
-      errors.push("Password must contain at least one number or special character");
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+    
+    if (!/\d/.test(password)) {
+      errors.push('Password must contain at least one number');
     }
     
     return {
@@ -69,31 +70,18 @@ export class AuthUtils {
   }
 
   /**
-   * Generate a secure token for password reset
+   * Generate a secure password reset token
    */
-  static generateSecureToken(length: number = 32): string {
-    return crypto.randomBytes(length).toString('hex');
+  static generatePasswordResetToken(): string {
+    return nanoid(32);
   }
 
   /**
-   * Hash a token for secure storage
+   * Create expiration date for temporary passwords (30 days)
    */
-  static hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
-  }
-
-  /**
-   * Verify a token against its hash
-   */
-  static verifyToken(token: string, hash: string): boolean {
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    return tokenHash === hash;
-  }
-
-  /**
-   * Check if a token has expired
-   */
-  static isTokenExpired(expiresAt: Date): boolean {
-    return new Date() > expiresAt;
+  static createTempPasswordExpiry(): Date {
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 30);
+    return expiryDate;
   }
 }

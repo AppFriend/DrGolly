@@ -1,0 +1,83 @@
+🎯 Purpose (MUST READ)
+This functionality is critical to ensure we always maintain a clear, timestamped log of every content change made by an admin within the Course Management panel. This will:
+
+Ensure course, chapter, and lesson content is never lost
+
+Enable us to quickly identify who made what changes and when
+
+Allow us to easily restore or rebuild content by referencing stored database logs — without relying on external rollback tools
+
+This is a defensive layer to avoid the previous issue where admin updates were not saved properly and no audit trail existed.
+
+🧩 Requirements
+✅ Use Existing Fields (Do Not Duplicate)
+Ensure that the following existing fields are correctly and consistently updated in the database:
+
+📌 Chapter Table
+last_updated → must store the timestamp (in AEST/AEDT)
+
+updated_by → must store the admin user’s full name or ID who made the change
+
+📌 Lesson Table
+Same as above: ensure last_updated and updated_by are populated with each change
+
+📌 Lesson Content (if separate or nested field)
+Ensure both timestamp and admin attribution are stored when content is updated
+
+Use consistent formatting across all lesson content types
+
+🗃️ Additional Logging Table for Full Change History
+Create or use a course_change_log (or equivalent) table that stores a full historical record of every admin save action. This allows us to reconstruct any version of course content by date and user.
+
+✅ On Every Admin "Save", Store:
+ts
+Copy
+Edit
+course_id: string
+chapter_id: string (if applicable)
+lesson_id: string (if applicable)
+snapshot: full JSON of course structure or affected content at time of save
+updated_by: string (admin user name or ID)
+timestamp: ISO format, stored as AEST/AEDT
+action: "create" | "update" | "delete" | "revert"
+note: optional text field for revert notes or system messages
+This table must not interfere with live content rendering — it is for backup/versioning purposes only
+
+All saves should append a new row to this table — do not overwrite previous records
+
+📥 How It Works
+Every time an admin makes a change and hits “Save”:
+
+The system updates the main content tables as normal
+
+It also captures the full state of the changed content (or course snapshot) and writes it to course_change_log
+
+It writes the corresponding last_updated and updated_by values to the main tables
+
+📤 Fetching for Reversion / Debugging
+This database structure must allow easy querying like:
+
+“Show me all updates to Lesson X in the past 7 days”
+
+“What changes did Admin Y make on August 5th?”
+
+“Rebuild the course to the state it was in on July 30th at 10:45 AM AEST”
+
+Ensure logs are timestamped and indexed for performance.
+
+🛡️ Best Practices & Optional Enhancements
+Add indexing to timestamp, course_id, and updated_by for fast lookups
+
+Store timestamps in UTC if preferred for backend compatibility, but always convert to AEST/AEDT on display
+
+Use a soft delete flag for course/lesson records if possible instead of destructive deletes
+
+✅ Summary of Deliverables
+Ensure all existing audit fields (last_updated, updated_by) are actively used
+
+Create or maintain a course_change_log table for versioned snapshots
+
+Guarantee that every admin Save action is logged, attributed, and timestamped
+
+Ensure we can easily filter, fetch, and reconstruct content using this database structure
+

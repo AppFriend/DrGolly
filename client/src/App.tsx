@@ -8,7 +8,6 @@ import { DesktopLayout } from "@/components/DesktopLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import PasswordSetupBanner from "@/components/auth/PasswordSetupBanner";
 import { useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
@@ -22,7 +21,6 @@ import CourseOverview from "@/pages/course-overview";
 import LessonPage from "@/pages/lesson";
 import Checkout from "@/pages/checkout";
 import BigBabyPublic from "@/pages/big-baby-public";
-import BigBabyCheckout from "@/pages/big-baby-checkout";
 import PaymentSuccess from "@/pages/payment-success";
 import BlogPost from "@/pages/blog-post";
 import Discounts from "@/pages/discounts";
@@ -49,15 +47,11 @@ import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
-import CompletePage from "@/pages/complete";
-import { ForcedPasswordResetModal } from "@/components/auth/ForcedPasswordResetModal";
-import { useForcedPasswordReset } from "@/hooks/useForcedPasswordReset";
+import AffiliateApply from "@/pages/affiliate-apply";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
-  const { showModal, handlePasswordChanged, userEmail } = useForcedPasswordReset();
   const { isOpen, closeUpgradeModal } = useUpgradeModal();
-  const { user, showPasswordSetupBanner, dismissPasswordSetupBanner, completePasswordSetup } = useAuth();
   
   // Determine active tab based on current location
   const getActiveTab = () => {
@@ -71,26 +65,11 @@ function AuthenticatedApp() {
   
   const [activeTab, setActiveTab] = useState(getActiveTab());
 
-  const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success" && location !== "/cart-checkout";
+  const showBottomNavigation = location !== "/subscription" && !location.startsWith("/checkout") && location !== "/payment-success";
 
   const handleUpgrade = (billingPeriod: "monthly" | "yearly") => {
     window.location.href = `/checkout-subscription?period=${billingPeriod}&tier=gold`;
   };
-
-  // Get login response data for password setup
-  const getLoginResponseData = () => {
-    const loginResponse = sessionStorage.getItem('loginResponse');
-    if (loginResponse) {
-      try {
-        return JSON.parse(loginResponse);
-      } catch (e) {
-        console.log('Error parsing login response:', e);
-      }
-    }
-    return null;
-  };
-
-  const loginData = getLoginResponseData();
 
   return (
     <div className="min-h-screen bg-white">
@@ -113,7 +92,7 @@ function AuthenticatedApp() {
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
-        <Route path="/complete" component={CompletePage} />
+        <Route path="/affiliates/apply" component={AffiliateApply} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
@@ -216,7 +195,6 @@ function AuthenticatedApp() {
           </DesktopLayout>
           {showBottomNavigation && <BottomNavigation activeTab={getActiveTab()} onTabChange={setActiveTab} />}
         </Route>
-        <Route path="/complete" component={CompletePage} />
         <Route path="/auth-test" component={AuthTestPage} />
         <Route component={NotFound} />
       </Switch>
@@ -224,20 +202,6 @@ function AuthenticatedApp() {
         isOpen={isOpen}
         onClose={closeUpgradeModal}
         onUpgrade={handleUpgrade}
-      />
-      {showPasswordSetupBanner && user && loginData && (
-        <PasswordSetupBanner
-          userId={user.id}
-          userName={user.firstName || user.email}
-          tempPassword={loginData.tempPassword || ""}
-          onComplete={completePasswordSetup}
-          onDismiss={dismissPasswordSetupBanner}
-        />
-      )}
-      <ForcedPasswordResetModal
-        isOpen={showModal}
-        onPasswordChanged={handlePasswordChanged}
-        userEmail={userEmail}
       />
       <Toaster />
     </div>
@@ -265,21 +229,10 @@ function Router() {
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />
           <Route path="/terms" component={Terms} />
-          <Route path="/privacy" component={Privacy} />
-          <Route path="/refunds" component={Refunds} />
-          <Route path="/contact" component={Contact} />
-          <Route path="/shipping" component={Shipping} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
-          <Route path="/big-baby-checkout" component={BigBabyCheckout} />
-          <Route path="/complete" component={CompletePage} />
-          <Route path="/payment-success" component={PaymentSuccess} />
           <Route path="/share/:slug" component={Share} />
-          {/* Public checkout routes - accessible without authentication */}
-          <Route path="/checkout/:courseId" component={Checkout} />
-          <Route path="/checkout" component={Checkout} />
-          <Route path="/cart-checkout" component={CartCheckout} />
-          <Route path="/payment-success" component={PaymentSuccess} />
+          <Route path="/affiliates/apply" component={AffiliateApply} />
           <Route component={Landing} />
         </Switch>
         <Toaster />

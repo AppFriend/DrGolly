@@ -58,7 +58,6 @@ export const users = pgTable("users", {
   hasSetPassword: boolean("has_set_password").default(false),
   passwordHash: varchar("password_hash"),
   lastPasswordChange: timestamp("last_password_change"),
-  passwordSet: varchar("password_set").default("no"), // "yes" or "no" - tracks migration completion
   // Personalization preferences for enhanced signup flow
   primaryConcerns: text("primary_concerns"), // JSON array of selected concerns (baby-sleep, toddler-sleep, toddler-behaviour, partner-discounts)
   phoneNumber: varchar("phone_number"), // Phone number with country code
@@ -174,7 +173,6 @@ export const courses = pgTable("courses", {
   skillLevel: varchar("skill_level"), // beginner, intermediate, advanced
   stripeProductId: varchar("stripe_product_id"),
   uniqueId: varchar("unique_id"),
-  publicCheckoutUrl: varchar("public_checkout_url"), // Public checkout URL e.g., "/checkout/6"
   isPublished: boolean("is_published").default(false), // Default to draft
   status: varchar("status").default("draft").notNull(), // draft, published, archived
   likes: integer("likes").default(0),
@@ -250,6 +248,38 @@ export const insertContentAuditLogSchema = createInsertSchema(contentAuditLog).o
   id: true,
   createdAt: true,
 });
+
+// Course Change Log - specialized logging for course content changes with snapshot functionality
+export const courseChangeLog = pgTable("course_change_log", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  adminUserId: varchar("admin_user_id").references(() => users.id).notNull(),
+  adminUserName: varchar("admin_user_name").notNull(),
+  adminUserEmail: varchar("admin_user_email").notNull(),
+  changeType: varchar("change_type").notNull(), // course_update, chapter_update, lesson_update, revert
+  changeDescription: text("change_description").notNull(),
+  affectedChapterId: integer("affected_chapter_id").references(() => courseChapters.id),
+  affectedChapterTitle: varchar("affected_chapter_title"),
+  affectedLessonId: integer("affected_lesson_id").references(() => courseLessons.id),
+  affectedLessonTitle: varchar("affected_lesson_title"),
+  // Full snapshot of course structure at time of change
+  courseSnapshot: jsonb("course_snapshot").notNull(), // Complete course, chapters, and lessons data
+  // Change metadata
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  isRevert: boolean("is_revert").default(false), // True if this change is a revert to previous state
+  revertedFromLogId: integer("reverted_from_log_id").references(() => courseChangeLog.id), // Reference to the log entry we reverted from
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCourseChangeLogSchema = createInsertSchema(courseChangeLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CourseChangeLog = typeof courseChangeLog.$inferSelect;
+export type InsertCourseChangeLog = typeof courseChangeLog.$inferInsert;
 
 
 
@@ -458,7 +488,7 @@ export const stripeProducts = pgTable("stripe_products", {
 // Course purchases table
 export const coursePurchases = pgTable("course_purchases", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id), // Allow null for public checkout
+  userId: varchar("user_id").notNull().references(() => users.id),
   courseId: integer("course_id").notNull().references(() => courses.id),
   stripeProductId: varchar("stripe_product_id").references(() => stripeProducts.stripeProductId),
   stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(),
@@ -789,6 +819,55 @@ export const insertStripeProductSchema = createInsertSchema(stripeProducts).omit
   updatedAt: true,
 });
 
+
+
+// Affiliate Management Tables
+export const affiliates = pgTable("affiliates", {
+  id: varchar("id").primaryKey().notNull().default(uuid()),
+  fullName: varchar("full_name").notNull(),
+  instagramHandle: varchar("instagram_handle").notNull(),
+  profilePhotoUrl: varchar("profile_photo_url"),
+  country: varchar("country").notNull(),
+  followers: integer("followers").notNull().default(0),
+  email: varchar("email").notNull().unique(),
+  affiliateCode: varchar("affiliate_code").notNull().unique(),
+  referralUrl: varchar("referral_url").notNull(),
+  shortUrl: varchar("short_url"),
+  status: varchar("status").notNull().default("pending"), // pending, approved, rejected
+  connectedAccountId: varchar("connected_account_id"),
+  totalSales: integer("total_sales").notNull().default(0),
+  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  // Bank details for payment processing
+  bsb: varchar("bsb"),
+  accountNumber: varchar("account_number"),
+  swiftCode: varchar("swift_code"),
+  bankName: varchar("bank_name"),
+  accountHolderName: varchar("account_holder_name"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const affiliateSales = pgTable("affiliate_sales", {
+  id: varchar("id").primaryKey().notNull().default(uuid()),
+  affiliateId: varchar("affiliate_id").notNull(),
+  orderId: varchar("order_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("aud"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Affiliate Relations
+export const affiliatesRelations = relations(affiliates, ({ many }) => ({
+  sales: many(affiliateSales),
+}));
+
+export const affiliateSalesRelations = relations(affiliateSales, ({ one }) => ({
+  affiliate: one(affiliates, {
+    fields: [affiliateSales.affiliateId],
+    references: [affiliates.id],
+  }),
+}));
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 // Lead capture table for public freebie downloads
@@ -868,6 +947,24 @@ export type FamilyMember = typeof familyMembers.$inferSelect;
 export type FamilyInvite = typeof familyInvites.$inferSelect;
 export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
 export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
+
+// Affiliate types and schemas
+export type Affiliate = typeof affiliates.$inferSelect;
+export type AffiliateSale = typeof affiliateSales.$inferSelect;
+
+export const insertAffiliateSchema = createInsertSchema(affiliates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAffiliateSaleSchema = createInsertSchema(affiliateSales).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertAffiliate = z.infer<typeof insertAffiliateSchema>;
+export type InsertAffiliateSale = z.infer<typeof insertAffiliateSaleSchema>;
 
 // Notification system tables
 export const notifications = pgTable("notifications", {

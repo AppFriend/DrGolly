@@ -2,14 +2,26 @@
 
 ## Overview
 
-This is a mobile-first learning management system (LMS) designed for parenting and sleep expertise, built with React and Express.js. It provides comprehensive course management, user progress tracking, tiered subscriptions, partner discounts, and family sharing. The project aims to deliver authentic content and a streamlined user experience, recently migrating to a custom domain with zero downtime.
+This is a mobile-first learning management system (LMS) built with React and Express.js, focused on parenting and sleep expertise. It offers course management, user progress tracking, subscription tiers, partner discounts, and family sharing. The project aims to provide comprehensive, authentic content for parents, with a strong focus on a streamlined user experience and efficient content delivery.
 
-## Recent Changes (August 7, 2025)
-- **Complete User Migration System**: Successfully deployed comprehensive user migration for all 60 CSV users
-- **Temporary Password System**: All users assigned DRG-075-616! with forced password reset on first login
-- **Auth Integration**: Forced password reset modal integrated into React app with secure auth routes
-- **Database Migration**: Created new users for non-existing emails and updated existing users with migration flags
-- **Security Implementation**: Complete auth utilities, password validation, and session handling
+**Recent Achievements**: 
+- Successfully migrated to custom domain on August 5th, 2025, with zero downtime and all security protections maintained.
+- **STABLE MILESTONE**: Course Change Log system fully completed on August 7th, 2025:
+  - Fixed database query structure to match actual table columns 
+  - Enhanced content preview with actual lesson content display instead of raw JSON
+  - Added structured preview showing video URLs and formatted text content
+  - Comprehensive audit trail capturing all course content modifications
+  - Production-ready with complete manual testing verification
+- **STABLE MILESTONE**: Full Affiliate Management System MVP completed on August 7th, 2025:
+  - Complete database infrastructure with affiliate and affiliate_sales tables
+  - Public affiliate application system with automated code generation and photo uploads
+  - Comprehensive admin management interface for approval, tracking, and analytics
+  - Slack notifications for new affiliate applications
+  - Sales tracking and commission management system with proper URL generation
+  - Fixed field mapping issues and runtime errors for stable production use
+  - Admin panel tab reordered to appear after Users tab
+  - All data display issues resolved (names, Instagram handles, URLs working properly)
+  - Production-ready MVP with 2 test affiliates and full functionality verified
 
 ## User Preferences
 
@@ -31,38 +43,38 @@ Brand Color Guidelines:
 - **Routing**: Wouter
 - **Build Tool**: Vite
 - **UI Components**: Radix UI primitives with custom styling
-- **UI/UX Decisions**: Mobile-first design is paramount, featuring bottom navigation, responsive layouts, and touch-friendly interactions. A consistent brand identity is maintained through the Dr. Golly logo and specific brand colors (teal and dark green). The design includes a simplified profile picture system, streamlined admin panel with accordions and inline editing, custom animated payment loaders, an interactive notification bell, and full-screen chapter completion modals for an engaging user experience.
+- **UI/UX Decisions**: Mobile-first design, bottom navigation, responsive layouts, touch-friendly interactions, consistent branding with Dr. Golly logo and specific brand colors (teal and dark green), simplified profile picture system using direct database storage, streamlined admin panel with accordions and inline editing, custom animated payment loaders, interactive notification bell, full-screen chapter completion modals.
 
 ### Backend
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM, augmented by raw SQL fallbacks for enhanced robustness.
-- **Authentication**: Replit Auth integrated with OpenID Connect, providing session management and comprehensive password reset capabilities.
-- **Session Management**: Express sessions persistently stored in PostgreSQL.
+- **Database**: PostgreSQL with Drizzle ORM (with raw SQL fallbacks for robustness)
+- **Authentication**: Replit Auth with OpenID Connect, integrated session management, and comprehensive password reset functionality.
+- **Session Management**: Express sessions stored in PostgreSQL
 - **Key Features**:
-    - **Authentication System**: Utilizes Replit Auth via OpenID, backed by PostgreSQL sessions and role-based access control.
-    - **Script Security System**: Post-August 5th incident, a multi-layered system protects against unauthorized script execution, featuring automatic backups, audit logging, and emergency controls.
-    - **Course Management**: Content is categorized (sleep, nutrition, health) with Free, Gold, and Platinum access tiers. It supports individual user progress tracking and Vimeo video delivery. Admins benefit from comprehensive content migration, dynamic chapter/lesson structuring, rich text editing, and full CRUD operations (Create, Read, Update, Delete) for content management, including inline editing.
-    - **Subscription System**: Offers Free, Gold, and Platinum tiers with flexible monthly/yearly billing. Integrates with Stripe for payment processing and Klaviyo for lifecycle management, controlling content access based on subscription level.
-    - **Partner Discounts**: Provides tier-based access to exclusive brand partnerships.
-    - **Family Sharing**: Supports multiple users with distinct admin/member roles, shared progress tracking, and an invitation system.
-    - **Tracking System**: Comprehensive tracking for Growth, Development, Feed (including a dual-timer breastfeeding feature), Sleep, and Sleep Review (integrating a consultation booking system).
-    - **Notifications**: Real-time notifications via a bell icon, categorized by type, priority, and mark-as-read functionality. Slack integration provides instant alerts for new signups and payments.
-    - **Professional Services Booking**: Enables users to book specialized services such as Sleep Reviews and Lactation Consultant sessions, with integrated activation tracking.
-    - **Regional Pricing**: Dynamically adjusts pricing based on IP-detected currency, utilizing multi-currency Stripe integration.
-    - **Admin Panel**: A streamlined interface facilitates management of users, courses, blogs, and other administrative tasks, offering inline editing, content creation, and deletion capabilities.
+    - **Authentication System**: Replit Auth via OpenID, PostgreSQL-backed sessions, role-based access control.
+    - **Script Security System**: Comprehensive protection against unauthorized script execution, implemented after August 5th data corruption incident. Multi-layer authorization, automatic backups, audit logging, and emergency controls.
+    - **Course Management**: Categorized content (sleep, nutrition, health), Free/Gold/Platinum access tiers, individual user progress tracking, Vimeo video delivery. Features include comprehensive content migration, dynamic chapter/lesson structuring, rich text editing, and full CRUD operations for admin content management with inline editing, adding, and deleting functionality.
+    - **Subscription System**: Free, Gold, Platinum tiers with monthly/yearly billing, content gating, and transaction tracking. Integrated with Stripe for payment processing and Klaviyo for lifecycle management.
+    - **Partner Discounts**: Tier-based access to brand partnerships.
+    - **Family Sharing**: Multi-user support with admin/member roles, shared progress, and invitation system.
+    - **Tracking System**: Growth, Development, Feed (dual-timer breastfeeding), Sleep, and Sleep Review (consultation booking).
+    - **Notifications**: Real-time bell icon notifications with categories, priority, and mark-as-read features. Slack integration for signup and payment notifications.
+    - **Professional Services Booking**: System for booking services like Sleep Reviews and Lactation Consultants, with activation tracking.
+    - **Regional Pricing**: IP-based currency detection for dynamic pricing and multi-currency Stripe integration.
+    - **Admin Panel**: Streamlined interface for user, course, blog, and admin user management, including inline editing, content creation, and deletion.
 
 ## External Dependencies
 
 - **Database Provider**: Neon serverless PostgreSQL
 - **ORM**: Drizzle ORM (with Drizzle Kit for migrations)
 - **Authentication**: Replit Auth (OpenID Connect)
-- **Payment Processing**: Stripe (for subscriptions, course purchases, and payment method management)
-- **Email/Marketing Automation**: Klaviyo (for user profile synchronization, email flows, and custom properties tracking)
+- **Payment Processing**: Stripe (for subscriptions, course purchases, and managing payment methods)
+- **Email/Marketing Automation**: Klaviyo (for user profile sync, email flows, and custom properties tracking)
 - **Styling**: Tailwind CSS, shadcn/ui, Radix UI
 - **Icons**: Lucide React
 - **Form Handling**: React Hook Form with Zod validation
 - **Deployment**: Vite (frontend build), esbuild (backend bundling)
-- **Mapping/Location**: Google Maps API (for address autocomplete in checkout)
+- **Mapping/Location**: Google Maps API (for address autocomplete in checkout, although the key provided is an example)
 - **Drag and Drop**: @dnd-kit (for admin panel content reordering)
 - **Video Content**: Vimeo (for course video delivery)
 - **Slack**: Webhooks for notifications

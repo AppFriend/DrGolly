@@ -453,11 +453,11 @@ export class DatabaseStorage implements IStorage {
         const result = await sql`
           INSERT INTO users (
             id, email, first_name, last_name, password_hash, has_set_password, 
-            subscription_tier, subscription_status, is_admin, last_login_at, created_at, updated_at
+            subscription_tier, plan_tier, last_login_at, created_at, updated_at
           ) VALUES (
             ${userData.id}, ${userData.email}, ${userData.firstName}, ${userData.lastName}, 
             ${userData.passwordHash}, ${userData.hasSetPassword}, ${userData.subscriptionTier}, 
-            ${userData.subscriptionStatus}, ${userData.isAdmin}, ${new Date()}, ${new Date()}, ${new Date()}
+            ${userData.planTier}, ${userData.lastLoginAt}, ${new Date()}, ${new Date()}
           )
           RETURNING *
         `;
@@ -806,7 +806,7 @@ export class DatabaseStorage implements IStorage {
                                       price, discounted_price, skill_level, stripe_product_id, unique_id,
                                       status, detailed_description, website_content, key_features, whats_covered,
                                       rating, review_count, overview_description, learning_objectives,
-                                      completion_criteria, course_structure_notes, public_checkout_url
+                                      completion_criteria, course_structure_notes
                                FROM courses 
                                ORDER BY created_at`;
       
@@ -3016,7 +3016,6 @@ export class DatabaseStorage implements IStorage {
         hasSetPassword: true,
         isFirstLogin: false,
         lastPasswordChange: new Date(),
-        passwordSet: "yes", // Track migration completion
       })
       .where(eq(users.id, userId));
   }

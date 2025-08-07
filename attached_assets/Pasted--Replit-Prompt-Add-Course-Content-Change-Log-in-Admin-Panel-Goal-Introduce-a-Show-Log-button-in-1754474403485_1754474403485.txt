@@ -1,0 +1,91 @@
+✅ Replit Prompt: Add Course Content Change Log in Admin Panel
+Goal:
+Introduce a “Show Log” button in the top-right of the Courses tab (next to "Cards"), which toggles a content change log. This log should act like a version feed, tracking all course content changes made via the admin panel (when an admin clicks “Save”) with the ability to view or revert to any specific savepoint.
+
+🧩 UI Placement
+Add a new button labeled Show Log in the top-right corner of the Course Management tab interface.
+
+This button should:
+
+Sit to the right of the “Cards” toggle.
+
+Align right, top-level, not inside any course card.
+
+📜 Log Functionality (Popup)
+On click, open a collapsible popup panel or slide-over drawer (UX optional) containing a chronological feed of content changes.
+
+Each log entry should display:
+
+pgsql
+Copy
+Edit
+(Admin User Name) updated (Chapter Name), (Lesson Name) with some new content at (timestamp in AU time).
+[View Content Updated] [Revert to This Savepoint]
+The timestamp must be formatted in Australian time (AEST/AEDT) with human-readable format (e.g., 6 August 2025, 7:42 PM AEST).
+
+The log should update every time an admin user hits the Save button inside the course editor.
+
+📦 Data Capture Requirements
+On each save:
+
+Capture a full snapshot of the course structure, including:
+
+Course ID
+
+Chapters and Lessons
+
+Lesson content
+
+Admin user ID and display name
+
+Timestamp
+
+Store this snapshot in a course_change_log table (or equivalent datastore), with a reference to the course and admin user.
+
+Ensure this does not overwrite global rollback logs—this is scoped to course content only.
+
+🔁 Revert Functionality
+Clicking Revert to This Savepoint should:
+
+Confirm with the user.
+
+Replace the current course content with the snapshot from that specific log entry.
+
+Save this as a new log entry with a note (e.g., “Reverted to snapshot from [timestamp] by [Admin]”).
+
+⚙️ Performance Considerations
+Use efficient snapshotting (deep copy only of course content, not full app state).
+
+Store only delta if possible, or compress snapshot content.
+
+Avoid any performance degradation during Save or load.
+
+🛡️ Constraints
+Feature is scoped only to content managed in the Admin Panel.
+
+Changes outside the admin panel (e.g., frontend user activity or database rollbacks) must not trigger this log.
+
+Revert is scoped to course content only—not user data or metadata.
+
+✅ Success Criteria
+“Show Log” button is clearly visible and functional.
+
+All admin content updates trigger a new log entry.
+
+Admins can view logs, inspect past content, and safely revert to any savepoint.
+
+No visible performance lag or bugs introduced into the main save flow.
+
+Let me know if you'd like a UI wireframe or code scaffold to accompany this.
+
+
+
+
+
+
+
+
+
+Ask ChatGPT
+
+

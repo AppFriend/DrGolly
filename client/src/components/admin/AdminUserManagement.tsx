@@ -232,8 +232,8 @@ export function AdminUserManagement() {
                             <h3 className="font-semibold text-sm truncate">
                               {user.first_name || user.firstName} {user.last_name || user.lastName}
                             </h3>
-                          <Badge className={`${getTierColor(user.subscription_tier || user.subscriptionTier)} text-xs px-2 py-0.5`}>
-                            {user.subscription_tier || user.subscriptionTier}
+                          <Badge className={`${getTierColor(user.subscription_tier || user.subscriptionTier || "free")} text-xs px-2 py-0.5`}>
+                            {user.subscription_tier || user.subscriptionTier || "free"}
                           </Badge>
                         </div>
                         <div className="flex gap-1">
@@ -271,73 +271,12 @@ export function AdminUserManagement() {
                               <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
                             </DialogHeader>
                             {selectedUser && (
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <Label htmlFor="firstName">First Name</Label>
-                                    <Input
-                                      id="firstName"
-                                      defaultValue={selectedUser.first_name || selectedUser.firstName}
-                                      placeholder="First Name"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="lastName">Last Name</Label>
-                                    <Input
-                                      id="lastName"
-                                      defaultValue={selectedUser.last_name || selectedUser.lastName}
-                                      placeholder="Last Name"
-                                    />
-                                  </div>
-                                  <div className="col-span-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                      id="email"
-                                      defaultValue={selectedUser.email}
-                                      placeholder="Email"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="subscriptionTier">Subscription Plan</Label>
-                                    <Select defaultValue={selectedUser.subscription_tier || selectedUser.subscriptionTier}>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select plan" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="free">Free</SelectItem>
-                                        <SelectItem value="gold">Gold</SelectItem>
-                                        <SelectItem value="platinum">Platinum</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="phone">Phone</Label>
-                                    <Input
-                                      id="phone"
-                                      defaultValue={selectedUser.phone_number || selectedUser.phone}
-                                      placeholder="Phone Number"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                                    Cancel
-                                  </Button>
-                                  <Button 
-                                    onClick={() => {
-                                      // Handle form submission
-                                      toast({
-                                        title: "Success", 
-                                        description: "User updated successfully"
-                                      });
-                                      setIsEditDialogOpen(false);
-                                    }}
-                                    disabled={updateUserMutation.isPending}
-                                  >
-                                    {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
-                                  </Button>
-                                </div>
-                              </div>
+                              <UserEditForm 
+                                user={selectedUser}
+                                onUpdate={handleUpdateUser}
+                                isLoading={updateUserMutation.isPending}
+                                onCancel={() => setIsEditDialogOpen(false)}
+                              />
                             )}
                           </DialogContent>
                         </Dialog>
@@ -351,7 +290,7 @@ export function AdminUserManagement() {
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {formatDate(user.created_at || user.createdAt)}
+                            {formatDate(user.created_at || user.createdAt || "")}
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
@@ -439,17 +378,18 @@ interface UserEditFormProps {
   user: User;
   onUpdate: (updates: Partial<User>) => void;
   isLoading: boolean;
+  onCancel?: () => void;
 }
 
-function UserEditForm({ user, onUpdate, isLoading }: UserEditFormProps) {
+function UserEditForm({ user, onUpdate, isLoading, onCancel }: UserEditFormProps) {
   const [formData, setFormData] = useState({
-    firstName: user.firstName || "",
-    lastName: user.lastName || "",
+    firstName: user.firstName || user.first_name || "",
+    lastName: user.lastName || user.last_name || "",
     email: user.email || "",
-    subscriptionTier: user.subscriptionTier || "free",
-    subscriptionStatus: user.subscriptionStatus || "active",
+    subscriptionTier: user.subscriptionTier || user.subscription_tier || "free",
+    subscriptionStatus: user.subscriptionStatus || user.subscription_status || "active",
     country: user.country || "",
-    phone: user.phone || "",
+    phone: user.phone || user.phone_number || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -543,6 +483,11 @@ function UserEditForm({ user, onUpdate, isLoading }: UserEditFormProps) {
       </div>
 
       <div className="flex justify-end space-x-2">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
         <Button type="submit" disabled={isLoading}>
           {isLoading ? "Updating..." : "Update User"}
         </Button>

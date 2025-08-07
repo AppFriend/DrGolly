@@ -99,7 +99,7 @@ export function CouponInput({
     <div className="space-y-3">
       <form onSubmit={handleApplyCoupon} className="flex space-x-2">
         <Input
-          placeholder="Enter coupon code (e.g., CODE-123)"
+          placeholder="Enter coupon code (e.g., CHECKOUT-99)"
           value={couponCode}
           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
           disabled={disabled || validateCouponMutation.isPending}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { handleAffiliateReferral } from "@/lib/referralTracking";
 import { Search, Bell, HelpCircle, Settings, ShoppingCart } from "lucide-react";
 import { BlogCard } from "@/components/ui/blog-card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,17 @@ export default function Home() {
     staleTime: 5 * 60 * 1000, // 5 minutes - prevents unnecessary refetches
     refetchOnWindowFocus: false, // Prevents unnecessary background fetches
   });
+
+  // Handle affiliate referral tracking on page load
+  useEffect(() => {
+    const refCode = handleAffiliateReferral();
+    if (refCode) {
+      toast({
+        title: "Welcome!",
+        description: "You've been referred by one of our trusted partners.",
+      });
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {

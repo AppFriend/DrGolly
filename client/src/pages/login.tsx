@@ -27,20 +27,6 @@ export default function LoginPage() {
     }
   }, [user, setLocation]);
 
-  // Pre-populate form with URL parameters for testing
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const emailParam = urlParams.get('email');
-    const passwordParam = urlParams.get('password');
-    
-    if (emailParam && passwordParam) {
-      setFormData({
-        email: emailParam,
-        password: passwordParam
-      });
-    }
-  }, []);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -61,15 +47,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
     
     try {
-      const response = await apiRequest('POST', '/api/auth/login', {
+      await apiRequest('POST', '/api/auth/public-login', {
         email: formData.email,
         password: formData.password
       });
-
-      // Store login response for password setup banner
-      if (response.showPasswordSetupBanner) {
-        sessionStorage.setItem('loginResponse', JSON.stringify(response));
-      }
 
       // Clear any cached user data and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });

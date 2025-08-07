@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { getReferralForPurchase } from '@/lib/referralTracking';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/DatePicker';
 import { ChevronUp, ChevronDown, Trash2, Star, Check, Info } from 'lucide-react';
 import { PaymentForm } from '@/pages/checkout';
 import { CouponInput } from '@/components/CouponInput';
@@ -197,10 +197,12 @@ export default function CartCheckout() {
                     onChange={(e) => setCustomerDetails({...customerDetails, firstName: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
                   />
-                  <DatePicker
+                  <input
+                    type="date"
+                    placeholder="Due Date (Optional)"
                     value={customerDetails.dueDate}
-                    onChange={(date) => setCustomerDetails({...customerDetails, dueDate: date})}
-                    placeholder="Due Date/Baby Birthday"
+                    onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
                   />
                 </div>
               </div>
