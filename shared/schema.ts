@@ -837,6 +837,12 @@ export const affiliates = pgTable("affiliates", {
   connectedAccountId: varchar("connected_account_id"),
   totalSales: integer("total_sales").notNull().default(0),
   totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  // Bank details for payment processing
+  bsb: varchar("bsb"),
+  accountNumber: varchar("account_number"),
+  swiftCode: varchar("swift_code"),
+  bankName: varchar("bank_name"),
+  accountHolderName: varchar("account_holder_name"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

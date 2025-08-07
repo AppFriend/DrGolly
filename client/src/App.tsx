@@ -232,6 +232,7 @@ function Router() {
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route path="/share/:slug" component={Share} />
+          <Route path="/affiliates/apply" component={AffiliateApply} />
           <Route component={Landing} />
         </Switch>
         <Toaster />

@@ -10291,11 +10291,28 @@ Please contact the customer to confirm the appointment.
   // Public affiliate application endpoint
   app.post('/api/affiliate/apply', async (req, res) => {
     try {
-      const { fullName, instagramHandle, country, followers, email } = req.body;
+      const { 
+        fullName, 
+        instagramHandle, 
+        country, 
+        followers, 
+        email,
+        profilePhotoUrl,
+        bsb,
+        accountNumber,
+        swiftCode,
+        bankName,
+        accountHolderName
+      } = req.body;
       
       // Validate required fields
-      if (!fullName || !instagramHandle || !country || !email) {
-        return res.status(400).json({ message: "All fields except followers are required" });
+      if (!fullName || !instagramHandle || !country || !email || !bsb || !accountNumber || !bankName || !accountHolderName) {
+        return res.status(400).json({ message: "All fields including bank details are required (except followers and SWIFT code)" });
+      }
+      
+      // Validate BSB format (6 digits)
+      if (bsb && !/^\d{6}$/.test(bsb)) {
+        return res.status(400).json({ message: "BSB must be exactly 6 digits" });
       }
       
       // Validate email format
@@ -10326,10 +10343,14 @@ Please contact the customer to confirm the appointment.
       const result = await sql`
         INSERT INTO affiliates (
           full_name, instagram_handle, country, followers, email,
-          affiliate_code, referral_url, status, created_at, updated_at
+          affiliate_code, referral_url, status, profile_photo_url,
+          bsb, account_number, swift_code, bank_name, account_holder_name,
+          created_at, updated_at
         ) VALUES (
           ${fullName}, ${instagramHandle}, ${country}, ${followers || 0}, ${email},
-          ${affiliateCode}, ${referralUrl}, 'pending', NOW(), NOW()
+          ${affiliateCode}, ${referralUrl}, 'pending', ${profilePhotoUrl || null},
+          ${bsb}, ${accountNumber}, ${swiftCode || null}, ${bankName}, ${accountHolderName},
+          NOW(), NOW()
         ) RETURNING *
       `;
       

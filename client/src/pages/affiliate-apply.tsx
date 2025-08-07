@@ -23,6 +23,12 @@ const affiliateApplicationSchema = z.object({
   country: z.string().min(1, "Country is required"),
   followers: z.number().min(0, "Followers must be a positive number"),
   profilePhotoUrl: z.string().optional().or(z.literal("")),
+  // Bank details for payments
+  bsb: z.string().min(6, "BSB must be 6 digits").max(6, "BSB must be 6 digits").regex(/^\d{6}$/, "BSB must be 6 digits"),
+  accountNumber: z.string().min(6, "Account number must be at least 6 digits").max(20, "Account number too long"),
+  swiftCode: z.string().optional().or(z.literal("")),
+  bankName: z.string().min(1, "Bank name is required"),
+  accountHolderName: z.string().min(2, "Account holder name is required"),
 });
 
 type AffiliateApplicationForm = z.infer<typeof affiliateApplicationSchema>;
@@ -47,6 +53,11 @@ export default function AffiliateApply() {
       country: "",
       followers: 0,
       profilePhotoUrl: "",
+      bsb: "",
+      accountNumber: "",
+      swiftCode: "",
+      bankName: "",
+      accountHolderName: "",
     },
   });
 
@@ -252,6 +263,108 @@ export default function AffiliateApply() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Bank Details Section */}
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900">Payment Information</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      We'll use these details to send your commission payments. All information is securely stored.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="accountHolderName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Holder Name</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="John Smith" 
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="bankName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bank Name</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Commonwealth Bank" 
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="bsb"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>BSB</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="123456"
+                                maxLength={6}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              6-digit BSB number
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="accountNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Number</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="12345678"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="swiftCode"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>SWIFT Code (Optional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="CTBAAU2S"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Only required for international payments
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
                   <div>
                     <Label className="flex items-center gap-2 mb-2">
