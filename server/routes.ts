@@ -1136,6 +1136,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete account setup endpoint (for new users after payment)
+  app.post('/api/auth/complete-account-setup', async (req, res) => {
+    console.log('🔐 COMPLETE ACCOUNT SETUP REQUEST RECEIVED');
+    
+    try {
+      const { password, tempPasswordToken } = req.body;
+      
+      console.log('📋 VALIDATION STEP');
+      console.log('password:', password ? 'provided' : 'MISSING');
+      console.log('tempPasswordToken:', tempPasswordToken ? 'provided' : 'MISSING');
+      
+      if (!password || !tempPasswordToken) {
+        console.log('❌ VALIDATION FAILED - Missing required fields');
+        return res.status(400).json({ message: "Password and token are required" });
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        console.log('❌ VALIDATION FAILED - Password too short');
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+
+      console.log('🔍 CHECKING TEMP PASSWORD TOKEN');
+      // Find user by temporary password token
+      let user;
+      try {
+        user = await storage.getUserByTempPasswordToken(tempPasswordToken);
+        console.log('Temp token check result:', user ? 'TOKEN VALID' : 'TOKEN INVALID');
+      } catch (dbError) {
+        console.error('❌ DATABASE ERROR - Failed to check temp password token:', dbError);
+        return res.status(500).json({ message: "Database error during token verification" });
+      }
+      
+      if (!user) {
+        console.log('❌ INVALID TOKEN');
+        return res.status(400).json({ message: "Invalid or expired setup token" });
+      }
+
+      console.log('🔑 HASHING NEW PASSWORD');
+      // Hash the new password
+      let passwordHash;
+      try {
+        passwordHash = await AuthUtils.hashPassword(password);
+        console.log('Password hashed successfully');
+      } catch (hashError) {
+        console.error('❌ PASSWORD HASHING ERROR:', hashError);
+        return res.status(500).json({ message: "Failed to process password" });
+      }
+
+      console.log('💾 UPDATING USER ACCOUNT');
+      try {
+        // Update user with new password and mark as activated
+        await storage.updateUserPassword(user.id, passwordHash);
+        await storage.clearTempPasswordToken(user.id);
+        
+        // Mark account as activated and password set
+        await storage.updateUser(user.id, {
+          hasSetPassword: true,
+          accountActivated: true,
+          lastLoginAt: new Date()
+        });
+        
+        console.log('User account updated successfully');
+      } catch (updateError) {
+        console.error('❌ UPDATE ERROR:', updateError);
+        return res.status(500).json({ message: "Failed to update account" });
+      }
+
+      console.log('🎫 CREATING USER SESSION');
+      // Create session for the user (auto-login)
+      const sessionData = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName
+        }
+      };
+      
+      // Store session data in req.session with proper structure
+      req.session.passport = { user: sessionData };
+      req.session.userId = user.id;
+      
+      // Force session save before sending response
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ SESSION SAVE ERROR:', err);
+          return res.status(500).json({ message: "Account setup completed but login failed" });
+        }
+        
+        console.log('✅ ACCOUNT SETUP COMPLETE - User logged in:', user.id);
+        
+        res.json({
+          success: true,
+          message: "Account setup completed successfully",
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName
+          }
+        });
+      });
+    } catch (error) {
+      console.error('❌ COMPLETE ACCOUNT SETUP ERROR:', error);
+      res.status(500).json({ 
+        message: "Failed to complete account setup",
+        error: error.message
+      });
+    }
+  });
+
   // Test endpoint to verify Jared Looman signup fix
   app.post('/api/test/signup', async (req, res) => {
     try {

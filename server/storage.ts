@@ -123,6 +123,9 @@ export interface IStorage {
   updateUserPersonalization(userId: string, personalizationData: any): Promise<User>;
   updateUserProfile(userId: string, profileData: Partial<User>): Promise<User>;
   updateUserLastLogin(userId: string): Promise<User>;
+  getUserByTempPasswordToken(token: string): Promise<User | undefined>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<User>;
+  clearTempPasswordToken(userId: string): Promise<User>;
   
   // Course operations
   getCourses(category?: string, tier?: string): Promise<Course[]>;
@@ -606,6 +609,97 @@ export class DatabaseStorage implements IStorage {
         console.error('Fallback query also failed:', fallbackError);
         throw error;
       }
+    }
+  }
+
+  async getUserByTempPasswordToken(token: string): Promise<User | undefined> {
+    try {
+      // Join users and temporary_passwords tables to find user by temp token
+      const result = await db
+        .select({
+          user: users,
+          tempPassword: temporaryPasswords
+        })
+        .from(temporaryPasswords)
+        .innerJoin(users, eq(temporaryPasswords.userId, users.id))
+        .where(and(
+          eq(temporaryPasswords.tempPassword, token),
+          eq(temporaryPasswords.isUsed, false),
+          gt(temporaryPasswords.expiresAt, new Date())
+        ));
+      
+      return result[0]?.user;
+    } catch (error) {
+      console.error('Database error in getUserByTempPasswordToken:', error);
+      // Fallback to raw SQL
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const result = await sql`
+        SELECT u.* FROM users u 
+        INNER JOIN temporary_passwords tp ON u.id = tp.user_id 
+        WHERE tp.temp_password = ${token} 
+        AND tp.is_used = false 
+        AND tp.expires_at > NOW()`;
+      return result[0] || undefined;
+    }
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string): Promise<User> {
+    try {
+      const [user] = await db
+        .update(users)
+        .set({
+          passwordHash,
+          hasSetPassword: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error) {
+      console.error('Database error in updateUserPassword:', error);
+      // Fallback to raw SQL
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      await sql`UPDATE users 
+                SET password_hash = ${passwordHash}, 
+                    has_set_password = true, 
+                    updated_at = NOW() 
+                WHERE id = ${userId}`;
+      
+      const [user] = await sql`SELECT * FROM users WHERE id = ${userId}`;
+      return user;
+    }
+  }
+
+  async clearTempPasswordToken(userId: string): Promise<User> {
+    try {
+      // Mark all temporary passwords for this user as used
+      await db
+        .update(temporaryPasswords)
+        .set({
+          isUsed: true,
+        })
+        .where(eq(temporaryPasswords.userId, userId));
+      
+      // Return the updated user
+      const user = await this.getUser(userId);
+      if (!user) throw new Error('User not found');
+      return user;
+    } catch (error) {
+      console.error('Database error in clearTempPasswordToken:', error);
+      // Fallback to raw SQL
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      await sql`UPDATE temporary_passwords 
+                SET is_used = true 
+                WHERE user_id = ${userId}`;
+      
+      const [user] = await sql`SELECT * FROM users WHERE id = ${userId}`;
+      return user;
     }
   }
 
