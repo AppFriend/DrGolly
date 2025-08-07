@@ -33,6 +33,10 @@ import {
   insertStripeProductSchema,
   insertServiceSchema,
   insertServiceBookingSchema,
+  insertAffiliateSchema,
+  insertAffiliateSaleSchema,
+  affiliates,
+  affiliateSales,
   courses,
   courseLessons,
   courseChapters,
@@ -10278,6 +10282,338 @@ Please contact the customer to confirm the appointment.
     } catch (error) {
       console.error('Error reverting course content:', error);
       res.status(500).json({ message: 'Failed to revert course content' });
+    }
+  });
+
+  // ===== AFFILIATE MANAGEMENT API ROUTES =====
+  
+  // Public affiliate application endpoint
+  app.post('/api/affiliate/apply', async (req, res) => {
+    try {
+      const { fullName, instagramHandle, country, followers, email } = req.body;
+      
+      // Validate required fields
+      if (!fullName || !instagramHandle || !country || !email) {
+        return res.status(400).json({ message: "All fields except followers are required" });
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
+      }
+      
+      // Check if email already exists
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const existingAffiliate = await sql`
+        SELECT id FROM affiliates WHERE email = ${email}
+      `;
+      
+      if (existingAffiliate.length > 0) {
+        return res.status(400).json({ message: "An affiliate application with this email already exists" });
+      }
+      
+      // Generate unique affiliate code
+      const affiliateCode = `${instagramHandle.replace('@', '').toUpperCase()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      
+      // Generate referral URL
+      const referralUrl = `${req.protocol}://${req.get('host')}?ref=${affiliateCode}`;
+      
+      // Create affiliate application
+      const result = await sql`
+        INSERT INTO affiliates (
+          full_name, instagram_handle, country, followers, email,
+          affiliate_code, referral_url, status, created_at, updated_at
+        ) VALUES (
+          ${fullName}, ${instagramHandle}, ${country}, ${followers || 0}, ${email},
+          ${affiliateCode}, ${referralUrl}, 'pending', NOW(), NOW()
+        ) RETURNING *
+      `;
+      
+      const newAffiliate = result[0];
+      
+      // Send notification to Slack about new affiliate application
+      try {
+        if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
+          const { WebClient } = await import('@slack/web-api');
+          const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+          
+          await slack.chat.postMessage({
+            channel: process.env.SLACK_CHANNEL_ID,
+            text: 'New Affiliate Application Received',
+            blocks: [
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: '*New Affiliate Application* 🎯'
+                }
+              },
+              {
+                type: 'section',
+                fields: [
+                  { type: 'mrkdwn', text: `*Name:*\n${fullName}` },
+                  { type: 'mrkdwn', text: `*Instagram:*\n${instagramHandle}` },
+                  { type: 'mrkdwn', text: `*Email:*\n${email}` },
+                  { type: 'mrkdwn', text: `*Country:*\n${country}` },
+                  { type: 'mrkdwn', text: `*Followers:*\n${followers || 'Not specified'}` },
+                  { type: 'mrkdwn', text: `*Affiliate Code:*\n${affiliateCode}` }
+                ]
+              },
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `Review and approve this application in the admin panel.`
+                }
+              }
+            ]
+          });
+        }
+      } catch (slackError) {
+        console.error('Failed to send Slack notification for affiliate application:', slackError);
+      }
+      
+      res.json({
+        success: true,
+        message: "Affiliate application submitted successfully! We'll review your application and get back to you within 2-3 business days.",
+        affiliateCode: affiliateCode
+      });
+    } catch (error) {
+      console.error("Error creating affiliate application:", error);
+      res.status(500).json({ message: "Failed to submit affiliate application" });
+    }
+  });
+  
+  // Admin: Get all affiliates
+  app.get('/api/admin/affiliates', isAdmin, async (req, res) => {
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const affiliates = await sql`
+        SELECT 
+          id, full_name, instagram_handle, profile_photo_url, country, 
+          followers, email, affiliate_code, referral_url, short_url,
+          status, connected_account_id, total_sales, total_revenue,
+          created_at, updated_at
+        FROM affiliates 
+        ORDER BY created_at DESC
+      `;
+      
+      res.json(affiliates);
+    } catch (error) {
+      console.error("Error fetching affiliates:", error);
+      res.status(500).json({ message: "Failed to fetch affiliates" });
+    }
+  });
+  
+  // Admin: Update affiliate status and details
+  app.patch('/api/admin/affiliates/:id', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Build dynamic update query
+      const updateFields = [];
+      const values = [];
+      let valueIndex = 1;
+      
+      for (const [key, value] of Object.entries(updates)) {
+        if (key !== 'id') {
+          updateFields.push(`${key} = $${valueIndex}`);
+          values.push(value);
+          valueIndex++;
+        }
+      }
+      
+      if (updateFields.length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      // Add updated_at
+      updateFields.push(`updated_at = NOW()`);
+      
+      const query = `
+        UPDATE affiliates 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${valueIndex}
+        RETURNING *
+      `;
+      values.push(id);
+      
+      const result = await sql.query(query, values);
+      
+      if (result.length === 0) {
+        return res.status(404).json({ message: "Affiliate not found" });
+      }
+      
+      // If status was changed to approved, send notification
+      if (updates.status === 'approved') {
+        try {
+          const affiliate = result[0];
+          // Here you could send an email or Slack notification about approval
+          console.log(`Affiliate ${affiliate.full_name} (${affiliate.email}) has been approved`);
+        } catch (notificationError) {
+          console.error('Failed to send approval notification:', notificationError);
+        }
+      }
+      
+      res.json(result[0]);
+    } catch (error) {
+      console.error("Error updating affiliate:", error);
+      res.status(500).json({ message: "Failed to update affiliate" });
+    }
+  });
+  
+  // Admin: Delete affiliate
+  app.delete('/api/admin/affiliates/:id', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // First check if affiliate exists
+      const affiliate = await sql`
+        SELECT id, full_name, email FROM affiliates WHERE id = ${id}
+      `;
+      
+      if (affiliate.length === 0) {
+        return res.status(404).json({ message: "Affiliate not found" });
+      }
+      
+      // Delete associated sales first
+      await sql`DELETE FROM affiliate_sales WHERE affiliate_id = ${id}`;
+      
+      // Delete affiliate
+      await sql`DELETE FROM affiliates WHERE id = ${id}`;
+      
+      res.json({ 
+        success: true, 
+        message: `Affiliate ${affiliate[0].full_name} and all associated sales data have been deleted` 
+      });
+    } catch (error) {
+      console.error("Error deleting affiliate:", error);
+      res.status(500).json({ message: "Failed to delete affiliate" });
+    }
+  });
+  
+  // Admin: Get affiliate sales data
+  app.get('/api/admin/affiliates/:id/sales', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      const sales = await sql`
+        SELECT 
+          s.id, s.order_id, s.amount, s.currency, s.timestamp,
+          a.full_name as affiliate_name, a.affiliate_code
+        FROM affiliate_sales s
+        JOIN affiliates a ON s.affiliate_id = a.id
+        WHERE s.affiliate_id = ${id}
+        ORDER BY s.timestamp DESC
+      `;
+      
+      res.json(sales);
+    } catch (error) {
+      console.error("Error fetching affiliate sales:", error);
+      res.status(500).json({ message: "Failed to fetch affiliate sales" });
+    }
+  });
+  
+  // Admin: Record affiliate sale (manual entry)
+  app.post('/api/admin/affiliates/:id/sales', isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { orderId, amount, currency = 'aud' } = req.body;
+      
+      if (!orderId || !amount) {
+        return res.status(400).json({ message: "Order ID and amount are required" });
+      }
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Check if affiliate exists
+      const affiliate = await sql`
+        SELECT id, total_sales, total_revenue FROM affiliates WHERE id = ${id}
+      `;
+      
+      if (affiliate.length === 0) {
+        return res.status(404).json({ message: "Affiliate not found" });
+      }
+      
+      // Record the sale
+      const sale = await sql`
+        INSERT INTO affiliate_sales (affiliate_id, order_id, amount, currency, timestamp)
+        VALUES (${id}, ${orderId}, ${amount}, ${currency}, NOW())
+        RETURNING *
+      `;
+      
+      // Update affiliate totals
+      const newTotalSales = affiliate[0].total_sales + 1;
+      const newTotalRevenue = parseFloat(affiliate[0].total_revenue) + parseFloat(amount);
+      
+      await sql`
+        UPDATE affiliates 
+        SET total_sales = ${newTotalSales}, total_revenue = ${newTotalRevenue}, updated_at = NOW()
+        WHERE id = ${id}
+      `;
+      
+      res.json({
+        sale: sale[0],
+        newTotals: {
+          totalSales: newTotalSales,
+          totalRevenue: newTotalRevenue
+        }
+      });
+    } catch (error) {
+      console.error("Error recording affiliate sale:", error);
+      res.status(500).json({ message: "Failed to record affiliate sale" });
+    }
+  });
+  
+  // Public: Track affiliate referral (for when customers use affiliate links)
+  app.post('/api/affiliate/track-visit', async (req, res) => {
+    try {
+      const { affiliateCode } = req.body;
+      
+      if (!affiliateCode) {
+        return res.status(400).json({ message: "Affiliate code is required" });
+      }
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Verify affiliate exists and is approved
+      const affiliate = await sql`
+        SELECT id, full_name, status FROM affiliates 
+        WHERE affiliate_code = ${affiliateCode} AND status = 'approved'
+      `;
+      
+      if (affiliate.length === 0) {
+        return res.status(404).json({ message: "Invalid or inactive affiliate code" });
+      }
+      
+      // Here you could track the visit in a separate table if needed
+      // For now, we'll just return success
+      
+      res.json({
+        success: true,
+        affiliateName: affiliate[0].full_name,
+        message: "Referral tracked successfully"
+      });
+    } catch (error) {
+      console.error("Error tracking affiliate visit:", error);
+      res.status(500).json({ message: "Failed to track affiliate visit" });
     }
   });
 

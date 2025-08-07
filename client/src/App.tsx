@@ -47,6 +47,7 @@ import Share from "@/pages/share";
 import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
+import AffiliateApply from "@/pages/affiliate-apply";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -91,6 +92,7 @@ function AuthenticatedApp() {
         <Route path="/klaviyo-test" component={KlaviyoTest} />
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
+        <Route path="/affiliate/apply" component={AffiliateApply} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}

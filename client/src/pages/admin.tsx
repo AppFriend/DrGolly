@@ -14,7 +14,7 @@ import {
   GraduationCap, 
   Bell,
   Settings,
-  Database
+  UserCheck
 } from "lucide-react";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
@@ -28,7 +28,7 @@ import { AdminUserSettings } from "@/components/admin/AdminUserSettings";
 import { EnhancedCourseManagement } from "@/components/admin/EnhancedCourseManagement";
 import { EnhancedBlogManagement } from "@/components/admin/EnhancedBlogManagement";
 import { AdminBlogManagementSimple } from "@/components/admin/AdminBlogManagementSimple";
-import AdminContentManager from "@/components/admin/AdminContentManager";
+import { AdminAffiliateManagement } from "@/components/admin/AdminAffiliateManagement";
 
 
 export default function AdminPanel() {
@@ -126,9 +126,9 @@ export default function AdminPanel() {
               <GraduationCap className="h-4 w-4" />
               <span className="hidden sm:inline">Courses</span>
             </TabsTrigger>
-            <TabsTrigger value="content" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              <span className="hidden sm:inline">Content</span>
+            <TabsTrigger value="affiliates" className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Affiliates</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -156,8 +156,8 @@ export default function AdminPanel() {
             <AdminCourseManagement />
           </TabsContent>
 
-          <TabsContent value="content" className="mt-6">
-            <AdminContentManager />
+          <TabsContent value="affiliates" className="mt-6">
+            <AdminAffiliateManagement />
           </TabsContent>
 
           <TabsContent value="users" className="mt-6">

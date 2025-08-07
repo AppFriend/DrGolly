@@ -819,6 +819,49 @@ export const insertStripeProductSchema = createInsertSchema(stripeProducts).omit
   updatedAt: true,
 });
 
+
+
+// Affiliate Management Tables
+export const affiliates = pgTable("affiliates", {
+  id: varchar("id").primaryKey().notNull().default(uuid()),
+  fullName: varchar("full_name").notNull(),
+  instagramHandle: varchar("instagram_handle").notNull(),
+  profilePhotoUrl: varchar("profile_photo_url"),
+  country: varchar("country").notNull(),
+  followers: integer("followers").notNull().default(0),
+  email: varchar("email").notNull().unique(),
+  affiliateCode: varchar("affiliate_code").notNull().unique(),
+  referralUrl: varchar("referral_url").notNull(),
+  shortUrl: varchar("short_url"),
+  status: varchar("status").notNull().default("pending"), // pending, approved, rejected
+  connectedAccountId: varchar("connected_account_id"),
+  totalSales: integer("total_sales").notNull().default(0),
+  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const affiliateSales = pgTable("affiliate_sales", {
+  id: varchar("id").primaryKey().notNull().default(uuid()),
+  affiliateId: varchar("affiliate_id").notNull(),
+  orderId: varchar("order_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("aud"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Affiliate Relations
+export const affiliatesRelations = relations(affiliates, ({ many }) => ({
+  sales: many(affiliateSales),
+}));
+
+export const affiliateSalesRelations = relations(affiliateSales, ({ one }) => ({
+  affiliate: one(affiliates, {
+    fields: [affiliateSales.affiliateId],
+    references: [affiliates.id],
+  }),
+}));
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 // Lead capture table for public freebie downloads
@@ -898,6 +941,24 @@ export type FamilyMember = typeof familyMembers.$inferSelect;
 export type FamilyInvite = typeof familyInvites.$inferSelect;
 export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
 export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
+
+// Affiliate types and schemas
+export type Affiliate = typeof affiliates.$inferSelect;
+export type AffiliateSale = typeof affiliateSales.$inferSelect;
+
+export const insertAffiliateSchema = createInsertSchema(affiliates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAffiliateSaleSchema = createInsertSchema(affiliateSales).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertAffiliate = z.infer<typeof insertAffiliateSchema>;
+export type InsertAffiliateSale = z.infer<typeof insertAffiliateSaleSchema>;
 
 // Notification system tables
 export const notifications = pgTable("notifications", {
