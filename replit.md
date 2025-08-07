@@ -18,6 +18,8 @@ This is a mobile-first learning management system (LMS) built with React and Exp
   - Comprehensive admin management interface for approval, tracking, and analytics
   - Slack notifications for new affiliate applications
   - Sales tracking and commission management system
+  - Photo upload functionality via object storage integration
+  - Admin panel tab reordered to appear after Users tab
   - Ready to replace failing Content tab with robust affiliate program functionality
 
 ## User Preferences

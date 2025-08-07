@@ -126,13 +126,13 @@ export default function AdminPanel() {
               <GraduationCap className="h-4 w-4" />
               <span className="hidden sm:inline">Courses</span>
             </TabsTrigger>
-            <TabsTrigger value="affiliates" className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4" />
-              <span className="hidden sm:inline">Affiliates</span>
-            </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="affiliates" className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Affiliates</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
