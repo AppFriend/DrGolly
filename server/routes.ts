@@ -10404,7 +10404,27 @@ Please contact the customer to confirm the appointment.
         ORDER BY created_at DESC
       `;
       
-      res.json(affiliates);
+      // Transform snake_case to camelCase for frontend compatibility
+      const transformedAffiliates = affiliates.map(affiliate => ({
+        id: affiliate.id,
+        fullName: affiliate.full_name,
+        instagramHandle: affiliate.instagram_handle,
+        profilePhotoUrl: affiliate.profile_photo_url,
+        country: affiliate.country,
+        followers: affiliate.followers,
+        email: affiliate.email,
+        affiliateCode: affiliate.affiliate_code,
+        referralUrl: affiliate.referral_url,
+        shortUrl: affiliate.short_url,
+        status: affiliate.status,
+        connectedAccountId: affiliate.connected_account_id,
+        totalSales: affiliate.total_sales,
+        totalRevenue: affiliate.total_revenue,
+        createdAt: affiliate.created_at,
+        updatedAt: affiliate.updated_at
+      }));
+      
+      res.json(transformedAffiliates);
     } catch (error) {
       console.error("Error fetching affiliates:", error);
       res.status(500).json({ message: "Failed to fetch affiliates" });
@@ -10454,11 +10474,26 @@ Please contact the customer to confirm the appointment.
         return res.status(404).json({ message: "Affiliate not found" });
       }
       
-      // If status was changed to approved, send notification
+      // If status was changed to approved, generate short URL and send notification
       if (updates.status === 'approved') {
         try {
           const affiliate = result[0];
-          // Here you could send an email or Slack notification about approval
+          
+          // Generate short URL if it doesn't exist
+          if (!affiliate.short_url) {
+            const shortCode = affiliate.affiliate_code.toLowerCase();
+            const shortUrl = `${process.env.FRONTEND_URL || 'https://myapp.drgolly.com'}/${shortCode}`;
+            
+            // Update with short URL
+            await sql`
+              UPDATE affiliates 
+              SET short_url = ${shortUrl}
+              WHERE id = ${id}
+            `;
+            
+            affiliate.short_url = shortUrl;
+          }
+          
           console.log(`Affiliate ${affiliate.full_name} (${affiliate.email}) has been approved`);
         } catch (notificationError) {
           console.error('Failed to send approval notification:', notificationError);
