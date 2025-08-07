@@ -48,6 +48,7 @@ import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
 import AffiliateApply from "@/pages/affiliate-apply";
+import CompletePage from "@/pages/complete";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -78,6 +79,7 @@ function AuthenticatedApp() {
         <Route path="/subscription" component={Subscription} />
         <Route path="/checkout/:courseId" component={Checkout} />
         <Route path="/payment-success" component={PaymentSuccess} />
+        <Route path="/complete" component={CompletePage} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/cart-checkout" component={CartCheckout} />
         <Route path="/manage" component={Manage} />

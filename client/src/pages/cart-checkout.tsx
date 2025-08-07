@@ -131,11 +131,17 @@ export default function CartCheckout() {
 
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (userIsNew = false) => {
     toast({
       title: "Payment successful!",
       description: "Your cart items have been purchased successfully.",
     });
+    
+    // Route new users to complete page for password setup
+    if (userIsNew) {
+      // Use window.location to ensure clean navigation
+      window.location.href = '/complete';
+    }
   };
 
   if (!user) {
@@ -197,13 +203,16 @@ export default function CartCheckout() {
                     onChange={(e) => setCustomerDetails({...customerDetails, firstName: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
                   />
-                  <input
-                    type="date"
-                    placeholder="Due Date (Optional)"
-                    value={customerDetails.dueDate}
-                    onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
-                  />
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Due Date / Baby Birthday</p>
+                    <input
+                      type="date"
+                      placeholder="Due Date (Optional)"
+                      value={customerDetails.dueDate}
+                      onChange={(e) => setCustomerDetails({...customerDetails, dueDate: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B9CA3]"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

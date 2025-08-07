@@ -8061,6 +8061,45 @@ Please contact the customer to confirm the appointment.
     }
   });
 
+  // Complete setup for new users after purchase
+  app.post('/api/auth/complete-setup', isAuthenticated, async (req, res) => {
+    try {
+      const { password } = req.body;
+      const userId = req.user?.claims?.sub;
+      
+      if (!password) {
+        return res.status(400).json({ message: 'Password is required' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      // Validate password strength
+      const validation = AuthUtils.validatePasswordStrength(password);
+      if (!validation.isValid) {
+        return res.status(400).json({ 
+          message: 'Password does not meet requirements',
+          errors: validation.errors 
+        });
+      }
+
+      // Hash the new password
+      const passwordHash = await AuthUtils.hashPassword(password);
+      
+      // Update user with permanent password
+      await storage.setUserPassword(userId, passwordHash);
+      
+      // Update last login for MAU tracking
+      await storage.updateUserLastLogin(userId);
+
+      res.json({ message: 'Account setup completed successfully' });
+    } catch (error) {
+      console.error('Error completing setup:', error);
+      res.status(500).json({ message: 'Failed to complete setup' });
+    }
+  });
+
   // Thinkific migration endpoint (Admin only)
   app.post('/api/admin/migrate-thinkific-chapter', isAdmin, async (req, res) => {
     try {
