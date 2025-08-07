@@ -22,6 +22,11 @@ This is a mobile-first learning management system (LMS) built with React and Exp
   - Admin panel tab reordered to appear after Users tab
   - All data display issues resolved (names, Instagram handles, URLs working properly)
   - Production-ready MVP with 2 test affiliates and full functionality verified
+- **STABLE SAVEPOINT**: Created stable checkpoint on August 7th, 2025 before UI changes:
+  - Checkout UX enhanced with "Due Date / Baby Birthday" field guidance
+  - Post-purchase password setup flow with /complete page fully operational
+  - All rollback fixes successfully deployed via redeploy button
+  - System ready for frontend internal UI modifications
 
 ## User Preferences
 
