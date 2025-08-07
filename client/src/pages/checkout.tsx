@@ -871,10 +871,12 @@ export default function Checkout() {
     <div className="min-h-screen bg-gray-50">
       
       {/* Header Banner */}
-      <div className="bg-white border-b border-[#095D66] px-4 py-4" style={{ borderBottomWidth: '0.5px' }}>
-        <div className="flex items-center justify-between max-w-lg mx-auto lg:max-w-6xl">
-          <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
-          <p className="text-black font-medium text-lg ml-1" style={{ paddingLeft: '5px' }}>You're one step closer to better sleep for your baby!</p>
+      <div className="bg-white border-b border-[#095D66] py-4" style={{ borderBottomWidth: '0.5px' }}>
+        <div className="px-4 max-w-lg mx-auto lg:max-w-6xl lg:px-8">
+          <div className="flex items-center justify-between">
+            <img src={drGollyLogo} alt="Dr Golly" className="h-8" />
+            <p className="text-black font-medium text-lg ml-1" style={{ paddingLeft: '5px' }}>You're one step closer to better sleep for your baby!</p>
+          </div>
         </div>
       </div>
 
