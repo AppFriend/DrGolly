@@ -142,15 +142,19 @@ export function AdminAffiliateManagement() {
               </TableCell>
               <TableCell className="font-medium">{affiliate.fullName}</TableCell>
               <TableCell>
-                <a 
-                  href={`https://instagram.com/${affiliate.instagramHandle.replace('@', '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline flex items-center gap-1"
-                >
-                  @{affiliate.instagramHandle.replace('@', '')}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {affiliate.instagramHandle ? (
+                  <a 
+                    href={`https://instagram.com/${affiliate.instagramHandle.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    @{affiliate.instagramHandle.replace('@', '')}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="text-gray-500">N/A</span>
+                )}
               </TableCell>
               <TableCell>{affiliate.followers?.toLocaleString() || 'N/A'}</TableCell>
               <TableCell>{affiliate.country}</TableCell>
@@ -235,15 +239,19 @@ export function AdminAffiliateManagement() {
               </TableCell>
               <TableCell className="font-medium">{affiliate.fullName}</TableCell>
               <TableCell>
-                <a 
-                  href={`https://instagram.com/${affiliate.instagramHandle.replace('@', '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline flex items-center gap-1"
-                >
-                  @{affiliate.instagramHandle.replace('@', '')}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {affiliate.instagramHandle ? (
+                  <a 
+                    href={`https://instagram.com/${affiliate.instagramHandle.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    @{affiliate.instagramHandle.replace('@', '')}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="text-gray-500">N/A</span>
+                )}
               </TableCell>
               <TableCell>{affiliate.followers?.toLocaleString() || 'N/A'}</TableCell>
               <TableCell>{affiliate.country}</TableCell>
