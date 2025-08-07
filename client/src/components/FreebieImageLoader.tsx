@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 
-// Import all freebie assets - High-resolution PNG versions
-import sleepTipsHD from '@assets/App Freebies-Sleeping Tips_1752112448277.png';
-import fussyEatersHD from '@assets/App Freebies-Fussy eating_1752112448277.png';
-import bedtimeRoutineChartHD from '@assets/App Freebies-Toddler bedtime chart_1752112448276.png';
-import colicsVideoHD from '@assets/App Freebies-Colic and babies_1752112448277.png';
-import earlyMorningWakingHD from '@assets/App Freebies-Early morning waking_1752112448277.png';
-import breastmilkStorageHD from '@assets/App Freebies-Breast milk storage_1752112448278.png';
+// Import all freebie assets - Updated high-resolution PNG versions
+import sleepTipsHD from '@assets/App Freebies-Sleeping Tips (1)_1754542771341.png';
+import fussyEatersHD from '@assets/App Freebies-Fussy eating (1)_1754542771341.png';
+import bedtimeRoutineChartHD from '@assets/App Freebies-Toddler bedtime chart (1)_1754542771340.png';
+import colicsVideoHD from '@assets/App Freebies-Colic and babies (1)_1754542771341.png';
+import earlyMorningWakingHD from '@assets/App Freebies-Early morning waking (1)_1754542771341.png';
+import breastmilkStorageHD from '@assets/App Freebies-Breast milk storage (1)_1754542771341.png';
+// Removed startingSolidsHD import as it uses SVG fallback
 
 // Legacy SVG imports for fallback
 import sleepTips from '@/assets/freebies/sleep-tips.svg';
@@ -19,14 +20,14 @@ import earlyMorningWaking from '@/assets/freebies/early-morning-waking.svg';
 
 // Asset mapping for admin panel management
 export const FREEBIE_ASSETS = {
-  // High-resolution PNG versions
-  '@assets/App Freebies-Sleeping Tips_1752112448277.png': sleepTipsHD,
-  '@assets/App Freebies-Fussy eating_1752112448277.png': fussyEatersHD,
-  '@assets/App Freebies-Toddler bedtime chart_1752112448276.png': bedtimeRoutineChartHD,
-  '@assets/App Freebies-Colic and babies_1752112448277.png': colicsVideoHD,
-  '@assets/App Freebies-Early morning waking_1752112448277.png': earlyMorningWakingHD,
-  '@assets/App Freebies-Breast milk storage_1752112448278.png': breastmilkStorageHD,
-  '@assets/App Freebies-Starting Solids_1752112448276.png': startingSolids, // Use SVG fallback
+  // Updated high-resolution PNG versions (2025-08-07 update)
+  '@assets/App Freebies-Sleeping Tips (1)_1754542771341.png': sleepTipsHD,
+  '@assets/App Freebies-Fussy eating (1)_1754542771341.png': fussyEatersHD,
+  '@assets/App Freebies-Toddler bedtime chart (1)_1754542771340.png': bedtimeRoutineChartHD,
+  '@assets/App Freebies-Colic and babies (1)_1754542771341.png': colicsVideoHD,
+  '@assets/App Freebies-Early morning waking (1)_1754542771341.png': earlyMorningWakingHD,
+  '@assets/App Freebies-Breast milk storage (1)_1754542771341.png': breastmilkStorageHD,
+  '@assets/App Freebies-Starting Solids Checklist_1752112715445.png': startingSolids, // Use SVG fallback
   
   // Legacy SVG versions for fallback
   '@/assets/freebies/sleep-tips.svg': sleepTips,
