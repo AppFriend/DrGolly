@@ -296,7 +296,7 @@ export default function Home() {
               onClick={() => setActiveCategory(category.id)}
               disabled={isFetching}
               className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200",
+                "px-4 py-2 cta-button-pill text-sm font-medium whitespace-nowrap transition-all duration-200",
                 activeCategory === category.id
                   ? "bg-dr-teal text-white shadow-lg transform scale-105"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-105",

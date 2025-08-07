@@ -112,7 +112,7 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
           {post.excerpt}
         </p>
         <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-          <span>{formatDate(post.publishedAt)}</span>
+          <span>{post.publishedAt ? formatDate(post.publishedAt) : 'No date'}</span>
           {post.readTime && post.category !== "freebies" && (
             <span className="flex items-center">
               <Clock className="h-4 w-4 mr-1" />
@@ -124,14 +124,14 @@ export function BlogCard({ post, onClick, className }: BlogCardProps) {
           <div className="flex gap-2">
             <button 
               onClick={handleDownload}
-              className="flex-1 bg-[#095D66] hover:bg-[#074A52] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-colors"
+              className="flex-1 cta-button-pill cta-primary py-3 px-4 flex items-center justify-center space-x-2"
             >
               <Download className="h-5 w-5" />
               <span>Download Now</span>
             </button>
             <button 
               onClick={handleShare}
-              className="bg-[#095D66] hover:bg-[#074A52] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center transition-colors"
+              className="cta-button-pill cta-primary py-3 px-4 flex items-center justify-center"
             >
               <Share className="h-5 w-5" />
             </button>

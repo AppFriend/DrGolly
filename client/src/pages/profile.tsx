@@ -450,7 +450,7 @@ export default function Profile() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Avatar className="h-16 w-16">
+                <Avatar className={`h-16 w-16 ${(profileData?.subscriptionTier || '').toLowerCase() === 'gold' ? 'ring-4 ring-yellow-400 ring-offset-2' : ''}`}>
                   <AvatarImage src={profileData?.profileImageUrl} />
                   <AvatarFallback className="bg-dr-teal text-white text-xl">
                     {profileData?.firstName?.[0]}{profileData?.lastName?.[0]}
@@ -479,7 +479,7 @@ export default function Profile() {
                   <User className="mr-2 h-6 w-6 text-[#83CFCC]" />
                   {profileData?.firstName} {profileData?.lastName}
                 </h1>
-                <p className="text-gray-600">{profileData?.email}</p>
+                <p className="text-gray-600 break-all text-sm">{profileData?.email}</p>
                 <Badge className={getTierColor(profileData?.subscriptionTier || 'free')}>
                   {profileData?.subscriptionTier || 'Free'} Plan
                 </Badge>
@@ -506,24 +506,24 @@ export default function Profile() {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-5 bg-gray-100 p-1 rounded-xl">
+            <TabsTrigger value="profile" className="flex items-center gap-2 tab-rounded-rectangle data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <User className="h-4 w-4" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="plan" className="flex items-center gap-2">
+            <TabsTrigger value="plan" className="flex items-center gap-2 tab-rounded-rectangle data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <CreditCard className="h-4 w-4" />
               Plan
             </TabsTrigger>
-            <TabsTrigger value="invoices" className="flex items-center gap-2">
+            <TabsTrigger value="invoices" className="flex items-center gap-2 tab-rounded-rectangle data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <Receipt className="h-4 w-4" />
               Invoices
             </TabsTrigger>
-            <TabsTrigger value="payment" className="flex items-center gap-2">
+            <TabsTrigger value="payment" className="flex items-center gap-2 tab-rounded-rectangle data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <CreditCard className="h-4 w-4" />
               Payment
             </TabsTrigger>
-            <TabsTrigger value="referral" className="flex items-center gap-2">
+            <TabsTrigger value="referral" className="flex items-center gap-2 tab-rounded-rectangle data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <Share2 className="h-4 w-4" />
               Referral
             </TabsTrigger>
@@ -682,7 +682,10 @@ export default function Profile() {
                     </div>
                   )}
                   <div className="pt-4 border-t">
-                    <Button className="bg-dr-teal hover:bg-dr-teal/90">
+                    <Button 
+                      onClick={() => setLocation("/manage")}
+                      className="bg-dr-teal hover:bg-dr-teal/90 rounded-full px-6"
+                    >
                       Upgrade Plan
                     </Button>
                   </div>

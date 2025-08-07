@@ -72,6 +72,33 @@
   }
 }
 
+@layer components {
+  /* Global Tab Styling - Rounded Rectangles */
+  .tab-rounded-rectangle {
+    @apply rounded-lg px-3 py-2 font-medium transition-colors;
+  }
+  
+  /* Global CTA Button Styling - Rounded Pills */
+  .cta-button-pill {
+    @apply rounded-full px-6 py-2 font-semibold transition-colors;
+  }
+  
+  /* Primary CTA Button */
+  .cta-primary {
+    @apply bg-dr-teal hover:bg-dr-teal-dark text-white;
+  }
+  
+  /* Gold CTA Button for upgrades */
+  .cta-gold {
+    @apply bg-yellow-500 hover:bg-yellow-600 text-white;
+  }
+  
+  /* Secondary CTA Button */
+  .cta-secondary {
+    @apply bg-green-700 hover:bg-green-800 text-white;
+  }
+}
+
 @layer utilities {
   /* Custom prose styles for lesson content */
   .prose-lesson {

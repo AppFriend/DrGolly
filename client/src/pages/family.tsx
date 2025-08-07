@@ -344,7 +344,7 @@ export default function Family() {
         {!showInviteAdult && user?.subscriptionTier === 'gold' && (
           <Button 
             onClick={() => setShowInviteAdult(true)}
-            className="w-full bg-[#095D66] hover:bg-[#83CFCC] text-white font-heading"
+            className="w-full cta-button-pill cta-primary font-heading"
           >
             <UserPlus className="mr-2 h-4 w-4" />
             Invite Adult
@@ -364,7 +364,7 @@ export default function Family() {
               </p>
               <Button 
                 size="sm" 
-                className="bg-amber-600 hover:bg-amber-700 text-white"
+                className="cta-button-pill cta-gold"
                 onClick={() => window.location.href = '/manage'}
               >
                 Upgrade to Gold

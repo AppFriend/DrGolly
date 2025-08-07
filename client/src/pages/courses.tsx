@@ -301,14 +301,14 @@ export default function Courses() {
 
       {/* Course Category Tabs */}
       <div className="bg-white border-b border-gray-100 p-4">
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+        <div className="flex space-x-1 bg-gray-100 rounded-xl p-1">
           {courseTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors flex items-center justify-center space-x-1 ${
+                className={`flex-1 py-2 px-3 text-sm font-medium tab-rounded-rectangle transition-colors flex items-center justify-center space-x-1 ${
                   activeTab === tab.id
                     ? "bg-white text-dr-teal shadow-sm"
                     : "text-gray-600 hover:text-dr-teal"
@@ -408,7 +408,7 @@ export default function Courses() {
                     <>
                       <Button
                         onClick={() => window.location.href = "/manage"}
-                        className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
+                        className="w-full cta-button-pill cta-gold mb-3"
                       >
                         Unlimited Access with Gold
                       </Button>
@@ -481,7 +481,7 @@ export default function Courses() {
                     <>
                       <Button
                         onClick={() => window.location.href = "/manage"}
-                        className="w-full bg-dr-teal hover:bg-dr-teal-dark text-white mb-3"
+                        className="w-full cta-button-pill cta-gold mb-3"
                       >
                         Unlimited Access with Gold
                       </Button>
