@@ -24,22 +24,22 @@ export function AdminAffiliateManagement() {
   const [activeTab, setActiveTab] = useState("pending");
   const queryClient = useQueryClient();
 
-  // Fetch pending applications
-  const { data: pendingAffiliates = [], isLoading: loadingPending } = useQuery<Affiliate[]>({
-    queryKey: ["/api/admin/affiliates/pending"],
-    enabled: activeTab === "pending",
+  // Fetch all affiliates
+  const { data: allAffiliates = [], isLoading } = useQuery<Affiliate[]>({
+    queryKey: ["/api/admin/affiliates"],
   });
 
-  // Fetch active affiliates
-  const { data: activeAffiliates = [], isLoading: loadingActive } = useQuery<Affiliate[]>({
-    queryKey: ["/api/admin/affiliates/active"],
-    enabled: activeTab === "active",
-  });
+  // Filter affiliates based on active tab
+  const pendingAffiliates = allAffiliates.filter(affiliate => affiliate.status === 'pending');
+  const activeAffiliates = allAffiliates.filter(affiliate => affiliate.status === 'approved');
+  
+  const loadingPending = isLoading;
+  const loadingActive = isLoading;
 
   // Approve affiliate mutation
   const approveAffiliateMutation = useMutation({
     mutationFn: async (affiliateId: string) => {
-      return await apiRequest("POST", `/api/admin/affiliates/${affiliateId}/approve`);
+      return await apiRequest("PATCH", `/api/admin/affiliates/${affiliateId}`, { status: 'approved' });
     },
     onSuccess: () => {
       toast({
@@ -60,7 +60,7 @@ export function AdminAffiliateManagement() {
   // Reject affiliate mutation
   const rejectAffiliateMutation = useMutation({
     mutationFn: async (affiliateId: string) => {
-      return await apiRequest("POST", `/api/admin/affiliates/${affiliateId}/reject`);
+      return await apiRequest("PATCH", `/api/admin/affiliates/${affiliateId}`, { status: 'rejected' });
     },
     onSuccess: () => {
       toast({

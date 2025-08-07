@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { UserCheck, Instagram, Globe, Users, Mail, Camera } from "lucide-react";
+import { UserCheck, Instagram, Globe, Users, Mail, Camera, Upload } from "lucide-react";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 const affiliateApplicationSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -19,7 +22,7 @@ const affiliateApplicationSchema = z.object({
   email: z.string().email("Invalid email address"),
   country: z.string().min(1, "Country is required"),
   followers: z.number().min(0, "Followers must be a positive number"),
-  profilePhotoUrl: z.string().url("Invalid profile photo URL").optional().or(z.literal("")),
+  profilePhotoUrl: z.string().optional().or(z.literal("")),
 });
 
 type AffiliateApplicationForm = z.infer<typeof affiliateApplicationSchema>;
@@ -33,6 +36,7 @@ const countries = [
 
 export default function AffiliateApply() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string>("");
 
   const form = useForm<AffiliateApplicationForm>({
     resolver: zodResolver(affiliateApplicationSchema),
@@ -54,7 +58,7 @@ export default function AffiliateApply() {
       return await apiRequest("POST", "/api/affiliate/apply", {
         ...data,
         instagramHandle: cleanHandle,
-        profilePhotoUrl: data.profilePhotoUrl || undefined,
+        profilePhotoUrl: uploadedPhotoUrl || data.profilePhotoUrl || undefined,
       });
     },
     onSuccess: () => {
@@ -249,29 +253,52 @@ export default function AffiliateApply() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="profilePhotoUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Camera className="h-4 w-4" />
-                          Profile Photo URL (Optional)
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="url" 
-                            placeholder="https://example.com/photo.jpg" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Link to your professional profile photo
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
+                  <div>
+                    <Label className="flex items-center gap-2 mb-2">
+                      <Camera className="h-4 w-4" />
+                      Profile Photo (Optional)
+                    </Label>
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={5242880} // 5MB
+                      onGetUploadParameters={async () => {
+                        const response = await apiRequest("POST", "/api/objects/upload");
+                        return {
+                          method: "PUT" as const,
+                          url: response.uploadURL,
+                        };
+                      }}
+                      onComplete={(result) => {
+                        if (result.successful.length > 0) {
+                          const uploadURL = result.successful[0].uploadURL;
+                          if (uploadURL) {
+                            // Convert the upload URL to our object serving URL
+                            const objectPath = uploadURL.split('?')[0].split('/').slice(-2).join('/');
+                            const serverURL = `/objects/uploads/${objectPath}`;
+                            setUploadedPhotoUrl(serverURL);
+                            toast({
+                              title: "Photo Uploaded",
+                              description: "Your profile photo has been uploaded successfully.",
+                            });
+                          }
+                        }
+                      }}
+                      buttonClassName="w-full"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        <span>Upload Profile Photo</span>
+                      </div>
+                    </ObjectUploader>
+                    {uploadedPhotoUrl && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+                        ✓ Photo uploaded successfully
+                      </div>
                     )}
-                  />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Upload a professional profile photo (JPG, PNG, max 5MB)
+                    </p>
+                  </div>
 
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h3 className="font-semibold text-blue-900 mb-2">What happens next?</h3>
