@@ -52,6 +52,7 @@ import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { AuthUtils } from "./auth-utils";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
