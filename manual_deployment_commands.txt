@@ -1,0 +1,28 @@
+DEPLOYMENT COMMANDS FOR MYAPP.DRGOLLY.COM
+==========================================
+
+Since we're already on the main branch and the login fixes are ready, 
+run these commands in your terminal to deploy:
+
+1. Add and commit the current fixes:
+   git add .
+   git commit -m "Fix: Login errors and ProfileCompletion references - cleared build cache and added AuthUtils import"
+
+2. Push to main branch (this will deploy to myapp.drgolly.com):
+   git push origin main
+
+WHAT THIS DEPLOYMENT INCLUDES:
+==============================
+✓ Fixed ProfileCompletion JavaScript errors
+✓ Added AuthUtils import for password verification  
+✓ Cleared build cache for fresh JavaScript
+✓ Verified authentication system stability
+✓ Clean application restart with no errors
+
+AFTER DEPLOYMENT:
+================
+Users on myapp.drgolly.com should clear their browser cache:
+- Chrome/Firefox: Ctrl+F5 (PC) or Cmd+Shift+R (Mac)
+- Or open site in incognito/private window
+
+The login page should now work without the "Something went wrong" error.
