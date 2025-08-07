@@ -180,14 +180,14 @@ export default function Home() {
               <img
                 src={user.profilePictureUrl || user.profile_picture_url || user.profileImageUrl}
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover border-2 border-white"
+                className={`w-8 h-8 rounded-full object-cover border-2 ${user?.subscriptionTier === 'gold' ? 'border-yellow-400' : 'border-white'}`}
                 onError={(e) => {
                   console.error('Profile image failed to load:', e.currentTarget.src);
                   e.currentTarget.style.display = 'none';
                 }}
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center">
+              <div className={`w-8 h-8 rounded-full bg-white border-2 ${user?.subscriptionTier === 'gold' ? 'border-yellow-400' : 'border-white'} flex items-center justify-center`}>
                 <span className="text-[#095D66] text-xs font-bold">
                   {(user?.firstName || user?.first_name)?.[0]}{(user?.lastName || user?.last_name)?.[0]}
                 </span>
