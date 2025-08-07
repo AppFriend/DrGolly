@@ -24,7 +24,8 @@ export default function Complete() {
     mutationFn: async (data: { password: string; tempPasswordToken: string }) => {
       return await apiRequest("POST", "/api/auth/complete-account-setup", data);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Account setup successful:', data);
       toast({
         title: "Account Setup Complete!",
         description: "You've been logged in and can now access your courses.",
@@ -35,10 +36,11 @@ export default function Complete() {
       sessionStorage.removeItem('pendingUserEmail');
       sessionStorage.removeItem('tempPasswordToken');
       
-      // Redirect to courses page
+      // Redirect to home page (since they're now logged in)
       setTimeout(() => {
-        setLocation('/courses');
-      }, 1000);
+        console.log('Redirecting to /home after successful account setup');
+        setLocation('/home');
+      }, 1500);
     },
     onError: (error: any) => {
       console.error('Account setup error:', error);

@@ -41,6 +41,7 @@ import {
   courseLessons,
   courseChapters,
   lessonContent,
+  temporaryPasswords,
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
@@ -1310,6 +1311,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         message: "Test signup failed",
         error: error.message
+      });
+    }
+  });
+
+  // Test endpoint to create a temporary password token for testing complete flow
+  app.post('/api/test/create-temp-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+      
+      // Find or create user
+      let user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Create a test user
+        user = await storage.upsertUser({
+          id: `test_${Date.now()}`,
+          email,
+          firstName: 'Test',
+          lastName: 'User',
+          subscriptionTier: 'free',
+          subscriptionStatus: 'active',
+          migrated: false,
+          choosePlan: 'free',
+          countCourses: 0,
+          signInCount: 0,
+          isFirstLogin: true,
+          hasSetPassword: false,
+          acceptedTerms: false,
+          marketingOptIn: false,
+          smsMarketingOptIn: false,
+          onboardingCompleted: false,
+          accountActivated: false,
+          activatedServices: []
+        });
+      }
+      
+      // Generate temporary password token
+      const tempToken = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
+      
+      // Insert temporary password
+      await db.insert(temporaryPasswords).values({
+        userId: user.id,
+        tempPassword: tempToken,
+        isUsed: false,
+        expiresAt
+      });
+      
+      // Create test URL for completion
+      const completeUrl = `http://localhost:5000/complete?email=${encodeURIComponent(email)}&token=${tempToken}`;
+      
+      res.json({ 
+        success: true,
+        tempToken,
+        completeUrl,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName
+        }
+      });
+    } catch (error) {
+      console.error('Error creating temp password:', error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Unknown error' 
       });
     }
   });
