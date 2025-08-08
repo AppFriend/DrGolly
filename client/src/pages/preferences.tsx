@@ -114,8 +114,8 @@ export default function PreferencesPage() {
       
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg">
         {/* Grey Banner */}
-        <div className="bg-gray-100 px-6 py-4 rounded-t-lg flex items-center">
-          <div className="flex items-center">
+        <div className="bg-gray-100 px-6 py-4 rounded-t-lg flex items-center justify-center">
+          <div className="flex items-center ml-16">
             <img 
               src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png" 
               alt="Dr. Golly" 
@@ -130,7 +130,7 @@ export default function PreferencesPage() {
         <div className="p-8">
           {/* Due Date / Baby Birthday Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-green-700 uppercase mb-4 text-left">DUE DATE / BABY BIRTHDAY</h2>
+            <h2 className="text-xl font-bold uppercase mb-4 text-left" style={{ color: '#0a5d66' }}>DUE DATE / BABY BIRTHDAY</h2>
             <div className="max-w-sm">
               <Input
                 type="date"
@@ -142,7 +142,7 @@ export default function PreferencesPage() {
             </div>
           </div>
 
-          <h1 className="text-xl font-bold text-green-700 uppercase mb-4 text-left">
+          <h1 className="text-xl font-bold uppercase mb-4 text-left" style={{ color: '#0a5d66' }}>
             WHERE CAN WE HELP YOU FIRST?
           </h1>
           <p className="text-gray-600 text-lg mb-2">

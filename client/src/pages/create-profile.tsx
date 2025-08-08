@@ -147,8 +147,8 @@ export default function CreateProfilePage() {
         </div>
         
         {/* Grey Banner */}
-        <div className="bg-gray-100 px-6 py-4 rounded-t-lg flex items-center">
-          <div className="flex items-center">
+        <div className="bg-gray-100 px-6 py-4 rounded-t-lg flex items-center justify-center">
+          <div className="flex items-center ml-16">
             <img 
               src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png" 
               alt="Dr. Golly" 
@@ -161,7 +161,7 @@ export default function CreateProfilePage() {
         </div>
 
         <CardHeader className="px-8 pt-8 pb-6">
-          <h1 className="text-xl font-bold text-green-700 uppercase mb-4 text-left">
+          <h1 className="text-xl font-bold uppercase mb-4 text-left" style={{ color: '#0a5d66' }}>
             CREATE YOUR PROFILE
           </h1>
         </CardHeader>

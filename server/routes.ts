@@ -1500,7 +1500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Add baby due date if provided
       if (babyDueDate) {
-        updateData.firstChildDob = babyDueDate;
+        updateData.firstChildDob = new Date(babyDueDate);
       }
       
       const updatedUser = await storage.updateUser(userId, updateData);
