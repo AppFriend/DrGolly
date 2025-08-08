@@ -168,21 +168,24 @@ export default function SignupPage() {
           </button>
         </div>
         
-        <CardHeader className="text-center px-8 pt-8 pb-6">
-          <div className="flex justify-center mb-6">
+        {/* Grey Banner */}
+        <div className="bg-gray-100 px-6 py-4 rounded-t-lg flex items-center">
+          <div className="flex items-center">
             <img 
               src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png" 
               alt="Dr. Golly" 
-              className="h-12"
+              className="h-8 mr-3"
             />
+            <p className="text-gray-700 text-sm">
+              You're one step closer to better sleep for your baby!
+            </p>
           </div>
-          
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Join Dr. Golly Sleep
+        </div>
+
+        <CardHeader className="px-8 pt-8 pb-6">
+          <h1 className="text-xl font-bold text-green-700 uppercase mb-4 text-left">
+            YOUR DETAILS
           </h1>
-          <p className="text-gray-600 text-sm">
-            Start your personalized sleep journey with expert guidance
-          </p>
         </CardHeader>
         
         <CardContent className="px-8 pb-8">

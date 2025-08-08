@@ -1508,11 +1508,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Klaviyo tracking for step 3 completion
       if (klaviyoService && updatedUser) {
         try {
-          await klaviyoService.identifyUser({
-            email: updatedUser.email,
+          await klaviyoService.updateProfile(updatedUser.email, {
             preferences: preferences,
             signup_step: 3,
-            profile_complete: true
+            profile_complete: true,
+            baby_due_date: babyDueDate || ''
           });
         } catch (klaviyoError) {
           console.error('Klaviyo error in step 3:', klaviyoError);

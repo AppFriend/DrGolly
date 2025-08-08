@@ -112,43 +112,48 @@ export default function PreferencesPage() {
         </button>
       </div>
       
-      <div className="w-full max-w-2xl">
-        <div className="mb-8 text-center">
-          {/* Dr Golly Logo */}
-          <div className="flex justify-center mb-6">
+      <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg">
+        {/* Grey Banner */}
+        <div className="bg-gray-100 px-6 py-4 rounded-t-lg flex items-center">
+          <div className="flex items-center">
             <img 
               src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png" 
               alt="Dr. Golly" 
-              className="h-12"
+              className="h-8 mr-3"
             />
+            <p className="text-gray-700 text-sm">
+              You're one step closer to better sleep for your baby!
+            </p>
           </div>
-          
+        </div>
+
+        <div className="p-8">
           {/* Due Date / Baby Birthday Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Due Date / Baby Birthday</h2>
-            <div className="max-w-sm mx-auto">
+            <h2 className="text-xl font-bold text-green-700 uppercase mb-4 text-left">DUE DATE / BABY BIRTHDAY</h2>
+            <div className="max-w-sm">
               <Input
                 type="date"
                 value={babyDueDate}
                 onChange={(e) => setBabyDueDate(e.target.value)}
-                className="h-12 text-center"
-                placeholder="Select date"
+                className="h-12"
+                placeholder="dd/mm/yyyy"
               />
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Where can we help you first?
+          <h1 className="text-xl font-bold text-green-700 uppercase mb-4 text-left">
+            WHERE CAN WE HELP YOU FIRST?
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-lg mb-2">
             You can select multiple & we'll personalise your experience!
           </p>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-500 text-sm mb-8">
             (Don't worry - you'll still see everything!)
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-4 mb-8 px-8">
           {PREFERENCE_OPTIONS.map(option => (
             <button
               key={option.id}
@@ -171,8 +176,9 @@ export default function PreferencesPage() {
           ))}
         </div>
 
-        <Button 
-          onClick={handleComplete}
+        <div className="px-8 pb-8">
+          <Button 
+            onClick={handleComplete}
           disabled={isSubmitting || selectedPreferences.length === 0}
           className="w-full h-14 bg-[#7DD3D8] hover:bg-[#6BC5CB] text-white font-medium rounded-full text-lg"
         >
@@ -185,6 +191,7 @@ export default function PreferencesPage() {
             'Continue'
           )}
         </Button>
+        </div>
       </div>
     </div>
   );
