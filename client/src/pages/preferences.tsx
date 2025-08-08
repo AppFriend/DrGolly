@@ -75,8 +75,8 @@ export default function PreferencesPage() {
           description: "Your profile is complete. Welcome to Dr. Golly Sleep!",
         });
         
-        // Redirect directly to home without delay
-        setLocation('/');
+        // Redirect directly to home after completion
+        setLocation('/home');
       } else {
         const errorData = await response.json();
         toast({

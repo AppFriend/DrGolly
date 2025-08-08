@@ -1378,6 +1378,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.passport = { user: sessionData };
       req.session.userId = user.id;
       
+      // Save session explicitly to prevent 401 errors during signup flow
+      await new Promise((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve(undefined);
+        });
+      });
+      
       // Klaviyo tracking for step 1
       if (klaviyoService) {
         try {
@@ -1429,6 +1437,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { firstName, lastName, phoneNumber, userRole, signupStep } = req.body;
       const userId = req.session.userId;
+      
+      console.log('Update profile request for user:', userId);
       
       if (!firstName || !lastName || !userRole) {
         return res.status(400).json({ message: "First name, last name, and role are required" });
@@ -1525,7 +1535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         step: 3,
         completed: true,
-        redirectTo: '/'
+        redirectTo: '/home'
       });
       
     } catch (error) {
