@@ -59,16 +59,18 @@ export default function SignupPage() {
     setIsSubmitting(true);
     
     try {
-      await apiRequest('POST', '/api/auth/signup', {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+      const response = await apiRequest('POST', '/api/auth/signup-step1', {
         email: formData.email,
         password: formData.password,
-        personalization: {
-          signupSource: 'Web App Signup',
-          marketingOptIn: false
-        }
+        marketingOptIn: true
       });
+      
+      const data = await response.json();
+      
+      if (data.success && data.nextStep) {
+        window.location.href = data.nextStep;
+        return;
+      }
 
       // Invalidate auth cache to refresh user data
       await queryClient.invalidateQueries({ queryKey: ['/api/user'] });

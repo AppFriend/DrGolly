@@ -518,7 +518,63 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-
+  async updateUser(id: string, userData: Partial<User>): Promise<User> {
+    try {
+      console.log('Updating user with data:', {
+        id,
+        ...userData,
+        passwordHash: userData.passwordHash ? '[REDACTED]' : undefined
+      });
+      
+      const [user] = await db
+        .update(users)
+        .set({
+          ...userData,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, id))
+        .returning();
+      
+      if (!user) {
+        throw new Error(`User with id ${id} not found`);
+      }
+      
+      console.log('User updated successfully:', user.id);
+      return user;
+    } catch (error) {
+      console.error('Database error in updateUser:', error);
+      // Fallback to raw SQL update
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL!);
+        
+        // Build the update query dynamically
+        const updateData = { ...userData, updated_at: new Date() };
+        const columns = Object.keys(updateData);
+        const values = Object.values(updateData);
+        const setClause = columns.map((col, index) => `${col} = $${index + 1}`).join(', ');
+        
+        const query = `
+          UPDATE users 
+          SET ${setClause}
+          WHERE id = $${values.length + 1}
+          RETURNING *
+        `;
+        
+        console.log('Executing raw SQL update query:', query);
+        const result = await sql(query, [...values, id]);
+        
+        if (result.length === 0) {
+          throw new Error(`User with id ${id} not found`);
+        }
+        
+        return result[0] as User;
+      } catch (fallbackError) {
+        console.error('Fallback user update also failed:', fallbackError);
+        throw error;
+      }
+    }
+  }
 
   async updateUserPersonalization(userId: string, personalizationData: {
     primaryConcerns?: string;

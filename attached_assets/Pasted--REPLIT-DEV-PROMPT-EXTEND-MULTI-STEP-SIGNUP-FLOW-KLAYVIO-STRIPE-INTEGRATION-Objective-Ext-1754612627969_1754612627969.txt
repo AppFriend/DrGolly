@@ -1,0 +1,207 @@
+🧑‍💻 REPLIT DEV PROMPT: EXTEND MULTI-STEP SIGNUP FLOW + KLAYVIO & STRIPE INTEGRATION
+Objective: Extend our existing /signup flow into a 3-step progressive signup journey, each step with its own URL, clear tracking in the database, and minimal friction for users.
+Build upon our existing Klayvio integration — reusing current tracking logic, Identify API setup, and data pipelines already established. Avoid creating duplicate events or fields where already present.
+
+✅ KEY FEATURES SUMMARY
+3-step signup flow with /signup, /createprofile, and /preferences
+
+Database logging of step progress per user, with profile_complete = true once all 3 steps complete
+
+Event + property tracking in Klayvio, building on current Identify + Track API usage
+
+Stripe integration: Parse next billing date and trigger Klayvio events for purchases and billing
+
+Maintain backward compatibility with all current API and tracking flows already implemented
+
+🔹 STEP 1 — /signup
+🎯 Goal: Quickly capture email/password or Google login and create a profile entry in the DB.
+Update the existing /signup page as follows:
+
+Move first name / last name to /createprofile
+
+Add Google Sign-In (via Firebase or existing OAuth if already integrated)
+
+UI design to match signup design reference.png, including green cloud styling
+
+Add:
+
+Pre-checked checkbox: “By opting in, you agree to receive marketing materials.”
+
+Link to /terms using: “By signing up you agree to our Terms of Service”
+
+💾 Database:
+On successful signup:
+
+Create user with fields: email, password (hashed), signup_method, created_at, step_completed = 1, profile_complete = false
+
+📤 KLAYVIO:
+Build on existing Identify and Track API logic
+
+If not already present, add:
+
+signup_method
+
+profile_created_at
+
+Ensure opt-in checkbox sets:
+
+email_opt_in = true
+
+sms_opt_in = true (once phone is collected in Step 2)
+
+Fire Signed Up event only if this doesn’t already exist:
+
+json
+Copy
+Edit
+{
+  "token": "<public_api_key>",
+  "event": "Signed Up",
+  "customer_properties": {
+    "$email": "user@example.com"
+  },
+  "properties": {
+    "signup_method": "manual/google",
+    "timestamp": "2025-08-08T12:00:00Z"
+  }
+}
+Use existing integration methods and endpoint structures to prevent duplication.
+
+🔹 STEP 2 — /createprofile
+🎯 Goal: Collect detailed user profile info.
+Capture:
+
+First Name
+
+Last Name
+
+Country Code + Phone Number
+
+Profile Picture (optional)
+
+Role Type: Parent / Grandparent / Carer
+
+Reference layout in Profile.png
+
+Support image upload
+
+Phone input should be validated and saved
+
+💾 Database:
+Extend user model with:
+
+first_name, last_name, phone_number, country, user_type, step_completed = 2
+
+If Step 3 is also complete, set profile_complete = true
+
+📤 KLAYVIO:
+Use existing Identify call structure
+
+Add:
+
+first_name
+
+last_name
+
+user_type
+
+phone_number (ensure parsed only if valid format)
+
+sms_opt_in = true (if phone is provided + marketing opt-in was checked in Step 1)
+
+🔹 STEP 3 — /preferences
+🎯 Goal: Capture user interest areas for future app personalisation
+Multi-select options:
+
+Baby Sleep
+
+Toddler Sleep
+
+Toddler Behaviour
+
+Partner Discounts
+
+Visual style as per Preferences.png
+
+Responsive layout
+
+💾 Database:
+Save preferences as array: preferences = []
+
+Set step_completed = 3
+
+If step 1 + 2 are complete: profile_complete = true
+
+📤 KLAYVIO:
+Extend Identify call with:
+
+preferences = ["Baby Sleep", "Toddler Behaviour"]
+
+🔁 STRIPE + KLAYVIO INTEGRATION (EXTENSION ONLY)
+1. ✅ NEXT BILLING DATE — ADDITION TO USER PROFILE
+Whenever a user purchases a subscription:
+
+Fetch from Stripe: next_billing_date via upcoming_invoice or subscription object
+
+Store in database:
+
+next_billing_date (nullable)
+
+If field already exists, update on plan change or billing cycle change
+
+📤 KLAYVIO:
+Extend Identify API to include:
+
+json
+Copy
+Edit
+{
+  "$email": "user@example.com",
+  "next_billing_date": "2025-09-08"
+}
+Best practice reference: https://developers.klaviyo.com/en/docs/identify
+
+This allows Klayvio flows for billing reminders, renewals, or payment updates.
+
+2. ✅ PURCHASE EVENT — TRIGGERED ON ANY TRANSACTION
+Whenever a purchase (subscription or one-time) is completed:
+
+Fire Klayvio Purchase event using existing event tracking infrastructure
+
+json
+Copy
+Edit
+{
+  "token": "<public_api_key>",
+  "event": "Purchase",
+  "customer_properties": {
+    "$email": "user@example.com"
+  },
+  "properties": {
+    "$value": 49.99,
+    "$event_id": "order_xyz",
+    "product_name": "Big Baby Sleep",
+    "product_id": "course_6",
+    "category": "Subscription",
+    "timestamp": "2025-08-08T12:00:00Z"
+  }
+}
+Best practice reference: https://developers.klaviyo.com/en/docs/track-purchases
+
+Ensure no duplication if similar purchase logic already exists — simply expand the schema to align with Klayvio’s standard structure.
+
+📋 DATABASE FIELDS TO EXTEND (ONLY IF NOT ALREADY PRESENT)
+Field	Type	Purpose
+step_completed	Integer	Tracks signup stage
+profile_complete	Boolean	Final stage flag
+preferences	Array	Selected onboarding categories
+user_type	String	Role type (Parent, Grandparent, Carer)
+phone_number	String	For SMS and verification
+next_billing_date	Date	From Stripe, nullable
+
+🔐 REMINDER
+Do NOT overwrite or duplicate existing Klayvio events or fields
+
+Use the same endpoint, same Identify payloads, and extend only if data isn’t already handled
+
+Reference internal documentation or codebase where Identify or Purchase logic is already used (e.g. during onboarding, post-checkout)

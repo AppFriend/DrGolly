@@ -1317,6 +1317,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced 3-step signup endpoints for progressive signup flow
+  
+  // Step 1: Basic signup (email, password, terms)
+  app.post('/api/auth/signup-step1', async (req, res) => {
+    try {
+      const { email, password, marketingOptIn, signupMethod = 'manual' } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists with this email" });
+      }
+      
+      // Generate user ID and hash password
+      const userId = AuthUtils.generateUserId();
+      const passwordHash = await AuthUtils.hashPassword(password);
+      
+      // Create user with step 1 data
+      const userData = {
+        id: userId,
+        email,
+        passwordHash,
+        hasSetPassword: true,
+        subscriptionTier: 'free',
+        marketingOptIn: marketingOptIn || false,
+        signupStep: 1,
+        signupCompleted: false,
+        signupSource: signupMethod === 'google' ? 'Google OAuth' : 'Web App Signup',
+        lastLoginAt: new Date()
+      };
+      
+      const user = await storage.createUser(userData);
+      
+      // Create session
+      const sessionData = {
+        claims: {
+          sub: user.id,
+          email: user.email
+        }
+      };
+      
+      req.session.passport = { user: sessionData };
+      req.session.userId = user.id;
+      
+      // Klaviyo tracking for step 1
+      if (klaviyoService) {
+        try {
+          await klaviyoService.identifyUser({
+            email: user.email,
+            signup_method: signupMethod,
+            email_opt_in: marketingOptIn || false,
+            profile_created_at: new Date().toISOString(),
+            signup_step: 1
+          });
+          
+          await klaviyoService.trackEvent(user.email, 'Signed Up', {
+            signup_method: signupMethod,
+            timestamp: new Date().toISOString()
+          });
+        } catch (klaviyoError) {
+          console.error('Klaviyo error in step 1:', klaviyoError);
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        userId: user.id,
+        step: 1,
+        nextStep: '/createprofile'
+      });
+      
+    } catch (error) {
+      console.error('Signup step 1 error:', error);
+      res.status(500).json({ message: "Failed to complete signup step 1" });
+    }
+  });
+  
+  // Step 2: Profile creation (name, phone, role)
+  app.post('/api/auth/update-profile', isAuthenticated, async (req, res) => {
+    try {
+      const { firstName, lastName, phoneNumber, userRole, signupStep } = req.body;
+      const userId = req.session.userId;
+      
+      if (!firstName || !lastName || !userRole) {
+        return res.status(400).json({ message: "First name, last name, and role are required" });
+      }
+      
+      // Update user with profile data
+      const updatedUser = await storage.updateUser(userId, {
+        firstName,
+        lastName,
+        phoneNumber: phoneNumber || null,
+        userRole,
+        signupStep: signupStep || 2
+      });
+      
+      // Klaviyo tracking for step 2
+      if (klaviyoService && updatedUser) {
+        try {
+          await klaviyoService.identifyUser({
+            email: updatedUser.email,
+            first_name: firstName,
+            last_name: lastName,
+            user_type: userRole,
+            phone_number: phoneNumber || '',
+            sms_opt_in: phoneNumber ? updatedUser.marketingOptIn : false,
+            signup_step: 2
+          });
+        } catch (klaviyoError) {
+          console.error('Klaviyo error in step 2:', klaviyoError);
+        }
+      }
+      
+      res.json({ 
+        success: true,
+        step: 2,
+        nextStep: '/preferences'
+      });
+      
+    } catch (error) {
+      console.error('Profile update error:', error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+  
+  // Step 3: Preferences and completion
+  app.post('/api/auth/complete-signup', isAuthenticated, async (req, res) => {
+    try {
+      const { preferences, signupStep, signupCompleted } = req.body;
+      const userId = req.session.userId;
+      
+      if (!preferences || !Array.isArray(preferences)) {
+        return res.status(400).json({ message: "Preferences are required" });
+      }
+      
+      // Update user with final step data
+      const updatedUser = await storage.updateUser(userId, {
+        primaryConcerns: JSON.stringify(preferences),
+        signupStep: signupStep || 3,
+        signupCompleted: signupCompleted || true
+      });
+      
+      // Klaviyo tracking for step 3 completion
+      if (klaviyoService && updatedUser) {
+        try {
+          await klaviyoService.identifyUser({
+            email: updatedUser.email,
+            preferences: preferences,
+            signup_step: 3,
+            profile_complete: true
+          });
+        } catch (klaviyoError) {
+          console.error('Klaviyo error in step 3:', klaviyoError);
+        }
+      }
+      
+      // Slack notification for completed enhanced signup
+      if (slackNotificationService && updatedUser) {
+        try {
+          await slackNotificationService.sendSignupNotification({
+            name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+            email: updatedUser.email,
+            signupSource: updatedUser.signupSource || 'Enhanced 3-Step Signup',
+            signupType: 'enhanced_3step_signup',
+            marketingOptIn: updatedUser.marketingOptIn,
+            primaryConcerns: preferences,
+            phoneNumber: updatedUser.phoneNumber,
+            userRole: updatedUser.userRole,
+            smsMarketingOptIn: updatedUser.phoneNumber ? updatedUser.marketingOptIn : false
+          });
+        } catch (slackError) {
+          console.error('Slack notification error:', slackError);
+        }
+      }
+      
+      res.json({ 
+        success: true,
+        step: 3,
+        completed: true,
+        redirectTo: '/'
+      });
+      
+    } catch (error) {
+      console.error('Signup completion error:', error);
+      res.status(500).json({ message: "Failed to complete signup" });
+    }
+  });
+
   // Test endpoint to verify Jared Looman signup fix
   app.post('/api/test/signup', async (req, res) => {
     try {

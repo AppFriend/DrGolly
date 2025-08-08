@@ -15,6 +15,8 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import EnhancedSignup from "@/pages/enhanced-signup";
+import CreateProfile from "@/pages/create-profile";
+import Preferences from "@/pages/preferences";
 import { SignupOptions } from "@/components/SignupOptions";
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
@@ -240,6 +242,8 @@ function Router() {
             )}
           </Route>
           <Route path="/enhanced-signup" component={EnhancedSignup} />
+          <Route path="/createprofile" component={CreateProfile} />
+          <Route path="/preferences" component={Preferences} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />
           <Route path="/terms" component={Terms} />
