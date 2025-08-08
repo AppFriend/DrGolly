@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { User, Plus, Camera } from "lucide-react";
+import { User, Camera } from "lucide-react";
 import { LoadingAnimation } from "@/components/ui/loading-animation";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProfileData {
   firstName: string;
@@ -15,8 +14,6 @@ interface ProfileData {
   phoneNumber: string;
   countryCode: string;
   userRole: string;
-  acceptedTerms: boolean;
-  marketingOptIn: boolean;
 }
 
 const ROLE_OPTIONS = [
@@ -35,9 +32,7 @@ export default function CreateProfilePage() {
     lastName: '',
     phoneNumber: '',
     countryCode: '+61',
-    userRole: '',
-    acceptedTerms: false,
-    marketingOptIn: false
+    userRole: ''
   });
 
   const handleNext = async () => {
@@ -69,15 +64,6 @@ export default function CreateProfilePage() {
       return;
     }
 
-    if (!profileData.acceptedTerms) {
-      toast({
-        title: "Terms Required",
-        description: "Please accept the Terms of Service to continue",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -91,8 +77,6 @@ export default function CreateProfilePage() {
         lastName: profileData.lastName.trim(),
         phoneNumber: fullPhoneNumber,
         userRole: profileData.userRole,
-        acceptedTerms: profileData.acceptedTerms,
-        marketingOptIn: profileData.marketingOptIn,
         signupStep: 2
       });
 
@@ -126,17 +110,36 @@ export default function CreateProfilePage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white shadow-lg border-0">
         <CardHeader className="text-center px-8 pt-8 pb-6">
+          {/* Dr Golly Logo */}
+          <div className="flex justify-center mb-4">
+            <img 
+              src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png" 
+              alt="Dr. Golly" 
+              className="h-12"
+            />
+          </div>
+          
+          {/* Breadcrumb */}
+          <div className="text-sm text-gray-500 mb-4">
+            Step 2 of 3 – Create Profile
+          </div>
+          
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Tell us a little about yourself?
           </h1>
         </CardHeader>
 
         <CardContent className="px-8 pb-8 space-y-6">
-          {/* Profile Picture */}
-          <div className="flex justify-end">
-            <button className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 text-sm">
-              <Plus className="w-4 h-4" />
-              <span>Add a Profile Picture</span>
+          {/* Profile Picture Upload */}
+          <div className="flex justify-center">
+            <button 
+              type="button"
+              className="relative w-20 h-20 bg-gray-100 rounded-full border-2 border-gray-300 hover:border-gray-400 transition-colors flex items-center justify-center group"
+            >
+              <Camera className="w-6 h-6 text-gray-400 group-hover:text-gray-600" />
+              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-[#7DD3D8] rounded-full p-1">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
             </button>
           </div>
 
@@ -186,13 +189,13 @@ export default function CreateProfilePage() {
           {/* Role Selection */}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-3">Which Best Describes You?</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-wrap gap-3">
               {ROLE_OPTIONS.map(role => (
                 <button
                   key={role.id}
                   type="button"
                   onClick={() => setProfileData(prev => ({ ...prev, userRole: role.id }))}
-                  className={`p-4 rounded-lg border text-center transition-all ${
+                  className={`flex-1 min-w-0 p-4 rounded-lg border text-center transition-all ${
                     profileData.userRole === role.id
                       ? 'border-[#7DD3D8] bg-[#7DD3D8]/10 text-[#7DD3D8]'
                       : 'border-gray-300 hover:border-gray-400 text-gray-700'
@@ -205,38 +208,10 @@ export default function CreateProfilePage() {
             </div>
           </div>
 
-          {/* Checkboxes */}
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="terms"
-                checked={profileData.acceptedTerms}
-                onCheckedChange={(checked) => setProfileData(prev => ({ ...prev, acceptedTerms: checked as boolean }))}
-              />
-              <label htmlFor="terms" className="text-sm text-gray-600 leading-5">
-                By signing up you agree to the{' '}
-                <a href="/terms" className="text-[#7DD3D8] hover:underline">
-                  Dr Golly Terms of Service
-                </a>
-              </label>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="marketing-profile"
-                checked={profileData.marketingOptIn}
-                onCheckedChange={(checked) => setProfileData(prev => ({ ...prev, marketingOptIn: checked as boolean }))}
-              />
-              <label htmlFor="marketing-profile" className="text-sm text-gray-600 leading-5">
-                By opting in, you agree to receive marketing materials.
-              </label>
-            </div>
-          </div>
-
           {/* Continue Button */}
           <Button 
             onClick={handleNext}
-            disabled={isSubmitting || !profileData.firstName || !profileData.lastName || !profileData.userRole || !profileData.acceptedTerms}
+            disabled={isSubmitting || !profileData.firstName || !profileData.lastName || !profileData.userRole}
             className="w-full h-12 bg-[#7DD3D8] hover:bg-[#6BC5CB] text-white font-medium rounded-full"
           >
             {isSubmitting ? (

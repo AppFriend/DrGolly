@@ -102,7 +102,21 @@ export default function PreferencesPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
-        <div className="mb-8">
+        <div className="mb-8 text-center">
+          {/* Dr Golly Logo */}
+          <div className="flex justify-center mb-6">
+            <img 
+              src="/attached_assets/Dr Golly-Sleep-Logo-FA (1)_1751955671236.png" 
+              alt="Dr. Golly" 
+              className="h-12"
+            />
+          </div>
+          
+          {/* Breadcrumb */}
+          <div className="text-sm text-gray-500 mb-4">
+            Step 3 of 3 – Preferences
+          </div>
+          
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Where can we help you first?
           </h1>

@@ -128,6 +128,12 @@ export default function SignupPage() {
               className="h-12"
             />
           </div>
+          
+          {/* Breadcrumb */}
+          <div className="text-sm text-gray-500 mb-4">
+            Step 1 of 3 – Sign Up
+          </div>
+          
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Join Dr. Golly Sleep
           </h1>
@@ -138,25 +144,6 @@ export default function SignupPage() {
         
         <CardContent className="px-8 pb-8">
           <form onSubmit={handleSignup} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                <Input
-                  type="text"
-                  placeholder="Enter your first name"
-                  className="h-12 border-gray-300 focus:border-[#7DD3D8] focus:ring-[#7DD3D8]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                <Input
-                  type="text"
-                  placeholder="Enter your last name"
-                  className="h-12 border-gray-300 focus:border-[#7DD3D8] focus:ring-[#7DD3D8]"
-                />
-              </div>
-            </div>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <div className="relative">
@@ -217,34 +204,65 @@ export default function SignupPage() {
               </div>
             </div>
             
-            <Button
-              type="submit"
-              className="w-full h-12 bg-[#7DD3D8] hover:bg-[#6BC5CB] text-white font-medium rounded-full text-base"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Creating Account...' : 'Create Account'}
-            </Button>
-          </form>
-          
-          <div className="my-6 text-center">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+            {/* Terms and Marketing Checkboxes */}
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="terms"
+                  checked={true}
+                  required
+                />
+                <label htmlFor="terms" className="text-sm text-gray-600 leading-5">
+                  By signing up, you agree to the{' '}
+                  <a href="/terms" className="text-[#7DD3D8] hover:underline">
+                    Dr Golly Terms of Service
+                  </a>
+                </label>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">OR</span>
+              
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="marketing"
+                  checked={marketingOptIn}
+                  onCheckedChange={(checked) => setMarketingOptIn(checked as boolean)}
+                />
+                <label htmlFor="marketing" className="text-sm text-gray-600 leading-5">
+                  By opting in, you agree to receive marketing materials.
+                </label>
               </div>
             </div>
-          </div>
-          
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-12 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg"
-          >
-            <FcGoogle className="w-5 h-5 mr-3" />
-            Sign up with Google
-          </Button>
+            
+            {/* Buttons */}
+            <div className="space-y-4">
+              <Button
+                type="submit"
+                className="w-full h-12 bg-[#7DD3D8] hover:bg-[#6BC5CB] text-white font-medium rounded-full text-base"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Creating Account...' : 'Create Account'}
+              </Button>
+              
+              <div className="text-center">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500">OR</span>
+                  </div>
+                </div>
+              </div>
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg"
+              >
+                <FcGoogle className="w-5 h-5 mr-3" />
+                Sign up with Google
+              </Button>
+            </div>
+          </form>
           
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
@@ -255,31 +273,6 @@ export default function SignupPage() {
               >
                 Sign In
               </button>
-            </p>
-          </div>
-          
-          <div className="mt-6 flex items-start space-x-3">
-            <Checkbox
-              id="marketing"
-              checked={marketingOptIn}
-              onCheckedChange={(checked) => setMarketingOptIn(checked as boolean)}
-            />
-            <label htmlFor="marketing" className="text-sm text-gray-600 leading-5">
-              By opting in, you agree to receive marketing materials.
-            </label>
-          </div>
-          
-          <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              By signing up, you agree to our{' '}
-              <a href="/terms" className="text-[#7DD3D8] hover:underline">
-                Terms
-              </a>
-              ,{' '}
-              <a href="/privacy" className="text-[#7DD3D8] hover:underline">
-                Privacy Policy
-              </a>{' '}
-              and Cookie use
             </p>
           </div>
         </CardContent>

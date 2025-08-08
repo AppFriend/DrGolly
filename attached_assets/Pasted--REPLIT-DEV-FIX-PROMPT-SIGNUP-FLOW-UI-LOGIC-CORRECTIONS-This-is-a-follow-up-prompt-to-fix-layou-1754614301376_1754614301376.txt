@@ -1,0 +1,115 @@
+🛠 REPLIT DEV FIX PROMPT: SIGNUP FLOW UI & LOGIC CORRECTIONS
+This is a follow-up prompt to fix layout and logic issues across the 3-step signup flow (/signup, /createprofile, /preferences). Please follow each instruction carefully to align with UX best practices and match design references provided earlier.
+
+🔹 STEP 1 — /signup
+❌ Issues:
+First/Last name fields are showing here incorrectly
+
+T&Cs + Marketing checkboxes not styled correctly
+
+Button order and structure is off
+
+✅ Fix Instructions:
+Remove First Name and Last Name from Step 1 — they now belong only to Step 2 (/createprofile)
+
+Move checkbox components from Step 2 into Step 1, styled as per current Step 2:
+
+✅ Checkbox 1: "By signing up, you agree to the Dr Golly Terms of Service" (linked to /terms)
+
+✅ Checkbox 2 (pre-checked): "By opting in, you agree to receive marketing materials."
+
+Use modern checkbox components with left-aligned checkmarks and label text
+
+Position buttons after checkboxes:
+
+Google login and Create Account buttons should come after both checkboxes
+
+Button layout:
+
+Primary CTA: “Create Account”
+
+Separator: “OR”
+
+Secondary CTA: “Sign up with Google”
+
+Ensure consistent logo placement:
+
+Dr Golly logo should appear top-centre, same style on all steps
+
+🔹 STEP 2 — /createprofile
+❌ Issues:
+First/Last Name appear again (should only show here, not in Step 1)
+
+Checkboxes are duplicated (should not appear here)
+
+Profile picture uploader is misaligned
+
+"Which best describes you" pills are overflowing the container
+
+Layout lacks visual breadcrumbs / progress indicators
+
+✅ Fix Instructions:
+Only show First Name + Last Name here, not in previous step
+
+Remove both checkboxes (they now live only on Step 1)
+
+Style profile picture upload as follows:
+
+Circular avatar upload icon
+
+Centred above form fields
+
+Display user initials or default avatar if no upload
+
+Clickable to upload from device
+
+Fix container wrap issue on pills:
+
+Parent / Grandparent / Carer should be inline, wrapped cleanly inside card container
+
+Maintain clear selected/unselected styling
+
+Add breadcrumb navigation (top-left or top-centre), e.g.:
+
+sql
+Copy
+Edit
+Step 2 of 3 – Create Profile
+Ensure Dr Golly logo is displayed top-centre, consistently across all steps
+
+🔹 STEP 3 — /preferences
+✅ No major issues reported here, but to ensure design continuity:
+
+Maintain breadcrumbs (Step 3 of 3 – Preferences)
+
+Maintain consistent CTA button style
+
+Keep Dr Golly logo visible at the top
+
+🧩 GLOBAL COMPONENT INTEGRITY
+Apply the following globally across all steps:
+
+Element	Requirement
+✅ Dr Golly logo	Must be visible, top-centred, consistent on all steps
+✅ Breadcrumbs	Display "Step X of 3" for user clarity
+✅ Button styling	Use consistent mint/teal round buttons across all screens
+✅ Mobile responsiveness	Ensure all layouts collapse cleanly on small screen widths
+✅ Keyboard nav + labels	All inputs should support tabbing and use clear label text
+
+Once these fixes are applied, please test all 3 steps across:
+
+Desktop
+
+iOS Safari
+
+Android Chrome
+
+Mobile viewports in dev tools
+
+And confirm:
+
+Field logic flows as described
+
+Visual layout is consistent with screenshots and design references
+
+Stripe and Klayvio events are not broken
