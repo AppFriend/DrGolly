@@ -54,6 +54,7 @@ import AuthTestPage from "@/pages/auth-test";
 import AffiliateApply from "@/pages/affiliate-apply";
 import AffiliateTerms from "@/pages/affiliate-terms";
 import CompletePage from "@/pages/complete";
+import { TrackingRedirect } from "@/components/TrackingRedirect";
 
 function AuthenticatedApp() {
   const [location] = useLocation();
@@ -101,6 +102,9 @@ function AuthenticatedApp() {
         <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/affiliates/apply" component={AffiliateApply} />
         <Route path="/affiliate-terms" component={AffiliateTerms} />
+        
+        {/* Top of Funnel tracking redirect route */}
+        <Route path="/t/of/blog/:slug" component={TrackingRedirect} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
@@ -255,6 +259,10 @@ function Router() {
           <Route path="/share/:slug" component={Share} />
           <Route path="/affiliates/apply" component={AffiliateApply} />
           <Route path="/affiliate-terms" component={AffiliateTerms} />
+          
+          {/* Top of Funnel tracking redirect route (also available for unauthenticated users) */}
+          <Route path="/t/of/blog/:slug" component={TrackingRedirect} />
+          
           <Route component={Landing} />
         </Switch>
         <Toaster />
