@@ -120,6 +120,11 @@ export default function SignupPage() {
       </div>
       
       <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-xl border-0 relative z-10">
+        {/* Breadcrumb */}
+        <div className="absolute top-4 left-4 text-sm text-gray-500">
+          Step 1 of 3
+        </div>
+        
         <CardHeader className="text-center px-8 pt-8 pb-6">
           <div className="flex justify-center mb-6">
             <img 
@@ -127,11 +132,6 @@ export default function SignupPage() {
               alt="Dr. Golly" 
               className="h-12"
             />
-          </div>
-          
-          {/* Breadcrumb */}
-          <div className="text-sm text-gray-500 mb-4">
-            Step 1 of 3 – Sign Up
           </div>
           
           <h1 className="text-2xl font-bold text-gray-900 mb-2">

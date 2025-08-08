@@ -243,6 +243,7 @@ function Router() {
           </Route>
           <Route path="/enhanced-signup" component={EnhancedSignup} />
           <Route path="/createprofile" component={CreateProfile} />
+          <Route path="/create-profile" component={CreateProfile} />
           <Route path="/preferences" component={Preferences} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/reset-password-confirm" component={ResetPasswordConfirm} />

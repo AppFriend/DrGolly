@@ -72,13 +72,11 @@ export default function PreferencesPage() {
       if (response.ok) {
         toast({
           title: "Welcome!",
-          description: "Your profile is complete. Redirecting to app...",
+          description: "Your profile is complete. Welcome to Dr. Golly Sleep!",
         });
         
-        // Small delay to show success message
-        setTimeout(() => {
-          setLocation('/');
-        }, 1500);
+        // Redirect directly to home without delay
+        setLocation('/');
       } else {
         const errorData = await response.json();
         toast({
@@ -100,7 +98,17 @@ export default function PreferencesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative">
+      {/* Breadcrumb */}
+      <div className="absolute top-4 left-4">
+        <button 
+          onClick={() => setLocation('/create-profile')}
+          className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+        >
+          ← Step 3 of 3
+        </button>
+      </div>
+      
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
           {/* Dr Golly Logo */}
@@ -110,11 +118,6 @@ export default function PreferencesPage() {
               alt="Dr. Golly" 
               className="h-12"
             />
-          </div>
-          
-          {/* Breadcrumb */}
-          <div className="text-sm text-gray-500 mb-4">
-            Step 3 of 3 – Preferences
           </div>
           
           <h1 className="text-3xl font-bold text-gray-900 mb-2">

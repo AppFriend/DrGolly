@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { User, Camera } from "lucide-react";
+import { User, Camera, Upload } from "lucide-react";
 import { LoadingAnimation } from "@/components/ui/loading-animation";
 
 interface ProfileData {
@@ -14,6 +14,7 @@ interface ProfileData {
   phoneNumber: string;
   countryCode: string;
   userRole: string;
+  profilePicture?: File;
 }
 
 const ROLE_OPTIONS = [
@@ -26,6 +27,8 @@ export default function CreateProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
   
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: '',
@@ -34,6 +37,30 @@ export default function CreateProfilePage() {
     countryCode: '+61',
     userRole: ''
   });
+
+  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfileData(prev => ({ ...prev, profilePicture: file }));
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePicturePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProfilePictureClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const getInitials = () => {
+    const first = profileData.firstName.charAt(0).toUpperCase();
+    const last = profileData.lastName.charAt(0).toUpperCase();
+    return `${first}${last}`;
+  };
 
   const handleNext = async () => {
     // Validate required fields
@@ -108,7 +135,17 @@ export default function CreateProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white shadow-lg border-0">
+      <Card className="w-full max-w-md bg-white shadow-lg border-0 relative">
+        {/* Breadcrumb */}
+        <div className="absolute top-4 left-4">
+          <button 
+            onClick={() => setLocation('/signup')}
+            className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+          >
+            ← Step 2 of 3
+          </button>
+        </div>
+        
         <CardHeader className="text-center px-8 pt-8 pb-6">
           {/* Dr Golly Logo */}
           <div className="flex justify-center mb-4">
@@ -119,11 +156,6 @@ export default function CreateProfilePage() {
             />
           </div>
           
-          {/* Breadcrumb */}
-          <div className="text-sm text-gray-500 mb-4">
-            Step 2 of 3 – Create Profile
-          </div>
-          
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Tell us a little about yourself?
           </h1>
@@ -132,15 +164,40 @@ export default function CreateProfilePage() {
         <CardContent className="px-8 pb-8 space-y-6">
           {/* Profile Picture Upload */}
           <div className="flex justify-center">
-            <button 
-              type="button"
-              className="relative w-20 h-20 bg-gray-100 rounded-full border-2 border-gray-300 hover:border-gray-400 transition-colors flex items-center justify-center group"
-            >
-              <Camera className="w-6 h-6 text-gray-400 group-hover:text-gray-600" />
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={handleProfilePictureClick}
+                className="relative w-20 h-20 bg-gray-100 rounded-full border-2 border-gray-300 hover:border-gray-400 transition-colors flex items-center justify-center group overflow-hidden"
+              >
+                {profilePicturePreview ? (
+                  <img 
+                    src={profilePicturePreview} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : profileData.firstName && profileData.lastName ? (
+                  <span className="text-xl font-semibold text-gray-600">
+                    {getInitials()}
+                  </span>
+                ) : (
+                  <Camera className="w-6 h-6 text-gray-400 group-hover:text-gray-600" />
+                )}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                  <Upload className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </button>
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-[#7DD3D8] rounded-full p-1">
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               </div>
-            </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleProfilePictureChange}
+              className="hidden"
+            />
           </div>
 
           {/* Name Fields */}
