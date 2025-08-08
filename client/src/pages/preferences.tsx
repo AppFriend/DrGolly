@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -39,6 +40,7 @@ const PREFERENCE_OPTIONS: PreferenceOption[] = [
 export default function PreferencesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
+  const [babyDueDate, setBabyDueDate] = useState('');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -65,6 +67,7 @@ export default function PreferencesPage() {
     try {
       const response = await apiRequest('POST', '/api/auth/complete-signup', {
         preferences: selectedPreferences,
+        babyDueDate: babyDueDate,
         signupStep: 3,
         signupCompleted: true
       });
@@ -120,6 +123,20 @@ export default function PreferencesPage() {
             />
           </div>
           
+          {/* Due Date / Baby Birthday Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Due Date / Baby Birthday</h2>
+            <div className="max-w-sm mx-auto">
+              <Input
+                type="date"
+                value={babyDueDate}
+                onChange={(e) => setBabyDueDate(e.target.value)}
+                className="h-12 text-center"
+                placeholder="Select date"
+              />
+            </div>
+          </div>
+
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Where can we help you first?
           </h1>

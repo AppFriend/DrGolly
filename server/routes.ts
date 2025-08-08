@@ -1484,19 +1484,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 3: Preferences and completion
   app.post('/api/auth/complete-signup', isAuthenticated, async (req, res) => {
     try {
-      const { preferences, signupStep, signupCompleted } = req.body;
+      const { preferences, babyDueDate, signupStep, signupCompleted } = req.body;
       const userId = req.session.userId;
       
       if (!preferences || !Array.isArray(preferences)) {
         return res.status(400).json({ message: "Preferences are required" });
       }
       
-      // Update user with final step data
-      const updatedUser = await storage.updateUser(userId, {
+      // Update user with final step data including baby due date
+      const updateData = {
         primaryConcerns: JSON.stringify(preferences),
         signupStep: signupStep || 3,
         signupCompleted: signupCompleted || true
-      });
+      };
+      
+      // Add baby due date if provided
+      if (babyDueDate) {
+        updateData.firstChildDob = babyDueDate;
+      }
+      
+      const updatedUser = await storage.updateUser(userId, updateData);
       
       // Klaviyo tracking for step 3 completion
       if (klaviyoService && updatedUser) {

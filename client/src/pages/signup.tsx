@@ -194,7 +194,7 @@ export default function SignupPage() {
               className="w-full h-12 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-3"
             >
               <FcGoogle className="w-5 h-5" />
-              Continue with Google
+              Sign Up with Google
             </Button>
           </div>
           
@@ -321,25 +321,7 @@ export default function SignupPage() {
                 {isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
               
-              <div className="text-center">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-gray-500">OR</span>
-                  </div>
-                </div>
-              </div>
-              
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-12 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg"
-              >
-                <FcGoogle className="w-5 h-5 mr-3" />
-                Sign up with Google
-              </Button>
+
             </div>
           </form>
           
