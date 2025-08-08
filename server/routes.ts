@@ -808,21 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountActivated: user.account_activated || user.accountActivated,
         activatedServices: user.activated_services || user.activatedServices,
         createdAt: user.created_at || user.createdAt,
-        updatedAt: user.updated_at || user.updatedAt,
-        // Enhanced signup fields for Klaviyo sync
-        userRole: user.user_role || user.userRole,
-        primaryConcerns: user.primary_concerns || user.primaryConcerns,
-        smsMarketingOptIn: user.sms_marketing_opt_in || user.smsMarketingOptIn,
-        acceptedTerms: user.accepted_terms || user.acceptedTerms,
-        signupStep: user.signup_step || user.signupStep,
-        signupCompleted: user.signup_completed || user.signupCompleted,
-        onboardingCompleted: user.onboarding_completed || user.onboardingCompleted
-        primaryConcerns: user.primary_concerns || user.primaryConcerns,
-        smsMarketingOptIn: user.sms_marketing_opt_in || user.smsMarketingOptIn,
-        acceptedTerms: user.accepted_terms || user.acceptedTerms,
-        signupStep: user.signup_step || user.signupStep,
-        signupCompleted: user.signup_completed || user.signupCompleted,
-        onboardingCompleted: user.onboarding_completed || user.onboardingCompleted
+        updatedAt: user.updated_at || user.updatedAt
       };
       
       console.log('User found:', { 
@@ -834,15 +820,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profilePictureUrl: userData.profilePictureUrl,
         firstChildDob: userData.firstChildDob
       });
-      
-      // Sync user profile data with Klaviyo on each login/auth check
-      try {
-        await klaviyoService.createOrUpdateProfile(user);
-        console.log('✅ Klaviyo profile updated for user:', userData.id);
-      } catch (klaviyoError) {
-        console.error('⚠️ Failed to update Klaviyo profile:', klaviyoError);
-        // Don't block login if Klaviyo fails
-      }
       
       res.json(userData);
     } catch (error) {
@@ -907,15 +884,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update last login
       await storage.updateUserLastLogin(user.id);
-
-      // Sync user profile data with Klaviyo on login
-      try {
-        await klaviyoService.createOrUpdateProfile(user);
-        console.log('✅ Klaviyo profile updated for user:', user.id);
-      } catch (klaviyoError) {
-        console.error('⚠️ Failed to update Klaviyo profile:', klaviyoError);
-        // Don't block login if Klaviyo fails
-      }
 
       // Create session manually (similar to how Replit auth works)
       const sessionData = {

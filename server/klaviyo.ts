@@ -182,6 +182,7 @@ export class KlaviyoService {
           email: user.email || undefined,
           first_name: user.firstName || undefined,
           last_name: user.lastName || undefined,
+          phone_number: formatPhoneNumber(user.phoneNumber || user.phone),
           properties: customProperties
         }
       };
@@ -210,6 +211,7 @@ export class KlaviyoService {
                 attributes: {
                   first_name: user.firstName || undefined,
                   last_name: user.lastName || undefined,
+                  phone_number: formatPhoneNumber(user.phoneNumber || user.phone),
                   properties: customProperties
                 }
               }

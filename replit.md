@@ -60,12 +60,6 @@ This is a mobile-first learning management system (LMS) built with React and Exp
   - Course change log system operational with comprehensive audit trail
   - Affiliate management MVP completed and production-ready
   - All critical systems stable and ready for signup recalibration phase
-- **LOGIN-BASED KLAVIYO SYNC IMPLEMENTATION**: August 8th, 2025 - 11:06 PM:
-  - Enhanced signup endpoint with comprehensive data collection (firstName, lastName, phone, userRole, primaryConcerns, SMS opt-in)
-  - Login-based Klaviyo profile synchronization implemented for both /api/user and /api/auth/public-login endpoints
-  - Extended user data mapping to include all enhanced signup fields for proper marketing profile sync
-  - Klaviyo service updated to handle phone numbers in custom properties for E.164 compatibility
-  - Automatic profile refresh on every login ensures marketing data stays current for lifecycle campaigns
 
 ## User Preferences
 
