@@ -184,7 +184,7 @@ export default function SignupPage() {
 
         <CardHeader className="px-8 pt-8 pb-6">
           <h1 className="text-xl font-bold uppercase mb-4 text-left" style={{ color: '#0a5d66' }}>
-            YOUR DETAILS
+            LET'S GET STARTED
           </h1>
         </CardHeader>
         
