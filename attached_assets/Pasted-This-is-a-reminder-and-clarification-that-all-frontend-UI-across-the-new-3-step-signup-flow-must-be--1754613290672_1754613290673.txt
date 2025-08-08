@@ -1,0 +1,124 @@
+This is a reminder and clarification that all frontend UI across the new 3-step signup flow must be designed to match the attached screenshots and described specifications — not approximate versions or interpretations.
+
+The goal is to create a world-class, frictionless signup experience, so design precision matters.
+
+📌 GENERAL RULES (ALL STEPS)
+Use modern responsive layout with:
+
+Clean padding/margin spacing
+
+Mobile-first responsiveness
+
+Full desktop scaling
+
+All text, buttons, forms, backgrounds, and structure must reflect the provided design references
+
+All UI elements must be accessible, properly labelled, and usable with keyboard navigation
+
+Use consistent fonts, weights, and styles already in the app design system (or as per screenshots)
+
+🔹 STEP 1 — /signup
+Reference: signup design reference.png
+
+✅ Must include:
+Green cloud design as background and page frame
+
+Google Sign-In button styled and functional
+
+Fields:
+
+Email
+
+Password
+
+Confirm Password
+
+✅ Pre-checked checkbox:
+"By opting in, you agree to receive marketing materials."
+
+✅ Consent statement below form:
+"By signing up you agree to our Terms of Service" → Link to /terms
+
+CTA button: "Sign Up" styled exactly as shown (mint/teal with rounded corners)
+
+🔄 Logic:
+On submit, proceed to /createprofile
+
+Persist user profile in DB at this step (even if steps 2 or 3 are skipped)
+
+🔹 STEP 2 — /createprofile
+Reference: Profile.png
+
+✅ Must include (in order):
+First Name
+
+Last Name
+
+Phone Number with Country Selector Dropdown (required format)
+
+Profile Picture upload (optional) with clickable “Add a Profile Picture”
+
+Role selection pills:
+
+Parent
+
+Grandparent
+
+Carer
+
+✅ Selected pill must show clearly (e.g. coloured border or fill)
+
+✅ Checkbox Section:
+"By signing up you agree to the Dr Golly Terms of Service" → Link to /terms
+
+"By opting in, you agree to receive marketing materials." (pre-unchecked)
+
+✅ “Continue” CTA button styled same as Sign Up button (rounded, teal)
+
+🔄 Logic:
+On submit, update user profile in DB and move to /preferences
+
+🔹 STEP 3 — /preferences
+Reference: Preferences.png
+
+✅ Must include:
+Heading: "Where can we help you first?"
+
+Subheading: "You can select multiple & we'll personalise your experience!"
+
+Four large selectable visual cards:
+
+Baby Sleep
+
+Toddler Sleep
+
+Toddler Behaviour
+
+Partner Discounts
+
+✅ Cards should:
+
+Be selectable with visual change (e.g. outline, fill, or icon toggle)
+
+Allow multi-select
+
+CTA button: “Continue” at bottom (same style as other steps)
+
+🔄 Logic:
+Store preferences as array in user profile
+
+If Step 1 + 2 are also complete, set profile_complete = true
+
+⚠️ DO NOT IGNORE:
+Match the layout, font sizes, button shapes, and spacing exactly as in screenshots
+
+Do not collapse fields or re-order elements unless absolutely necessary for responsiveness
+
+DO NOT skip UI elements like checkboxes, pills, buttons or headings — all are essential for UX, segmentation, or compliance
+
+✅ SUMMARY OF FILE REFERENCES
+Step	Screenshot	Key Visual Requirements
+/signup	signup design reference.png	Green cloud background, Google login, styled CTA, consent
+/createprofile	Profile.png	Full-name + phone + role selection pills, checkboxes
+/preferences	Preferences.png	4 selectable cards, subheading, consistent CTA
+

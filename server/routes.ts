@@ -1401,7 +1401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 2: Profile creation (name, phone, role)
   app.post('/api/auth/update-profile', isAuthenticated, async (req, res) => {
     try {
-      const { firstName, lastName, phoneNumber, userRole, signupStep } = req.body;
+      const { firstName, lastName, phoneNumber, userRole, acceptedTerms, marketingOptIn, signupStep } = req.body;
       const userId = req.session.userId;
       
       if (!firstName || !lastName || !userRole) {
@@ -1414,14 +1414,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         phoneNumber: phoneNumber || null,
         userRole,
+        acceptedTerms: acceptedTerms || false,
+        marketingOptIn: marketingOptIn || false,
         signupStep: signupStep || 2
       });
       
       // Klaviyo tracking for step 2
       if (klaviyoService && updatedUser) {
         try {
-          await klaviyoService.identifyUser({
-            email: updatedUser.email,
+          await klaviyoService.updateProfile(updatedUser.email, {
             first_name: firstName,
             last_name: lastName,
             user_type: userRole,

@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Upload, User, Phone } from "lucide-react";
+import { User, Plus, Camera } from "lucide-react";
 import { LoadingAnimation } from "@/components/ui/loading-animation";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProfileData {
   firstName: string;
@@ -16,20 +15,14 @@ interface ProfileData {
   phoneNumber: string;
   countryCode: string;
   userRole: string;
-  profilePicture?: File;
+  acceptedTerms: boolean;
+  marketingOptIn: boolean;
 }
 
 const ROLE_OPTIONS = [
-  { id: 'parent', label: 'Parent', icon: '👨‍👩‍👧‍👦' },
-  { id: 'grandparent', label: 'Grandparent', icon: '👵' },
-  { id: 'carer', label: 'Carer', icon: '🤗' }
-];
-
-const COUNTRY_CODES = [
-  { code: '+61', country: 'Australia', flag: '🇦🇺' },
-  { code: '+1', country: 'USA/Canada', flag: '🇺🇸' },
-  { code: '+44', country: 'UK', flag: '🇬🇧' },
-  { code: '+64', country: 'New Zealand', flag: '🇳🇿' },
+  { id: 'Parent', label: 'Parent' },
+  { id: 'Grandparent', label: 'Grandparent' },
+  { id: 'Carer', label: 'Carer' }
 ];
 
 export default function CreateProfilePage() {
@@ -42,27 +35,10 @@ export default function CreateProfilePage() {
     lastName: '',
     phoneNumber: '',
     countryCode: '+61',
-    userRole: ''
+    userRole: '',
+    acceptedTerms: false,
+    marketingOptIn: false
   });
-
-  const [phoneValidationError, setPhoneValidationError] = useState<string>('');
-
-  // Validate phone number format
-  const validatePhoneNumber = (phone: string): boolean => {
-    setPhoneValidationError('');
-    if (!phone) return true; // Optional field
-    
-    // Remove all non-digit characters for validation
-    const cleaned = phone.replace(/\D/g, '');
-    
-    // Check for common formats
-    if (cleaned.length < 8 || cleaned.length > 15) {
-      setPhoneValidationError('Phone number must be between 8-15 digits');
-      return false;
-    }
-    
-    return true;
-  };
 
   const handleNext = async () => {
     // Validate required fields
@@ -93,8 +69,12 @@ export default function CreateProfilePage() {
       return;
     }
 
-    // Validate phone if provided
-    if (profileData.phoneNumber && !validatePhoneNumber(profileData.phoneNumber)) {
+    if (!profileData.acceptedTerms) {
+      toast({
+        title: "Terms Required",
+        description: "Please accept the Terms of Service to continue",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -111,6 +91,8 @@ export default function CreateProfilePage() {
         lastName: profileData.lastName.trim(),
         phoneNumber: fullPhoneNumber,
         userRole: profileData.userRole,
+        acceptedTerms: profileData.acceptedTerms,
+        marketingOptIn: profileData.marketingOptIn,
         signupStep: 2
       });
 
@@ -140,136 +122,132 @@ export default function CreateProfilePage() {
     }
   };
 
-  const handleBack = () => {
-    setLocation('/signup');
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center space-y-2">
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-            <div className="bg-green-600 h-2 rounded-full transition-all duration-300" style={{ width: '66%' }}></div>
-          </div>
-          <CardTitle className="text-2xl font-bold text-gray-900">
-            <User className="inline-block w-6 h-6 mr-2" />
-            Create Your Profile
-          </CardTitle>
-          <p className="text-gray-600">Tell us a bit about yourself</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-white shadow-lg border-0">
+        <CardHeader className="text-center px-8 pt-8 pb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Tell us a little about yourself?
+          </h1>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="px-8 pb-8 space-y-6">
+          {/* Profile Picture */}
+          <div className="flex justify-end">
+            <button className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 text-sm">
+              <Plus className="w-4 h-4" />
+              <span>Add a Profile Picture</span>
+            </button>
+          </div>
+
           {/* Name Fields */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name *</Label>
+          <div className="space-y-4">
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input
-                id="firstName"
                 type="text"
-                placeholder="First name"
+                placeholder="First Name"
                 value={profileData.firstName}
                 onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
-                className="border-gray-300 focus:border-green-500"
+                className="h-12 pl-10 border-gray-300 focus:border-[#7DD3D8] focus:ring-[#7DD3D8]"
                 disabled={isSubmitting}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name *</Label>
+            
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input
-                id="lastName"
                 type="text"
-                placeholder="Last name"
+                placeholder="Last Name"
                 value={profileData.lastName}
                 onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
-                className="border-gray-300 focus:border-green-500"
+                className="h-12 pl-10 border-gray-300 focus:border-[#7DD3D8] focus:ring-[#7DD3D8]"
                 disabled={isSubmitting}
               />
             </div>
           </div>
 
           {/* Phone Number */}
-          <div className="space-y-2">
-            <Label htmlFor="phone">
-              <Phone className="inline w-4 h-4 mr-1" />
-              Phone Number (Optional)
-            </Label>
-            <div className="flex gap-2">
-              <select
-                value={profileData.countryCode}
-                onChange={(e) => setProfileData(prev => ({ ...prev, countryCode: e.target.value }))}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:border-green-500 focus:outline-none"
-                disabled={isSubmitting}
-              >
-                {COUNTRY_CODES.map(country => (
-                  <option key={country.code} value={country.code}>
-                    {country.flag} {country.code}
-                  </option>
-                ))}
-              </select>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="Phone number"
-                value={profileData.phoneNumber}
-                onChange={(e) => {
-                  setProfileData(prev => ({ ...prev, phoneNumber: e.target.value }));
-                  setPhoneValidationError('');
-                }}
-                onBlur={(e) => validatePhoneNumber(e.target.value)}
-                className={`flex-1 border-gray-300 focus:border-green-500 ${phoneValidationError ? 'border-red-500' : ''}`}
-                disabled={isSubmitting}
-              />
+          <div className="flex space-x-2">
+            <div className="flex items-center bg-gray-50 border border-gray-300 rounded-lg px-3 py-3">
+              <span className="text-lg mr-2">🇦🇺</span>
+              <span className="text-gray-700">+61</span>
             </div>
-            {phoneValidationError && (
-              <p className="text-sm text-red-600">{phoneValidationError}</p>
-            )}
+            <Input
+              type="tel"
+              placeholder="412 345 678"
+              value={profileData.phoneNumber}
+              onChange={(e) => setProfileData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+              className="h-12 border-gray-300 focus:border-[#7DD3D8] focus:ring-[#7DD3D8] flex-1"
+              disabled={isSubmitting}
+            />
           </div>
 
           {/* Role Selection */}
-          <div className="space-y-3">
-            <Label>I am a... *</Label>
-            <RadioGroup
-              value={profileData.userRole}
-              onValueChange={(value) => setProfileData(prev => ({ ...prev, userRole: value }))}
-              className="space-y-2"
-              disabled={isSubmitting}
-            >
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-3">Which Best Describes You?</p>
+            <div className="grid grid-cols-3 gap-3">
               {ROLE_OPTIONS.map(role => (
-                <div key={role.id} className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-green-300 transition-colors">
-                  <RadioGroupItem value={role.id} id={role.id} />
-                  <label htmlFor={role.id} className="flex items-center cursor-pointer flex-1">
-                    <span className="text-xl mr-2">{role.icon}</span>
-                    <span className="font-medium">{role.label}</span>
-                  </label>
-                </div>
+                <button
+                  key={role.id}
+                  type="button"
+                  onClick={() => setProfileData(prev => ({ ...prev, userRole: role.id }))}
+                  className={`p-4 rounded-lg border text-center transition-all ${
+                    profileData.userRole === role.id
+                      ? 'border-[#7DD3D8] bg-[#7DD3D8]/10 text-[#7DD3D8]'
+                      : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                  }`}
+                  disabled={isSubmitting}
+                >
+                  <span className="font-medium text-sm">{role.label}</span>
+                </button>
               ))}
-            </RadioGroup>
+            </div>
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={handleBack}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-            <Button 
-              onClick={handleNext}
-              disabled={isSubmitting || !profileData.firstName || !profileData.lastName || !profileData.userRole}
-              className="flex-1 bg-green-600 hover:bg-green-700"
-            >
-              {isSubmitting ? (
-                <LoadingAnimation size="sm" className="mr-2" />
-              ) : (
-                <ArrowRight className="w-4 h-4 mr-2" />
-              )}
-              Continue
-            </Button>
+          {/* Checkboxes */}
+          <div className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="terms"
+                checked={profileData.acceptedTerms}
+                onCheckedChange={(checked) => setProfileData(prev => ({ ...prev, acceptedTerms: checked as boolean }))}
+              />
+              <label htmlFor="terms" className="text-sm text-gray-600 leading-5">
+                By signing up you agree to the{' '}
+                <a href="/terms" className="text-[#7DD3D8] hover:underline">
+                  Dr Golly Terms of Service
+                </a>
+              </label>
+            </div>
+            
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="marketing-profile"
+                checked={profileData.marketingOptIn}
+                onCheckedChange={(checked) => setProfileData(prev => ({ ...prev, marketingOptIn: checked as boolean }))}
+              />
+              <label htmlFor="marketing-profile" className="text-sm text-gray-600 leading-5">
+                By opting in, you agree to receive marketing materials.
+              </label>
+            </div>
           </div>
+
+          {/* Continue Button */}
+          <Button 
+            onClick={handleNext}
+            disabled={isSubmitting || !profileData.firstName || !profileData.lastName || !profileData.userRole || !profileData.acceptedTerms}
+            className="w-full h-12 bg-[#7DD3D8] hover:bg-[#6BC5CB] text-white font-medium rounded-full"
+          >
+            {isSubmitting ? (
+              <>
+                <LoadingAnimation size="sm" className="mr-2" />
+                Updating...
+              </>
+            ) : (
+              'Continue'
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>
