@@ -6,9 +6,9 @@ export function useAuth() {
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false, // Don't retry on auth failures
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true, // Refetch when user returns to window
     refetchInterval: false,
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 1000 * 60, // Cache for 1 minute to improve performance
   });
 
   return {

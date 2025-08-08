@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { GraduationCap, BookOpen, Heart, Gift } from "lucide-react";
 import { LoadingAnimation } from "@/components/ui/loading-animation";
@@ -70,13 +70,13 @@ export default function PreferencesPage() {
       });
 
       if (response.ok) {
-        toast({
-          title: "Welcome!",
-          description: "Your profile is complete. Welcome to Dr. Golly Sleep!",
-        });
+        // Invalidate auth cache to refresh user data after signup completion
+        await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
         
-        // Redirect directly to home after completion
-        setLocation('/home');
+        // Small delay to allow auth state to update
+        setTimeout(() => {
+          setLocation('/home');
+        }, 100);
       } else {
         const errorData = await response.json();
         toast({

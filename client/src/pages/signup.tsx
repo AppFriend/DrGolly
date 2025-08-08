@@ -158,9 +158,14 @@ export default function SignupPage() {
       </div>
       
       <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-xl border-0 relative z-10">
-        {/* Breadcrumb */}
-        <div className="absolute top-4 left-4 text-sm text-gray-500">
-          Step 1 of 3
+        {/* Back navigation */}
+        <div className="absolute top-4 left-4">
+          <button 
+            onClick={() => setLocation('/')}
+            className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+          >
+            ← Back
+          </button>
         </div>
         
         <CardHeader className="text-center px-8 pt-8 pb-6">
@@ -181,6 +186,28 @@ export default function SignupPage() {
         </CardHeader>
         
         <CardContent className="px-8 pb-8">
+          {/* Google Login Button - Top Option */}
+          <div className="mb-6">
+            <Button
+              type="button"
+              onClick={() => window.location.href = '/api/login'}
+              className="w-full h-12 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-3"
+            >
+              <FcGoogle className="w-5 h-5" />
+              Continue with Google
+            </Button>
+          </div>
+          
+          {/* OR Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+          
           <form onSubmit={handleSignup} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
