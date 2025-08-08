@@ -16,12 +16,21 @@ import {
   Copy,
   DollarSign,
   TrendingUp,
-  ExternalLink
+  ExternalLink,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  BarChart3
 } from "lucide-react";
 import type { Affiliate } from "@shared/schema";
 
+type SortField = 'followers' | 'tiktokFollowers' | 'country' | 'totalSales' | 'totalRevenue';
+type SortOrder = 'asc' | 'desc';
+
 export function AdminAffiliateManagement() {
   const [activeTab, setActiveTab] = useState("pending");
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const queryClient = useQueryClient();
 
   // Fetch all affiliates
@@ -29,9 +38,63 @@ export function AdminAffiliateManagement() {
     queryKey: ["/api/admin/affiliates"],
   });
 
-  // Filter affiliates based on active tab
-  const pendingAffiliates = allAffiliates.filter(affiliate => affiliate.status === 'pending');
-  const activeAffiliates = allAffiliates.filter(affiliate => affiliate.status === 'approved');
+  // Fetch Top of Funnel data
+  const { data: tofData = [], isLoading: tofLoading } = useQuery({
+    queryKey: ["/api/admin/tof-links"],
+  });
+
+  // Sort function
+  const sortData = (data: any[], field: SortField, order: SortOrder) => {
+    return [...data].sort((a, b) => {
+      let aVal = a[field];
+      let bVal = b[field];
+      
+      // Handle different data types
+      if (field === 'country') {
+        aVal = aVal?.toLowerCase() || '';
+        bVal = bVal?.toLowerCase() || '';
+      } else if (field === 'totalRevenue') {
+        aVal = parseFloat(aVal || 0);
+        bVal = parseFloat(bVal || 0);
+      } else {
+        aVal = aVal || 0;
+        bVal = bVal || 0;
+      }
+      
+      if (order === 'asc') {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+  };
+
+  // Toggle sort
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  // Get sort icon
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4" />;
+    }
+    return sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+  };
+
+  // Filter and sort affiliates based on active tab
+  let pendingAffiliates = allAffiliates.filter(affiliate => affiliate.status === 'pending');
+  let activeAffiliates = allAffiliates.filter(affiliate => affiliate.status === 'approved');
+  
+  if (sortField) {
+    pendingAffiliates = sortData(pendingAffiliates, sortField, sortOrder);
+    activeAffiliates = sortData(activeAffiliates, sortField, sortOrder);
+  }
   
   const loadingPending = isLoading;
   const loadingActive = isLoading;
@@ -118,10 +181,31 @@ export function AdminAffiliateManagement() {
             <TableHead>Profile</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Instagram</TableHead>
-            <TableHead>IG Followers</TableHead>
-            <TableHead>TikTok Followers</TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('followers')}
+            >
+              <div className="flex items-center gap-1">
+                IG Followers {getSortIcon('followers')}
+              </div>
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('tiktokFollowers')}
+            >
+              <div className="flex items-center gap-1">
+                TikTok Followers {getSortIcon('tiktokFollowers')}
+              </div>
+            </TableHead>
             <TableHead>PayPal Email</TableHead>
-            <TableHead>Country</TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('country')}
+            >
+              <div className="flex items-center gap-1">
+                Country {getSortIcon('country')}
+              </div>
+            </TableHead>
             <TableHead>Applied</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -194,6 +278,95 @@ export function AdminAffiliateManagement() {
     );
   };
 
+  const TopOfFunnelTable = () => {
+    if (tofLoading) {
+      return (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      );
+    }
+
+    if (!tofData?.length) {
+      return (
+        <div className="text-center p-8 text-gray-500">
+          <BarChart3 className="mx-auto h-12 w-12 mb-4 text-gray-300" />
+          <p>No Top of Funnel links</p>
+        </div>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>TOF URL</TableHead>
+            <TableHead>Campaign Name</TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('totalSales')}
+            >
+              <div className="flex items-center gap-1">
+                Clicks {getSortIcon('totalSales')}
+              </div>
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('totalSales')}
+            >
+              <div className="flex items-center gap-1">
+                Total Sales {getSortIcon('totalSales')}
+              </div>
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('totalRevenue')}
+            >
+              <div className="flex items-center gap-1">
+                Total Revenue {getSortIcon('totalRevenue')}
+              </div>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tofData.map((link: any) => (
+            <TableRow key={link.id}>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 max-w-[200px] truncate" title={link.tofUrl}>
+                    {link.tofUrl}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(link.tofUrl, "TOF URL")}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </TableCell>
+              <TableCell>{link.campaignName || 'N/A'}</TableCell>
+              <TableCell>{link.clicks?.toLocaleString() || '0'}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                  {link.totalSales || 0}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                  {formatCurrency(parseFloat(link.totalRevenue || "0"))}
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   const ActiveAffiliatesTable = () => {
     if (loadingActive) {
       return (
@@ -219,12 +392,47 @@ export function AdminAffiliateManagement() {
             <TableHead>Profile</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Instagram</TableHead>
-            <TableHead>IG Followers</TableHead>
-            <TableHead>TikTok Followers</TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('followers')}
+            >
+              <div className="flex items-center gap-1">
+                IG Followers {getSortIcon('followers')}
+              </div>
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('tiktokFollowers')}
+            >
+              <div className="flex items-center gap-1">
+                TikTok Followers {getSortIcon('tiktokFollowers')}
+              </div>
+            </TableHead>
             <TableHead>PayPal Email</TableHead>
-            <TableHead>Country</TableHead>
-            <TableHead>Total Sales</TableHead>
-            <TableHead>Total Revenue</TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('country')}
+            >
+              <div className="flex items-center gap-1">
+                Country {getSortIcon('country')}
+              </div>
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('totalSales')}
+            >
+              <div className="flex items-center gap-1">
+                Total Sales {getSortIcon('totalSales')}
+              </div>
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-gray-50" 
+              onClick={() => handleSort('totalRevenue')}
+            >
+              <div className="flex items-center gap-1">
+                Total Revenue {getSortIcon('totalRevenue')}
+              </div>
+            </TableHead>
             <TableHead>URLs</TableHead>
             <TableHead>Payout Status</TableHead>
           </TableRow>
@@ -321,7 +529,7 @@ export function AdminAffiliateManagement() {
           </p>
         </div>
         <Button asChild>
-          <a href="/affiliate/apply" target="_blank" rel="noopener noreferrer">
+          <a href="https://myapp.drgolly.com/affiliates/apply" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="w-4 h-4 mr-2" />
             View Application Form
           </a>
@@ -329,7 +537,7 @@ export function AdminAffiliateManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pending" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Pending Applications
@@ -345,6 +553,15 @@ export function AdminAffiliateManagement() {
             {activeAffiliates?.length > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {activeAffiliates.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="tof" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Top of Funnel
+            {tofData?.length > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {tofData.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -374,6 +591,20 @@ export function AdminAffiliateManagement() {
             </CardHeader>
             <CardContent>
               <ActiveAffiliatesTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tof" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Top of Funnel Links</CardTitle>
+              <CardDescription>
+                Track internal marketing campaign links and their performance.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TopOfFunnelTable />
             </CardContent>
           </Card>
         </TabsContent>

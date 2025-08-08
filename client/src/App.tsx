@@ -52,6 +52,7 @@ import ServicesPage from "@/pages/services";
 import ServiceDetailPage from "@/pages/service-detail";
 import AuthTestPage from "@/pages/auth-test";
 import AffiliateApply from "@/pages/affiliate-apply";
+import AffiliateTerms from "@/pages/affiliate-terms";
 import CompletePage from "@/pages/complete";
 
 function AuthenticatedApp() {
@@ -99,6 +100,7 @@ function AuthenticatedApp() {
         <Route path="/notification-test" component={NotificationTest} />
         <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/affiliates/apply" component={AffiliateApply} />
+        <Route path="/affiliate-terms" component={AffiliateTerms} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
@@ -252,6 +254,7 @@ function Router() {
           <Route path="/big-baby-public" component={BigBabyPublic} />
           <Route path="/share/:slug" component={Share} />
           <Route path="/affiliates/apply" component={AffiliateApply} />
+          <Route path="/affiliate-terms" component={AffiliateTerms} />
           <Route component={Landing} />
         </Switch>
         <Toaster />

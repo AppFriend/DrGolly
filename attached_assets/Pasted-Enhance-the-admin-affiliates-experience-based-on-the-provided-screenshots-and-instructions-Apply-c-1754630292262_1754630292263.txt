@@ -1,0 +1,123 @@
+Enhance the /admin/affiliates experience based on the provided screenshots and instructions. Apply changes only to the Affiliates functionality and related public affiliate application form pages. No changes should impact other admin panel tabs or unrelated code.
+
+1. Add TikTok Followers Field
+Backend / Database:
+
+Extend the affiliates schema to store tiktok_followers as an integer.
+
+Update API endpoints for retrieving and creating affiliates to include TikTok followers.
+
+Frontend – Admin Panel Table (/admin/affiliates):
+
+Add a new column TikTok Followers between Instagram Followers and Country.
+
+Display TikTok follower count for each affiliate in the table.
+
+Ensure table styling matches current design.
+
+Frontend – Application Form (/affiliates/apply):
+
+Add an input field: TikTok Followers (numeric only).
+
+Label should be clear: “TikTok Followers” with a placeholder “e.g., 5,000”.
+
+2. Add Sorting Functionality
+Columns to support sorting (ascending/descending):
+
+Instagram Followers
+
+TikTok Followers
+
+Country
+
+Total Sales
+
+Total Revenue
+
+Requirements:
+
+Clicking a column header toggles sort order (up/down arrow icon).
+
+Sorting should be handled client-side if data set is small, or server-side if pagination/large dataset.
+
+Maintain current table styling and hover states.
+
+3. Fix “View Application Form” Link
+Update the “View Application Form” button to point to:
+https://myapp.drgolly.com/affiliates/apply (note the ‘s’ in affiliates).
+
+4. Add Accept Terms & Conditions on Application Form
+On /affiliates/apply, add a required checkbox:
+“I accept the [Terms and Conditions]”
+
+“Terms and Conditions” text should hyperlink to a new page at /affiliate-terms.
+
+Create /affiliate-terms page with placeholder text “Affiliate Terms and Conditions – To be updated”.
+
+Form submission must be blocked with an inline error if checkbox is not selected.
+
+5. Replace Banking Details with PayPal Setup
+Remove:
+
+Banking details fields from /affiliates/apply.
+
+Add:
+
+Heading: “PayPal Setup for Payouts”
+
+Step 1: “Make sure you have a valid PayPal account (create one)”
+
+Step 2: “Enter your PayPal account email below.”
+
+Input field: “Your PayPal Email” (email validation required).
+
+Include note under field: “IMPORTANT: Make sure you entered your PayPal email correctly to ensure payments are processed.”
+
+Design:
+
+Follow visual example in screenshot provided (red box highlight).
+
+Maintain spacing and typography consistency with other form elements.
+
+6. Add “Top of Funnel” Tab in Admin
+Location:
+
+Next to “Pending Applications” and “Active Affiliates” tabs in /admin/affiliates.
+
+Functionality:
+
+Clicking “Top of Funnel” loads a table with the following columns:
+
+TOF URL (copy button like current URL column)
+
+Clicks to URL (integer)
+
+Total Sales (integer)
+
+Total Revenue (currency)
+
+Data Tracking:
+
+Tracks links created for internal marketing campaigns (not affiliate users).
+
+Data capture method should mirror affiliate link tracking logic, but references “top_of_funnel_links” in the backend.
+
+Sorting:
+
+Same sorting behaviour as affiliates table (highest/lowest).
+
+Testing Requirements:
+
+Verify TikTok followers can be added via application form and appears in admin table.
+
+Confirm sorting works for all specified columns.
+
+Ensure “View Application Form” link correctly loads /affiliates/apply.
+
+Test Terms & Conditions checkbox blocks submission if unchecked.
+
+Test PayPal email field validation (must be valid email format).
+
+Verify new “Top of Funnel” tab loads correct data without impacting affiliate data.
+
+Ensure no visual regressions or functional changes occur in other admin panel sections.

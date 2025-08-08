@@ -10930,6 +10930,44 @@ Please contact the customer to confirm the appointment.
   });
   
   // Admin: Get all affiliates
+  // Get Top of Funnel links for admin
+  app.get('/api/admin/tof-links', isAdmin, async (req, res) => {
+    try {
+      // Mock data for Top of Funnel links until database table is created
+      const mockTofData = [
+        {
+          id: '1',
+          tofUrl: 'https://myapp.drgolly.com/tof/baby-sleep-guide',
+          campaignName: 'Baby Sleep Guide Campaign',
+          clicks: 1250,
+          totalSales: 45,
+          totalRevenue: '2250.00'
+        },
+        {
+          id: '2', 
+          tofUrl: 'https://myapp.drgolly.com/tof/toddler-sleep',
+          campaignName: 'Toddler Sleep Marketing',
+          clicks: 890,
+          totalSales: 22,
+          totalRevenue: '1100.00'
+        },
+        {
+          id: '3',
+          tofUrl: 'https://myapp.drgolly.com/tof/nutrition-guide',
+          campaignName: 'Nutrition Guide Promo',
+          clicks: 567,
+          totalSales: 15,
+          totalRevenue: '750.00'
+        }
+      ];
+      
+      res.json(mockTofData);
+    } catch (error) {
+      console.error('Error fetching TOF links:', error);
+      res.status(500).json({ message: 'Error fetching TOF links' });
+    }
+  });
+
   app.get('/api/admin/affiliates', isAdmin, async (req, res) => {
     try {
       const { neon } = await import('@neondatabase/serverless');
