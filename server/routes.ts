@@ -817,12 +817,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         signupStep: user.signup_step || user.signupStep,
         signupCompleted: user.signup_completed || user.signupCompleted,
         onboardingCompleted: user.onboarding_completed || user.onboardingCompleted
-        primaryConcerns: user.primary_concerns || user.primaryConcerns,
-        smsMarketingOptIn: user.sms_marketing_opt_in || user.smsMarketingOptIn,
-        acceptedTerms: user.accepted_terms || user.acceptedTerms,
-        signupStep: user.signup_step || user.signupStep,
-        signupCompleted: user.signup_completed || user.signupCompleted,
-        onboardingCompleted: user.onboarding_completed || user.onboardingCompleted
       };
       
       console.log('User found:', { 
