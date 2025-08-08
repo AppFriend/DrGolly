@@ -25,7 +25,9 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(true);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -38,24 +40,54 @@ export default function SignupPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateForm = (): boolean => {
+    const errors: string[] = [];
     
+    // Clear previous errors
+    setValidationErrors([]);
+    
+    // Check if terms are accepted (mandatory)
+    if (!termsAccepted) {
+      errors.push("terms");
+      toast({
+        title: "Terms Required",
+        description: "You must agree to our terms to continue with signup.",
+        variant: "destructive"
+      });
+    }
+    
+    // Check password match
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
         description: "Passwords do not match",
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
+    // Check password length
     if (formData.password.length < 6) {
       toast({
         title: "Error", 
         description: "Password must be at least 6 characters long",
         variant: "destructive"
       });
+      return false;
+    }
+    
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
       return;
     }
 
@@ -65,7 +97,13 @@ export default function SignupPage() {
       const response = await apiRequest('POST', '/api/auth/signup-step1', {
         email: formData.email,
         password: formData.password,
-        marketingOptIn: marketingOptIn
+        termsAccepted: termsAccepted,
+        marketingOptIn: marketingOptIn,
+        // Only send Klaviyo opt-in data if marketing is checked
+        ...(marketingOptIn && {
+          emailOptIn: true,
+          smsOptIn: true
+        })
       });
       
       if (response.ok) {
@@ -206,18 +244,32 @@ export default function SignupPage() {
             
             {/* Terms and Marketing Checkboxes */}
             <div className="space-y-4">
-              <div className="flex items-start space-x-3">
+              <div className={`flex items-start space-x-3 ${validationErrors.includes('terms') ? 'bg-red-50 p-3 rounded-lg border border-red-200' : ''}`}>
                 <Checkbox
                   id="terms"
-                  checked={true}
-                  required
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => {
+                    setTermsAccepted(checked as boolean);
+                    // Clear validation error when checked
+                    if (checked) {
+                      setValidationErrors(prev => prev.filter(error => error !== 'terms'));
+                    }
+                  }}
+                  className={validationErrors.includes('terms') ? 'border-red-400' : ''}
                 />
-                <label htmlFor="terms" className="text-sm text-gray-600 leading-5">
-                  By signing up, you agree to the{' '}
-                  <a href="/terms" className="text-[#7DD3D8] hover:underline">
-                    Dr Golly Terms of Service
-                  </a>
-                </label>
+                <div className="flex-1">
+                  <label htmlFor="terms" className="text-sm text-gray-600 leading-5">
+                    By signing up, you agree to the{' '}
+                    <a href="/terms" target="_blank" className="text-[#7DD3D8] hover:underline">
+                      Dr Golly Terms of Service
+                    </a>
+                  </label>
+                  {validationErrors.includes('terms') && (
+                    <p className="text-red-600 text-xs mt-1">
+                      You must agree to our terms to continue with signup.
+                    </p>
+                  )}
+                </div>
               </div>
               
               <div className="flex items-start space-x-3">
@@ -236,8 +288,8 @@ export default function SignupPage() {
             <div className="space-y-4">
               <Button
                 type="submit"
-                className="w-full h-12 bg-[#7DD3D8] hover:bg-[#6BC5CB] text-white font-medium rounded-full text-base"
-                disabled={isSubmitting}
+                className="w-full h-12 bg-[#7DD3D8] hover:bg-[#6BC5CB] text-white font-medium rounded-full text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSubmitting || !termsAccepted}
               >
                 {isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>

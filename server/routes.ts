@@ -1322,10 +1322,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 1: Basic signup (email, password, terms)
   app.post('/api/auth/signup-step1', async (req, res) => {
     try {
-      const { email, password, marketingOptIn, signupMethod = 'manual' } = req.body;
+      const { 
+        email, 
+        password, 
+        termsAccepted, 
+        marketingOptIn, 
+        emailOptIn,
+        smsOptIn,
+        signupMethod = 'manual' 
+      } = req.body;
       
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      if (!termsAccepted) {
+        return res.status(400).json({ message: "You must agree to our terms to continue with signup." });
       }
       
       // Check if user already exists
@@ -1346,6 +1358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasSetPassword: true,
         subscriptionTier: 'free',
         marketingOptIn: marketingOptIn || false,
+        termsAccepted: true, // Always true since validation passed
         signupStep: 1,
         signupCompleted: false,
         signupSource: signupMethod === 'google' ? 'Google OAuth' : 'Web App Signup',
@@ -1368,18 +1381,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Klaviyo tracking for step 1
       if (klaviyoService) {
         try {
-          await klaviyoService.identifyUser({
-            email: user.email,
-            signup_method: signupMethod,
-            email_opt_in: marketingOptIn || false,
-            profile_created_at: new Date().toISOString(),
-            signup_step: 1
-          });
-          
+          // Always send the Signed Up event when terms are accepted
           await klaviyoService.trackEvent(user.email, 'Signed Up', {
             signup_method: signupMethod,
             timestamp: new Date().toISOString()
           });
+          
+          // Only send opt-in data if marketing checkbox was checked
+          if (marketingOptIn && (emailOptIn || smsOptIn)) {
+            await klaviyoService.identifyUser({
+              email: user.email,
+              signup_method: signupMethod,
+              ...(emailOptIn && { email_opt_in: true }),
+              ...(smsOptIn && { sms_opt_in: true }),
+              profile_created_at: new Date().toISOString(),
+              signup_step: 1
+            });
+          } else {
+            // Send basic profile data without opt-in fields
+            await klaviyoService.identifyUser({
+              email: user.email,
+              signup_method: signupMethod,
+              profile_created_at: new Date().toISOString(),
+              signup_step: 1
+            });
+          }
         } catch (klaviyoError) {
           console.error('Klaviyo error in step 1:', klaviyoError);
         }
