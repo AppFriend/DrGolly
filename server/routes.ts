@@ -10812,29 +10812,31 @@ Please contact the customer to confirm the appointment.
         instagramHandle, 
         country, 
         followers, 
+        tiktokFollowers,
         email,
         profilePhotoUrl,
-        bsb,
-        accountNumber,
-        swiftCode,
-        bankName,
-        accountHolderName
+        paypalEmail,
+        acceptedTerms
       } = req.body;
       
-      // Validate required fields
-      if (!fullName || !instagramHandle || !country || !email || !bsb || !accountNumber || !bankName || !accountHolderName) {
-        return res.status(400).json({ message: "All fields including bank details are required (except followers and SWIFT code)" });
+      // Validate required fields (removed bank details, added PayPal and terms)
+      if (!fullName || !instagramHandle || !country || !email || !paypalEmail || !acceptedTerms) {
+        return res.status(400).json({ message: "All fields including PayPal email and terms acceptance are required" });
       }
       
-      // Validate BSB format (6 digits)
-      if (bsb && !/^\d{6}$/.test(bsb)) {
-        return res.status(400).json({ message: "BSB must be exactly 6 digits" });
+      // Validate terms acceptance
+      if (!acceptedTerms) {
+        return res.status(400).json({ message: "You must accept the Terms and Conditions" });
       }
       
-      // Validate email format
+      // Validate email formats
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({ message: "Invalid email address format" });
+      }
+      
+      if (!emailRegex.test(paypalEmail)) {
+        return res.status(400).json({ message: "Invalid PayPal email address format" });
       }
       
       // Check if email already exists
@@ -10858,14 +10860,14 @@ Please contact the customer to confirm the appointment.
       // Create affiliate application
       const result = await sql`
         INSERT INTO affiliates (
-          full_name, instagram_handle, country, followers, email,
+          full_name, instagram_handle, country, followers, tiktok_followers, email,
           affiliate_code, referral_url, status, profile_photo_url,
-          bsb, account_number, swift_code, bank_name, account_holder_name,
+          paypal_email, accepted_terms, accepted_terms_at,
           created_at, updated_at
         ) VALUES (
-          ${fullName}, ${instagramHandle}, ${country}, ${followers || 0}, ${email},
+          ${fullName}, ${instagramHandle}, ${country}, ${followers || 0}, ${tiktokFollowers || 0}, ${email},
           ${affiliateCode}, ${referralUrl}, 'pending', ${profilePhotoUrl || null},
-          ${bsb}, ${accountNumber}, ${swiftCode || null}, ${bankName}, ${accountHolderName},
+          ${paypalEmail}, ${acceptedTerms}, NOW(),
           NOW(), NOW()
         ) RETURNING *
       `;
@@ -10896,7 +10898,9 @@ Please contact the customer to confirm the appointment.
                   { type: 'mrkdwn', text: `*Instagram:*\n${instagramHandle}` },
                   { type: 'mrkdwn', text: `*Email:*\n${email}` },
                   { type: 'mrkdwn', text: `*Country:*\n${country}` },
-                  { type: 'mrkdwn', text: `*Followers:*\n${followers || 'Not specified'}` },
+                  { type: 'mrkdwn', text: `*IG Followers:*\n${followers || 'Not specified'}` },
+                  { type: 'mrkdwn', text: `*TikTok Followers:*\n${tiktokFollowers || 'Not specified'}` },
+                  { type: 'mrkdwn', text: `*PayPal Email:*\n${paypalEmail}` },
                   { type: 'mrkdwn', text: `*Affiliate Code:*\n${affiliateCode}` }
                 ]
               },
@@ -10934,8 +10938,9 @@ Please contact the customer to confirm the appointment.
       const affiliates = await sql`
         SELECT 
           id, full_name, instagram_handle, profile_photo_url, country, 
-          followers, email, affiliate_code, referral_url, short_url,
+          followers, tiktok_followers, email, affiliate_code, referral_url, short_url,
           status, connected_account_id, total_sales, total_revenue,
+          paypal_email, accepted_terms, accepted_terms_at,
           created_at, updated_at
         FROM affiliates 
         ORDER BY created_at DESC
@@ -10949,6 +10954,7 @@ Please contact the customer to confirm the appointment.
         profilePhotoUrl: affiliate.profile_photo_url,
         country: affiliate.country,
         followers: affiliate.followers,
+        tiktokFollowers: affiliate.tiktok_followers,
         email: affiliate.email,
         affiliateCode: affiliate.affiliate_code,
         referralUrl: affiliate.referral_url,
@@ -10957,6 +10963,9 @@ Please contact the customer to confirm the appointment.
         connectedAccountId: affiliate.connected_account_id,
         totalSales: affiliate.total_sales,
         totalRevenue: affiliate.total_revenue,
+        paypalEmail: affiliate.paypal_email,
+        acceptedTerms: affiliate.accepted_terms,
+        acceptedTermsAt: affiliate.accepted_terms_at,
         createdAt: affiliate.created_at,
         updatedAt: affiliate.updated_at
       }));

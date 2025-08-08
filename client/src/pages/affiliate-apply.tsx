@@ -21,14 +21,13 @@ const affiliateApplicationSchema = z.object({
   instagramHandle: z.string().min(1, "Instagram handle is required").regex(/^@?[a-zA-Z0-9_.]+$/, "Invalid Instagram handle format"),
   email: z.string().email("Invalid email address"),
   country: z.string().min(1, "Country is required"),
-  followers: z.number().min(0, "Followers must be a positive number"),
+  followers: z.number().min(0, "Instagram followers must be a positive number"),
+  tiktokFollowers: z.number().min(0, "TikTok followers must be a positive number"),
   profilePhotoUrl: z.string().optional().or(z.literal("")),
-  // Bank details for payments
-  bsb: z.string().min(6, "BSB must be 6 digits").max(6, "BSB must be 6 digits").regex(/^\d{6}$/, "BSB must be 6 digits"),
-  accountNumber: z.string().min(6, "Account number must be at least 6 digits").max(20, "Account number too long"),
-  swiftCode: z.string().optional().or(z.literal("")),
-  bankName: z.string().min(1, "Bank name is required"),
-  accountHolderName: z.string().min(2, "Account holder name is required"),
+  // PayPal details for payments
+  paypalEmail: z.string().email("Please enter a valid PayPal email address"),
+  // Terms acceptance
+  acceptedTerms: z.boolean().refine(val => val === true, "You must accept the Terms and Conditions"),
 });
 
 type AffiliateApplicationForm = z.infer<typeof affiliateApplicationSchema>;
@@ -52,12 +51,10 @@ export default function AffiliateApply() {
       email: "",
       country: "",
       followers: 0,
+      tiktokFollowers: 0,
       profilePhotoUrl: "",
-      bsb: "",
-      accountNumber: "",
-      swiftCode: "",
-      bankName: "",
-      accountHolderName: "",
+      paypalEmail: "",
+      acceptedTerms: false,
     },
   });
 
@@ -217,20 +214,39 @@ export default function AffiliateApply() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Follower Count
+                          <Instagram className="h-4 w-4" />
+                          Instagram Followers
                         </FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
-                            placeholder="10000" 
+                            placeholder="e.g., 5,000" 
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           />
                         </FormControl>
-                        <FormDescription>
-                          Your current Instagram follower count
-                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="tiktokFollowers"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          TikTok Followers
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="e.g., 5,000" 
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -245,7 +261,7 @@ export default function AffiliateApply() {
                           <Globe className="h-4 w-4" />
                           Country
                         </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select your country" />
@@ -264,110 +280,9 @@ export default function AffiliateApply() {
                     )}
                   />
 
-                  {/* Bank Details Section */}
-                  <div className="border-t pt-6 mt-6">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900">Payment Information</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      We'll use these details to send your commission payments. All information is securely stored.
-                    </p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="accountHolderName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Account Holder Name</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="John Smith" 
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="bankName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Bank Name</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Commonwealth Bank" 
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="bsb"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>BSB</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="123456"
-                                maxLength={6}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              6-digit BSB number
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="accountNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Account Number</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="12345678"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="swiftCode"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>SWIFT Code (Optional)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="CTBAAU2S"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Only required for international payments
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
+                  {/* Profile Photo Upload */}
                   <div>
-                    <Label className="flex items-center gap-2 mb-2">
+                    <Label className="flex items-center gap-2 mb-4">
                       <Camera className="h-4 w-4" />
                       Profile Photo (Optional)
                     </Label>
@@ -382,18 +297,13 @@ export default function AffiliateApply() {
                         };
                       }}
                       onComplete={(result) => {
-                        if (result.successful.length > 0) {
+                        if (result.successful && result.successful[0]) {
                           const uploadURL = result.successful[0].uploadURL;
-                          if (uploadURL) {
-                            // Convert the upload URL to our object serving URL
-                            const objectPath = uploadURL.split('?')[0].split('/').slice(-2).join('/');
-                            const serverURL = `/objects/uploads/${objectPath}`;
-                            setUploadedPhotoUrl(serverURL);
-                            toast({
-                              title: "Photo Uploaded",
-                              description: "Your profile photo has been uploaded successfully.",
-                            });
-                          }
+                          setUploadedPhotoUrl(uploadURL);
+                          toast({
+                            title: "Photo Uploaded",
+                            description: "Your profile photo has been uploaded successfully.",
+                          });
                         }
                       }}
                       buttonClassName="w-full"
@@ -404,23 +314,75 @@ export default function AffiliateApply() {
                       </div>
                     </ObjectUploader>
                     {uploadedPhotoUrl && (
-                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
-                        ✓ Photo uploaded successfully
-                      </div>
+                      <p className="text-sm text-green-600 mt-2">✓ Photo uploaded successfully</p>
                     )}
-                    <p className="text-sm text-gray-600 mt-1">
-                      Upload a professional profile photo (JPG, PNG, max 5MB)
-                    </p>
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-blue-900 mb-2">What happens next?</h3>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• We'll review your application within 2-3 business days</li>
-                      <li>• If approved, you'll receive unique referral links</li>
-                      <li>• Start earning commissions on every sale you generate</li>
-                      <li>• Access to exclusive marketing materials and support</li>
-                    </ul>
+                  {/* PayPal Setup Section */}
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold mb-4 text-brand-teal">PayPal Setup for Payouts</h3>
+                    <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-4">
+                      <div className="space-y-2">
+                        <p className="font-medium text-teal-800">Step 1:</p>
+                        <p className="text-teal-700">Make sure you have a valid PayPal account (create one if needed)</p>
+                        
+                        <p className="font-medium text-teal-800 mt-4">Step 2:</p>
+                        <p className="text-teal-700">Enter your PayPal account email below.</p>
+                      </div>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="paypalEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            Your PayPal Email
+                          </FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="paypal@email.com" {...field} />
+                          </FormControl>
+                          <FormDescription className="text-red-600 font-medium">
+                            IMPORTANT: Make sure you entered your PayPal email correctly to ensure payments are processed.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Terms and Conditions */}
+                  <div className="border-t pt-6">
+                    <FormField
+                      control={form.control}
+                      name="acceptedTerms"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="h-4 w-4 text-brand-teal border-gray-300 rounded focus:ring-brand-teal"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-sm">
+                              I accept the{" "}
+                              <a 
+                                href="/affiliate-terms" 
+                                target="_blank" 
+                                className="text-brand-teal hover:underline"
+                              >
+                                Terms and Conditions
+                              </a>
+                            </FormLabel>
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   <Button 

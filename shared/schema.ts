@@ -282,6 +282,12 @@ export const insertCourseChangeLogSchema = createInsertSchema(courseChangeLog).o
 
 export type CourseChangeLog = typeof courseChangeLog.$inferSelect;
 export type InsertCourseChangeLog = typeof courseChangeLog.$inferInsert;
+export type Affiliate = typeof affiliates.$inferSelect;
+export type InsertAffiliate = typeof affiliates.$inferInsert;
+export type TopOfFunnelLink = typeof topOfFunnelLinks.$inferSelect;
+export type InsertTopOfFunnelLink = typeof topOfFunnelLinks.$inferInsert;
+export type AffiliateSale = typeof affiliateSales.$inferSelect;
+export type InsertAffiliateSale = typeof affiliateSales.$inferInsert;
 
 
 
@@ -823,6 +829,8 @@ export const insertStripeProductSchema = createInsertSchema(stripeProducts).omit
 
 
 
+
+
 // Affiliate Management Tables
 export const affiliates = pgTable("affiliates", {
   id: varchar("id").primaryKey().notNull().default(uuid()),
@@ -831,6 +839,7 @@ export const affiliates = pgTable("affiliates", {
   profilePhotoUrl: varchar("profile_photo_url"),
   country: varchar("country").notNull(),
   followers: integer("followers").notNull().default(0),
+  tiktokFollowers: integer("tiktok_followers").notNull().default(0),
   email: varchar("email").notNull().unique(),
   affiliateCode: varchar("affiliate_code").notNull().unique(),
   referralUrl: varchar("referral_url").notNull(),
@@ -839,12 +848,32 @@ export const affiliates = pgTable("affiliates", {
   connectedAccountId: varchar("connected_account_id"),
   totalSales: integer("total_sales").notNull().default(0),
   totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
-  // Bank details for payment processing
+  // PayPal details for payment processing (replacing bank details)
+  paypalEmail: varchar("paypal_email"),
+  // Legacy bank details (keeping for existing data)
   bsb: varchar("bsb"),
   accountNumber: varchar("account_number"),
   swiftCode: varchar("swift_code"),
   bankName: varchar("bank_name"),
   accountHolderName: varchar("account_holder_name"),
+  // Terms acceptance
+  acceptedTerms: boolean("accepted_terms").default(false),
+  acceptedTermsAt: timestamp("accepted_terms_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Top of Funnel tracking for internal marketing campaigns
+export const topOfFunnelLinks = pgTable("top_of_funnel_links", {
+  id: serial("id").primaryKey(),
+  tofUrl: varchar("tof_url").notNull().unique(),
+  shortUrl: varchar("short_url"),
+  campaignName: varchar("campaign_name"),
+  description: text("description"),
+  clicks: integer("clicks").notNull().default(0),
+  totalSales: integer("total_sales").notNull().default(0),
+  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -950,11 +979,14 @@ export type FamilyInvite = typeof familyInvites.$inferSelect;
 export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
 export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
 
-// Affiliate types and schemas
-export type Affiliate = typeof affiliates.$inferSelect;
-export type AffiliateSale = typeof affiliateSales.$inferSelect;
-
+// Affiliate schemas
 export const insertAffiliateSchema = createInsertSchema(affiliates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTopOfFunnelLinkSchema = createInsertSchema(topOfFunnelLinks).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -967,6 +999,7 @@ export const insertAffiliateSaleSchema = createInsertSchema(affiliateSales).omit
 
 export type InsertAffiliate = z.infer<typeof insertAffiliateSchema>;
 export type InsertAffiliateSale = z.infer<typeof insertAffiliateSaleSchema>;
+export type InsertTopOfFunnelLink = z.infer<typeof insertTopOfFunnelLinkSchema>;
 
 // Notification system tables
 export const notifications = pgTable("notifications", {

@@ -118,7 +118,9 @@ export function AdminAffiliateManagement() {
             <TableHead>Profile</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Instagram</TableHead>
-            <TableHead>Followers</TableHead>
+            <TableHead>IG Followers</TableHead>
+            <TableHead>TikTok Followers</TableHead>
+            <TableHead>PayPal Email</TableHead>
             <TableHead>Country</TableHead>
             <TableHead>Applied</TableHead>
             <TableHead>Actions</TableHead>
@@ -157,6 +159,10 @@ export function AdminAffiliateManagement() {
                 )}
               </TableCell>
               <TableCell>{affiliate.followers?.toLocaleString() || 'N/A'}</TableCell>
+              <TableCell>{affiliate.tiktokFollowers?.toLocaleString() || 'N/A'}</TableCell>
+              <TableCell className="max-w-[150px] truncate" title={affiliate.paypalEmail}>
+                {affiliate.paypalEmail || 'N/A'}
+              </TableCell>
               <TableCell>{affiliate.country}</TableCell>
               <TableCell>{affiliate.createdAt ? new Date(affiliate.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
               <TableCell>
@@ -213,7 +219,9 @@ export function AdminAffiliateManagement() {
             <TableHead>Profile</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Instagram</TableHead>
-            <TableHead>Followers</TableHead>
+            <TableHead>IG Followers</TableHead>
+            <TableHead>TikTok Followers</TableHead>
+            <TableHead>PayPal Email</TableHead>
             <TableHead>Country</TableHead>
             <TableHead>Total Sales</TableHead>
             <TableHead>Total Revenue</TableHead>
@@ -254,6 +262,10 @@ export function AdminAffiliateManagement() {
                 )}
               </TableCell>
               <TableCell>{affiliate.followers?.toLocaleString() || 'N/A'}</TableCell>
+              <TableCell>{affiliate.tiktokFollowers?.toLocaleString() || 'N/A'}</TableCell>
+              <TableCell className="max-w-[150px] truncate" title={affiliate.paypalEmail}>
+                {affiliate.paypalEmail || 'N/A'}
+              </TableCell>
               <TableCell>{affiliate.country}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-1">
