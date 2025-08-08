@@ -6,10 +6,17 @@ export function TrackingRedirect() {
   const search = useSearch();
   
   useEffect(() => {
+    console.log('TrackingRedirect component loaded');
+    console.log('Params:', params);
+    console.log('Search:', search);
+    
     // Get the slug from the URL params
     const slug = params.slug;
     const trackingParams = new URLSearchParams(search);
     const trackid = trackingParams.get('trackid');
+    
+    console.log('Extracted slug:', slug);
+    console.log('Extracted trackid:', trackid);
     
     if (slug) {
       // Construct the backend tracking URL
@@ -18,10 +25,13 @@ export function TrackingRedirect() {
         redirectUrl += `?trackid=${trackid}`;
       }
       
+      console.log('Redirecting to:', redirectUrl);
+      
       // Redirect to the backend tracking endpoint
       // This will update the click count and then redirect to the blog post
       window.location.href = redirectUrl;
     } else {
+      console.log('No slug found, redirecting to home');
       // Fallback to home if no slug is provided
       window.location.href = '/';
     }

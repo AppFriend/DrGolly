@@ -81,6 +81,9 @@ function AuthenticatedApp() {
   return (
     <div className="min-h-screen bg-white">
       <Switch>
+        {/* Top of Funnel tracking redirect route - must be first to avoid conflicts */}
+        <Route path="/t/of/blog/:slug" component={TrackingRedirect} />
+        
         {/* Special routes that don't use the desktop layout */}
         <Route path="/subscription" component={Subscription} />
         <Route path="/checkout/:courseId" component={Checkout} />
@@ -102,9 +105,6 @@ function AuthenticatedApp() {
         <Route path="/big-baby-public" component={BigBabyPublic} />
         <Route path="/affiliates/apply" component={AffiliateApply} />
         <Route path="/affiliate-terms" component={AffiliateTerms} />
-        
-        {/* Top of Funnel tracking redirect route */}
-        <Route path="/t/of/blog/:slug" component={TrackingRedirect} />
         <Route path="/share/:slug" component={Share} />
         
         {/* Routes that use the desktop layout */}
@@ -256,12 +256,12 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/klaviyo-test" component={KlaviyoTest} />
           <Route path="/big-baby-public" component={BigBabyPublic} />
+          {/* Top of Funnel tracking redirect route (also available for unauthenticated users) */}
+          <Route path="/t/of/blog/:slug" component={TrackingRedirect} />
+          
           <Route path="/share/:slug" component={Share} />
           <Route path="/affiliates/apply" component={AffiliateApply} />
           <Route path="/affiliate-terms" component={AffiliateTerms} />
-          
-          {/* Top of Funnel tracking redirect route (also available for unauthenticated users) */}
-          <Route path="/t/of/blog/:slug" component={TrackingRedirect} />
           
           <Route component={Landing} />
         </Switch>

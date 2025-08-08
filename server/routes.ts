@@ -11334,13 +11334,16 @@ Please contact the customer to confirm the appointment.
     }
   });
 
-  // Top of Funnel tracking redirect endpoint
+  // Top of Funnel tracking redirect endpoint (high priority to avoid conflicts)
   app.get('/t/of/blog/:slug', async (req, res) => {
     try {
       const { slug } = req.params;
       const { trackid } = req.query;
       
+      console.log(`TOF tracking request: /t/of/blog/${slug}?trackid=${trackid}`);
+      
       if (!trackid) {
+        console.log('No trackid provided, redirecting directly to blog post');
         return res.redirect(`/blog/${slug}`);
       }
       
@@ -11348,13 +11351,17 @@ Please contact the customer to confirm the appointment.
       const sql = neon(process.env.DATABASE_URL!);
       
       // Update click count for this tracking link
-      await sql`
+      const updateResult = await sql`
         UPDATE top_of_funnel_links 
         SET clicks = clicks + 1, updated_at = NOW()
         WHERE short_url LIKE ${`%trackid=${trackid}%`}
+        RETURNING id, clicks
       `;
       
+      console.log(`Updated tracking record:`, updateResult);
+      
       // Redirect to original blog post
+      console.log(`Redirecting to: /blog/${slug}`);
       res.redirect(`/blog/${slug}`);
     } catch (error) {
       console.error('Error processing TOF tracking redirect:', error);
