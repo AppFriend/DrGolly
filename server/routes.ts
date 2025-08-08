@@ -5074,6 +5074,35 @@ Please contact the customer to confirm the appointment.
       };
 
       const blogPost = await storage.createBlogPost(postData);
+      
+      // Automatically create Top of Funnel tracking for freebie posts
+      if (postData.slug && postData.slug.startsWith('free-')) {
+        try {
+          const { randomUUID } = await import('crypto');
+          const trackingId = randomUUID().slice(0, 8);
+          const originalUrl = `/blog/${postData.slug}`;
+          const trackingUrl = `/t/of/blog/${postData.slug}?trackid=${trackingId}`;
+          const campaignName = postData.title || `Free ${postData.slug.replace(/-/g, ' ')}`;
+          
+          const { neon } = await import('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL!);
+          
+          await sql`
+            INSERT INTO top_of_funnel_links (
+              original_url, tracking_url, tracking_id, campaign_name, description
+            ) VALUES (
+              ${originalUrl}, ${trackingUrl}, ${trackingId}, ${campaignName}, 
+              ${'Auto-generated tracking for freebie blog post'}
+            )
+          `;
+          
+          console.log(`Created TOF tracking for freebie: ${originalUrl} -> ${trackingUrl}`);
+        } catch (tofError) {
+          console.error('Failed to create TOF tracking for freebie:', tofError);
+          // Don't fail the blog post creation if TOF tracking fails
+        }
+      }
+      
       res.json(blogPost);
     } catch (error) {
       console.error("Error creating blog post:", error);
@@ -10933,35 +10962,34 @@ Please contact the customer to confirm the appointment.
   // Get Top of Funnel links for admin
   app.get('/api/admin/tof-links', isAdmin, async (req, res) => {
     try {
-      // Mock data for Top of Funnel links until database table is created
-      const mockTofData = [
-        {
-          id: '1',
-          tofUrl: 'https://myapp.drgolly.com/tof/baby-sleep-guide',
-          campaignName: 'Baby Sleep Guide Campaign',
-          clicks: 1250,
-          totalSales: 45,
-          totalRevenue: '2250.00'
-        },
-        {
-          id: '2', 
-          tofUrl: 'https://myapp.drgolly.com/tof/toddler-sleep',
-          campaignName: 'Toddler Sleep Marketing',
-          clicks: 890,
-          totalSales: 22,
-          totalRevenue: '1100.00'
-        },
-        {
-          id: '3',
-          tofUrl: 'https://myapp.drgolly.com/tof/nutrition-guide',
-          campaignName: 'Nutrition Guide Promo',
-          clicks: 567,
-          totalSales: 15,
-          totalRevenue: '750.00'
-        }
-      ];
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
       
-      res.json(mockTofData);
+      const tofLinks = await sql`
+        SELECT 
+          id, original_url, tracking_url, tracking_id, campaign_name, description,
+          click_count, sales_count, total_revenue, is_active, created_at, updated_at
+        FROM top_of_funnel_links 
+        WHERE is_active = true
+        ORDER BY created_at DESC
+      `;
+      
+      // Transform to match frontend expectations
+      const transformedLinks = tofLinks.map(link => ({
+        id: link.id,
+        tofUrl: `https://myapp.drgolly.com${link.tracking_url}`,
+        campaignName: link.campaign_name,
+        clicks: link.click_count || 0,
+        totalSales: link.sales_count || 0,
+        totalRevenue: link.total_revenue || '0.00',
+        originalUrl: link.original_url,
+        trackingId: link.tracking_id,
+        description: link.description,
+        isActive: link.is_active,
+        createdAt: link.created_at
+      }));
+      
+      res.json(transformedLinks);
     } catch (error) {
       console.error('Error fetching TOF links:', error);
       res.status(500).json({ message: 'Error fetching TOF links' });
@@ -11149,6 +11177,67 @@ Please contact the customer to confirm the appointment.
     }
   });
   
+  // Admin: Generate tracking links for existing freebie posts
+  app.post('/api/admin/generate-freebie-tracking', isAdmin, async (req, res) => {
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Get all published blog posts that start with 'free-' and don't already have tracking
+      const freebieBlogs = await sql`
+        SELECT bp.id, bp.title, bp.slug
+        FROM blog_posts bp
+        LEFT JOIN top_of_funnel_links tof ON tof.original_url = CONCAT('/blog/', bp.slug)
+        WHERE bp.slug LIKE 'free-%' 
+        AND bp.status = 'published' 
+        AND tof.id IS NULL
+        ORDER BY bp.created_at DESC
+      `;
+      
+      const generatedLinks = [];
+      
+      for (const blog of freebieBlogs) {
+        try {
+          const { randomUUID } = await import('crypto');
+          const trackingId = randomUUID().slice(0, 8);
+          const originalUrl = `/blog/${blog.slug}`;
+          const trackingUrl = `/t/of/blog/${blog.slug}?trackid=${trackingId}`;
+          const campaignName = blog.title || `Free ${blog.slug.replace(/-/g, ' ')}`;
+          
+          await sql`
+            INSERT INTO top_of_funnel_links (
+              original_url, tracking_url, tracking_id, campaign_name, description
+            ) VALUES (
+              ${originalUrl}, ${trackingUrl}, ${trackingId}, ${campaignName}, 
+              ${'Auto-generated tracking for existing freebie blog post'}
+            )
+          `;
+          
+          generatedLinks.push({
+            blogId: blog.id,
+            title: blog.title,
+            originalUrl,
+            trackingUrl: `https://myapp.drgolly.com${trackingUrl}`,
+            trackingId
+          });
+          
+          console.log(`Generated TOF tracking for existing freebie: ${originalUrl}`);
+        } catch (linkError) {
+          console.error(`Failed to create tracking for ${blog.slug}:`, linkError);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Generated tracking links for ${generatedLinks.length} freebie posts`,
+        generatedLinks
+      });
+    } catch (error) {
+      console.error('Error generating freebie tracking links:', error);
+      res.status(500).json({ message: 'Failed to generate tracking links' });
+    }
+  });
+
   // Admin: Record affiliate sale (manual entry)
   app.post('/api/admin/affiliates/:id/sales', isAdmin, async (req, res) => {
     try {
@@ -11264,6 +11353,35 @@ Please contact the customer to confirm the appointment.
         return res.sendStatus(404);
       }
       return res.sendStatus(500);
+    }
+  });
+
+  // Top of Funnel tracking redirect endpoint
+  app.get('/t/of/blog/:slug', async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { trackid } = req.query;
+      
+      if (!trackid) {
+        return res.redirect(`/blog/${slug}`);
+      }
+      
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      // Update click count for this tracking link
+      await sql`
+        UPDATE top_of_funnel_links 
+        SET click_count = click_count + 1, updated_at = NOW()
+        WHERE tracking_id = ${trackid}
+      `;
+      
+      // Redirect to original blog post
+      res.redirect(`/blog/${slug}`);
+    } catch (error) {
+      console.error('Error processing TOF tracking redirect:', error);
+      // Failsafe: redirect to original URL even if tracking fails
+      res.redirect(`/blog/${req.params.slug}`);
     }
   });
 

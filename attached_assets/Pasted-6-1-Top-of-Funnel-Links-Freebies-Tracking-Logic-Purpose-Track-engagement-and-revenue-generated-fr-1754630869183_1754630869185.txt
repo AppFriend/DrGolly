@@ -1,0 +1,74 @@
+6.1 Top of Funnel Links – Freebies Tracking Logic
+Purpose:
+Track engagement and revenue generated from free downloadable content (“freebies”) posted under /blog.
+
+Technical Requirements:
+
+Any time a new blog post is created where the URL path includes /blog/free-… (e.g., /blog/free-download-for-starting-solids, /blog/free-bedtime-routine-chart), the system must:
+
+Detect that the post is a “freebie” based on the /blog/free- prefix in its slug.
+
+Automatically generate a unique tracking URL for that freebie.
+
+Tracking URL should preserve the original URL destination.
+
+Append a unique tracking identifier (similar to UTM parameters) so that clicks on this tracking link can be attributed to this specific freebie in TOF reporting.
+
+Example:
+
+Original URL: /blog/free-bedtime-routine-chart
+
+Tracking URL: /t/of/blog/free-bedtime-routine-chart?trackid=abc123 (format is flexible — final structure should be consistent across freebies).
+
+The unique tracking URL should:
+
+Redirect seamlessly to the original blog post URL.
+
+Allow backend tracking of:
+
+Clicks (each time a user opens the tracking URL).
+
+Sales (if the tracked user later purchases a product in the same session or within a defined attribution window).
+
+Revenue (total purchase amount attributed to the tracked click).
+
+Data Storage:
+
+Create a top_of_funnel_links table (or equivalent in existing schema) with:
+
+id (unique identifier)
+
+original_url (string)
+
+tracking_url (string)
+
+click_count (integer)
+
+sales_count (integer)
+
+total_revenue (decimal/currency)
+
+created_at (datetime)
+
+Admin Display:
+
+Populate the new TOF tab table with all records from top_of_funnel_links.
+
+Display tracking URL in “TOF URL” column (with copy-to-clipboard).
+
+Display live click, sales, and revenue counts for each link.
+
+Goal:
+Enable marketing and content teams to see, in the Top of Funnel tab, how much traffic and revenue each freebie download is driving — using unique tracking URLs in a similar manner to UTM-based analytics.
+
+Testing Requirements:
+
+Publish a new /blog/free-... post, confirm system auto-generates a tracking URL and adds entry to TOF table.
+
+Confirm that clicking the tracking URL redirects to original blog URL.
+
+Validate that clicks, sales, and revenue update in real-time or at defined intervals.
+
+Ensure sorting works in TOF tab.
+
+Verify no changes impact affiliate functionality or other admin panel section

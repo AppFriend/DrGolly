@@ -20,7 +20,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  BarChart3
+  BarChart3,
+  Plus
 } from "lucide-react";
 import type { Affiliate } from "@shared/schema";
 
@@ -41,6 +42,27 @@ export function AdminAffiliateManagement() {
   // Fetch Top of Funnel data
   const { data: tofData = [], isLoading: tofLoading } = useQuery({
     queryKey: ["/api/admin/tof-links"],
+  });
+
+  // Generate freebie tracking mutation
+  const generateFreebieTrackingMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/admin/generate-freebie-tracking");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/tof-links'] });
+      toast({
+        title: "Success",
+        description: "Tracking links generated for existing freebie posts",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to generate tracking links",
+        variant: "destructive",
+      });
+    },
   });
 
   // Sort function
@@ -597,11 +619,30 @@ export function AdminAffiliateManagement() {
 
         <TabsContent value="tof" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Top of Funnel Links</CardTitle>
-              <CardDescription>
-                Track internal marketing campaign links and their performance.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Top of Funnel Links</CardTitle>
+                <CardDescription>
+                  Track internal marketing campaign links and their performance.
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => generateFreebieTrackingMutation.mutate()}
+                disabled={generateFreebieTrackingMutation.isPending}
+                className="bg-brand-teal hover:bg-brand-teal/90"
+              >
+                {generateFreebieTrackingMutation.isPending ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Generate Freebie Tracking
+                  </>
+                )}
+              </Button>
             </CardHeader>
             <CardContent>
               <TopOfFunnelTable />

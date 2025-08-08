@@ -863,21 +863,6 @@ export const affiliates = pgTable("affiliates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Top of Funnel tracking for internal marketing campaigns
-export const topOfFunnelLinks = pgTable("top_of_funnel_links", {
-  id: serial("id").primaryKey(),
-  tofUrl: varchar("tof_url").notNull().unique(),
-  shortUrl: varchar("short_url"),
-  campaignName: varchar("campaign_name"),
-  description: text("description"),
-  clicks: integer("clicks").notNull().default(0),
-  totalSales: integer("total_sales").notNull().default(0),
-  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export const affiliateSales = pgTable("affiliate_sales", {
   id: varchar("id").primaryKey().notNull().default(uuid()),
   affiliateId: varchar("affiliate_id").notNull(),
@@ -885,6 +870,22 @@ export const affiliateSales = pgTable("affiliate_sales", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency").notNull().default("aud"),
   timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Top of Funnel Links table for tracking freebie engagement and internal marketing campaigns  
+export const topOfFunnelLinks = pgTable("top_of_funnel_links", {
+  id: varchar("id").primaryKey().notNull().default(uuid()),
+  originalUrl: varchar("original_url").notNull(), // Original blog post URL (e.g., /blog/free-bedtime-routine-chart)
+  trackingUrl: varchar("tracking_url").notNull().unique(), // Generated tracking URL (e.g., /t/of/blog/free-bedtime-routine-chart?trackid=abc123)
+  trackingId: varchar("tracking_id").notNull().unique(), // Unique tracking identifier
+  campaignName: varchar("campaign_name").notNull(), // Display name for the campaign
+  description: text("description"), // Optional description for the campaign
+  clickCount: integer("click_count").default(0).notNull(), // Number of clicks on tracking URL
+  salesCount: integer("sales_count").default(0).notNull(), // Number of sales attributed to this link
+  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).default("0.00").notNull(), // Total revenue attributed
+  isActive: boolean("is_active").default(true).notNull(), // Whether tracking is active
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Affiliate Relations
@@ -1000,6 +1001,9 @@ export const insertAffiliateSaleSchema = createInsertSchema(affiliateSales).omit
 export type InsertAffiliate = z.infer<typeof insertAffiliateSchema>;
 export type InsertAffiliateSale = z.infer<typeof insertAffiliateSaleSchema>;
 export type InsertTopOfFunnelLink = z.infer<typeof insertTopOfFunnelLinkSchema>;
+export type TopOfFunnelLink = typeof topOfFunnelLinks.$inferSelect;
+export type Affiliate = typeof affiliates.$inferSelect;
+export type AffiliateSale = typeof affiliateSales.$inferSelect;
 
 // Notification system tables
 export const notifications = pgTable("notifications", {
