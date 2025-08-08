@@ -1485,7 +1485,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/complete-signup', isAuthenticated, async (req, res) => {
     try {
       const { preferences, babyDueDate, signupStep, signupCompleted } = req.body;
-      const userId = req.session.userId;
+      
+      // Get user ID from authenticated user
+      let userId = null;
+      if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.session?.passport?.user?.id) {
+        userId = req.session.passport.user.id;
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
       
       if (!preferences || !Array.isArray(preferences)) {
         return res.status(400).json({ message: "Preferences are required" });
