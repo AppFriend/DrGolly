@@ -1,0 +1,277 @@
+Replit agent – Investigate and fix isolated content reversion on two chapters, and prove deployments cannot cause content loss
+Context
+
+Admin user: alex@drgolly.com
+
+Admin UI: https://myapp.drgolly.com/admin
+
+Course: Pre Toddler
+
+Affected chapters:
+
+1.0 course overview video
+
+1.1 White noise
+
+Symptom: Alex saved updates that appeared successful, but on refresh the chapters reverted to older content. Re-saving repeats the reversion. All other chapters are unaffected.
+
+We have an audit/logging and content protection system that has generally been working well.
+
+Safety requirements
+Start in read-only mode for all diagnostics.
+
+Do not modify schemas or run bulk updates without explicit approval.
+
+Scope changes to only the two affected chapters and any directly related logic.
+
+Before any code changes, propose a branch and wait for my approval.
+
+1) Propose branch and wait for approval
+Print (do not run) the exact shell commands to create and switch to:
+fix/chapter-reversion-pre-toddler-1-0-and-1-1
+
+Wait for my explicit “Approved” before executing anything.
+
+2) Locate canonical records
+Find course_id for “Pre Toddler”.
+
+Find canonical chapter_id records for:
+a) “1.0 course overview video”
+b) “1.1 White noise”
+
+For each chapter, print:
+
+chapter_id, course_id, slug, locale, status, updated_at, updated_by, version or rowversion (if present).
+
+If titles are not unique, disambiguate by slug and hierarchy, and detect duplicates.
+
+3) Forensic audit (read-only)
+A. Audit trail integrity
+
+Pull the last 50 audit entries for each chapter: action, actor, timestamp, diff summary, origin, request_id if present.
+
+Confirm Alex’s saves exist and wrote the expected new content.
+
+Identify any subsequent overwrites, either by another user or background job.
+
+B. Duplicate/alias collisions
+
+Detect duplicate chapters with the same slug/title/course_id/locale or legacy aliases.
+
+Check for draft vs live twin rows in different tables or partitions.
+
+Confirm admin edits are writing to the same record the public API reads.
+
+C. Cache layers
+
+Identify Redis/CDN/browser caches, TTLs, and key formats.
+
+Verify save operations issue cache busts for these chapter IDs.
+
+Compare DB value vs admin API vs public API output.
+
+D. Read/write DB path consistency
+
+Confirm admin writes go to the primary DB, and admin/public reads are from an up-to-date source.
+
+Check for replication lag.
+
+Verify transactions commit before any post-save read.
+
+E. Background updaters
+
+List all jobs/webhooks/ETL that can mutate chapter content.
+
+Inspect job logs for these chapter IDs or slugs in the reported timeframe.
+
+Look for retries or replaying older payloads.
+
+F. Autosave/race conditions
+
+If autosave exists, verify debounce/throttle and behaviour with multiple open tabs.
+
+Check optimistic locking or updated_at preconditions to reject stale PUTs.
+
+Inspect network traces for overlapping writes.
+
+G. Sanitisation/normalisation
+
+Review any sanitiser or markdown/video embed normalisers.
+
+Ensure sanitisation is not stripping fields then persisting reduced payloads.
+
+H. Validation/state workflow
+
+Ensure saves aren’t going to draft while public reads published (or vice versa).
+
+Confirm publish step triggers correctly for these chapters.
+
+4) Reproduce locally in a safe harness
+Fetch the current stored value, then simulate Alex’s edits:
+
+Save new content
+
+Re-fetch via admin API
+
+Re-fetch via public API
+
+Log all three snapshots.
+
+If reversion occurs, capture request sequence, cache keys, and any job activity in that window.
+
+5) Deployment safety – prove Replit Deploy cannot cause content loss
+Goal: Pressing “Deploy” for the main app must never alter or regress chapter content.
+
+Diagnostics (read-only):
+
+Print the deploy process, build/start commands, lifecycle hooks, and post-deploy scripts.
+
+Confirm persistent data is in an external DB (not baked into app files).
+
+Search repo for any scripts triggered on deploy that modify the chapters table.
+
+Check migration history for non-destructive, schema-only changes.
+
+Verify no content importers or localisation jobs run on deploy without timestamp/idempotency guards.
+
+Inspect cache warming jobs to ensure they don’t repopulate stale content from snapshots.
+
+Safeguards to propose (approval required before implementing):
+
+Pre-deploy chapter content hash snapshot; compare post-deploy to ensure no drift.
+
+Block any data seeding in production (NODE_ENV=production safeguard).
+
+Disable background importers briefly post-deploy to avoid overwrites.
+
+Purge chapter-specific cache keys post-deploy before the app serves traffic.
+
+Verification after deploy:
+
+Run checksum report for these two chapters and 10 random chapters before deploy.
+
+Deploy, then re-run the report; confirm all hashes match.
+
+Perform a write-then-read save on a test chapter and confirm persistence.
+
+6) Targeted fixes to propose (approval required)
+Cache correctness – explicit busts on save and short-term disable after save.
+
+Optimistic locking – use updated_at or rowversion to reject stale writes.
+
+Job guardrails – block overwrites from outdated job payloads.
+
+Draft/publish alignment – unify duplicates if found.
+
+Autosave hardening – debounce, block stale overwrites.
+
+Sanitiser safety – log and abort if data loss detected.
+
+7) Minimal instrumentation (two chapters only)
+Log chapter_id, content hash, updated_at, and request source on save/read.
+
+Warn on duplicate slug/course_id/locale.
+
+After save, perform server-side read and assert equality before returning success.
+
+8) Deliverables
+Produce report/chapter-reversion-pre-toddler.md including:
+
+Executive summary for Alex
+
+Timeline of events
+
+Root cause analysis with evidence
+
+Exact record details for the two chapters
+
+Reproduction steps and results
+
+Fix proposals and pros/cons
+
+Verification results for both normal saves and after deploy
+
+Recommendation for a 7-day monitor period
+
+9) Read-only queries (adjust for schema)
+Find course and chapters
+
+sql
+Copy
+Edit
+SELECT id AS course_id, title, slug 
+FROM courses 
+WHERE title = 'Pre Toddler' 
+LIMIT 5;
+
+SELECT ch.id AS chapter_id, ch.course_id, ch.title, ch.slug, ch.locale, ch.status, ch.updated_at, ch.updated_by
+FROM chapters ch
+JOIN courses c ON c.id = ch.course_id
+WHERE c.title = 'Pre Toddler'
+  AND ch.title IN ('1.0 course overview video','1.1 White noise');
+Duplicate slugs
+
+sql
+Copy
+Edit
+SELECT ch.slug, ch.locale, COUNT(*) AS cnt, ARRAY_AGG(ch.id) AS chapter_ids
+FROM chapters ch
+JOIN courses c ON c.id = ch.course_id
+WHERE c.title = 'Pre Toddler'
+  AND ch.slug IN (
+    SELECT slug FROM chapters ch2
+    JOIN courses c2 ON c2.id = ch2.course_id
+    WHERE c2.title = 'Pre Toddler'
+      AND ch2.title IN ('1.0 course overview video','1.1 White noise')
+  )
+GROUP BY ch.slug, ch.locale
+HAVING COUNT(*) > 1;
+Recent audit
+
+sql
+Copy
+Edit
+SELECT *
+FROM chapter_audit_log
+WHERE chapter_id IN (:chapter_id_1, :chapter_id_2)
+ORDER BY created_at DESC
+LIMIT 50;
+Current hashes
+
+sql
+Copy
+Edit
+SELECT id AS chapter_id,
+       MD5(COALESCE(content,'')) AS content_md5,
+       LENGTH(COALESCE(content,'')) AS content_len,
+       updated_at, updated_by, status
+FROM chapters
+WHERE id IN (:chapter_id_1, :chapter_id_2);
+Job history
+
+sql
+Copy
+Edit
+SELECT job_name, status, started_at, finished_at, source, notes
+FROM job_runs
+WHERE notes ILIKE CONCAT('%chapter_id=', :chapter_id_1, '%')
+   OR notes ILIKE CONCAT('%chapter_id=', :chapter_id_2, '%')
+ORDER BY started_at DESC
+LIMIT 50;
+10) Verification workflow
+After diagnostics and approval, apply minimal fix.
+
+Add temporary instrumentation for the two chapters.
+
+Purge caches, perform test saves, verify admin/public match DB.
+
+Run pre/post-deploy checksum comparison.
+
+Update report with evidence.
+
+Appendix – Alex’s note
+
+"I jumped in last night and just 2 of the chapters had reverted back to incorrect content so I edited them again.
+I’ve jumped in again just now and they again reverted back to incorrect content. I don’t know why it’s happening for just these two chapters 🤔
+It’s Pre Toddler (Course) 1.0 course overview video (Chapter) and 1.1 White noise (Chapter)"
+
