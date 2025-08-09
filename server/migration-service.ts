@@ -138,24 +138,35 @@ export class MigrationService {
     return this.cohortEmails.has(this.normalizeEmail(email));
   }
 
-  // Find existing user by email
+  // Find existing user by email using raw SQL
   private async findUserByEmail(email: string): Promise<any> {
     const normalizedEmail = this.normalizeEmail(email);
-    const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail));
-    return user;
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`SELECT * FROM users WHERE email = ${normalizedEmail} LIMIT 1`;
+      return result[0] || null;
+    } catch (error) {
+      console.error('Error finding user by email:', error);
+      return null;
+    }
   }
 
-  // Find existing users by name
+  // Find existing users by name using raw SQL
   private async findUsersByName(name: string): Promise<any[]> {
     const normalizedName = this.normalizeName(name);
-    // Construct full name from firstName and lastName
-    const usersFound = await db.select().from(users).where(
-      eq(
-        sql`LOWER(TRIM(CONCAT(COALESCE(${users.firstName}, ''), ' ', COALESCE(${users.lastName}, ''))))`,
-        normalizedName
-      )
-    );
-    return usersFound;
+    try {
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`
+        SELECT * FROM users 
+        WHERE LOWER(TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')))) = ${normalizedName}
+      `;
+      return result;
+    } catch (error) {
+      console.error('Error finding users by name:', error);
+      return [];
+    }
   }
 
   // Perform dry run analysis
@@ -268,18 +279,22 @@ export class MigrationService {
       // Create snapshot before update
       await this.createSnapshot(existingUser.id, existingUser);
 
-      // Update existing user
-      await db.update(users)
-        .set({
-          stripeCustomerId: record.stripeCustomerId,
-          mustResetPassword: true,
-          passwordHash: hashedPassword,
-          migrationCohort: MIGRATION_COHORT,
-          migrationSourceFile: 'migration_csv.csv',
-          passwordLastSetAt: new Date(),
-          passwordSetMethod: 'temp_migration_password',
-        })
-        .where(eq(users.id, existingUser.id));
+      // Update existing user with raw SQL to avoid schema issues
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      
+      await sql`
+        UPDATE users 
+        SET 
+          stripe_customer_id = ${record.stripeCustomerId},
+          password_hash = ${hashedPassword},
+          temporary_password = 'DRG-075-616!',
+          is_first_login = true,
+          has_set_password = false,
+          migrated = true,
+          updated_at = NOW()
+        WHERE email = ${record.normalizedEmail}
+      `;
 
     } else if (intendedAction === 'CREATE_NEW') {
       // Create new user

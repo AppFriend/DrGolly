@@ -22,7 +22,7 @@ import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 // Import admin components
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
-import { AdminBlogManagement } from "@/components/admin/AdminBlogManagement";
+import AdminBlogManagement from "@/components/admin/AdminBlogManagement";
 import { AdminCourseManagement } from "@/components/admin/AdminCourseManagement";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { AdminUserSettings } from "@/components/admin/AdminUserSettings";
@@ -105,7 +105,7 @@ export default function AdminPanel() {
                 Admin
               </Badge>
               <span className="text-xs sm:text-sm text-gray-600 truncate max-w-[100px] sm:max-w-none">
-                {user.firstName} {user.lastName}
+                {user?.firstName || 'Admin'}
               </span>
             </div>
           </div>
