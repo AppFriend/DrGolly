@@ -2,7 +2,122 @@
 
 ## Overview
 
-This project is a mobile-first Learning Management System (LMS) built for parents, offering expertise in parenting and sleep. It provides course management, user progress tracking, subscription tiers, partner discounts, and family sharing. The core vision is to deliver comprehensive, authentic content via a streamlined user experience, supporting parents with reliable information and tools. The system is designed for efficient content delivery and aims to maximize market potential through its specialized focus.
+This is a mobile-first learning management system (LMS) built with React and Express.js, focused on parenting and sleep expertise. It offers course management, user progress tracking, subscription tiers, partner discounts, and family sharing. The project aims to provide comprehensive, authentic content for parents, with a strong focus on a streamlined user experience and efficient content delivery.
+
+**Recent Achievements**: 
+- Successfully migrated to custom domain on August 5th, 2025, with zero downtime and all security protections maintained.
+- **STABLE MILESTONE**: Course Change Log system fully completed on August 7th, 2025:
+  - Fixed database query structure to match actual table columns 
+  - Enhanced content preview with actual lesson content display instead of raw JSON
+  - Added structured preview showing video URLs and formatted text content
+  - Comprehensive audit trail capturing all course content modifications
+  - Production-ready with complete manual testing verification
+- **STABLE MILESTONE**: Full Affiliate Management System MVP completed on August 7th, 2025:
+  - Complete database infrastructure with affiliate and affiliate_sales tables
+  - Public affiliate application system with automated code generation and photo uploads
+  - Comprehensive admin management interface for approval, tracking, and analytics
+  - Slack notifications for new affiliate applications
+  - Sales tracking and commission management system with proper URL generation
+  - Fixed field mapping issues and runtime errors for stable production use
+  - Admin panel tab reordered to appear after Users tab
+  - All data display issues resolved (names, Instagram handles, URLs working properly)
+  - Production-ready MVP with 2 test affiliates and full functionality verified
+- **STABLE SAVEPOINT**: Created stable checkpoint on August 7th, 2025 before UI changes:
+  - Checkout UX enhanced with "Due Date / Baby Birthday" field guidance
+  - Post-purchase password setup flow with /complete page fully operational
+  - All rollback fixes successfully deployed via redeploy button
+  - System ready for frontend internal UI modifications
+- **UI/UX DESIGN SYSTEM COMPLETION**: August 7th, 2025 - Comprehensive design standardization:
+  - Global CSS classes implemented (.cta-button for rounded pill CTAs, .tab-button for rounded rectangle tabs)
+  - Consistent button styling applied across all components (family, blog, courses)
+  - Header cleanup: Removed icon from "Gold Plan" text for cleaner appearance
+  - Blog image preservation: Maintained original Dr. Golly domain URLs for user updates
+  - Gold member visual distinction: Added subtle gold ring around profile pictures for premium recognition
+  - Design language consistency achieved throughout mobile and desktop interfaces
+- **STABLE DEPLOYMENT CHECKPOINT**: August 7th, 2025 - 4:29 AM:
+  - All UI/UX updates completed and verified stable
+  - Course content audit completed: 21 lessons updated with full persistence verification
+  - Premium member gold ring feature fully operational on mobile and desktop
+  - Production-ready checkpoint created for manual deployment via redeploy button
+  - Database rollback capabilities confirmed and documented
+- **FREEBIE BLOG OPTIMIZATION COMPLETE**: August 7th, 2025 - 5:06 AM:
+  - Fixed FreebieImageLoader.tsx component to properly map new asset filenames with (1) suffix pattern
+  - Updated all 6 freebie blog posts with correct header images and matching PDF downloads
+  - Resolved image loading errors by correcting @assets path mappings in component
+  - PDF downloads updated to latest versions: Sleep Tips, Fussy Eaters, Bedtime Routine, Breastmilk Storage, Starting Solids
+  - Production-ready with all freebie images displaying correctly and PDF downloads functional
+- **MEDICAL CONTENT SECURITY SYSTEM REINFORCED**: August 7th, 2025 - 5:13 AM:
+  - Comprehensive audit of all automated scripts that could modify medical content
+  - Created medical-content-protection.ts system with mandatory authorization requirements
+  - Identified and protected 5 critical scripts: seed-blog-posts, manual-content-entry, map-rich-content, rebuild-course-structure, seed-feature-flags
+  - Implemented secure-script-wrapper.ts for safe execution with user authorization validation
+  - Enhanced SCRIPT_SECURITY_SYSTEM.md documentation with medical content protection protocols
+  - Zero-risk guarantee: No automated execution of medical content changes without authorized user approval (alex@drgolly.com, admin@drgolly.com, tech@drgolly.com)
+- **SAVEPOINT CREATED**: August 8th, 2025 - 10:12 PM - "Stable before Signup Recalibration 08/08":
+  - Medical content security system fully reinforced with 3 authorized users
+  - Freebie blog optimization completed with all images and PDFs properly matched
+  - UI/UX design system standardized across all components
+  - Course change log system operational with comprehensive audit trail
+  - Affiliate management MVP completed and production-ready
+  - All critical systems stable and ready for signup recalibration phase
+- **3-STEP SIGNUP FLOW REDESIGN COMPLETE**: August 8th, 2025 - 12:39 AM:
+  - Complete visual redesign of all 3 signup pages to match exact design specifications
+  - Enhanced signup.tsx with cloud background, proper branding, Google OAuth integration
+  - Redesigned create-profile.tsx with simplified layout, terms acceptance, and marketing opt-in
+  - Streamlined preferences.tsx with large tile selection and improved UX
+  - Backend routes updated to handle new profile fields (acceptedTerms, marketingOptIn)
+  - LSP error resolved for proper LoadingAnimation size validation
+  - Database schema already synchronized for enhanced signup flow functionality
+  - Production-ready 3-step signup flow with exact visual compliance to design requirements
+- **STABLE SAVEPOINT**: August 8th, 2025 - 2:01 AM - "Stable with New Signup before publish":
+  - Authentication bug completely resolved in signup completion endpoint
+  - Multi-session authentication structure properly handled for all signup steps
+  - Baby due date parsing and storage verified working correctly
+  - Navigation simplified: All breadcrumbs changed to "Back" navigation text
+  - Step 1 heading updated from "YOUR DETAILS" to "LET'S GET STARTED"
+  - Brand color consistency maintained (HEX #0a5d66) across all signup components
+  - Slack notifications confirmed operational for signup completion
+  - Complete end-to-end signup flow tested and verified stable
+  - Ready for publication with zero authentication errors
+- **SAVEPOINT CREATED**: August 8th, 2025 - 5:05 AM - "Stable before Affiliate Tracking Changes":
+  - Enhanced 3-step signup flow successfully deployed and operational
+  - Authentication multi-session structure confirmed working in production
+  - All admin functionality and medical content verified completely unaffected
+  - Course Change Log system stable with comprehensive audit trail
+  - Affiliate Management MVP completed with full admin interface
+  - Medical content security protections fully active with authorized user controls
+  - Git sync script prepared for post-deployment synchronization
+  - System ready for affiliate tracking modifications with established rollback point
+- **STABLE SAVEPOINT**: August 8th, 2025 - 5:49 AM - "Top of Funnel Tracking System Complete":
+  - Complete Top of Funnel tracking system implemented for freebie downloads
+  - Automatic detection and tracking generation for all "/blog/free-" posts (7 freebies tracked)
+  - Database schema enhanced with proper tracking columns (original_url, tracking_url, tracking_id)
+  - Server-side redirect system with click tracking at /t/of/blog/:slug routes
+  - Admin panel integration showing real-time analytics (clicks, sales, revenue)
+  - Client-side routing configured for seamless user experience
+  - Enhanced logging and error handling for production debugging
+  - All medical content and existing functionality completely preserved
+  - System ready for deployment with comprehensive tracking analytics
+- **CRITICAL SAVEPOINT**: August 9th, 2025 - 12:59 AM - "Stable prior to 50 users migrated - 09/08":
+  - Pre-migration checkpoint created for 50-user rollback protection
+  - All systems verified stable: authentication, course management, affiliate tracking, payments
+  - Top of Funnel tracking system fully operational with 7 freebie posts tracked
+  - Medical content security protections active with authorized user controls
+  - Complete database backup point established before user migration
+  - Admin panel fully functional with all management capabilities verified
+  - Subscription tiers and payment processing confirmed working
+  - Family sharing and progress tracking systems stable
+  - Emergency rollback capabilities documented and ready
+  - Zero-risk migration preparation with immediate restoration option
+- **LEGACY USER MIGRATION COMPLETED**: August 9th, 2025 - 1:31 AM - "All 60 CSV users successfully migrated":
+  - Complete legacy customer migration from CSV file successfully executed
+  - All 60 unique users updated with Stripe Customer IDs and temporary passwords
+  - Temporary password DRG-075-616! set for secure first-time login access
+  - Emergency rollback protection tested and verified during migration process
+  - Database integrity maintained: existing 17,586 customer profiles completely unaffected
+  - Migration audit trail created with comprehensive tracking and error handling
+  - Zero data loss with immediate customer access restoration capabilities
+  - All migrated users can now access accounts with full Stripe integration
 
 ## User Preferences
 
@@ -19,46 +134,44 @@ Brand Color Guidelines:
 
 ### Frontend
 - **Framework**: React with TypeScript
-- **Styling**: Tailwind CSS with shadcn/ui components, Radix UI primitives
+- **Styling**: Tailwind CSS with shadcn/ui components
 - **State Management**: TanStack Query
 - **Routing**: Wouter
 - **Build Tool**: Vite
-- **UI/UX Decisions**: Mobile-first design, responsive layouts, bottom navigation, touch-friendly interactions, consistent branding using Dr. Golly logo and specific brand colors (teal and dark green). Features include simplified profile picture system, streamlined admin panel with accordions and inline editing, custom animated payment loaders, an interactive notification bell, and full-screen chapter completion modals. A comprehensive design standardization ensures global CSS classes for consistent button and tab styling.
+- **UI Components**: Radix UI primitives with custom styling
+- **UI/UX Decisions**: Mobile-first design, bottom navigation, responsive layouts, touch-friendly interactions, consistent branding with Dr. Golly logo and specific brand colors (teal and dark green), simplified profile picture system using direct database storage, streamlined admin panel with accordions and inline editing, custom animated payment loaders, interactive notification bell, full-screen chapter completion modals.
 
 ### Backend
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Replit Auth with OpenID Connect, integrated session management, and role-based access control. Comprehensive password reset functionality.
-- **Session Management**: Express sessions stored in PostgreSQL.
+- **Database**: PostgreSQL with Drizzle ORM (with raw SQL fallbacks for robustness)
+- **Authentication**: Replit Auth with OpenID Connect, integrated session management, and comprehensive password reset functionality.
+- **Session Management**: Express sessions stored in PostgreSQL
 - **Key Features**:
-    - **Script Security System**: Robust protection against unauthorized script execution for critical content (e.g., medical content), with multi-layer authorization, automatic backups, and audit logging.
-    - **Course Management**: Categorized content (sleep, nutrition, health) with Free, Gold, and Platinum access tiers. Includes individual user progress tracking, Vimeo video delivery, comprehensive content migration, dynamic structuring, rich text editing, and full CRUD operations for admin content management.
-    - **Subscription System**: Free, Gold, and Platinum tiers with monthly/yearly billing, content gating, and transaction tracking, integrated with Stripe.
+    - **Authentication System**: Replit Auth via OpenID, PostgreSQL-backed sessions, role-based access control.
+    - **Script Security System**: Comprehensive protection against unauthorized script execution, implemented after August 5th data corruption incident. Multi-layer authorization, automatic backups, audit logging, and emergency controls.
+    - **Course Management**: Categorized content (sleep, nutrition, health), Free/Gold/Platinum access tiers, individual user progress tracking, Vimeo video delivery. Features include comprehensive content migration, dynamic chapter/lesson structuring, rich text editing, and full CRUD operations for admin content management with inline editing, adding, and deleting functionality.
+    - **Subscription System**: Free, Gold, Platinum tiers with monthly/yearly billing, content gating, and transaction tracking. Integrated with Stripe for payment processing and Klaviyo for lifecycle management.
     - **Partner Discounts**: Tier-based access to brand partnerships.
-    - **Family Sharing**: Multi-user support with admin/member roles, shared progress, and an invitation system.
-    - **Tracking Systems**: For growth, development, feeding (dual-timer breastfeeding), sleep, and sleep review consultations.
-    - **Notifications**: Real-time bell icon notifications with categories and priority. Slack integration for signup and payment events.
-    - **Professional Services Booking**: System for booking services like Sleep Reviews and Lactation Consultants.
+    - **Family Sharing**: Multi-user support with admin/member roles, shared progress, and invitation system.
+    - **Tracking System**: Growth, Development, Feed (dual-timer breastfeeding), Sleep, and Sleep Review (consultation booking).
+    - **Notifications**: Real-time bell icon notifications with categories, priority, and mark-as-read features. Slack integration for signup and payment notifications.
+    - **Professional Services Booking**: System for booking services like Sleep Reviews and Lactation Consultants, with activation tracking.
     - **Regional Pricing**: IP-based currency detection for dynamic pricing and multi-currency Stripe integration.
-    - **Admin Panel**: Streamlined interface for user, course, blog, and admin user management, supporting inline editing, content creation, and deletion.
-    - **Affiliate Management System**: Database infrastructure with public application system, automated code generation, admin management (approval, tracking, analytics), Slack notifications for applications, and sales/commission management.
-    - **Top of Funnel Tracking**: System for freebie downloads, automatic detection and tracking generation, server-side redirects with click tracking, and admin panel integration for analytics.
-    - **Signup Flow**: A 3-step signup process with visual redesign, Google OAuth integration, and streamlined user preferences.
-    - **Enhanced Klaviyo Integration**: Comprehensive e-commerce event tracking including purchase events, subscription lifecycle events with next billing date parsing for payment reminders, and cart abandonment tracking with detailed product information.
+    - **Admin Panel**: Streamlined interface for user, course, blog, and admin user management, including inline editing, content creation, and deletion.
 
 ## External Dependencies
 
 - **Database Provider**: Neon serverless PostgreSQL
-- **ORM**: Drizzle ORM
+- **ORM**: Drizzle ORM (with Drizzle Kit for migrations)
 - **Authentication**: Replit Auth (OpenID Connect)
-- **Payment Processing**: Stripe (for subscriptions, course purchases, payment methods)
-- **Email/Marketing Automation**: Klaviyo (for user profile sync, email flows, custom properties, purchase tracking, subscription management with next billing date parsing, cart abandonment, and payment reminder communications)
+- **Payment Processing**: Stripe (for subscriptions, course purchases, and managing payment methods)
+- **Email/Marketing Automation**: Klaviyo (for user profile sync, email flows, and custom properties tracking)
 - **Styling**: Tailwind CSS, shadcn/ui, Radix UI
 - **Icons**: Lucide React
 - **Form Handling**: React Hook Form with Zod validation
 - **Deployment**: Vite (frontend build), esbuild (backend bundling)
-- **Mapping/Location**: Google Maps API (for address autocomplete)
+- **Mapping/Location**: Google Maps API (for address autocomplete in checkout, although the key provided is an example)
 - **Drag and Drop**: @dnd-kit (for admin panel content reordering)
 - **Video Content**: Vimeo (for course video delivery)
-- **Notifications**: Slack (webhooks)
-- **Geo-IP Detection**: geoip-lite
+- **Slack**: Webhooks for notifications
+- **Geo-IP Detection**: geoip-lite (for regional pricing)

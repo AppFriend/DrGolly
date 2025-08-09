@@ -1,0 +1,24 @@
+# Manual Post-Deployment Git Commands
+# Run these commands in the shell after successful deployment
+
+# 1. Stage and commit any remaining changes
+git add .
+git commit -m "feat: Enhanced Klaviyo integration with next billing date parsing - Post deployment sync"
+
+# 2. Ensure you're on main branch
+git checkout main
+
+# 3. Push to remote (if you have a remote repository)
+git push origin main
+
+# 4. Tag the deployment
+git tag -a "klaviyo_data_bolster_$(date +%Y%m%d_%H%M%S)" -m "Deployment: Enhanced Klaviyo integration with billing date parsing"
+
+# 5. Push tags
+git push origin --tags
+
+# 6. Show final status
+git log --oneline -5
+git status
+
+echo "Post-deployment sync complete!"
