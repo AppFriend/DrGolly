@@ -44,7 +44,7 @@ import {
 } from "@shared/schema";
 import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
-import { klaviyoService } from "./klaviyo";
+import { onOrderCompleted, onSubscriptionStarted, onCartUpdated } from "./integrations/klaviyo-hooks";
 import { slackNotificationService } from "./slack";
 import { db } from "./db";
 import { eq, sql, and, or, isNull } from "drizzle-orm";
@@ -52,7 +52,6 @@ import { neon } from "@neondatabase/serverless";
 import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { AuthUtils } from "./auth-utils";
 import { migrationService } from "./migration-service";
 import bcrypt from 'bcryptjs';
 
@@ -2259,6 +2258,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerName: `${customerDetails.firstName} ${customerDetails.lastName || ''}`.trim(),
       });
       console.log("Course purchase record created successfully");
+      
+      // Send Klaviyo purchase event
+      try {
+        const course = await storage.getCourse(courseId);
+        await onOrderCompleted({
+          id: paymentIntentId,
+          email: customerDetails.email,
+          total: paymentIntent.amount / 100, // Convert from cents
+          currency: paymentIntent.currency.toUpperCase(),
+          paid_at: new Date().toISOString(),
+          items: [{
+            id: courseId.toString(),
+            product_id: courseId.toString(),
+            name: course?.title || paymentIntent.metadata.courseName,
+            title: course?.title || paymentIntent.metadata.courseName,
+            price: paymentIntent.amount / 100,
+            quantity: 1,
+            category: 'course'
+          }],
+          stripe_payment_intent_id: paymentIntentId,
+          payment_method: 'stripe'
+        });
+        console.log("Klaviyo purchase event sent successfully");
+      } catch (klaviyoError) {
+        console.error("Failed to send Klaviyo purchase event:", klaviyoError);
+      }
       
       // Get the user for login session
       const user = await storage.getUser(userId);
@@ -6538,6 +6563,26 @@ Please contact the customer to confirm the appointment.
             
             console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
             
+            // Send Klaviyo subscription started event
+            try {
+              await onSubscriptionStarted({
+                id: createdSub.id,
+                email: user.email,
+                status: createdSub.status,
+                plan: createdSub.metadata.plan_tier,
+                billing_period: createdSub.items.data[0]?.price?.recurring?.interval || 'month',
+                amount: (createdSub.items.data[0]?.price?.unit_amount || 0) / 100,
+                currency: createdSub.currency.toUpperCase(),
+                current_period_start: new Date(createdSub.current_period_start * 1000).toISOString(),
+                current_period_end: new Date(createdSub.current_period_end * 1000).toISOString(),
+                stripe_subscription_id: createdSub.id,
+                trial_end: createdSub.trial_end ? new Date(createdSub.trial_end * 1000).toISOString() : null
+              });
+              console.log("Klaviyo subscription started event sent successfully");
+            } catch (klaviyoError) {
+              console.error("Failed to send Klaviyo subscription started event:", klaviyoError);
+            }
+            
             // Send payment notification for new subscription
             try {
               const planTier = createdSub.metadata.plan_tier;
@@ -10326,6 +10371,30 @@ Please contact the customer to confirm the appointment.
       }
       
       res.json(cartItem);
+      
+      // Send Klaviyo cart updated event for abandonment tracking
+      try {
+        const user = await storage.getUser(userId);
+        if (user && user.email) {
+          const cart = await storage.getUserCart(userId);
+          await onCartUpdated({
+            email: user.email,
+            total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+            currency: 'USD',
+            items: cart.map(item => ({
+              id: item.courseId.toString(),
+              name: item.courseName || `Course ${item.courseId}`,
+              price: item.price,
+              quantity: item.quantity
+            })),
+            abandoned_at: new Date().toISOString(),
+            checkout_url: `${process.env.VITE_APP_URL || 'https://app.drgolly.com'}/cart`
+          });
+          console.log("Klaviyo cart updated event sent for user:", userId);
+        }
+      } catch (klaviyoError) {
+        console.error("Failed to send Klaviyo cart updated event:", klaviyoError);
+      }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
       res.status(500).json({ error: error.message });
@@ -10357,6 +10426,30 @@ Please contact the customer to confirm the appointment.
       }
       
       res.json(cartItem);
+      
+      // Send Klaviyo cart updated event for abandonment tracking
+      try {
+        const user = await storage.getUser(userId);
+        if (user && user.email) {
+          const cart = await storage.getUserCart(userId);
+          await onCartUpdated({
+            email: user.email,
+            total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+            currency: 'USD',
+            items: cart.map(item => ({
+              id: item.courseId.toString(),
+              name: item.courseName || `Course ${item.courseId}`,
+              price: item.price,
+              quantity: item.quantity
+            })),
+            abandoned_at: new Date().toISOString(),
+            checkout_url: `${process.env.VITE_APP_URL || 'https://app.drgolly.com'}/cart`
+          });
+          console.log("Klaviyo cart updated event sent for user:", userId);
+        }
+      } catch (klaviyoError) {
+        console.error("Failed to send Klaviyo cart updated event:", klaviyoError);
+      }
     } catch (error: any) {
       console.error("Error updating cart item:", error);
       res.status(500).json({ error: error.message });
@@ -10381,6 +10474,30 @@ Please contact the customer to confirm the appointment.
       }
       
       res.json({ success: true });
+      
+      // Send Klaviyo cart updated event for abandonment tracking
+      try {
+        const user = await storage.getUser(userId);
+        if (user && user.email) {
+          const cart = await storage.getUserCart(userId);
+          await onCartUpdated({
+            email: user.email,
+            total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+            currency: 'USD',
+            items: cart.map(item => ({
+              id: item.courseId.toString(),
+              name: item.courseName || `Course ${item.courseId}`,
+              price: item.price,
+              quantity: item.quantity
+            })),
+            abandoned_at: new Date().toISOString(),
+            checkout_url: `${process.env.VITE_APP_URL || 'https://app.drgolly.com'}/cart`
+          });
+          console.log("Klaviyo cart updated event sent for user:", userId);
+        }
+      } catch (klaviyoError) {
+        console.error("Failed to send Klaviyo cart updated event:", klaviyoError);
+      }
     } catch (error: any) {
       console.error("Error removing from cart:", error);
       res.status(500).json({ error: error.message });

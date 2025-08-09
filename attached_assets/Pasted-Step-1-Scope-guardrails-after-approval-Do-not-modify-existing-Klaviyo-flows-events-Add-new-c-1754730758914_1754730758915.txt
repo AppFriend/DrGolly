@@ -1,0 +1,295 @@
+Step 1 — Scope & guardrails (after approval)
+Do not modify existing Klaviyo flows/events.
+
+Add new code only under /integrations/klaviyo/ and behind feature flags:
+
+flags.klaviyo.events.purchase
+
+flags.klaviyo.events.subscription_started
+
+flags.klaviyo.events.cart_abandoned_10m
+
+Use live Klaviyo API key from env KLAVIYO_API_KEY (already configured).
+
+Sturdy client: retries with jitter on 429/5xx, idempotency per event, no secrets in logs.
+
+Create/update:
+
+swift
+Copy
+Edit
+/integrations/klaviyo/client.ts
+/integrations/klaviyo/events/purchase.ts
+/integrations/klaviyo/events/subscription_started.ts
+/integrations/klaviyo/events/cart_abandoned.ts
+/integrations/klaviyo/schemas/*.ts
+/integrations/klaviyo/__tests__/*.test.ts
+/integrations/klaviyo/README.md
+Client contract (client.ts)
+Function: sendEvent({ metricName, profileId, properties, time, value, idempotencyKey })
+
+Endpoint: POST https://a.klaviyo.com/api/events/
+
+Headers:
+
+Authorization: Klaviyo-API-Key ${process.env.KLAVIYO_API_KEY}
+
+Content-Type: application/json
+
+Idempotency-Key: <stable-hash>
+
+revision: 2025-02-15
+
+Body (JSON:API):
+
+json
+Copy
+Edit
+{
+  "data": {
+    "type": "event",
+    "attributes": {
+      "metric": { "name": "Placed Order" },
+      "properties": { "..." : "..." },
+      "time": "2025-08-09T00:00:00Z",
+      "value": 123.45
+    },
+    "relationships": {
+      "profile": { "data": { "type": "profile", "id": "$email:customer@example.com" } }
+    }
+  }
+}
+profileId = $email:<email> (or stored Klaviyo profile ID if you have it).
+
+Step 2 — Event 1: Purchase (live)
+Trigger: Order completion hook.
+
+Metric: Placed Order
+
+Flag: flags.klaviyo.events.purchase
+
+Map:
+
+profileId: $email:${order.email}
+
+value: order.total
+
+time: order.paid_at (ISO)
+
+properties:
+
+order_id, currency
+
+subtotal, tax, shipping, discount_total, total
+
+payment_method (non-sensitive label only)
+
+line_items[]: product_id, product_name, sku, quantity, unit_price, line_total, category
+
+stripe_payment_intent_id (if available)
+
+source: "app"
+
+environment: "production"
+Idempotency: purchase:${order.id}
+
+Call example:
+
+ts
+Copy
+Edit
+if (flags.klaviyo.events.purchase) {
+  await klaviyo.sendEvent({
+    metricName: "Placed Order",
+    profileId: `$email:${order.email}`,
+    value: order.total,
+    time: order.paid_at.toISOString(),
+    idempotencyKey: `purchase:${order.id}`,
+    properties: {
+      order_id: order.id,
+      currency: order.currency,
+      subtotal: order.subtotal,
+      tax: order.tax,
+      shipping: order.shipping,
+      discount_total: order.discount_total,
+      total: order.total,
+      line_items: order.items.map(i => ({
+        product_id: i.product_id,
+        product_name: i.name,
+        sku: i.sku,
+        quantity: i.qty,
+        unit_price: i.price,
+        line_total: i.price * i.qty,
+        category: i.category
+      })),
+      stripe_payment_intent_id: order.payment_intent_id,
+      source: "app",
+      environment: "production"
+    }
+  });
+}
+Step 3 — Event 2: Subscription Started (live)
+Trigger: After subscription is activated in billing.
+
+Metric: Subscription Started
+
+Flag: flags.klaviyo.events.subscription_started
+
+Map:
+
+profileId: $email:${sub.email}
+
+time: sub.start_date (ISO)
+
+properties:
+
+subscription_id, stripe_subscription_id, stripe_customer_id
+
+tier (e.g. "Gold")
+
+product_name
+
+plan_interval ("month"|"year")
+
+plan_interval_count (e.g. 1, 12)
+
+start_date
+
+monthly_billing_day (1–31; derive from Stripe schedule)
+
+amount (per cycle), currency
+
+trial_end (ISO or null)
+
+status: "active"
+
+environment: "production"
+Idempotency: sub_started:${sub.stripe_subscription_id}
+
+Call example:
+
+ts
+Copy
+Edit
+if (flags.klaviyo.events.subscription_started) {
+  await klaviyo.sendEvent({
+    metricName: "Subscription Started",
+    profileId: `$email:${sub.email}`,
+    time: sub.start_date,
+    idempotencyKey: `sub_started:${sub.stripe_subscription_id}`,
+    properties: {
+      subscription_id: sub.id,
+      tier: sub.tier,
+      product_name: sub.product_name,
+      plan_interval: sub.interval,
+      plan_interval_count: sub.interval_count,
+      start_date: sub.start_date,
+      monthly_billing_day: sub.billing_day,
+      amount: sub.amount,
+      currency: sub.currency,
+      stripe_customer_id: sub.stripe_customer_id,
+      stripe_subscription_id: sub.stripe_subscription_id,
+      trial_end: sub.trial_end ?? null,
+      status: "active",
+      environment: "production"
+    }
+  });
+}
+Step 4 — Event 3: Cart Abandoned (10+ mins) (live)
+Approach:
+
+Emit Started Checkout when a cart is created or updated.
+
+Emit Checkout Abandoned after 10 minutes of inactivity via a worker.
+
+Flags: flags.klaviyo.events.cart_abandoned_10m
+
+Metric names:
+
+Started Checkout (on cart change)
+
+Checkout Abandoned (from worker)
+
+Shared properties:
+
+cart_id, cart_value, currency
+
+line_items[] (same shape as purchase)
+
+last_activity_at (ISO)
+
+url (deep link to resume)
+
+environment: "production"
+
+Idempotency:
+
+Started: started_checkout:${cart.id}:${cart.updated_at}
+
+Abandoned: checkout_abandoned:${cart.id}:${window_start_iso}
+
+Worker spec:
+
+Run every minute.
+
+Select carts where status='open' AND now() - last_activity_at >= 10 minutes AND abandoned_event_emitted=false.
+
+Send Checkout Abandoned.
+
+Set abandoned_event_emitted=true (clear if cart updates later).
+
+Call example (abandoned):
+
+ts
+Copy
+Edit
+if (flags.klaviyo.events.cart_abandoned_10m) {
+  await klaviyo.sendEvent({
+    metricName: "Checkout Abandoned",
+    profileId: `$email:${cart.email}`,
+    time: new Date().toISOString(),
+    idempotencyKey: `checkout_abandoned:${cart.id}:${cart.last_activity_at}`,
+    properties: {
+      cart_id: cart.id,
+      cart_value: cart.total,
+      currency: cart.currency,
+      line_items: cart.items.map(i => ({
+        product_id: i.product_id,
+        product_name: i.name,
+        sku: i.sku,
+        quantity: i.qty,
+        unit_price: i.price,
+        line_total: i.price * i.qty,
+        category: i.category
+      })),
+      last_activity_at: cart.last_activity_at,
+      url: `${APP_URL}/checkout/${cart.id}`,
+      environment: "production"
+    }
+  });
+}
+Step 5 — Tests (fast & minimal)
+Contract tests: schemas for each event; required fields present; types correct.
+
+Idempotency tests: repeated sends do not duplicate.
+
+Worker test: carts at 9:59 do nothing; at 10:00+ fire once.
+
+Step 6 — Docs & toggles
+README updates with metric names, property dictionaries, flags, and how to enable.
+
+Flags default off. Provide a simple env/config toggle to turn on in live.
+
+Step 7 — Output & PR
+Print a concise summary of files changed and flags to enable.
+
+Wait for approval, then open a PR titled:
+
+feat(klaviyo): purchase, subscription_started, cart_abandoned (flag-gated, live)
+
+Acceptance criteria
+With flags off: no behavioural change.
+
+With flags on: Klaviyo receives all three metrics with complete payloads.
+
+No duplicate events even on retries; no secret leakage in logs.
