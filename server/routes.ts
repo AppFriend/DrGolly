@@ -53,6 +53,8 @@ import { notifications, userNotifications } from "@shared/schema";
 import adminContentRoutes from "./routes/admin-content";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { AuthUtils } from "./auth-utils";
+import { migrationService } from "./migration-service";
+import bcrypt from 'bcryptjs';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -11367,6 +11369,154 @@ Please contact the customer to confirm the appointment.
       console.error('Error processing TOF tracking redirect:', error);
       // Failsafe: redirect to original URL even if tracking fails
       res.redirect(`/blog/${req.params.slug}`);
+    }
+  });
+
+  // MIGRATION ADMIN ENDPOINTS - CSV Legacy User Migration System
+  
+  // Check migration feature flag
+  app.get('/api/admin/migration/status', isAdmin, async (req, res) => {
+    try {
+      const featureFlagEnabled = process.env.MIGRATION_CSV_2025_08_09_ENABLED === 'true';
+      res.json({ 
+        enabled: featureFlagEnabled,
+        cohort: '2025-08-09-csv',
+        tempPassword: 'DRG-075-616!',
+        csvFile: 'migration_csv.csv'
+      });
+    } catch (error) {
+      console.error('Error checking migration status:', error);
+      res.status(500).json({ error: 'Failed to check migration status' });
+    }
+  });
+
+  // Dry run migration analysis
+  app.post('/api/admin/migration/dry-run', isAdmin, async (req, res) => {
+    try {
+      const report = await migrationService.dryRun();
+      res.json(report);
+    } catch (error) {
+      console.error('Error performing dry run:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Test run migration (3 specific users)
+  app.post('/api/admin/migration/test-run', isAdmin, async (req, res) => {
+    try {
+      const report = await migrationService.testRun();
+      res.json(report);
+    } catch (error) {
+      console.error('Error performing test run:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Execute full migration
+  app.post('/api/admin/migration/execute', isAdmin, async (req, res) => {
+    try {
+      const report = await migrationService.executeFullMigration();
+      res.json(report);
+    } catch (error) {
+      console.error('Error executing migration:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Check if email is in CSV cohort
+  app.post('/api/migration/check-cohort', async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+      
+      const isInCohort = migrationService.isInCohort(email);
+      res.json({ isInCohort });
+    } catch (error) {
+      console.error('Error checking cohort membership:', error);
+      res.status(500).json({ error: 'Failed to check cohort membership' });
+    }
+  });
+
+  // Verify temporary password login for CSV users
+  app.post('/api/migration/verify-temp-login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+      
+      const isValid = await migrationService.verifyTempPasswordLogin(email, password);
+      
+      if (isValid) {
+        // Find the user and set up session
+        const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase().trim()));
+        
+        if (user) {
+          // Set up session for temporary login
+          req.session.userId = user.id;
+          req.session.isTempLogin = true;
+          req.session.mustResetPassword = true;
+          
+          res.json({ 
+            success: true, 
+            userId: user.id,
+            mustResetPassword: true,
+            message: 'Temporary login successful. Password reset required.'
+          });
+        } else {
+          res.status(401).json({ error: 'Invalid credentials' });
+        }
+      } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+      }
+    } catch (error) {
+      console.error('Error verifying temp login:', error);
+      res.status(500).json({ error: 'Failed to verify login' });
+    }
+  });
+
+  // Complete password reset for migrated users
+  app.post('/api/migration/complete-password-reset', async (req, res) => {
+    try {
+      const { userId, newPassword } = req.body;
+      
+      if (!userId || !newPassword) {
+        return res.status(400).json({ error: 'User ID and new password are required' });
+      }
+      
+      // Verify user is in session and must reset password
+      if (req.session.userId !== userId || !req.session.mustResetPassword) {
+        return res.status(401).json({ error: 'Unauthorized password reset attempt' });
+      }
+      
+      await migrationService.completePasswordReset(userId, newPassword);
+      
+      // Update session to remove temp login flags
+      req.session.isTempLogin = false;
+      req.session.mustResetPassword = false;
+      
+      res.json({ 
+        success: true, 
+        message: 'Password reset completed successfully' 
+      });
+    } catch (error) {
+      console.error('Error completing password reset:', error);
+      res.status(500).json({ error: 'Failed to complete password reset' });
+    }
+  });
+
+  // Rollback specific user migration
+  app.post('/api/admin/migration/rollback/:userId', isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      await migrationService.rollbackUser(userId);
+      res.json({ success: true, message: `User ${userId} migration rolled back` });
+    } catch (error) {
+      console.error('Error rolling back user migration:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

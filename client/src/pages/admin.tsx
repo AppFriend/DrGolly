@@ -14,7 +14,8 @@ import {
   GraduationCap, 
   Bell,
   Settings,
-  UserCheck
+  UserCheck,
+  Database
 } from "lucide-react";
 import drGollyLogo from "@assets/Dr Golly-Sleep-Logo-FA (1)_1752041757370.png";
 
@@ -29,6 +30,7 @@ import { EnhancedCourseManagement } from "@/components/admin/EnhancedCourseManag
 import { EnhancedBlogManagement } from "@/components/admin/EnhancedBlogManagement";
 import { AdminBlogManagementSimple } from "@/components/admin/AdminBlogManagementSimple";
 import { AdminAffiliateManagement } from "@/components/admin/AdminAffiliateManagement";
+import AdminMigration from "./AdminMigration";
 
 
 export default function AdminPanel() {
@@ -113,7 +115,7 @@ export default function AdminPanel() {
       {/* Admin Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 mb-6 overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-8 mb-6 overflow-x-auto">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -137,6 +139,10 @@ export default function AdminPanel() {
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
+            </TabsTrigger>
+            <TabsTrigger value="migration" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              <span className="hidden sm:inline">Migration</span>
             </TabsTrigger>
             <TabsTrigger value="admin-settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -167,6 +173,10 @@ export default function AdminPanel() {
 
           <TabsContent value="notifications" className="mt-6">
             <AdminNotifications />
+          </TabsContent>
+
+          <TabsContent value="migration" className="mt-6">
+            <AdminMigration />
           </TabsContent>
 
           <TabsContent value="admin-settings" className="mt-6">

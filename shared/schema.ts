@@ -73,6 +73,12 @@ export const users = pgTable("users", {
   signupCompleted: boolean("signup_completed").default(false), // Track if user completed all signup steps
   // New fields for CSV migration
   firstChildDob: timestamp("first_child_dob"), // Date of birth of first child
+  // Migration tracking fields
+  mustResetPassword: boolean("must_reset_password").default(false),
+  migrationCohort: varchar("migration_cohort"),
+  migrationSourceFile: varchar("migration_source_file"),
+  passwordLastSetAt: timestamp("password_last_set_at"),
+  passwordSetMethod: varchar("password_set_method"),
   accountActivated: boolean("account_activated").default(false), // Whether user has activated their account
   // Service activations tracking
   activatedServices: text("activated_services").array().default([]), // Array of service IDs user has purchased/activated
@@ -925,6 +931,36 @@ export const insertLeadCaptureSchema = createInsertSchema(leadCaptures).omit({
   createdAt: true,
   updatedAt: true,
 });
+
+// Migration snapshot table for rollback protection
+export const migrationSnapshots = pgTable("migration_snapshots", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  cohort: varchar("cohort").notNull(),
+  preSnapshot: jsonb("pre_snapshot").notNull(), // JSON of user state before migration
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Migration audit log
+export const migrationAuditLog = pgTable("migration_audit_log", {
+  id: serial("id").primaryKey(),
+  cohort: varchar("cohort").notNull(),
+  action: varchar("action").notNull(), // 'dry_run', 'test_run', 'execute', 'rollback'
+  recordsProcessed: integer("records_processed").default(0),
+  recordsSuccessful: integer("records_successful").default(0),
+  recordsErrored: integer("records_errored").default(0),
+  executedBy: varchar("executed_by"),
+  executedAt: timestamp("executed_at").defaultNow(),
+  summary: jsonb("summary"), // Detailed results
+});
+
+export const insertMigrationSnapshotSchema = createInsertSchema(migrationSnapshots);
+export type InsertMigrationSnapshot = z.infer<typeof insertMigrationSnapshotSchema>;
+export type MigrationSnapshot = typeof migrationSnapshots.$inferSelect;
+
+export const insertMigrationAuditLogSchema = createInsertSchema(migrationAuditLog);
+export type InsertMigrationAuditLog = z.infer<typeof insertMigrationAuditLogSchema>;
+export type MigrationAuditLog = typeof migrationAuditLog.$inferSelect;
 
 export type User = typeof users.$inferSelect;
 export type Course = typeof courses.$inferSelect;

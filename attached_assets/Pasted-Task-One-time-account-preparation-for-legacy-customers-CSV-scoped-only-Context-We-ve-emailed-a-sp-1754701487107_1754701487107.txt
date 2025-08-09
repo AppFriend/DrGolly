@@ -1,0 +1,174 @@
+Task: One-time account preparation for legacy customers (CSV-scoped only)
+Context
+We’ve emailed a specific cohort (and only this cohort) from Klaviyo to log in to our new app. The cohort is provided in this CSV and must be the only users affected:
+
+File: /mnt/data/DOWNGRADED_ Clean list for Replit - subscriptions_MIgration_Cancellation.csv
+Columns: Customer Name, Customer Email, Stripe_Customer_ID, Signup Date
+Row count (approx): 60
+
+All users in this CSV must be able to log in using a temporary password: DRG-075-616! and be forced to set a new password at first login. On successful password set, track an event Migration Complete on the user for reporting.
+
+Non-negotiables
+Scope lock: Only process records present in the CSV. No other users should be read/updated/created.
+
+Idempotent: Safe to re-run. No duplicate accounts. Re-runs should reconcile the same cohort without side effects.
+
+No UX impact for others: Do not change auth flows, flags, or validation for users not in the CSV cohort.
+
+Observability: Produce a detailed dry-run report before making changes, then a final run report with results.
+
+Matching & creation rules
+Primary match: Exact match on Customer Email (case-insensitive, trimmed).
+
+Secondary match: If no email match, try name match on Customer Name (normalised: lower-case, trimmed, collapse internal spaces).
+
+Only accept a name match if there is exactly one existing user with that normalised full name.
+
+If multiple or none found, treat as no match and create a new profile.
+
+Create profile when not matched:
+
+email = CSV Customer Email
+
+full_name = CSV Customer Name
+
+Link stripe_customer_id = CSV Stripe_Customer_ID (create or update our user↔Stripe mapping table)
+
+Set auth.must_reset_password = true (or equivalent)
+
+Set temporary password to DRG-075-616! (ensure it meets password policy)
+
+Set migration.cohort = "2025-08-09-csv" and migration.source_file = full CSV filename for audit
+
+Password + login behaviour (CSV cohort only)
+For these CSV users, ensure they can authenticate with email + temporary password immediately.
+
+On first successful login with the temporary password:
+
+Force a password reset flow (cannot access app until a new password is set).
+
+After the password change succeeds, automatically set auth.must_reset_password = false.
+
+Record audit fields password_last_set_at, password_set_method = "forced-migration-reset".
+
+Event tracking: “Migration Complete”
+When a CSV user successfully sets a new password (i.e., exits the forced reset flow):
+
+Create an internal analytics event: Migration Complete
+
+Properties: user_id, email, stripe_customer_id, timestamp, migration_cohort: "2025-08-09-csv", source_file
+
+If Klaviyo tracking is available, also send a Klaviyo track event:
+
+event: Migration Complete
+
+customer_properties: { "$email": email, "stripe_customer_id": "...", "migration_cohort": "2025-08-09-csv" }
+
+Test run before full execution
+Select 3 users from the CSV:
+
+One that matches by email
+
+One that matches by name only
+
+One that does not match and requires new profile creation
+
+Run the dry-run process scoped to these 3 users only.
+
+Then run the execute process for these 3 users, applying all rules above.
+
+Validate:
+
+The 3 test users can log in with their CSV email + temporary password.
+
+Forced password reset is triggered.
+
+After setting a new password, Migration Complete event is recorded.
+
+If all 3 test cases pass, proceed to full CSV run.
+
+Safety rails
+Feature gate: Wrap all logic behind a server-side feature flag migration.csv_2025_08_09_enabled. Default off.
+
+Cohort guard: Every write path must assert email IN (parsed CSV set) before mutating, else abort.
+
+RBAC: Require an admin/service token with migration:write scope to run.
+
+Rate limiting: Batch operations to avoid auth/DB throttling.
+
+Secrets: Do not log the temporary password. Mask in logs.
+
+Rollback plan:
+
+For updates, store a pre_migration_snapshot row per affected user (JSON of fields changed: must_reset_password, stripe mapping, timestamps).
+
+Provide an admin script to revert must_reset_password and unlink Stripe mapping if needed for any single user or the entire cohort.
+
+Implementation outline
+1) Parser + normaliser
+Read CSV from /mnt/data/...csv.
+
+Trim and lower-case emails, validate format, drop exact duplicate emails (keep first occurrence, log duplicates).
+
+Build cohort_emails set and records_by_email map.
+
+2) Dry-run (no writes)
+For each CSV row:
+
+Attempt email match → report MATCH_EMAIL or NO_EMAIL_MATCH.
+
+If no email match, attempt single candidate name match → report MATCH_NAME_UNIQUE or NAME_AMBIGUOUS or NO_NAME_MATCH.
+
+Derive intended action: UPDATE_EXISTING or CREATE_NEW.
+
+Output a dry-run table with match type, intended action, and potential changes.
+
+3) Test run (3 users)
+Execute writes for 3 test users as outlined in “Test run before full execution.”
+
+Validate login, forced reset, and event tracking.
+
+If validation fails for any test user, stop and debug before proceeding.
+
+4) Full execution (all CSV users)
+Re-run dry-run for full CSV.
+
+Execute full migration with safety rails.
+
+Write final execution report.
+
+5) Auth flow changes (targeted)
+On login attempt with an email that is in cohort_emails:
+
+Allow login with the temporary password.
+
+If auth.must_reset_password = true, redirect to password setup and block app access.
+
+For emails not in cohort_emails, preserve existing behaviour.
+
+6) Post-login password reset hook
+After successful new password set:
+
+Set auth.must_reset_password = false.
+
+Record audit fields.
+
+Emit the Migration Complete event.
+
+7) Admin endpoints (temporary)
+POST /admin/migration/2025-08-09/dry-run → dry-run table.
+
+POST /admin/migration/2025-08-09/test-run → runs the 3-user test migration.
+
+POST /admin/migration/2025-08-09/execute → full migration run.
+
+All endpoints require migration:write scope and feature flag enabled.
+
+Acceptance criteria
+Test run passes for all 3 users before any full migration.
+
+All CSV users can log in with email + DRG-075-616!, are forced to set a new password, and event is logged.
+
+No other users impacted.
+
+Safe, idempotent, auditable.
