@@ -11,6 +11,7 @@ interface KlaviyoProfile {
     email?: string;
     first_name?: string;
     last_name?: string;
+    phone_number?: string;
     properties?: {
       signup_source?: string;
       user_id?: string;
@@ -1059,6 +1060,281 @@ export class KlaviyoService {
       console.error("Error fetching user course purchases:", error);
       return [];
     }
+  }
+
+  // NEW COMPREHENSIVE EVENT METHODS FOR ENHANCED KLAVIYO INTEGRATION
+
+  /**
+   * Send Stripe purchase completion event to Klaviyo
+   * Triggered when customers complete course/product purchases via Stripe
+   */
+  async sendPurchaseEvent(orderData: {
+    id: string;
+    email: string;
+    total: number;
+    subtotal?: number;
+    tax?: number;
+    shipping?: number;
+    discount_total?: number;
+    currency?: string;
+    payment_method?: string;
+    stripe_payment_intent_id?: string;
+    paid_at?: string;
+    items?: Array<{
+      id?: string;
+      product_id?: string;
+      name?: string;
+      title?: string;
+      price?: number;
+      unit_price?: number;
+      quantity?: number;
+      qty?: number;
+      category?: string;
+      sku?: string;
+    }>;
+  }): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !process.env.KLAVIYO_PURCHASE_EVENTS_ENABLED) {
+      return false;
+    }
+
+    try {
+      // Map line items with comprehensive data
+      const lineItems = orderData.items?.map(item => ({
+        product_id: (item.product_id || item.id || '').toString(),
+        product_name: (item.name || item.title || 'Unknown Product').toString(),
+        sku: (item.sku || item.product_id || item.id || '').toString(),
+        quantity: item.quantity || item.qty || 1,
+        unit_price: item.price || item.unit_price || 0,
+        line_total: (item.price || item.unit_price || 0) * (item.quantity || item.qty || 1),
+        category: item.category || 'course'
+      })) || [];
+
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: orderData.email
+          },
+          metric: {
+            name: "Placed Order"
+          },
+          properties: {
+            order_id: orderData.id,
+            currency: orderData.currency || 'AUD',
+            subtotal: orderData.subtotal || orderData.total,
+            tax: orderData.tax || 0,
+            shipping: orderData.shipping || 0,
+            discount_total: orderData.discount_total || 0,
+            total: orderData.total,
+            payment_method: orderData.payment_method || 'stripe',
+            line_items: lineItems,
+            stripe_payment_intent_id: orderData.stripe_payment_intent_id,
+            source: 'app',
+            environment: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+            event_time: orderData.paid_at || new Date().toISOString()
+          },
+          time: orderData.paid_at || new Date().toISOString(),
+          unique_id: `purchase:${orderData.id}`
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to send Klaviyo purchase event for order ${orderData.id}:`, response.status, errorText);
+        return false;
+      }
+
+      console.log(`Klaviyo purchase event sent successfully for order ${orderData.id}`);
+      return true;
+    } catch (error) {
+      console.error(`Error sending Klaviyo purchase event for order ${orderData.id}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Send subscription started event to Klaviyo
+   * Triggered when customers start new subscriptions via Stripe
+   */
+  async sendSubscriptionStartedEvent(subscriptionData: {
+    id: string;
+    stripe_subscription_id: string;
+    stripe_customer_id?: string;
+    email: string;
+    tier?: string;
+    product_name?: string;
+    plan_interval?: string;
+    plan_interval_count?: number;
+    start_date: string;
+    trial_end?: string;
+    amount: number;
+    currency?: string;
+  }): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !process.env.KLAVIYO_SUBSCRIPTION_EVENTS_ENABLED) {
+      return false;
+    }
+
+    try {
+      // Extract billing day from start date
+      const startDate = new Date(subscriptionData.start_date);
+      const monthlyBillingDay = startDate.getDate();
+
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: subscriptionData.email
+          },
+          metric: {
+            name: "Subscription Started"
+          },
+          properties: {
+            subscription_id: subscriptionData.id,
+            stripe_subscription_id: subscriptionData.stripe_subscription_id,
+            stripe_customer_id: subscriptionData.stripe_customer_id,
+            tier: subscriptionData.tier || 'gold',
+            product_name: subscriptionData.product_name || `Dr. Golly ${subscriptionData.tier || 'Gold'} Plan`,
+            plan_interval: subscriptionData.plan_interval || 'month',
+            plan_interval_count: subscriptionData.plan_interval_count || 1,
+            start_date: subscriptionData.start_date,
+            monthly_billing_day: monthlyBillingDay,
+            amount: subscriptionData.amount,
+            currency: subscriptionData.currency || 'AUD',
+            trial_end: subscriptionData.trial_end || null,
+            status: 'active',
+            environment: process.env.NODE_ENV === 'production' ? 'production' : 'development'
+          },
+          time: subscriptionData.start_date,
+          unique_id: `sub_started:${subscriptionData.stripe_subscription_id}`
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to send Klaviyo subscription started event for ${subscriptionData.stripe_subscription_id}:`, response.status, errorText);
+        return false;
+      }
+
+      console.log(`Klaviyo subscription started event sent successfully for subscription ${subscriptionData.stripe_subscription_id}`);
+      return true;
+    } catch (error) {
+      console.error(`Error sending Klaviyo subscription started event for ${subscriptionData.stripe_subscription_id}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Send cart abandonment events to Klaviyo
+   * Supports both "Started Checkout" and "Checkout Abandoned" events
+   */
+  async sendCartAbandonmentEvent(cartData: {
+    id: string;
+    email: string;
+    total: number;
+    currency?: string;
+    updated_at?: string;
+    last_activity_at?: string;
+    items?: Array<{
+      id?: string;
+      product_id?: string;
+      name?: string;
+      title?: string;
+      price?: number;
+      quantity?: number;
+      category?: string;
+    }>;
+  }, eventType: 'started_checkout' | 'checkout_abandoned' = 'checkout_abandoned'): Promise<boolean> {
+    if (!KLAVIYO_API_KEY || !process.env.KLAVIYO_CART_ABANDONED_ENABLED) {
+      return false;
+    }
+
+    try {
+      // Map cart items
+      const lineItems = cartData.items?.map(item => ({
+        product_id: (item.product_id || item.id || '').toString(),
+        product_name: (item.name || item.title || 'Unknown Product').toString(),
+        quantity: item.quantity || 1,
+        unit_price: item.price || 0,
+        line_total: (item.price || 0) * (item.quantity || 1),
+        category: item.category || 'course'
+      })) || [];
+
+      const metricName = eventType === 'started_checkout' ? 'Started Checkout' : 'Checkout Abandoned';
+      const eventTime = eventType === 'checkout_abandoned' ? new Date().toISOString() : (cartData.updated_at || new Date().toISOString());
+      
+      const eventData = {
+        type: "event",
+        attributes: {
+          profile: {
+            email: cartData.email
+          },
+          metric: {
+            name: metricName
+          },
+          properties: {
+            cart_id: cartData.id,
+            cart_value: cartData.total,
+            currency: cartData.currency || 'AUD',
+            line_items: lineItems,
+            last_activity_at: cartData.last_activity_at || cartData.updated_at,
+            url: `${process.env.VITE_APP_URL || 'https://app.drgolly.com'}/checkout/${cartData.id}`,
+            environment: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+            ...(eventType === 'checkout_abandoned' && {
+              abandoned_at: eventTime,
+              minutes_since_last_activity: Math.floor(
+                (Date.now() - new Date(cartData.last_activity_at || 0).getTime()) / (1000 * 60)
+              )
+            })
+          },
+          time: eventTime,
+          unique_id: `${eventType}:${cartData.id}:${cartData.last_activity_at || cartData.updated_at}`
+        }
+      };
+
+      const response = await fetch(`${KLAVIYO_BASE_URL}/events/`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ data: eventData })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to send Klaviyo ${metricName} event for cart ${cartData.id}:`, response.status, errorText);
+        return false;
+      }
+
+      console.log(`Klaviyo ${metricName} event sent successfully for cart ${cartData.id}`);
+      return true;
+    } catch (error) {
+      console.error(`Error sending Klaviyo cart event for cart ${cartData.id}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Convenience method to send "Started Checkout" event
+   */
+  async sendStartedCheckoutEvent(cartData: any): Promise<boolean> {
+    return this.sendCartAbandonmentEvent(cartData, 'started_checkout');
+  }
+
+  /**
+   * Convenience method to send "Checkout Abandoned" event
+   */
+  async sendCheckoutAbandonedEvent(cartData: any): Promise<boolean> {
+    return this.sendCartAbandonmentEvent(cartData, 'checkout_abandoned');
   }
 
   async syncLeadToKlaviyo(leadCapture: any, freebieTitle: string): Promise<boolean> {

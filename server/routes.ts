@@ -46,6 +46,7 @@ import { AuthUtils } from "./auth-utils";
 import { stripeSyncService } from "./stripe-sync";
 import { onOrderCompleted, onSubscriptionStarted, onCartUpdated } from "./integrations/klaviyo-hooks";
 import { slackNotificationService } from "./slack";
+import { KlaviyoService } from "./klaviyo";
 import { db } from "./db";
 import { eq, sql, and, or, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
@@ -59,6 +60,9 @@ import bcrypt from 'bcryptjs';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2023-10-16",
 });
+
+// Initialize enhanced Klaviyo service
+const klaviyoService = new KlaviyoService();
 
 // Helper function to get current domain
 function getCurrentDomain() {
@@ -5750,6 +5754,31 @@ Please contact the customer to confirm the appointment.
               // Send welcome email via Klaviyo
               await klaviyoService.sendPublicCheckoutWelcome(newUser, tempPassword);
               
+              // Send NEW Klaviyo purchase event 
+              try {
+                await klaviyoService.sendPurchaseEvent({
+                  id: paymentIntent.id,
+                  email: customerEmail,
+                  total: paymentIntent.amount / 100,
+                  currency: paymentIntent.currency?.toUpperCase() || 'AUD',
+                  payment_method: 'stripe',
+                  stripe_payment_intent_id: paymentIntent.id,
+                  paid_at: new Date().toISOString(),
+                  items: [{
+                    id: '6',
+                    product_id: '6',
+                    name: 'Big Baby Course',
+                    title: 'Big Baby Course',
+                    price: paymentIntent.amount / 100,
+                    quantity: 1,
+                    category: 'course'
+                  }]
+                });
+                console.log("✅ Klaviyo purchase event sent for Big Baby purchase");
+              } catch (error) {
+                console.error("⚠️ Failed to send Klaviyo purchase event:", error);
+              }
+              
               console.log(`Public checkout completed: Created user ${userId} for ${customerEmail}`);
               
               // Send payment notification
@@ -5782,6 +5811,31 @@ Please contact the customer to confirm the appointment.
                 status: 'completed',
               });
               
+              // Send NEW Klaviyo purchase event for existing user
+              try {
+                await klaviyoService.sendPurchaseEvent({
+                  id: paymentIntent.id,
+                  email: existingUser.email!,
+                  total: paymentIntent.amount / 100,
+                  currency: paymentIntent.currency?.toUpperCase() || 'AUD',
+                  payment_method: 'stripe',
+                  stripe_payment_intent_id: paymentIntent.id,
+                  paid_at: new Date().toISOString(),
+                  items: [{
+                    id: '6',
+                    product_id: '6',
+                    name: 'Big Baby Course',
+                    title: 'Big Baby Course',
+                    price: paymentIntent.amount / 100,
+                    quantity: 1,
+                    category: 'course'
+                  }]
+                });
+                console.log("✅ Klaviyo purchase event sent for existing user Big Baby purchase");
+              } catch (error) {
+                console.error("⚠️ Failed to send Klaviyo purchase event:", error);
+              }
+
               console.log(`Public checkout completed: Added course to existing user ${existingUser.id}`);
               
               // Send payment notification
@@ -6505,7 +6559,7 @@ Please contact the customer to confirm the appointment.
               await storage.updateCoursePurchaseStatus(purchase.id, 'completed');
               console.log(`Course purchase ${purchase.id} marked as completed`);
               
-              // Sync course purchase to Klaviyo
+              // Sync course purchase to Klaviyo (existing method)
               try {
                 const user = await storage.getUser(purchase.userId);
                 if (user) {
@@ -6513,6 +6567,35 @@ Please contact the customer to confirm the appointment.
                 }
               } catch (error) {
                 console.error("Failed to sync course purchase to Klaviyo:", error);
+              }
+
+              // Send NEW enhanced Klaviyo purchase event 
+              try {
+                const user = await storage.getUser(purchase.userId);
+                const course = await storage.getCourse(purchase.courseId);
+                if (user && user.email) {
+                  await klaviyoService.sendPurchaseEvent({
+                    id: session.payment_intent as string,
+                    email: user.email,
+                    total: purchase.amount / 100,
+                    currency: purchase.currency || 'AUD',
+                    payment_method: 'stripe',
+                    stripe_payment_intent_id: session.payment_intent as string,
+                    paid_at: new Date().toISOString(),
+                    items: [{
+                      id: purchase.courseId.toString(),
+                      product_id: purchase.courseId.toString(),
+                      name: course?.title || 'Course',
+                      title: course?.title || 'Course',
+                      price: purchase.amount / 100,
+                      quantity: 1,
+                      category: 'course'
+                    }]
+                  });
+                  console.log("✅ Enhanced Klaviyo purchase event sent for course checkout");
+                }
+              } catch (error) {
+                console.error("⚠️ Failed to send enhanced Klaviyo purchase event:", error);
               }
             }
           } catch (error) {
@@ -6563,24 +6646,25 @@ Please contact the customer to confirm the appointment.
             
             console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
             
-            // Send Klaviyo subscription started event
+            // Send NEW enhanced Klaviyo subscription started event
             try {
-              await onSubscriptionStarted({
+              await klaviyoService.sendSubscriptionStartedEvent({
                 id: createdSub.id,
-                email: user.email,
-                status: createdSub.status,
-                plan: createdSub.metadata.plan_tier,
-                billing_period: createdSub.items.data[0]?.price?.recurring?.interval || 'month',
-                amount: (createdSub.items.data[0]?.price?.unit_amount || 0) / 100,
-                currency: createdSub.currency.toUpperCase(),
-                current_period_start: new Date(createdSub.current_period_start * 1000).toISOString(),
-                current_period_end: new Date(createdSub.current_period_end * 1000).toISOString(),
                 stripe_subscription_id: createdSub.id,
-                trial_end: createdSub.trial_end ? new Date(createdSub.trial_end * 1000).toISOString() : null
+                stripe_customer_id: createdSub.customer as string,
+                email: user.email!,
+                tier: createdSub.metadata.plan_tier,
+                product_name: `Dr. Golly ${createdSub.metadata.plan_tier.charAt(0).toUpperCase() + createdSub.metadata.plan_tier.slice(1)} Plan`,
+                plan_interval: createdSub.items.data[0]?.price?.recurring?.interval || 'month',
+                plan_interval_count: createdSub.items.data[0]?.price?.recurring?.interval_count || 1,
+                start_date: new Date(createdSub.current_period_start * 1000).toISOString(),
+                trial_end: createdSub.trial_end ? new Date(createdSub.trial_end * 1000).toISOString() : undefined,
+                amount: (createdSub.items.data[0]?.price?.unit_amount || 0) / 100,
+                currency: createdSub.currency?.toUpperCase() || 'AUD'
               });
-              console.log("Klaviyo subscription started event sent successfully");
+              console.log("✅ Enhanced Klaviyo subscription started event sent successfully");
             } catch (klaviyoError) {
-              console.error("Failed to send Klaviyo subscription started event:", klaviyoError);
+              console.error("⚠️ Failed to send enhanced Klaviyo subscription started event:", klaviyoError);
             }
             
             // Send payment notification for new subscription
