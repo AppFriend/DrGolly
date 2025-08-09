@@ -6,6 +6,10 @@ export async function sendSubscriptionStartedEvent(subscriptionData: Subscriptio
     // Extract billing day from start date
     const startDate = new Date(subscriptionData.start_date);
     const monthlyBillingDay = startDate.getDate();
+    
+    // Parse next billing date from Stripe's current_period_end for payment reminders
+    const nextBillingDate = subscriptionData.next_billing_date || subscriptionData.current_period_end;
+    const currentPeriodEnd = subscriptionData.current_period_end || subscriptionData.next_billing_date;
 
     await klaviyoClient.sendEvent({
       metricName: 'Subscription Started',
@@ -21,6 +25,8 @@ export async function sendSubscriptionStartedEvent(subscriptionData: Subscriptio
         plan_interval: subscriptionData.plan_interval || 'month',
         plan_interval_count: subscriptionData.plan_interval_count || 1,
         start_date: subscriptionData.start_date,
+        next_billing_date: nextBillingDate || subscriptionData.start_date,
+        current_period_end: currentPeriodEnd || subscriptionData.start_date,
         monthly_billing_day: monthlyBillingDay,
         amount: subscriptionData.amount,
         currency: subscriptionData.currency || 'AUD',
@@ -32,7 +38,7 @@ export async function sendSubscriptionStartedEvent(subscriptionData: Subscriptio
 
     console.log(`Klaviyo subscription started event sent for subscription ${subscriptionData.stripe_subscription_id}`);
   } catch (error) {
-    console.error(`Failed to send Klaviyo subscription started event for ${subscriptionData.stripe_subscription_id}:`, error.message);
+    console.error(`Failed to send Klaviyo subscription started event for ${subscriptionData.stripe_subscription_id}:`, error instanceof Error ? error.message : error);
     // Don't throw - we don't want to break subscription processing
   }
 }

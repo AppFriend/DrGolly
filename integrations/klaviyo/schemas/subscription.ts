@@ -8,6 +8,8 @@ export interface SubscriptionStartedEventData {
   plan_interval?: 'month' | 'year';
   plan_interval_count?: number;
   start_date: string;
+  next_billing_date?: string;
+  current_period_end?: string;
   amount: number;
   currency?: string;
   trial_end?: string | null;
@@ -22,6 +24,8 @@ export interface SubscriptionStartedEventProperties {
   plan_interval: string;
   plan_interval_count: number;
   start_date: string;
+  next_billing_date: string;
+  current_period_end: string;
   monthly_billing_day: number;
   amount: number;
   currency: string;

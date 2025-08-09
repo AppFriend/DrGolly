@@ -44,6 +44,7 @@ Brand Color Guidelines:
     - **Affiliate Management System**: Database infrastructure with public application system, automated code generation, admin management (approval, tracking, analytics), Slack notifications for applications, and sales/commission management.
     - **Top of Funnel Tracking**: System for freebie downloads, automatic detection and tracking generation, server-side redirects with click tracking, and admin panel integration for analytics.
     - **Signup Flow**: A 3-step signup process with visual redesign, Google OAuth integration, and streamlined user preferences.
+    - **Enhanced Klaviyo Integration**: Comprehensive e-commerce event tracking including purchase events, subscription lifecycle events with next billing date parsing for payment reminders, and cart abandonment tracking with detailed product information.
 
 ## External Dependencies
 
@@ -51,7 +52,7 @@ Brand Color Guidelines:
 - **ORM**: Drizzle ORM
 - **Authentication**: Replit Auth (OpenID Connect)
 - **Payment Processing**: Stripe (for subscriptions, course purchases, payment methods)
-- **Email/Marketing Automation**: Klaviyo (for user profile sync, email flows, custom properties, purchase tracking, subscription management, cart abandonment)
+- **Email/Marketing Automation**: Klaviyo (for user profile sync, email flows, custom properties, purchase tracking, subscription management with next billing date parsing, cart abandonment, and payment reminder communications)
 - **Styling**: Tailwind CSS, shadcn/ui, Radix UI
 - **Icons**: Lucide React
 - **Form Handling**: React Hook Form with Zod validation

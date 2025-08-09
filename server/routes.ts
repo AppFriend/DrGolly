@@ -6646,8 +6646,11 @@ Please contact the customer to confirm the appointment.
             
             console.log(`User ${user.id} subscription created: ${createdSub.metadata.plan_tier}`);
             
-            // Send NEW enhanced Klaviyo subscription started event
+            // Send NEW enhanced Klaviyo subscription started event with billing date info
             try {
+              const nextBillingDateISO = new Date(createdSub.current_period_end * 1000).toISOString();
+              const currentPeriodEndISO = new Date(createdSub.current_period_end * 1000).toISOString();
+              
               await klaviyoService.sendSubscriptionStartedEvent({
                 id: createdSub.id,
                 stripe_subscription_id: createdSub.id,
@@ -6658,11 +6661,13 @@ Please contact the customer to confirm the appointment.
                 plan_interval: createdSub.items.data[0]?.price?.recurring?.interval || 'month',
                 plan_interval_count: createdSub.items.data[0]?.price?.recurring?.interval_count || 1,
                 start_date: new Date(createdSub.current_period_start * 1000).toISOString(),
+                next_billing_date: nextBillingDateISO,
+                current_period_end: currentPeriodEndISO,
                 trial_end: createdSub.trial_end ? new Date(createdSub.trial_end * 1000).toISOString() : undefined,
                 amount: (createdSub.items.data[0]?.price?.unit_amount || 0) / 100,
                 currency: createdSub.currency?.toUpperCase() || 'AUD'
               });
-              console.log("✅ Enhanced Klaviyo subscription started event sent successfully");
+              console.log("✅ Enhanced Klaviyo subscription started event sent with next billing date:", nextBillingDateISO);
             } catch (klaviyoError) {
               console.error("⚠️ Failed to send enhanced Klaviyo subscription started event:", klaviyoError);
             }

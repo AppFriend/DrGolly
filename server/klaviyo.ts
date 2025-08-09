@@ -1172,6 +1172,8 @@ export class KlaviyoService {
     plan_interval?: string;
     plan_interval_count?: number;
     start_date: string;
+    next_billing_date?: string;
+    current_period_end?: string;
     trial_end?: string;
     amount: number;
     currency?: string;
@@ -1181,9 +1183,13 @@ export class KlaviyoService {
     }
 
     try {
-      // Extract billing day from start date
+      // Extract billing day from start date for payment reminders
       const startDate = new Date(subscriptionData.start_date);
       const monthlyBillingDay = startDate.getDate();
+      
+      // Parse next billing date for Klaviyo payment reminder flows
+      const nextBillingDate = subscriptionData.next_billing_date || subscriptionData.current_period_end;
+      const currentPeriodEnd = subscriptionData.current_period_end || subscriptionData.next_billing_date;
 
       const eventData = {
         type: "event",
@@ -1203,6 +1209,8 @@ export class KlaviyoService {
             plan_interval: subscriptionData.plan_interval || 'month',
             plan_interval_count: subscriptionData.plan_interval_count || 1,
             start_date: subscriptionData.start_date,
+            next_billing_date: nextBillingDate || subscriptionData.start_date,
+            current_period_end: currentPeriodEnd || subscriptionData.start_date,
             monthly_billing_day: monthlyBillingDay,
             amount: subscriptionData.amount,
             currency: subscriptionData.currency || 'AUD',
